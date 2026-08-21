@@ -1,16 +1,24 @@
-import { Module } from "@nestjs/common";
-import { McpModule as NestJSMcpModule } from "@nestjs-mcp/server";
-import { McpResolver } from "./mcp.resolver";
+import { Global, Module } from '@nestjs/common';
+import { MCP_STRATEGY, McpStrategy, StreamableHttpTransport } from '@rekog/mcp-nest';
 
-@Module({
-  imports: [
-    NestJSMcpModule.forRoot({
-      name: "MCP Server",
-      version: "1.0.0",
-    }),
+const mcpStrategy = new McpStrategy({
+  name: 'critical_finance',
+  version: '1.0.0',
+  transports: [
+    new StreamableHttpTransport(),
   ],
+});
+
+@Global()
+@Module({
   providers: [
-    McpResolver,
+    {
+      provide: MCP_STRATEGY,
+      useValue: mcpStrategy,
+    },
+  ],
+  exports: [
+    MCP_STRATEGY,
   ],
 })
 export class McpModule {}
