@@ -10,7 +10,7 @@ export const drizzleProvider = [
     provide: DRIZZLE_PG_CLIENT,
     inject: [ConfigService],
     useFactory: async (configService: ConfigService<EnvVariables, true>) => {
-      const connectionString = configService.get('DATABASE_URL', { infer: true });
+      const connectionString = configService.get('POSTGRES_URL', { infer: true });
       const pool = postgres(connectionString, {
         max: 10,
         idle_timeout: 30,

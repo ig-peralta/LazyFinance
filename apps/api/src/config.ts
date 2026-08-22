@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 
 const envSchema = z.object({
   PORT: z.number().int().positive().default(3000),
-  DATABASE_URL: z.url().default("postgresql://user:password@localhost:5432/postgres"),
+  POSTGRES_URL: z.url().default("postgresql://user:password@localhost:5432/postgres"),
 });
 
 export type EnvVariables = z.infer<typeof envSchema>;
