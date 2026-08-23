@@ -1,9 +1,8 @@
 import { NestFactory } from '@nestjs/core';
 import { MCP_STRATEGY, McpStrategy } from '@rekog/mcp-nest';
 import { AppModule } from './app.module';
-import { ConfigService } from '@nestjs/config';
-import { EnvVariables } from './config';
 import { Logger } from '@nestjs/common';
+import { EnvironmentService } from './environment/environment.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -12,8 +11,8 @@ async function bootstrap() {
   mcpStrategy.setHttpAdapter(app.getHttpAdapter());
   app.connectMicroservice({ strategy: mcpStrategy });
 
-  const configService = app.get(ConfigService<EnvVariables, true>);
-  const port = configService.get('PORT', { infer: true });
+  const environment = app.get(EnvironmentService);
+  const port = environment.get('PORT');
 
   await app.startAllMicroservices();
   await app.listen(port);
