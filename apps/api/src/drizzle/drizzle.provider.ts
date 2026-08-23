@@ -1,16 +1,15 @@
-import { ConfigService } from '@nestjs/config';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { settleAsync } from 'src/_utils/settle';
-import { EnvVariables } from 'src/config';
 import { DRIZZLE_PG_CLIENT } from './drizzle.tokens';
+import { EnvironmentService } from 'src/environment/environment.service';
 
 export const drizzleProvider = [
   {
     provide: DRIZZLE_PG_CLIENT,
-    inject: [ConfigService],
-    useFactory: async (configService: ConfigService<EnvVariables, true>) => {
-      const connectionString = configService.get('POSTGRES_URL', { infer: true });
+    inject: [EnvironmentService],
+    useFactory: async (environment: EnvironmentService) => {
+      const connectionString = environment.get('POSTGRES_URL');
       const pool = postgres(connectionString, {
         max: 10,
         idle_timeout: 30,
@@ -22,7 +21,10 @@ export const drizzleProvider = [
       );
 
       if (error) {
-        throw new Error('failed to initialize postgres drizzle client');
+        throw new Error(
+          'Failed to initialize postgres drizzle client',
+          error
+        );
       }
 
       return pgClient;
