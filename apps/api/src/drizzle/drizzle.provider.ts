@@ -3,6 +3,7 @@ import postgres from 'postgres';
 import { settleAsync } from 'src/_utils/settle';
 import { DRIZZLE_PG_CLIENT } from './drizzle.tokens';
 import { EnvironmentService } from 'src/environment/environment.service';
+import * as schema from './schema';
 
 export const drizzleProvider = [
   {
@@ -14,7 +15,7 @@ export const drizzleProvider = [
         max: 10,
         idle_timeout: 30,
       });
-      const pgClient = drizzle(pool);
+      const pgClient = drizzle(pool, { schema });
 
       const { error } = await settleAsync(
         pgClient.execute('SELECT 1')

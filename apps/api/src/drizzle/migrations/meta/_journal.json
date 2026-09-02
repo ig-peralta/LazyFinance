@@ -1,0 +1,76 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1788303227570,
+      "tag": "0000_create_user_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788303253044,
+      "tag": "0001_create_provider_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788303275415,
+      "tag": "0002_create_tag_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788303296221,
+      "tag": "0003_create_provider_connection_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788303313631,
+      "tag": "0004_create_account_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788303333108,
+      "tag": "0005_create_transaction_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788303343971,
+      "tag": "0006_create_objective_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1788303371865,
+      "tag": "0007_create_transaction_tag_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788303394348,
+      "tag": "0008_create_objective_tag_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788309612577,
+      "tag": "0009_make_provider_connection_id_not_null",
+      "breakpoints": true
+    }
+  ]
+}
