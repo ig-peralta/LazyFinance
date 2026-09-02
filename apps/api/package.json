@@ -6,7 +6,8 @@
     "build": "nest build",
     "dev": "nest start --watch",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "drizzle": "drizzle-kit --config ./src/drizzle/drizzle.config.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/core": "^2.0.0",
