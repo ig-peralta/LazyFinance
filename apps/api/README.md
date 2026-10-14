@@ -1,1 +1,1 @@
-# Critical Finance API
+# LazyFinance API
