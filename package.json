@@ -8,7 +8,8 @@
     "typecheck": "turbo typecheck",
     "resources": "docker compose -f docker/local/resources.yml",
     "resources:up": "docker compose -f docker/local/resources.yml up -d",
-    "resources:down": "docker compose -f docker/local/resources.yml down"
+    "resources:down": "docker compose -f docker/local/resources.yml down",
+    "deploy:local": "docker compose -f docker/local/deploy.yml up --build -d"
   },
   "devDependencies": {
     "turbo": "^2.10.11"
