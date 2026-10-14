@@ -1,5 +1,5 @@
 {
-  "name": "critical-finance",
+  "name": "lazyfinance",
   "private": true,
   "scripts": {
     "dev": "turbo dev",

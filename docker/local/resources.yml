@@ -1,4 +1,4 @@
-name: critical-finance-resources
+name: lazyfinance-resources
 
 services:
   postgres:
@@ -14,8 +14,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-    networks: [critical-finance]
+    networks: [lazyfinance]
 
 networks:
-  critical-finance:
-    name: critical-finance
+  lazyfinance:
+    name: lazyfinance
