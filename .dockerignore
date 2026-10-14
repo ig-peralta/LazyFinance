@@ -1,0 +1,13 @@
+node_modules
+**/node_modules
+.git
+**/.git
+**/.env
+**/.env.*
+**/*.env
+**/dist
+.turbo
+**/.turbo
+**/*.tsbuildinfo
+docs
+docker
