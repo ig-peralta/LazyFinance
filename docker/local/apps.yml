@@ -1,0 +1,21 @@
+name: lazyfinance-apps
+
+services:
+  api:
+    container_name: lazyfinance-api
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+    environment:
+      NODE_ENV: production
+      PORT: '3000'
+      POSTGRES_URL: postgresql://user:password@postgres:5432/postgres
+    ports:
+      - '3000:3000'
+    networks:
+      - lazyfinance
+    restart: unless-stopped
+
+networks:
+  lazyfinance:
+    external: true
