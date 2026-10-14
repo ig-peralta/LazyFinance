@@ -1,1 +1,1 @@
-# Critical Finance
+# LazyFinance

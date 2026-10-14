@@ -1,6 +1,6 @@
 # LazyFinance — Product Requirements Document
 
-> **Product:** LazyFinance (referred to as *Critical Finance* in the repository).
+> **Product:** LazyFinance.
 > **Status:** draft vision and scope. Written as if no prior code existed.
 > **Document type:** product requirements and tentative roadmap.
 

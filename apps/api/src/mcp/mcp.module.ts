@@ -2,7 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { MCP_STRATEGY, McpStrategy, StreamableHttpTransport } from '@rekog/mcp-nest';
 
 const mcpStrategy = new McpStrategy({
-  name: 'critical_finance',
+  name: 'lazyfinance',
   version: '1.0.0',
   transports: [
     new StreamableHttpTransport(),
