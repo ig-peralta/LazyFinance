@@ -16,6 +16,20 @@ services:
       - lazyfinance
     restart: unless-stopped
 
+  ui:
+    container_name: lazyfinance-ui
+    build:
+      context: ../..
+      dockerfile: apps/ui/Dockerfile
+    environment:
+      NODE_ENV: production
+      PORT: '4000'
+    ports:
+      - '4200:4000'
+    networks:
+      - lazyfinance
+    restart: unless-stopped
+
 networks:
   lazyfinance:
     external: true

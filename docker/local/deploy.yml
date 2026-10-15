@@ -31,5 +31,19 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  ui:
+    build:
+      context: ../..
+      dockerfile: apps/ui/Dockerfile
+    environment:
+      NODE_ENV: production
+      PORT: '4000'
+    ports:
+      - '${UI_PORT:-4200}:4000'
+    depends_on:
+      api:
+        condition: service_started
+    restart: unless-stopped
+
 volumes:
   postgres-data:
