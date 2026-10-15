@@ -4,12 +4,14 @@ import { BalanceModule } from './balance/balance.module';
 import { McpModule } from './mcp/mcp.module';
 import { EnvironmentModule } from './environment/environment.module';
 import { DrizzleModule } from './drizzle/drizzle.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
     EnvironmentModule,
     McpModule,
     DrizzleModule,
+    AuthModule,
     BalanceModule,
   ],
   controllers: [
