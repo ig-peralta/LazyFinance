@@ -1,59 +1,31 @@
-# Ui
+# LazyFinance UI
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.2.2.
+The UI is an Angular/TypeScript app with routing, server-side rendering (SSR), and client hydration. It is part of the [LazyFinance monorepo](../../README.md) alongside the [API](../api/README.md).
 
-## Development server
+The interface uses PrimeNG components with an Aura-based emerald theme, Tailwind CSS v4 through PostCSS, and `tailwindcss-primeui` for styling utilities. Production builds include a browser bundle and a Node/Express SSR server.
 
-To start a local development server, run:
+## Development
 
-```bash
-ng serve
-```
-
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+Install dependencies from the [monorepo root](../../README.md), then start the UI:
 
 ```bash
-ng generate component component-name
+pnpm install
+pnpm --filter ui dev
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+Open <http://localhost:4200>. Angular's development server reloads as you edit. To run both apps with PostgreSQL, follow the [root development instructions](../../README.md#run-locally).
 
-```bash
-ng generate --help
-```
+## Commands
 
-## Building
+Run these from the monorepo root:
 
-To build the project run:
+| Command | Purpose |
+| --- | --- |
+| `pnpm --filter ui dev` | Start the Angular development server on port `4200`. |
+| `pnpm --filter ui build` | Build browser assets and the SSR server into `apps/ui/dist/ui`. |
+| `pnpm --filter ui watch` | Build in watch mode with the development configuration. |
+| `pnpm --filter ui test` | Run unit tests through Angular's Vitest-based test builder. |
+| `pnpm --filter ui serve:ssr:ui` | Run the built SSR server (build first; default port `4000`). |
+| `pnpm --filter ui ng <command>` | Pass a command to the Angular CLI; see the [Angular CLI reference](https://angular.dev/tools/cli). |
 
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+The Docker UI image runs the built SSR server on container port `4000`; the Compose stacks publish it on host port `4200`.
