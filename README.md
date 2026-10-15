@@ -22,10 +22,11 @@ pnpm install
 pnpm resources:up
 ```
 
-Once PostgreSQL is healthy, apply the checked-in migrations and start both apps:
+Once PostgreSQL is healthy, apply the checked-in migrations, seed the demo dataset, and start both apps:
 
 ```bash
 pnpm --filter api drizzle migrate
+pnpm --filter api seed
 pnpm dev
 ```
 

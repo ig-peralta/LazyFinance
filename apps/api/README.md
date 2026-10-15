@@ -13,10 +13,11 @@ pnpm install
 pnpm resources:up
 ```
 
-Once PostgreSQL is healthy, apply migrations and start the API in watch mode:
+Once PostgreSQL is healthy, apply migrations, seed the demo dataset, and start the API in watch mode:
 
 ```bash
 pnpm --filter api drizzle migrate
+pnpm --filter api seed
 pnpm --filter api dev
 ```
 
@@ -39,7 +40,10 @@ Run these from the monorepo root:
 | `pnpm --filter api build` | Compile the API into `apps/api/dist`. |
 | `pnpm --filter api test` | Run Vitest tests. |
 | `pnpm --filter api typecheck` | Type-check without emitting files. |
+| `pnpm --filter api seed` | Populate the demo dataset; safe to run more than once. |
 | `pnpm --filter api drizzle <command>` | Run Drizzle Kit with this app's config. |
+
+The demo user is `demo@lazyfinance.local` with token `lazyfinance-demo-token`. The seed creates CLP accounts, categories, objectives, and a dated transaction history from January 2024 through the present, including recurring income and expenses, transfers, credit-card payments, and seasonal spending in Chile. It uses the API's `POSTGRES_URL` (including `apps/api/.env` when present); run migrations first. Rerunning it updates the same demo records without deleting other users' data. The token and dataset are for demo use only.
 
 ### Drizzle Kit
 
