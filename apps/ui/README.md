@@ -15,6 +15,10 @@ pnpm --filter ui dev
 
 Open <http://localhost:4200>. Angular's development server reloads as you edit. To run both apps with PostgreSQL, follow the [root development instructions](../../README.md#run-locally).
 
+## Session and API requests
+
+`SessionService` restores its session cookie during SSR and browser initialization. It exposes the bearer token as a signal and can set or clear the cookie; the cookie is a transport for SSR state, not proof that the API accepted the token. Angular's HTTP interceptor attaches that token only to requests targeting `environment.apiUrl`. Development replaces `src/environments/environment.ts` with `src/environments/environment.development.ts` (local API at <http://localhost:3000>); production builds use <https://api.lazyfinance.cl>.
+
 ## Commands
 
 Run these from the monorepo root:
