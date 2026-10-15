@@ -7,6 +7,8 @@
     "dev": "nest start --watch",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
+    "seed": "ts-node src/drizzle/seed/index.ts",
+    "migrate": "drizzle-kit migrate --config ./src/drizzle/drizzle.config.ts",
     "drizzle": "drizzle-kit --config ./src/drizzle/drizzle.config.ts"
   },
   "dependencies": {
