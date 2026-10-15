@@ -1,16 +1,17 @@
 import { Global, Module } from '@nestjs/common';
-import { MCP_STRATEGY, McpStrategy, StreamableHttpTransport } from '@rekog/mcp-nest';
+import { MCP_STRATEGY, McpStrategy } from '@rekog/mcp-nest';
+import { McpHttpController } from './mcp.http';
+import { mcpHttpTransport } from './mcp.transport';
 
 const mcpStrategy = new McpStrategy({
   name: 'lazyfinance',
   version: '1.0.0',
-  transports: [
-    new StreamableHttpTransport(),
-  ],
+  transports: [mcpHttpTransport],
 });
 
 @Global()
 @Module({
+  controllers: [McpHttpController],
   providers: [
     {
       provide: MCP_STRATEGY,
