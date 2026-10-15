@@ -1,0 +1,537 @@
+<main id="top" class="overflow-hidden bg-surface-50 text-color dark:bg-surface-950">
+  <header
+    class="border-b border-surface bg-surface-0 backdrop-blur-xl dark:border-surface-700 dark:bg-surface-950"
+  >
+    <nav
+      aria-label="Navegación principal"
+      class="mx-auto flex h-[76px] max-w-7xl items-center justify-between px-5 sm:px-8 lg:px-12"
+    >
+      <a href="#top" class="flex items-center gap-3" aria-label="Inicio de LazyFinance">
+        <span
+          class="flex size-10 items-center justify-center rounded-2xl bg-primary text-primary-contrast"
+        >
+          <svg aria-hidden="true" viewBox="0 0 24 24" class="size-5" fill="none">
+            <path
+              d="M4 17.5 9 12l3.2 3.2L20 7"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M14.8 7H20v5.2"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </span>
+        <span class="text-lg font-semibold tracking-[-0.04em]"
+          >Lazy<span class="font-normal">Finance</span></span
+        >
+      </a>
+
+      <div class="hidden items-center gap-8 text-sm font-medium text-muted-color md:flex">
+        <a href="#capabilities" class="transition-colors hover:text-color-emphasis"
+          >Qué puedes hacer</a
+        >
+        <a href="#how-it-works" class="transition-colors hover:text-color-emphasis"
+          >Cómo funciona</a
+        >
+        <a href="#principles" class="transition-colors hover:text-color-emphasis">Tú decides</a>
+      </div>
+    </nav>
+  </header>
+
+  <section class="relative isolate" aria-labelledby="hero-title">
+    <div
+      class="mx-auto grid max-w-7xl items-center gap-14 px-5 py-12 sm:px-8 sm:py-14 md:grid-cols-[0.95fr_1.05fr] md:gap-10 lg:px-12 lg:py-16"
+    >
+      <div class="max-w-2xl">
+        <p
+          class="mb-7 inline-flex items-center gap-2.5 rounded-full border border-surface bg-surface-0 px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-color shadow-sm dark:bg-surface-900"
+        >
+          <span class="size-2 rounded-full bg-primary"></span>
+          Finanzas personales, en palabras simples
+        </p>
+        <h1
+          id="hero-title"
+          class="max-w-xl text-5xl leading-[1.03] font-semibold tracking-[-0.065em] text-color-emphasis sm:text-6xl lg:text-[4.6rem]"
+        >
+          Una mirada más clara a <span class="text-primary">tu dinero.</span>
+        </h1>
+        <p class="mt-6 max-w-xl text-lg leading-8 text-muted-color sm:text-xl">
+          Haz las preguntas que de verdad te importan. Entiende mejor tus gastos, tus metas y lo que
+          viene.
+        </p>
+
+        <div class="mt-9 flex flex-wrap items-center gap-4">
+          <a
+            pButton
+            href="#how-it-works"
+            class="group !rounded-full !border-primary !bg-primary !px-6 !py-3.5 !font-semibold !text-primary-contrast transition-transform active:scale-[0.98]"
+          >
+            <span>Descubre cómo funciona</span>
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 20 20"
+              class="ml-2 size-4 transition-transform group-hover:translate-x-0.5"
+              fill="none"
+            >
+              <path
+                d="M4 10h11m-4-4 4 4-4 4"
+                stroke="currentColor"
+                stroke-width="1.7"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </a>
+          <a
+            href="#capabilities"
+            class="rounded-full px-4 py-3 text-sm font-semibold text-color transition-colors hover:text-primary"
+          >
+            Explora lo que puedes hacer
+          </a>
+        </div>
+
+        <div class="mt-8 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-color">
+          <p-tag value="SOLO LECTURA" severity="success" [rounded]="true" />
+          <span>Tu dinero sigue siendo tuyo. Siempre.</span>
+        </div>
+      </div>
+
+      <div id="experience" class="relative mx-auto w-full max-w-[570px] scroll-mt-28">
+        <div
+          aria-hidden="true"
+          class="absolute -left-8 top-12 hidden size-24 rotate-[-10deg] rounded-3xl border border-surface bg-surface-0 shadow-sm dark:border-surface-700 dark:bg-surface-800 sm:block"
+        ></div>
+        <div
+          aria-hidden="true"
+          class="absolute -right-5 bottom-12 hidden size-20 rounded-full border border-primary-100 bg-primary-50 dark:border-primary-900 dark:bg-primary-950 sm:block"
+        ></div>
+
+        <p-card
+          styleClass="relative rounded-[28px] border border-surface bg-surface-0 shadow-xl dark:border-surface-700 dark:bg-surface-900"
+        >
+          <div
+            class="flex items-center justify-between gap-4 border-b border-surface pb-5 dark:border-surface-700"
+          >
+            <div class="flex items-center gap-3">
+              <span
+                class="flex size-10 items-center justify-center rounded-2xl bg-primary text-primary-contrast"
+              >
+                <svg aria-hidden="true" viewBox="0 0 24 24" class="size-5" fill="none">
+                  <path
+                    d="M5 18V9m7 9V5m7 13v-6"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                  />
+                </svg>
+              </span>
+              <div>
+                <p class="text-sm font-semibold tracking-[-0.02em]">LazyFinance</p>
+                <p class="mt-0.5 text-xs text-muted-color">Vista previa de una conversación</p>
+              </div>
+            </div>
+            <p-tag value="EJEMPLO" severity="secondary" [rounded]="true" />
+          </div>
+
+          <div class="mt-6 rounded-2xl bg-surface-100 p-4 sm:p-5 dark:bg-surface-800">
+            <p class="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-color">
+              Tú preguntas
+            </p>
+            <p class="text-base leading-7 font-medium text-color-emphasis sm:text-lg">
+              “¿Me alcanzará hasta fin de mes?”
+            </p>
+          </div>
+
+          <div class="mt-5 flex gap-3.5">
+            <div
+              class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-700 dark:bg-primary-950 dark:text-primary-200"
+            >
+              <svg aria-hidden="true" viewBox="0 0 24 24" class="size-5" fill="none">
+                <path
+                  d="M12 3.5 14.2 9l5.8 2.2-5.8 2.2-2.2 5.8-2.2-5.8L4 11.2 9.8 9 12 3.5Z"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="m19 15 .9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9L19 15Z"
+                  fill="currentColor"
+                />
+              </svg>
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <p class="text-sm font-semibold">En pocas palabras</p>
+                <span class="text-xs text-muted-color">·</span>
+                <span class="text-xs text-muted-color">Según tus movimientos</span>
+              </div>
+              <p class="mt-2 text-sm leading-6 text-muted-color">
+                Vas bien para terminar el mes. Tus gastos en restaurantes bajaron respecto al mes
+                pasado y sigues encaminado hacia tu meta de ahorro.
+              </p>
+            </div>
+          </div>
+
+          <div
+            class="mt-6 grid grid-cols-3 gap-2 border-t border-surface pt-5 sm:gap-4 dark:border-surface-700"
+          >
+            <div>
+              <p
+                class="text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-color sm:text-[10px]"
+              >
+                Ritmo de gastos
+              </p>
+              <p class="mt-1.5 text-xs font-semibold text-primary sm:text-sm">Vas bien</p>
+            </div>
+            <div>
+              <p
+                class="text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-color sm:text-[10px]"
+              >
+                Comparación mensual
+              </p>
+              <p class="mt-1.5 text-xs font-semibold text-color-emphasis sm:text-sm">
+                Un poco menos
+              </p>
+            </div>
+            <div>
+              <p
+                class="text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-color sm:text-[10px]"
+              >
+                Tu meta
+              </p>
+              <p class="mt-1.5 text-xs font-semibold text-color-emphasis sm:text-sm">
+                A tu alcance
+              </p>
+            </div>
+          </div>
+        </p-card>
+
+        <p class="mt-4 text-center text-xs text-muted-color">
+          Ejemplo ilustrativo · Tus análisis reales se basan en tus datos conectados
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section
+    id="capabilities"
+    class="scroll-mt-20 border-t border-surface bg-surface-0 py-12 sm:py-14 lg:py-16 dark:border-surface-700 dark:bg-surface-950"
+  >
+    <div class="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
+      <div class="grid gap-6 md:grid-cols-[0.8fr_1.2fr] md:items-end">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+            Menos tiempo ordenando. Más claridad.
+          </p>
+          <h2
+            class="mt-4 max-w-xl text-3xl leading-tight font-semibold tracking-[-0.05em] text-color-emphasis sm:text-4xl"
+          >
+            Tus finanzas cuentan una historia. Hagámosla más fácil de entender.
+          </h2>
+        </div>
+        <p
+          class="max-w-2xl text-base leading-7 text-muted-color md:justify-self-end md:text-lg md:leading-8"
+        >
+          LazyFinance reúne saldos, gastos y metas en una conversación clara, para que dediques
+          menos tiempo a ordenar datos y más a decidir lo que importa.
+        </p>
+      </div>
+
+      <div class="mt-12 grid gap-4 md:grid-cols-3">
+        <p-card
+          styleClass="h-full rounded-3xl border border-surface bg-surface-0 shadow-none transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg dark:border-surface-700 dark:bg-surface-900"
+        >
+          <div
+            class="flex size-11 items-center justify-center rounded-2xl bg-primary-50 text-primary-700 dark:bg-primary-950 dark:text-primary-200"
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24" class="size-5" fill="none">
+              <path
+                d="M5 6.5A2.5 2.5 0 0 1 7.5 4h9A2.5 2.5 0 0 1 19 6.5v6a2.5 2.5 0 0 1-2.5 2.5H11l-4.5 4v-4.4A2.5 2.5 0 0 1 5 12.5v-6Z"
+                stroke="currentColor"
+                stroke-width="1.7"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <path
+                d="M9 8.5h6m-6 3h3"
+                stroke="currentColor"
+                stroke-width="1.7"
+                stroke-linecap="round"
+              />
+            </svg>
+          </div>
+          <h3 class="mt-6 text-lg font-semibold tracking-[-0.03em]">Pregunta con naturalidad</h3>
+          <p class="mt-2 text-sm leading-6 text-muted-color">
+            “¿Cuánto gasté en comida este mes?” Obtén una respuesta útil sin revisar cada
+            movimiento.
+          </p>
+        </p-card>
+
+        <p-card
+          styleClass="h-full rounded-3xl border border-surface bg-surface-0 shadow-none transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg dark:border-surface-700 dark:bg-surface-900"
+        >
+          <div
+            class="flex size-11 items-center justify-center rounded-2xl bg-primary-50 text-primary-700 dark:bg-primary-950 dark:text-primary-200"
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24" class="size-5" fill="none">
+              <path
+                d="M4 19.5h16M6.5 16V11m5 5V5m5 11v-7"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+              />
+              <path
+                d="m5.5 8.5 5-3.5 5 3 3-2"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </div>
+          <h3 class="mt-6 text-lg font-semibold tracking-[-0.03em]">Detecta lo que cambió</h3>
+          <p class="mt-2 text-sm leading-6 text-muted-color">
+            Compara meses, identifica cobros inusuales y detecta compras duplicadas o alzas en tus
+            suscripciones.
+          </p>
+        </p-card>
+
+        <p-card
+          styleClass="h-full rounded-3xl border border-surface bg-surface-0 shadow-none transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg dark:border-surface-700 dark:bg-surface-900"
+        >
+          <div
+            class="flex size-11 items-center justify-center rounded-2xl bg-primary-50 text-primary-700 dark:bg-primary-950 dark:text-primary-200"
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24" class="size-5" fill="none">
+              <circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.7" />
+              <circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="1.7" />
+              <path
+                d="m12 12 6.5-6.5"
+                stroke="currentColor"
+                stroke-width="1.7"
+                stroke-linecap="round"
+              />
+              <path
+                d="M18.5 5.5H15m3.5 0V9"
+                stroke="currentColor"
+                stroke-width="1.7"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </div>
+          <h3 class="mt-6 text-lg font-semibold tracking-[-0.03em]">
+            Convierte tus metas en un plan
+          </h3>
+          <p class="mt-2 text-sm leading-6 text-muted-color">
+            Define un presupuesto o una meta de ahorro y explora cambios prácticos basados en tus
+            hábitos de gasto.
+          </p>
+        </p-card>
+      </div>
+    </div>
+  </section>
+
+  <section
+    id="how-it-works"
+    class="scroll-mt-20 bg-surface-50 py-12 sm:py-14 lg:py-16 dark:bg-surface-950"
+  >
+    <div class="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
+      <div class="mx-auto max-w-2xl text-center">
+        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+          Claridad, una pregunta a la vez
+        </p>
+        <h2
+          class="mt-4 text-3xl leading-tight font-semibold tracking-[-0.05em] text-color-emphasis sm:text-4xl"
+        >
+          Fácil de empezar. Útil a medida que tu vida cambia.
+        </h2>
+      </div>
+
+      <div class="mt-14 grid gap-10 md:grid-cols-3 md:gap-8">
+        <article class="relative">
+          <p
+            class="flex size-10 items-center justify-center rounded-full border border-surface bg-surface-0 text-sm font-semibold text-primary dark:border-surface-700 dark:bg-surface-900"
+          >
+            01
+          </p>
+          <h3 class="mt-5 text-lg font-semibold tracking-[-0.03em]">Conecta tus cuentas</h3>
+          <p class="mt-2 max-w-sm text-sm leading-6 text-muted-color">
+            Comienza con una cuenta de prueba. La plataforma está preparada para sumar distintos
+            proveedores bancarios.
+          </p>
+        </article>
+        <article class="relative">
+          <p
+            class="flex size-10 items-center justify-center rounded-full border border-surface bg-surface-0 text-sm font-semibold text-primary dark:border-surface-700 dark:bg-surface-900"
+          >
+            02
+          </p>
+          <h3 class="mt-5 text-lg font-semibold tracking-[-0.03em]">Pregunta lo que te importa</h3>
+          <p class="mt-2 max-w-sm text-sm leading-6 text-muted-color">
+            Comienza por escrito: consulta tu saldo, tus gastos o una meta. Más adelante podrás
+            hacerlo por voz.
+          </p>
+        </article>
+        <article class="relative">
+          <p
+            class="flex size-10 items-center justify-center rounded-full border border-surface bg-surface-0 text-sm font-semibold text-primary dark:border-surface-700 dark:bg-surface-900"
+          >
+            03
+          </p>
+          <h3 class="mt-5 text-lg font-semibold tracking-[-0.03em]">Elige tu próximo paso</h3>
+          <p class="mt-2 max-w-sm text-sm leading-6 text-muted-color">
+            Recibe explicaciones y sugerencias claras. Tú decides qué hacer: LazyFinance nunca mueve
+            tu dinero.
+          </p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="px-5 py-12 sm:px-8 sm:py-14 lg:px-12 lg:py-16">
+    <div
+      class="mx-auto grid max-w-7xl gap-10 rounded-[2rem] border border-surface bg-surface-0 px-6 py-10 shadow-sm sm:px-10 md:grid-cols-[1fr_0.9fr] md:items-center lg:px-14 lg:py-14 dark:border-surface-800 dark:bg-surface-900"
+    >
+      <div>
+        <p
+          class="inline-flex rounded-full bg-primary-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-primary-700 dark:bg-primary-950 dark:text-primary-200"
+        >
+          Creada para conectarse
+        </p>
+        <h2
+          class="mt-4 max-w-xl text-3xl leading-tight font-semibold tracking-[-0.05em] text-color-emphasis sm:text-4xl"
+        >
+          Tus finanzas claras, donde quieras preguntar.
+        </h2>
+        <p class="mt-4 max-w-xl text-sm leading-7 text-muted-color sm:text-base">
+          LazyFinance comparte sus herramientas financieras mediante MCP, para que asistentes
+          compatibles y otras aplicaciones utilicen el mismo análisis.
+        </p>
+      </div>
+      <div
+        role="img"
+        class="flex items-center justify-center gap-3 sm:gap-4"
+        aria-label="Un asistente conectado con LazyFinance y sus herramientas financieras"
+      >
+        <div
+          class="flex min-h-24 flex-1 flex-col items-center justify-center gap-2 rounded-2xl border border-surface bg-surface-50 px-3 text-center dark:border-surface-700 dark:bg-surface-800 sm:min-h-28 sm:px-4"
+        >
+          <svg aria-hidden="true" viewBox="0 0 24 24" class="size-5 text-primary" fill="none">
+            <path
+              d="M7 9.5h10M7 13h6m-6 3.5h4M5 20l2.2-2H18a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12l1 .5Z"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+          <span class="text-xs font-medium text-color-emphasis sm:text-sm">Tu asistente</span>
+        </div>
+        <span class="text-muted-color" aria-hidden="true">↔</span>
+        <div
+          class="flex min-h-24 flex-1 flex-col items-center justify-center gap-2 rounded-2xl border border-primary-200 bg-primary-50 px-3 text-center dark:border-primary-800 dark:bg-primary-950 sm:min-h-28 sm:px-4"
+        >
+          <span
+            class="flex size-8 items-center justify-center rounded-xl bg-primary text-xs font-bold tracking-[-0.04em] text-primary-contrast"
+            >MCP</span
+          >
+          <span class="text-xs font-medium text-color-emphasis sm:text-sm"
+            >Herramientas compartidas</span
+          >
+        </div>
+        <span class="text-muted-color" aria-hidden="true">↔</span>
+        <div
+          class="flex min-h-24 flex-1 flex-col items-center justify-center gap-2 rounded-2xl border border-surface bg-surface-50 px-3 text-center dark:border-surface-700 dark:bg-surface-800 sm:min-h-28 sm:px-4"
+        >
+          <svg aria-hidden="true" viewBox="0 0 24 24" class="size-5 text-primary" fill="none">
+            <path
+              d="M4 18V9m5 9V5m5 13v-6m5 6V7"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+            />
+          </svg>
+          <span class="text-xs font-medium text-color-emphasis sm:text-sm">Tus finanzas</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section
+    id="principles"
+    class="scroll-mt-20 border-t border-surface bg-surface-0 py-12 sm:py-14 lg:py-16 dark:border-surface-700 dark:bg-surface-950"
+  >
+    <div
+      class="mx-auto grid max-w-7xl gap-8 px-5 sm:px-8 md:grid-cols-[0.8fr_1.2fr] md:items-center lg:px-12"
+    >
+      <div>
+        <p-tag value="TU DINERO. TÚ DECIDES." severity="secondary" [rounded]="true" />
+        <h2
+          class="mt-5 max-w-md text-3xl leading-tight font-semibold tracking-[-0.05em] text-color-emphasis sm:text-4xl"
+        >
+          La orientación ayuda. Las decisiones son tuyas.
+        </h2>
+      </div>
+      <div class="max-w-2xl md:justify-self-end">
+        <p class="text-base leading-7 text-muted-color sm:text-lg sm:leading-8">
+          LazyFinance analiza, explica y sugiere. No realiza transacciones ni mueve dinero por ti.
+          Cada decisión sigue en tus manos.
+        </p>
+        <a
+          href="#top"
+          class="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-primary transition-colors hover:text-color-emphasis"
+        >
+          Volver al inicio
+          <svg aria-hidden="true" viewBox="0 0 20 20" class="size-4 -rotate-90" fill="none">
+            <path
+              d="M4 10h11m-4-4 4 4-4 4"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="border-t border-surface bg-surface-50 dark:border-surface-700 dark:bg-surface-950">
+    <div
+      class="mx-auto flex max-w-7xl flex-col gap-4 px-5 py-7 text-xs text-muted-color sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:px-12"
+    >
+      <a href="#top" class="flex items-center gap-2 font-semibold text-color-emphasis">
+        <span
+          class="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-contrast"
+        >
+          <svg aria-hidden="true" viewBox="0 0 24 24" class="size-4" fill="none">
+            <path
+              d="M4 17.5 9 12l3.2 3.2L20 7"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M14.8 7H20v5.2"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </span>
+        LazyFinance
+      </a>
+      <p>Las decisiones financieras claras empiezan con una buena pregunta.</p>
+      <p>© 2026 LazyFinance</p>
+    </div>
+  </footer>
+</main>
