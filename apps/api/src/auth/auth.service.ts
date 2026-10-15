@@ -1,6 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { UserRepository } from '../drizzle/repositories/user.repository';
-import type { AuthPrincipal } from './auth.principal';
+import type { AuthPrincipal } from './auth.types';
 
 @Injectable()
 export class AuthService {
