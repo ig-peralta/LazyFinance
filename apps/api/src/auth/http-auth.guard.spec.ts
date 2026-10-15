@@ -3,7 +3,9 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { AppModule } from '../app.module';
+import { configureCors } from '../cors';
 import { DRIZZLE_PG_CLIENT } from '../drizzle/drizzle.tokens';
+import { ENV_SCHEMA } from '../environment/environment.schema';
 import type { AuthenticatedRequest } from './auth.types';
 
 @Controller('api/probe')
@@ -46,6 +48,7 @@ describe('HTTP authentication', () => {
     }).overrideProvider(DRIZZLE_PG_CLIENT).useValue(db).compile();
 
     app = module.createNestApplication();
+    configureCors(app, ENV_SCHEMA.parse({}).CORS_ORIGINS);
     await app.init();
   });
 
@@ -75,5 +78,37 @@ describe('HTTP authentication', () => {
       .expect(200);
 
     expect(response.body).toEqual({ userId: demoUser.id, email: demoUser.email, name: demoUser.name });
+  });
+
+  it('allows the UI origin to preflight Authorization headers', async () => {
+    const response = await request(app.getHttpServer())
+      .options('/api/probe')
+      .set('Origin', 'http://localhost:4200')
+      .set('Access-Control-Request-Method', 'GET')
+      .set('Access-Control-Request-Headers', 'authorization,content-type')
+      .expect(204);
+
+    expect(response.headers['access-control-allow-origin']).toBe('http://localhost:4200');
+    expect(response.headers['access-control-allow-headers']).toContain('authorization');
+    expect(queries).toBe(0);
+  });
+
+  it('does not grant cross-origin access to unlisted origins', async () => {
+    const response = await request(app.getHttpServer())
+      .options('/api/probe')
+      .set('Origin', 'https://unlisted.example')
+      .set('Access-Control-Request-Method', 'GET')
+      .set('Access-Control-Request-Headers', 'authorization');
+
+    expect(response.headers['access-control-allow-origin']).toBeUndefined();
+  });
+
+  it('includes CORS headers on protected error responses', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/api/probe')
+      .set('Origin', 'http://127.0.0.1:4200')
+      .expect(401);
+
+    expect(response.headers['access-control-allow-origin']).toBe('http://127.0.0.1:4200');
   });
 });

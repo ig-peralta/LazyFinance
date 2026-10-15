@@ -24,6 +24,7 @@ services:
       NODE_ENV: production
       PORT: '3000'
       POSTGRES_URL: "postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-postgres}"
+      CORS_ORIGINS: '${CORS_ORIGINS:-http://localhost:4200,http://127.0.0.1:4200}'
     ports:
       - '${API_PORT:-3000}:3000'
     depends_on:
