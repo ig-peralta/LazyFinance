@@ -3,10 +3,10 @@
     class="border-b border-surface bg-surface-0 backdrop-blur-xl dark:border-surface-700 dark:bg-surface-950"
   >
     <nav
-      aria-label="Main navigation"
+      aria-label="Navegación principal"
       class="mx-auto flex h-[76px] max-w-7xl items-center justify-between px-5 sm:px-8 lg:px-12"
     >
-      <a href="#top" class="flex items-center gap-3" aria-label="LazyFinance home">
+      <a href="#top" class="flex items-center gap-3" aria-label="Inicio de LazyFinance">
         <span
           class="flex size-10 items-center justify-center rounded-2xl bg-primary text-primary-contrast"
         >
@@ -33,33 +33,37 @@
       </a>
 
       <div class="hidden items-center gap-8 text-sm font-medium text-muted-color md:flex">
-        <a href="#capabilities" class="transition-colors hover:text-color-emphasis">What it does</a>
-        <a href="#how-it-works" class="transition-colors hover:text-color-emphasis">How it works</a>
-        <a href="#principles" class="transition-colors hover:text-color-emphasis">Your control</a>
+        <a href="#capabilities" class="transition-colors hover:text-color-emphasis"
+          >Qué puedes hacer</a
+        >
+        <a href="#how-it-works" class="transition-colors hover:text-color-emphasis"
+          >Cómo funciona</a
+        >
+        <a href="#principles" class="transition-colors hover:text-color-emphasis">Tú decides</a>
       </div>
     </nav>
   </header>
 
   <section class="relative isolate" aria-labelledby="hero-title">
     <div
-      class="mx-auto grid max-w-7xl items-center gap-14 px-5 py-16 sm:px-8 sm:py-20 md:grid-cols-[0.95fr_1.05fr] md:gap-10 md:py-24 lg:px-12 lg:py-28"
+      class="mx-auto grid max-w-7xl items-center gap-14 px-5 py-12 sm:px-8 sm:py-14 md:grid-cols-[0.95fr_1.05fr] md:gap-10 lg:px-12 lg:py-16"
     >
       <div class="max-w-2xl">
         <p
           class="mb-7 inline-flex items-center gap-2.5 rounded-full border border-surface bg-surface-0 px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-color shadow-sm dark:bg-surface-900"
         >
           <span class="size-2 rounded-full bg-primary"></span>
-          Personal finance, in plain language
+          Finanzas personales, en palabras simples
         </p>
         <h1
           id="hero-title"
           class="max-w-xl text-5xl leading-[1.03] font-semibold tracking-[-0.065em] text-color-emphasis sm:text-6xl lg:text-[4.6rem]"
         >
-          A clearer picture of <span class="text-primary">your money.</span>
+          Una mirada más clara a <span class="text-primary">tu dinero.</span>
         </h1>
         <p class="mt-6 max-w-xl text-lg leading-8 text-muted-color sm:text-xl">
-          Ask the questions you actually have. Get a thoughtful read on your spending, your goals,
-          and what comes next.
+          Haz las preguntas que de verdad te importan. Entiende mejor tus gastos, tus metas y lo que
+          viene.
         </p>
 
         <div class="mt-9 flex flex-wrap items-center gap-4">
@@ -68,7 +72,7 @@
             href="#how-it-works"
             class="group !rounded-full !border-primary !bg-primary !px-6 !py-3.5 !font-semibold !text-primary-contrast transition-transform active:scale-[0.98]"
           >
-            <span>See how it works</span>
+            <span>Descubre cómo funciona</span>
             <svg
               aria-hidden="true"
               viewBox="0 0 20 20"
@@ -88,13 +92,13 @@
             href="#capabilities"
             class="rounded-full px-4 py-3 text-sm font-semibold text-color transition-colors hover:text-primary"
           >
-            Explore what’s possible
+            Explora lo que puedes hacer
           </a>
         </div>
 
         <div class="mt-8 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-color">
-          <p-tag value="READ-ONLY BY DESIGN" severity="success" [rounded]="true" />
-          <span>Your money stays yours. Always.</span>
+          <p-tag value="SOLO LECTURA" severity="success" [rounded]="true" />
+          <span>Tu dinero sigue siendo tuyo. Siempre.</span>
         </div>
       </div>
 
@@ -129,18 +133,18 @@
               </span>
               <div>
                 <p class="text-sm font-semibold tracking-[-0.02em]">LazyFinance</p>
-                <p class="mt-0.5 text-xs text-muted-color">A conversation preview</p>
+                <p class="mt-0.5 text-xs text-muted-color">Vista previa de una conversación</p>
               </div>
             </div>
-            <p-tag value="SAMPLE" severity="secondary" [rounded]="true" />
+            <p-tag value="EJEMPLO" severity="secondary" [rounded]="true" />
           </div>
 
           <div class="mt-6 rounded-2xl bg-surface-100 p-4 sm:p-5 dark:bg-surface-800">
             <p class="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-color">
-              You ask
+              Tú preguntas
             </p>
             <p class="text-base leading-7 font-medium text-color-emphasis sm:text-lg">
-              “Will I make it to the end of the month?”
+              “¿Me alcanzará hasta fin de mes?”
             </p>
           </div>
 
@@ -163,13 +167,13 @@
             </div>
             <div class="min-w-0 flex-1">
               <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <p class="text-sm font-semibold">Here’s the short version</p>
+                <p class="text-sm font-semibold">En pocas palabras</p>
                 <span class="text-xs text-muted-color">·</span>
-                <span class="text-xs text-muted-color">Based on your activity</span>
+                <span class="text-xs text-muted-color">Según tus movimientos</span>
               </div>
               <p class="mt-2 text-sm leading-6 text-muted-color">
-                You’re on track for the month. Dining is lower than last month, and your savings
-                goal is still within reach.
+                Vas bien para terminar el mes. Tus gastos en restaurantes bajaron respecto al mes
+                pasado y sigues encaminado hacia tu meta de ahorro.
               </p>
             </div>
           </div>
@@ -181,35 +185,35 @@
               <p
                 class="text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-color sm:text-[10px]"
               >
-                Spending pace
+                Ritmo de gastos
               </p>
-              <p class="mt-1.5 text-xs font-semibold text-primary sm:text-sm">On track</p>
+              <p class="mt-1.5 text-xs font-semibold text-primary sm:text-sm">Vas bien</p>
             </div>
             <div>
               <p
                 class="text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-color sm:text-[10px]"
               >
-                Month to month
+                Comparación mensual
               </p>
               <p class="mt-1.5 text-xs font-semibold text-color-emphasis sm:text-sm">
-                A little lighter
+                Un poco menos
               </p>
             </div>
             <div>
               <p
                 class="text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-color sm:text-[10px]"
               >
-                Your goal
+                Tu meta
               </p>
               <p class="mt-1.5 text-xs font-semibold text-color-emphasis sm:text-sm">
-                Within reach
+                A tu alcance
               </p>
             </div>
           </div>
         </p-card>
 
         <p class="mt-4 text-center text-xs text-muted-color">
-          Illustrative example · Your real insights come from your connected data
+          Ejemplo ilustrativo · Tus análisis reales se basan en tus datos conectados
         </p>
       </div>
     </div>
@@ -217,25 +221,25 @@
 
   <section
     id="capabilities"
-    class="scroll-mt-20 border-t border-surface bg-surface-0 py-20 sm:py-24 lg:py-28 dark:border-surface-700 dark:bg-surface-950"
+    class="scroll-mt-20 border-t border-surface bg-surface-0 py-12 sm:py-14 lg:py-16 dark:border-surface-700 dark:bg-surface-950"
   >
     <div class="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
       <div class="grid gap-6 md:grid-cols-[0.8fr_1.2fr] md:items-end">
         <div>
           <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-            Less tracking. More understanding.
+            Menos tiempo ordenando. Más claridad.
           </p>
           <h2
             class="mt-4 max-w-xl text-3xl leading-tight font-semibold tracking-[-0.05em] text-color-emphasis sm:text-4xl"
           >
-            Your finances have a story. Let’s make it easier to read.
+            Tus finanzas cuentan una historia. Hagámosla más fácil de entender.
           </h2>
         </div>
         <p
           class="max-w-2xl text-base leading-7 text-muted-color md:justify-self-end md:text-lg md:leading-8"
         >
-          LazyFinance brings balances, spending, and goals into one clear conversation—so you can
-          spend less time sorting data and more time deciding what matters.
+          LazyFinance reúne saldos, gastos y metas en una conversación clara, para que dediques
+          menos tiempo a ordenar datos y más a decidir lo que importa.
         </p>
       </div>
 
@@ -262,10 +266,10 @@
               />
             </svg>
           </div>
-          <h3 class="mt-6 text-lg font-semibold tracking-[-0.03em]">Ask like a person</h3>
+          <h3 class="mt-6 text-lg font-semibold tracking-[-0.03em]">Pregunta con naturalidad</h3>
           <p class="mt-2 text-sm leading-6 text-muted-color">
-            “How much did I spend on food this month?” Get a useful answer without digging through
-            every transaction.
+            “¿Cuánto gasté en comida este mes?” Obtén una respuesta útil sin revisar cada
+            movimiento.
           </p>
         </p-card>
 
@@ -291,10 +295,10 @@
               />
             </svg>
           </div>
-          <h3 class="mt-6 text-lg font-semibold tracking-[-0.03em]">Notice what changed</h3>
+          <h3 class="mt-6 text-lg font-semibold tracking-[-0.03em]">Detecta lo que cambió</h3>
           <p class="mt-2 text-sm leading-6 text-muted-color">
-            Compare months, spot unusual charges, and catch duplicate purchases or subscription
-            price changes.
+            Compara meses, identifica cobros inusuales y detecta compras duplicadas o alzas en tus
+            suscripciones.
           </p>
         </p-card>
 
@@ -322,10 +326,12 @@
               />
             </svg>
           </div>
-          <h3 class="mt-6 text-lg font-semibold tracking-[-0.03em]">Make goals feel doable</h3>
+          <h3 class="mt-6 text-lg font-semibold tracking-[-0.03em]">
+            Convierte tus metas en un plan
+          </h3>
           <p class="mt-2 text-sm leading-6 text-muted-color">
-            Set a budget or a savings goal, then explore practical changes based on the way you
-            already spend.
+            Define un presupuesto o una meta de ahorro y explora cambios prácticos basados en tus
+            hábitos de gasto.
           </p>
         </p-card>
       </div>
@@ -334,17 +340,17 @@
 
   <section
     id="how-it-works"
-    class="scroll-mt-20 bg-surface-50 py-20 sm:py-24 lg:py-28 dark:bg-surface-950"
+    class="scroll-mt-20 bg-surface-50 py-12 sm:py-14 lg:py-16 dark:bg-surface-950"
   >
     <div class="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
       <div class="mx-auto max-w-2xl text-center">
         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-          Clarity, one question at a time
+          Claridad, una pregunta a la vez
         </p>
         <h2
           class="mt-4 text-3xl leading-tight font-semibold tracking-[-0.05em] text-color-emphasis sm:text-4xl"
         >
-          Simple to start. Useful as life changes.
+          Fácil de empezar. Útil a medida que tu vida cambia.
         </h2>
       </div>
 
@@ -355,12 +361,10 @@
           >
             01
           </p>
-          <h3 class="mt-5 text-lg font-semibold tracking-[-0.03em]">
-            Bring your accounts together
-          </h3>
+          <h3 class="mt-5 text-lg font-semibold tracking-[-0.03em]">Conecta tus cuentas</h3>
           <p class="mt-2 max-w-sm text-sm leading-6 text-muted-color">
-            Start with a connected sandbox account. The foundation is designed to grow across
-            banking providers.
+            Comienza con una cuenta de prueba. La plataforma está preparada para sumar distintos
+            proveedores bancarios.
           </p>
         </article>
         <article class="relative">
@@ -369,10 +373,10 @@
           >
             02
           </p>
-          <h3 class="mt-5 text-lg font-semibold tracking-[-0.03em]">Ask what’s on your mind</h3>
+          <h3 class="mt-5 text-lg font-semibold tracking-[-0.03em]">Pregunta lo que te importa</h3>
           <p class="mt-2 max-w-sm text-sm leading-6 text-muted-color">
-            Start with text questions about a balance, spending, or a goal. Voice is a natural next
-            step.
+            Comienza por escrito: consulta tu saldo, tus gastos o una meta. Más adelante podrás
+            hacerlo por voz.
           </p>
         </article>
         <article class="relative">
@@ -381,17 +385,17 @@
           >
             03
           </p>
-          <h3 class="mt-5 text-lg font-semibold tracking-[-0.03em]">Choose your next step</h3>
+          <h3 class="mt-5 text-lg font-semibold tracking-[-0.03em]">Elige tu próximo paso</h3>
           <p class="mt-2 max-w-sm text-sm leading-6 text-muted-color">
-            Get a clear explanation and suggestions. You decide what to do—LazyFinance never moves
-            money.
+            Recibe explicaciones y sugerencias claras. Tú decides qué hacer: LazyFinance nunca mueve
+            tu dinero.
           </p>
         </article>
       </div>
     </div>
   </section>
 
-  <section class="px-5 py-8 sm:px-8 sm:py-12 lg:px-12">
+  <section class="px-5 py-12 sm:px-8 sm:py-14 lg:px-12 lg:py-16">
     <div
       class="mx-auto grid max-w-7xl gap-10 rounded-[2rem] border border-surface bg-surface-0 px-6 py-10 shadow-sm sm:px-10 md:grid-cols-[1fr_0.9fr] md:items-center lg:px-14 lg:py-14 dark:border-surface-800 dark:bg-surface-900"
     >
@@ -399,22 +403,22 @@
         <p
           class="inline-flex rounded-full bg-primary-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-primary-700 dark:bg-primary-950 dark:text-primary-200"
         >
-          Built to connect
+          Creada para conectarse
         </p>
         <h2
           class="mt-4 max-w-xl text-3xl leading-tight font-semibold tracking-[-0.05em] text-color-emphasis sm:text-4xl"
         >
-          Your financial insight, wherever you ask.
+          Tus finanzas claras, donde quieras preguntar.
         </h2>
         <p class="mt-4 max-w-xl text-sm leading-7 text-muted-color sm:text-base">
-          LazyFinance is designed to share its financial tools through MCP, so compatible assistants
-          and apps can use the same underlying analysis.
+          LazyFinance comparte sus herramientas financieras mediante MCP, para que asistentes
+          compatibles y otras aplicaciones utilicen el mismo análisis.
         </p>
       </div>
       <div
         role="img"
         class="flex items-center justify-center gap-3 sm:gap-4"
-        aria-label="A connected assistant, LazyFinance, and financial tools"
+        aria-label="Un asistente conectado con LazyFinance y sus herramientas financieras"
       >
         <div
           class="flex min-h-24 flex-1 flex-col items-center justify-center gap-2 rounded-2xl border border-surface bg-surface-50 px-3 text-center dark:border-surface-700 dark:bg-surface-800 sm:min-h-28 sm:px-4"
@@ -428,7 +432,7 @@
               stroke-linejoin="round"
             />
           </svg>
-          <span class="text-xs font-medium text-color-emphasis sm:text-sm">Your assistant</span>
+          <span class="text-xs font-medium text-color-emphasis sm:text-sm">Tu asistente</span>
         </div>
         <span class="text-muted-color" aria-hidden="true">↔</span>
         <div
@@ -438,7 +442,9 @@
             class="flex size-8 items-center justify-center rounded-xl bg-primary text-xs font-bold tracking-[-0.04em] text-primary-contrast"
             >MCP</span
           >
-          <span class="text-xs font-medium text-color-emphasis sm:text-sm">Shared tools</span>
+          <span class="text-xs font-medium text-color-emphasis sm:text-sm"
+            >Herramientas compartidas</span
+          >
         </div>
         <span class="text-muted-color" aria-hidden="true">↔</span>
         <div
@@ -452,7 +458,7 @@
               stroke-linecap="round"
             />
           </svg>
-          <span class="text-xs font-medium text-color-emphasis sm:text-sm">Your finances</span>
+          <span class="text-xs font-medium text-color-emphasis sm:text-sm">Tus finanzas</span>
         </div>
       </div>
     </div>
@@ -460,29 +466,29 @@
 
   <section
     id="principles"
-    class="scroll-mt-20 border-t border-surface bg-surface-0 py-20 sm:py-24 dark:border-surface-700 dark:bg-surface-950"
+    class="scroll-mt-20 border-t border-surface bg-surface-0 py-12 sm:py-14 lg:py-16 dark:border-surface-700 dark:bg-surface-950"
   >
     <div
       class="mx-auto grid max-w-7xl gap-8 px-5 sm:px-8 md:grid-cols-[0.8fr_1.2fr] md:items-center lg:px-12"
     >
       <div>
-        <p-tag value="YOUR MONEY. YOUR CALL." severity="secondary" [rounded]="true" />
+        <p-tag value="TU DINERO. TÚ DECIDES." severity="secondary" [rounded]="true" />
         <h2
           class="mt-5 max-w-md text-3xl leading-tight font-semibold tracking-[-0.05em] text-color-emphasis sm:text-4xl"
         >
-          Advice is useful. Control is yours.
+          La orientación ayuda. Las decisiones son tuyas.
         </h2>
       </div>
       <div class="max-w-2xl md:justify-self-end">
         <p class="text-base leading-7 text-muted-color sm:text-lg sm:leading-8">
-          LazyFinance reads, analyzes, explains, and suggests. It doesn’t execute transactions or
-          move money on your behalf. Every decision stays with you.
+          LazyFinance analiza, explica y sugiere. No realiza transacciones ni mueve dinero por ti.
+          Cada decisión sigue en tus manos.
         </p>
         <a
           href="#top"
           class="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-primary transition-colors hover:text-color-emphasis"
         >
-          Back to the beginning
+          Volver al inicio
           <svg aria-hidden="true" viewBox="0 0 20 20" class="size-4 -rotate-90" fill="none">
             <path
               d="M4 10h11m-4-4 4 4-4 4"
@@ -524,7 +530,7 @@
         </span>
         LazyFinance
       </a>
-      <p>Clearer money decisions start with a better question.</p>
+      <p>Las decisiones financieras claras empiezan con una buena pregunta.</p>
       <p>© 2026 LazyFinance</p>
     </div>
   </footer>
