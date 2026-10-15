@@ -2,7 +2,6 @@
 @plugin "tailwindcss-primeui";
 
 :root {
-  color-scheme: light;
   font-family:
     Inter,
     ui-sans-serif,
@@ -13,9 +12,6 @@
     sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-  --lf-forest: #183d33;
-  --lf-lime: #d5f0a1;
-  --lf-line: #e4e9e2;
 }
 
 html {

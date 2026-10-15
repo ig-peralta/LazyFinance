@@ -3,7 +3,7 @@ import { provideRouter } from '@angular/router';
 import { routes } from './app.routes';
 import { provideClientHydration } from '@angular/platform-browser';
 import { providePrimeNG } from 'primeng/config';
-import { Noir } from './themes';
+import { Emerald } from './themes';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -12,8 +12,8 @@ export const appConfig: ApplicationConfig = {
     provideClientHydration(),
     providePrimeNG({
       theme: {
-        preset: Noir,
-      }
+        preset: Emerald,
+      },
     }),
   ],
 };
