@@ -1,5 +1,6 @@
 import type { ObjectiveRepository } from '../drizzle/repositories/objective.repository';
 import type { TagRepository } from '../drizzle/repositories/tag.repository';
+import type { TransactionRepository } from '../drizzle/repositories/transaction.repository';
 import { describe, expect, it, vi } from 'vitest';
 import { ObjectivesService } from './objectives.service';
 
@@ -28,6 +29,7 @@ describe('ObjectivesService', () => {
     const service = new ObjectivesService(
       { listForUser } as unknown as ObjectiveRepository,
       { listForObjectives } as unknown as TagRepository,
+      {} as TransactionRepository,
     );
 
     await expect(service.getForUser(userId)).resolves.toEqual([
@@ -52,9 +54,47 @@ describe('ObjectivesService', () => {
     const service = new ObjectivesService(
       { listForUser } as unknown as ObjectiveRepository,
       { listForObjectives } as unknown as TagRepository,
+      {} as TransactionRepository,
     );
 
     await expect(service.getForUser(userId)).resolves.toEqual([]);
     expect(listForObjectives).not.toHaveBeenCalled();
+  });
+
+  it('counts a multi-tagged movement once per budget and separates monthly from yearly spend', async () => {
+    const groceryId = '00000000-0000-4000-8000-000000000051';
+    const vacationId = '00000000-0000-4000-8000-000000000052';
+    const groceriesTag = '00000000-0000-4000-8000-000000000031';
+    const familyTag = '00000000-0000-4000-8000-000000000032';
+    const vacationTag = '00000000-0000-4000-8000-000000000033';
+    const listForUser = vi.fn(async () => [
+      { id: groceryId, name: 'Supermercado', amount: '280000.00', kind: 'time_based', intent: 'spending', isRecurring: true, period: 'monthly', startDate: new Date('2024-01-01T15:00:00Z'), endDate: null },
+      { id: vacationId, name: 'Vacaciones', amount: '650000.00', kind: 'time_based', intent: 'spending', isRecurring: true, period: 'yearly', startDate: new Date('2024-01-01T15:00:00Z'), endDate: null },
+      { id: goalId, name: 'Fondo', amount: '6500000.00', kind: 'amount_based', intent: 'saving', isRecurring: null, period: null, startDate: null, endDate: null },
+    ]);
+    const listForObjectives = vi.fn(async () => [
+      { objectiveId: groceryId, id: groceriesTag, name: 'Supermercado', color: null },
+      { objectiveId: groceryId, id: familyTag, name: 'Familia', color: null },
+      { objectiveId: vacationId, id: vacationTag, name: 'Vacaciones', color: null },
+    ]);
+    const listTaggedDebitsForPeriod = vi.fn(async () => [
+      { id: '00000000-0000-4000-8000-000000000061', amount: '-300000.00', bookedAt: new Date('2026-09-15T15:00:00Z'), tagId: groceriesTag },
+      { id: '00000000-0000-4000-8000-000000000061', amount: '-300000.00', bookedAt: new Date('2026-09-15T15:00:00Z'), tagId: familyTag },
+      { id: '00000000-0000-4000-8000-000000000062', amount: '-200000.00', bookedAt: new Date('2026-01-14T15:00:00Z'), tagId: vacationTag },
+      { id: '00000000-0000-4000-8000-000000000063', amount: '-150000.00', bookedAt: new Date('2026-09-17T15:00:00Z'), tagId: vacationTag },
+    ]);
+    const service = new ObjectivesService(
+      { listForUser } as unknown as ObjectiveRepository,
+      { listForObjectives } as unknown as TagRepository,
+      { listTaggedDebitsForPeriod } as unknown as TransactionRepository,
+    );
+
+    await expect(service.getSpendingProgressForUser(userId, '2026-09')).resolves.toEqual([
+      { id: groceryId, name: 'Supermercado', month: '2026-09', period: 'monthly', limit: '280000.00', spent: '300000.00', remaining: '-20000.00', percentage: 107 },
+      { id: vacationId, name: 'Vacaciones', month: '2026-09', period: 'yearly', limit: '650000.00', spent: '350000.00', remaining: '300000.00', percentage: 53 },
+    ]);
+    expect(listTaggedDebitsForPeriod).toHaveBeenCalledWith(
+      userId, '2026-01-01 00:00:00', '2026-10-01 00:00:00',
+    );
   });
 });

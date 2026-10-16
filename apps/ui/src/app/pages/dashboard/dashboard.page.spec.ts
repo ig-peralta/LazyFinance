@@ -18,13 +18,29 @@ describe('DashboardPage', () => {
     const getMonthlySummary = vi.fn(() =>
       of({ month: '2026-09', income: '0', spending: '0', tags: [] }),
     );
+    const getMonthlyComparison = vi.fn(() =>
+      of({
+        month: '2026-09',
+        previousMonth: '2026-08',
+        income: { current: '0', previous: '0', change: '0.00' },
+        spending: { current: '0', previous: '0', change: '0.00' },
+      }),
+    );
+    const getSpendingProgress = vi.fn(() => of([]));
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
         { provide: SessionService, useValue: { user: () => ({ name: 'Camila Rojas' }), clear } },
         {
           provide: ApiService,
-          useValue: { getAccounts, getRecentTransactions, getObjectives, getMonthlySummary },
+          useValue: {
+            getAccounts,
+            getRecentTransactions,
+            getObjectives,
+            getMonthlySummary,
+            getMonthlyComparison,
+            getSpendingProgress,
+          },
         },
       ],
     });
@@ -39,10 +55,14 @@ describe('DashboardPage', () => {
     expect(fixture.nativeElement.textContent).toContain('Tus últimos movimientos');
     expect(fixture.nativeElement.textContent).toContain('Presupuestos y metas');
     expect(fixture.nativeElement.textContent).toContain('Gastos por etiqueta');
+    expect(fixture.nativeElement.textContent).toContain('Comparación mensual');
+    expect(fixture.nativeElement.textContent).toContain('Avance de presupuestos');
     expect(getAccounts).toHaveBeenCalledOnce();
     expect(getRecentTransactions).toHaveBeenCalledOnce();
     expect(getObjectives).toHaveBeenCalledOnce();
     expect(getMonthlySummary).toHaveBeenCalledOnce();
+    expect(getMonthlyComparison).toHaveBeenCalledOnce();
+    expect(getSpendingProgress).toHaveBeenCalledOnce();
 
     (fixture.nativeElement.querySelector('header button') as HTMLButtonElement).click();
     expect(clear).toHaveBeenCalledOnce();

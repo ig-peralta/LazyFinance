@@ -22,4 +22,23 @@ describe('SummariesService', () => {
     expect(sumByMonthForUser).toHaveBeenCalledWith(userId, '2026-09');
     expect(sumDebitsByTagForMonth).toHaveBeenCalledWith(userId, '2026-09');
   });
+
+  it('compares adjacent months without tag joins or floating point money math', async () => {
+    const sumByMonthForUser = vi.fn(async (_id: string, month: string) => month === '2026-01'
+      ? { income: '100000.01', spending: '1000.00' }
+      : { income: '100000.02', spending: '1100.00' });
+    const sumDebitsByTagForMonth = vi.fn();
+    const service = new SummariesService(
+      { sumByMonthForUser } as unknown as TransactionRepository,
+      { sumDebitsByTagForMonth } as unknown as TagRepository,
+    );
+
+    await expect(service.getComparisonForUser('demo-id', '2026-01')).resolves.toEqual({
+      month: '2026-01', previousMonth: '2025-12',
+      income: { current: '100000.01', previous: '100000.02', change: '-0.01' },
+      spending: { current: '1000.00', previous: '1100.00', change: '-100.00' },
+    });
+    expect(sumDebitsByTagForMonth).not.toHaveBeenCalled();
+    expect(sumByMonthForUser).toHaveBeenCalledWith('demo-id', '2025-12');
+  });
 });

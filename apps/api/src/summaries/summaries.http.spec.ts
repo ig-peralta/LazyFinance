@@ -12,10 +12,16 @@ describe('GET /summaries/monthly', () => {
   const getMonthlyForUser = vi.fn(async (_userId: string, month: string) => ({
     month, income: '1550000.00', spending: '700000.00', tags: [],
   }));
+  const getComparisonForUser = vi.fn(async (_userId: string, month: string) => ({
+    month, previousMonth: '2026-08',
+    income: { current: '1550000.00', previous: '1500000.00', change: '50000.00' },
+    spending: { current: '700000.00', previous: '600000.00', change: '100000.00' },
+  }));
   let app: INestApplication;
 
   beforeEach(async () => {
     getMonthlyForUser.mockClear();
+    getComparisonForUser.mockClear();
     const module = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(DRIZZLE_PG_CLIENT).useValue({})
       .overrideProvider(UserRepository).useValue({
@@ -23,7 +29,7 @@ describe('GET /summaries/monthly', () => {
           ? { id: userId, email: 'demo@lazyfinance.local', name: 'Camila' }
           : null,
       })
-      .overrideProvider(SummariesService).useValue({ getMonthlyForUser })
+      .overrideProvider(SummariesService).useValue({ getMonthlyForUser, getComparisonForUser })
       .compile();
     app = module.createNestApplication();
     await app.init();
@@ -48,5 +54,16 @@ describe('GET /summaries/monthly', () => {
     expect(response.body).toEqual({ month: '2026-09', income: '1550000.00', spending: '700000.00', tags: [] });
     expect(response.headers['cache-control']).toBe('private, no-store');
     expect(getMonthlyForUser).toHaveBeenCalledWith(userId, '2026-09');
+  });
+
+  it('validates and scopes period comparisons', async () => {
+    await request(app.getHttpServer()).get('/summaries/comparison?month=2026-09').expect(401);
+    await request(app.getHttpServer()).get('/summaries/comparison?month=bad')
+      .set('Authorization', 'Bearer demo-token').expect(400);
+    const response = await request(app.getHttpServer()).get('/summaries/comparison?month=2026-09')
+      .set('Authorization', 'Bearer demo-token').expect(200);
+    expect(response.body.previousMonth).toBe('2026-08');
+    expect(response.headers['cache-control']).toBe('private, no-store');
+    expect(getComparisonForUser).toHaveBeenCalledWith(userId, '2026-09');
   });
 });

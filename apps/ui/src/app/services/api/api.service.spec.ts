@@ -98,6 +98,32 @@ describe('ApiService', () => {
     backend.verify();
   });
 
+  it('requests monthly comparisons and spending-budget progress', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    const api = TestBed.inject(ApiService);
+    const backend = TestBed.inject(HttpTestingController);
+    const comparison = firstValueFrom(api.getMonthlyComparison('2026-09'));
+    const progress = firstValueFrom(api.getSpendingProgress('2026-09'));
+    const comparisonRequest = backend.expectOne(
+      `${environment.apiUrl}/summaries/comparison?month=2026-09`,
+    );
+    const progressRequest = backend.expectOne(
+      `${environment.apiUrl}/objectives/spending-progress?month=2026-09`,
+    );
+    comparisonRequest.flush({
+      month: '2026-09',
+      previousMonth: '2026-08',
+      income: {},
+      spending: {},
+    });
+    progressRequest.flush([]);
+    await expect(comparison).resolves.toMatchObject({ previousMonth: '2026-08' });
+    await expect(progress).resolves.toEqual([]);
+    backend.verify();
+  });
+
   it('uses the configured server API URL and still attaches the session token', async () => {
     TestBed.configureTestingModule({
       providers: [

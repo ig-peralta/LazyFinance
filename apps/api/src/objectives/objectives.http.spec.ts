@@ -15,10 +15,12 @@ describe('GET /objectives', () => {
     startDate: '2024-01-01T15:00:00.000Z', endDate: null, tags: [],
   }];
   const getForUser = vi.fn(async (id: string) => id === userId ? items : []);
+  const getSpendingProgressForUser = vi.fn(async () => []);
   let app: INestApplication;
 
   beforeEach(async () => {
     getForUser.mockClear();
+    getSpendingProgressForUser.mockClear();
     const module = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(DRIZZLE_PG_CLIENT).useValue({})
       .overrideProvider(UserRepository).useValue({
@@ -28,7 +30,7 @@ describe('GET /objectives', () => {
             ? { id: '00000000-0000-4000-8000-000000000002', email: 'other@lazyfinance.local', name: 'Otro' }
             : null,
       })
-      .overrideProvider(ObjectivesService).useValue({ getForUser })
+      .overrideProvider(ObjectivesService).useValue({ getForUser, getSpendingProgressForUser })
       .compile();
 
     app = module.createNestApplication();
@@ -52,5 +54,15 @@ describe('GET /objectives', () => {
     await request(app.getHttpServer())
       .get('/objectives').set('Authorization', 'Bearer other-token').expect(200, []);
     expect(getForUser).toHaveBeenLastCalledWith('00000000-0000-4000-8000-000000000002');
+  });
+
+  it('validates and scopes spending progress requests', async () => {
+    await request(app.getHttpServer()).get('/objectives/spending-progress?month=2026-09').expect(401);
+    await request(app.getHttpServer()).get('/objectives/spending-progress?month=2026-13')
+      .set('Authorization', 'Bearer demo-token').expect(400);
+    const response = await request(app.getHttpServer()).get('/objectives/spending-progress?month=2026-09')
+      .set('Authorization', 'Bearer demo-token').expect(200, []);
+    expect(response.headers['cache-control']).toBe('private, no-store');
+    expect(getSpendingProgressForUser).toHaveBeenCalledWith(userId, '2026-09');
   });
 });

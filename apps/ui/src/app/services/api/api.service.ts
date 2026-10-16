@@ -3,6 +3,8 @@ import { Injectable, inject } from '@angular/core';
 import type {
   AccountSummary,
   AuthPrincipal,
+  BudgetProgress,
+  MonthlyComparison,
   MonthlySummary,
   ObjectiveSummary,
   RecentTransaction,
@@ -34,5 +36,17 @@ export class ApiService {
 
   getMonthlySummary(month: string) {
     return this.http.get<MonthlySummary>(`${this.apiUrl}/summaries/monthly`, { params: { month } });
+  }
+
+  getMonthlyComparison(month: string) {
+    return this.http.get<MonthlyComparison>(`${this.apiUrl}/summaries/comparison`, {
+      params: { month },
+    });
+  }
+
+  getSpendingProgress(month: string) {
+    return this.http.get<BudgetProgress[]>(`${this.apiUrl}/objectives/spending-progress`, {
+      params: { month },
+    });
   }
 }

@@ -1,4 +1,4 @@
-import { MonthSchema, type MonthlySummary } from '@lazyfinance/contracts';
+import { MonthSchema, type MonthlyComparison, type MonthlySummary } from '@lazyfinance/contracts';
 import { BadRequestException, Controller, Get, Header, Query, Req } from '@nestjs/common';
 import type { AuthenticatedRequest } from '../auth/auth.types';
 import { SummariesService } from './summaries.service';
@@ -14,5 +14,12 @@ export class SummariesHttpController {
       throw new BadRequestException('month must use YYYY-MM');
     }
     return this.summaries.getMonthlyForUser(request.principal.userId, month);
+  }
+
+  @Get('comparison')
+  @Header('Cache-Control', 'private, no-store')
+  getComparison(@Req() request: AuthenticatedRequest, @Query('month') month: string): Promise<MonthlyComparison> {
+    if (!MonthSchema.safeParse(month).success) throw new BadRequestException('month must use YYYY-MM');
+    return this.summaries.getComparisonForUser(request.principal.userId, month);
   }
 }

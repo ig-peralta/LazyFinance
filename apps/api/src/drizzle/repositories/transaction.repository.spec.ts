@@ -66,4 +66,21 @@ describe('TransactionRepository', () => {
       userId, 'Transferencias', 'Ahorro',
     ]);
   });
+
+  it('queries user-scoped tagged debits in a bounded Santiago date range', async () => {
+    const where = vi.fn(async (_condition: SQL) => []);
+    const innerJoin = vi.fn(() => ({ innerJoin, where }));
+    const from = vi.fn(() => ({ innerJoin }));
+    const select = vi.fn((_fields: Record<string, unknown>) => ({ from }));
+    const repository = new TransactionRepository({ select } as unknown as PostgresJsDatabase<typeof schema>);
+    await expect(repository.listTaggedDebitsForPeriod('demo-id', '2026-01-01 00:00:00', '2026-10-01 00:00:00')).resolves.toEqual([]);
+    expect(Object.keys(select.mock.calls[0][0])).toEqual(['id', 'bookedAt', 'amount', 'tagId']);
+    const sql = new PgDialect().sqlToQuery(where.mock.calls[0][0]);
+    expect(sql.sql).toContain('America/Santiago');
+    expect(sql.sql).toMatch(/not EXISTS/i);
+    expect(sql.params).toEqual([
+      'demo-id', 'demo-id', 'debit', '2026-01-01 00:00:00', '2026-10-01 00:00:00',
+      'demo-id', 'Transferencias', 'Ahorro',
+    ]);
+  });
 });
