@@ -1,7 +1,3 @@
-export interface SessionUser {
-  userId: string;
-  email: string;
-  name: string;
-}
+import type { AuthPrincipal } from '@lazyfinance/contracts';
 
-export type SessionState = { user: SessionUser; token: string } | null;
+export type SessionState = { user: AuthPrincipal; token: string } | null;

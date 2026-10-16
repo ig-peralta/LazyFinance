@@ -4,16 +4,18 @@
   "tasks": {
     "dev": {
       "cache": false,
-      "persistent": true
+      "persistent": true,
+      "dependsOn": ["^build"]
     },
     "build": {
-      "dependsOn": ["^typecheck"]
+      "dependsOn": ["^build", "^typecheck"]
     },
     "test": {
       "dependsOn": ["^build"]
     },
     "typecheck": {
-      "cache": false
+      "cache": false,
+      "dependsOn": ["^build"]
     }
   }
 }

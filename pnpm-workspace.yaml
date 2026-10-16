@@ -1,5 +1,6 @@
 packages:
   - "apps/*"
+  - "libs/*"
   - "packages/*"
 overrides:
   '@angular/compiler-cli>@jridgewell/sourcemap-codec': 1.6.0
