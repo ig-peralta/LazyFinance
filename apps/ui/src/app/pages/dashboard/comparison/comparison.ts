@@ -14,7 +14,7 @@ import { Router } from '@angular/router';
 import type { MonthlyComparison } from '@lazyfinance/contracts';
 import { firstValueFrom } from 'rxjs';
 import { formatClp } from '../../../../utils/currency';
-import { lastCompletedMonth, monthLabel } from '../../../../utils/month';
+import { currentMonth, monthLabel } from '../../../../utils/month';
 import { ApiService } from '../../../services/api/api.service';
 import { SessionService } from '../../../services/session/session.service';
 
@@ -31,7 +31,7 @@ export class Comparison implements OnInit {
   private readonly transferState = inject(TransferState);
   private readonly serverState = this.transferState.get(COMPARISON_STATE_KEY, null);
 
-  protected readonly month = this.serverState?.month ?? lastCompletedMonth();
+  protected readonly month = this.serverState?.month ?? currentMonth();
   protected readonly comparison = signal<MonthlyComparison | null>(
     this.serverState?.comparison ?? null,
   );

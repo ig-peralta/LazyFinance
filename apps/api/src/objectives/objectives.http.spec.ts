@@ -60,6 +60,8 @@ describe('GET /objectives', () => {
     await request(app.getHttpServer()).get('/objectives/spending-progress?month=2026-09').expect(401);
     await request(app.getHttpServer()).get('/objectives/spending-progress?month=2026-13')
       .set('Authorization', 'Bearer demo-token').expect(400);
+    await request(app.getHttpServer()).get('/objectives/spending-progress?month=9999-12')
+      .set('Authorization', 'Bearer demo-token').expect(400);
     const response = await request(app.getHttpServer()).get('/objectives/spending-progress?month=2026-09')
       .set('Authorization', 'Bearer demo-token').expect(200, []);
     expect(response.headers['cache-control']).toBe('private, no-store');

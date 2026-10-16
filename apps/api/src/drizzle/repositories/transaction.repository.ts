@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, lte, sql } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { DRIZZLE_PG_CLIENT } from '../drizzle.tokens';
 import * as schema from '../schema';
@@ -39,8 +39,12 @@ export class TransactionRepository {
       .limit(RECENT_LIMIT);
   }
 
-  async sumByMonthForUser(userId: string, month: string) {
+  async sumByMonthForUser(userId: string, month: string, asOf?: Date) {
     const { start, end } = monthBounds(month);
+    return this.sumForPeriod(userId, start, end, asOf);
+  }
+
+  async sumForPeriod(userId: string, start: string, end: string, asOf?: Date) {
     const [row] = await this.db
       .select({
         income: sql<string>`coalesce(sum(case when ${transaction.type} = 'credit' then ${transaction.amount} else 0 end), 0)`,
@@ -51,12 +55,13 @@ export class TransactionRepository {
       .where(and(
         eq(account.userId, userId),
         inSantiagoPeriod(start, end),
+        asOf ? lte(transaction.bookedAt, asOf) : undefined,
         excludesInternalTransfers(userId),
       ));
     return row;
   }
 
-  async listTaggedDebitsForPeriod(userId: string, start: string, end: string) {
+  async listTaggedDebitsForPeriod(userId: string, start: string, end: string, asOf?: Date) {
     return this.db
       .select({
         id: transaction.id,
@@ -73,6 +78,7 @@ export class TransactionRepository {
         eq(tag.userId, userId),
         eq(transaction.type, 'debit'),
         inSantiagoPeriod(start, end),
+        asOf ? lte(transaction.bookedAt, asOf) : undefined,
         excludesInternalTransfers(userId),
       ));
   }

@@ -13,7 +13,7 @@ describe('GET /summaries/monthly', () => {
     month, income: '1550000.00', spending: '700000.00', tags: [],
   }));
   const getComparisonForUser = vi.fn(async (_userId: string, month: string) => ({
-    month, previousMonth: '2026-08',
+    month, previousMonth: '2026-08', partial: false,
     income: { current: '1550000.00', previous: '1500000.00', change: '50000.00' },
     spending: { current: '700000.00', previous: '600000.00', change: '100000.00' },
   }));
@@ -45,6 +45,8 @@ describe('GET /summaries/monthly', () => {
     }
     await request(app.getHttpServer()).get('/summaries/monthly')
       .set('Authorization', 'Bearer demo-token').expect(400);
+    await request(app.getHttpServer()).get('/summaries/monthly?month=9999-12')
+      .set('Authorization', 'Bearer demo-token').expect(400);
     expect(getMonthlyForUser).not.toHaveBeenCalled();
   });
 
@@ -59,6 +61,8 @@ describe('GET /summaries/monthly', () => {
   it('validates and scopes period comparisons', async () => {
     await request(app.getHttpServer()).get('/summaries/comparison?month=2026-09').expect(401);
     await request(app.getHttpServer()).get('/summaries/comparison?month=bad')
+      .set('Authorization', 'Bearer demo-token').expect(400);
+    await request(app.getHttpServer()).get('/summaries/comparison?month=9999-12')
       .set('Authorization', 'Bearer demo-token').expect(400);
     const response = await request(app.getHttpServer()).get('/summaries/comparison?month=2026-09')
       .set('Authorization', 'Bearer demo-token').expect(200);

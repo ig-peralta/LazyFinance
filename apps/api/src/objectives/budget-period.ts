@@ -1,15 +1,5 @@
 import { monthBounds } from '../drizzle/repositories/financial-filters';
-
-const dateFormatter = new Intl.DateTimeFormat('en-US', {
-  timeZone: 'America/Santiago', year: 'numeric', month: '2-digit', day: '2-digit',
-  hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
-});
-
-export function santiagoTimestamp(date: Date): string {
-  const parts = dateFormatter.formatToParts(date);
-  const part = (kind: string) => parts.find((item) => item.type === kind)!.value;
-  return `${part('year')}-${part('month')}-${part('day')} ${part('hour')}:${part('minute')}:${part('second')}`;
-}
+import { santiagoTimestamp } from '../_utils/santiago-time';
 
 export type BudgetPeriod = 'monthly' | 'yearly' | 'fixed';
 

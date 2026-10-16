@@ -22,6 +22,7 @@ describe('DashboardPage', () => {
       of({
         month: '2026-09',
         previousMonth: '2026-08',
+        partial: false,
         income: { current: '0', previous: '0', change: '0.00' },
         spending: { current: '0', previous: '0', change: '0.00' },
       }),

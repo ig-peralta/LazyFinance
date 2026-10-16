@@ -1,11 +1,12 @@
 import type { BudgetProgress, ObjectiveSummary } from '@lazyfinance/contracts';
 import { Injectable } from '@nestjs/common';
 import { fromCents, toCents } from '../_utils/money';
+import { santiagoMonth, santiagoTimestamp } from '../_utils/santiago-time';
 import { monthBounds } from '../drizzle/repositories/financial-filters';
 import { ObjectiveRepository } from '../drizzle/repositories/objective.repository';
 import { TagRepository } from '../drizzle/repositories/tag.repository';
 import { TransactionRepository } from '../drizzle/repositories/transaction.repository';
-import { budgetPeriod, santiagoTimestamp } from './budget-period';
+import { budgetPeriod } from './budget-period';
 
 @Injectable()
 export class ObjectivesService {
@@ -35,7 +36,7 @@ export class ObjectivesService {
     }));
   }
 
-  async getSpendingProgressForUser(userId: string, month: string): Promise<BudgetProgress[]> {
+  async getSpendingProgressForUser(userId: string, month: string, now = new Date()): Promise<BudgetProgress[]> {
     const objectives = await this.objectives.listForUser(userId);
     if (objectives.length === 0) return [];
     const links = await this.tags.listForObjectives(userId, objectives.map(({ id }) => id));
@@ -47,7 +48,11 @@ export class ObjectivesService {
     if (candidates.length === 0) return [];
 
     const start = candidates.reduce((earliest, item) => item.window.start < earliest ? item.window.start : earliest, candidates[0].window.start);
-    const transactions = await this.transactions.listTaggedDebitsForPeriod(userId, start, monthBounds(month).end);
+    const asOf = month === santiagoMonth(now) ? now : undefined;
+    const end = monthBounds(month).end;
+    const transactions = await (asOf
+      ? this.transactions.listTaggedDebitsForPeriod(userId, start, end, asOf)
+      : this.transactions.listTaggedDebitsForPeriod(userId, start, end));
 
     return candidates.map(({ objective, window, tagIds }) => {
       const counted = new Set<string>();

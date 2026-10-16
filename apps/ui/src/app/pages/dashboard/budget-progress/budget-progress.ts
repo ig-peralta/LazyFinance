@@ -14,7 +14,7 @@ import { Router } from '@angular/router';
 import type { BudgetProgress } from '@lazyfinance/contracts';
 import { firstValueFrom } from 'rxjs';
 import { formatClp } from '../../../../utils/currency';
-import { lastCompletedMonth, monthLabel } from '../../../../utils/month';
+import { currentMonth, monthLabel } from '../../../../utils/month';
 import { ApiService } from '../../../services/api/api.service';
 import { SessionService } from '../../../services/session/session.service';
 
@@ -31,7 +31,7 @@ export class BudgetProgressView implements OnInit {
   private readonly transferState = inject(TransferState);
   private readonly serverState = this.transferState.get(PROGRESS_STATE_KEY, null);
 
-  protected readonly month = this.serverState?.month ?? lastCompletedMonth();
+  protected readonly month = this.serverState?.month ?? currentMonth();
   protected readonly label = monthLabel(this.month);
   protected readonly budgets = signal<BudgetProgress[]>(this.serverState?.budgets ?? []);
   protected readonly loading = signal(this.serverState === null);
@@ -77,7 +77,7 @@ export class BudgetProgressView implements OnInit {
     return period === 'monthly'
       ? 'Mes'
       : period === 'yearly'
-        ? 'Año hasta este mes'
+        ? 'Año hasta hoy'
         : 'Período definido';
   }
 }

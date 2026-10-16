@@ -115,6 +115,7 @@ describe('ApiService', () => {
     comparisonRequest.flush({
       month: '2026-09',
       previousMonth: '2026-08',
+      partial: false,
       income: {},
       spending: {},
     });

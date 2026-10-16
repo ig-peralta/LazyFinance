@@ -70,4 +70,17 @@ describe('TagRepository', () => {
       userId, 'Transferencias', 'Ahorro',
     ]);
   });
+
+  it('cuts off tag totals at the current instant', async () => {
+    const where = vi.fn((_condition: SQL) => ({ groupBy: () => ({ orderBy: async () => [] }) }));
+    const innerJoin = vi.fn(() => ({ innerJoin, where }));
+    const from = vi.fn(() => ({ innerJoin }));
+    const repository = new TagRepository({ select: () => ({ from }) } as unknown as PostgresJsDatabase<typeof schema>);
+    const now = new Date('2026-10-16T15:00:00.000Z');
+
+    await repository.sumDebitsByTagForMonth('demo-id', '2026-10', now);
+    const query = new PgDialect().sqlToQuery(where.mock.calls[0][0]);
+    expect(query.params).toContain(now.toISOString());
+    expect(query.sql).toContain('<=');
+  });
 });

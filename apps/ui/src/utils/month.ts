@@ -9,11 +9,11 @@ const labelFormatter = new Intl.DateTimeFormat('es-CL', {
   month: 'long',
 });
 
-export function lastCompletedMonth(now = new Date()): string {
+export function currentMonth(now = new Date()): string {
   const parts = partsFormatter.formatToParts(now);
   const year = Number(parts.find((part) => part.type === 'year')?.value);
   const month = Number(parts.find((part) => part.type === 'month')?.value);
-  return new Date(Date.UTC(year, month - 2, 1)).toISOString().slice(0, 7);
+  return `${year}-${String(month).padStart(2, '0')}`;
 }
 
 export function monthLabel(month: string): string {

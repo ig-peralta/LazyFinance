@@ -25,7 +25,12 @@
     </div>
   } @else if (comparison(); as data) {
     <p class="mt-2 text-sm text-muted-color">
-      {{ label(data.month) }} frente a {{ label(data.previousMonth) }} · dos meses completos
+      @if (data.partial) {
+        {{ label(data.month) }} hasta hoy frente a {{ label(data.previousMonth) }} hasta la fecha
+        comparable.
+      } @else {
+        {{ label(data.month) }} frente a {{ label(data.previousMonth) }} · dos meses completos.
+      }
     </p>
     <div class="mt-6 grid gap-4 md:grid-cols-2">
       <article

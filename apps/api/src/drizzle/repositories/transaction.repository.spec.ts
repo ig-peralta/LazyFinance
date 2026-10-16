@@ -67,6 +67,21 @@ describe('TransactionRepository', () => {
     ]);
   });
 
+  it('excludes future-dated movements from an in-progress month', async () => {
+    const where = vi.fn(async (_condition: SQL) => [{ income: '0', spending: '10.00' }]);
+    const from = vi.fn(() => ({ innerJoin: () => ({ where }) }));
+    const repository = new TransactionRepository({ select: () => ({ from }) } as unknown as PostgresJsDatabase<typeof schema>);
+    const now = new Date('2026-10-16T15:00:00.000Z');
+
+    await repository.sumByMonthForUser('demo-id', '2026-10', now);
+    const query = new PgDialect().sqlToQuery(where.mock.calls[0][0]);
+    expect(query.sql).toContain('<=');
+    expect(query.params).toEqual([
+      'demo-id', '2026-10-01 00:00:00', '2026-11-01 00:00:00',
+      now.toISOString(), 'demo-id', 'Transferencias', 'Ahorro',
+    ]);
+  });
+
   it('queries user-scoped tagged debits in a bounded Santiago date range', async () => {
     const where = vi.fn(async (_condition: SQL) => []);
     const innerJoin = vi.fn(() => ({ innerJoin, where }));

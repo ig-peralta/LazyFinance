@@ -1,5 +1,6 @@
-import { MonthSchema, type BudgetProgress, type ObjectiveSummary } from '@lazyfinance/contracts';
-import { BadRequestException, Controller, Get, Header, Query, Req } from '@nestjs/common';
+import type { BudgetProgress, ObjectiveSummary } from '@lazyfinance/contracts';
+import { Controller, Get, Header, Query, Req } from '@nestjs/common';
+import { checkedMonth } from '../_utils/month-query';
 import type { AuthenticatedRequest } from '../auth/auth.types';
 import { ObjectivesService } from './objectives.service';
 
@@ -16,7 +17,6 @@ export class ObjectivesHttpController {
   @Get('spending-progress')
   @Header('Cache-Control', 'private, no-store')
   getSpendingProgress(@Req() request: AuthenticatedRequest, @Query('month') month: string): Promise<BudgetProgress[]> {
-    if (!MonthSchema.safeParse(month).success) throw new BadRequestException('month must use YYYY-MM');
-    return this.objectives.getSpendingProgressForUser(request.principal.userId, month);
+    return this.objectives.getSpendingProgressForUser(request.principal.userId, checkedMonth(month));
   }
 }

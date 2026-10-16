@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, lte, sql } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { DRIZZLE_PG_CLIENT } from '../drizzle.tokens';
 import * as schema from '../schema';
@@ -51,7 +51,7 @@ export class TagRepository {
       .orderBy(asc(tag.name), asc(tag.id));
   }
 
-  async sumDebitsByTagForMonth(userId: string, month: string) {
+  async sumDebitsByTagForMonth(userId: string, month: string, asOf?: Date) {
     const { start, end } = monthBounds(month);
     const amount = sql<string>`-sum(${transaction.amount})`;
     return this.db
@@ -71,6 +71,7 @@ export class TagRepository {
         eq(tag.userId, userId),
         eq(transaction.type, 'debit'),
         inSantiagoPeriod(start, end),
+        asOf ? lte(transaction.bookedAt, asOf) : undefined,
         excludesInternalTransfers(userId),
       ))
       .groupBy(tag.id, tag.name, tag.color)

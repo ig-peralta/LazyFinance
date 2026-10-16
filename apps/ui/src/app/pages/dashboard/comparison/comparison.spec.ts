@@ -12,6 +12,7 @@ import { COMPARISON_STATE_KEY, Comparison } from './comparison';
 const comparison: MonthlyComparison = {
   month: '2026-09',
   previousMonth: '2026-08',
+  partial: true,
   income: { current: '1550000.00', previous: '1450000.00', change: '100000.00' },
   spending: { current: '500000.00', previous: '600000.00', change: '-100000.00' },
 };
@@ -47,6 +48,7 @@ describe('Comparison', () => {
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('septiembre de 2026');
     expect(text).toContain('agosto de 2026');
+    expect(text).toContain('hasta hoy');
     expect(text).toContain('$100.000 menos');
     expect(text).toContain('$100.000 más');
   });

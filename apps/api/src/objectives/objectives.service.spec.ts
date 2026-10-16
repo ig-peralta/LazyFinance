@@ -97,4 +97,25 @@ describe('ObjectivesService', () => {
       userId, '2026-01-01 00:00:00', '2026-10-01 00:00:00',
     );
   });
+
+  it('limits the current month’s budget query to now', async () => {
+    const now = new Date('2026-10-16T15:00:00.000Z');
+    const listTaggedDebitsForPeriod = vi.fn(async () => []);
+    const service = new ObjectivesService(
+      { listForUser: vi.fn(async () => [{
+        id: budgetId, name: 'Supermercado', amount: '280000.00', kind: 'time_based',
+        intent: 'spending', isRecurring: true, period: 'monthly',
+        startDate: new Date('2024-01-01T15:00:00.000Z'), endDate: null,
+      }]) } as unknown as ObjectiveRepository,
+      { listForObjectives: vi.fn(async () => [{
+        objectiveId: budgetId, id: '00000000-0000-4000-8000-000000000031', name: 'Supermercado', color: null,
+      }]) } as unknown as TagRepository,
+      { listTaggedDebitsForPeriod } as unknown as TransactionRepository,
+    );
+
+    await service.getSpendingProgressForUser(userId, '2026-10', now);
+    expect(listTaggedDebitsForPeriod).toHaveBeenCalledWith(
+      userId, '2026-10-01 00:00:00', '2026-11-01 00:00:00', now,
+    );
+  });
 });
