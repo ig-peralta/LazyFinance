@@ -19,6 +19,7 @@
     "@angular/platform-server": "^22.2.0",
     "@angular/router": "^22.2.0",
     "@angular/ssr": "^22.2.2",
+    "@lazyfinance/contracts": "workspace:*",
     "@primeng/themes": "^21.0.4",
     "express": "^5.1.0",
     "ngx-cookie-service-ssr": "^22.0.0",

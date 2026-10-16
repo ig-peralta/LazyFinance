@@ -8,11 +8,12 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import type { AuthPrincipal } from '@lazyfinance/contracts';
 import { SsrCookieService } from 'ngx-cookie-service-ssr';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../api/api.service';
 import { isSessionState } from './session.utils';
-import type { SessionState, SessionUser } from './session.types';
+import type { SessionState } from './session.types';
 
 const SESSION_COOKIE = 'lazyfinance-session';
 
@@ -40,7 +41,7 @@ export class SessionService {
     // future firebase initiazation should be done here
   }
 
-  async loginWithToken(token: string): Promise<SessionUser> {
+  async loginWithToken(token: string): Promise<AuthPrincipal> {
     const trimmed = token.trim();
     if (!trimmed) throw new Error('A token is required');
 

@@ -12,6 +12,7 @@
     "drizzle": "drizzle-kit --config ./src/drizzle/drizzle.config.ts"
   },
   "dependencies": {
+    "@lazyfinance/contracts": "workspace:*",
     "@modelcontextprotocol/core": "^2.0.0",
     "@modelcontextprotocol/node": "^2.0.0",
     "@modelcontextprotocol/server": "^2.0.0",

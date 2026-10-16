@@ -1,5 +1,6 @@
+import type { AuthPrincipal } from '@lazyfinance/contracts';
 import { Controller, Get, Req } from '@nestjs/common';
-import type { AuthenticatedRequest, AuthPrincipal } from './auth.types';
+import type { AuthenticatedRequest } from './auth.types';
 
 @Controller('auth')
 export class AuthHttpController {
