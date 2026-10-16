@@ -57,14 +57,15 @@ describe('Summary', () => {
     return { fixture, clear, navigate, transferState };
   }
 
-  it('shows independent income/spending totals and potentially overlapping tag totals', async () => {
+  it('shows spending and potentially overlapping tag totals without income', async () => {
     const getMonthlySummary = vi.fn(() => of(summary));
     const { fixture } = setup(getMonthlySummary);
     await fixture.whenStable();
     fixture.detectChanges();
     const text = fixture.nativeElement.textContent as string;
-    expect(text).toContain('Ingresos');
-    expect(text).toContain('$1.550.000');
+    expect(text).toContain('Gastos ·');
+    expect(text).not.toContain('Ingresos');
+    expect(text).not.toContain('$1.550.000');
     expect(text).toContain('$10.000');
     expect(text).toContain('Comida');
     expect(text).toContain('Ocio');
@@ -85,7 +86,8 @@ describe('Summary', () => {
     const server = setup(() => of(summary), 'server');
     await server.fixture.whenStable();
     server.fixture.detectChanges();
-    expect(server.fixture.nativeElement.textContent).toContain('$1.550.000');
+    expect(server.fixture.nativeElement.textContent).toContain('$10.000');
+    expect(server.fixture.nativeElement.textContent).not.toContain('$1.550.000');
     expect(server.transferState.get(SUMMARY_STATE_KEY, null)?.summary).toEqual(summary);
     TestBed.resetTestingModule();
 

@@ -56,7 +56,8 @@ describe('DashboardPage', () => {
     expect(fixture.nativeElement.textContent).toContain('Tus últimos movimientos');
     expect(fixture.nativeElement.textContent).toContain('Presupuestos y metas');
     expect(fixture.nativeElement.textContent).toContain('Gastos por etiqueta');
-    expect(fixture.nativeElement.textContent).toContain('Comparación mensual');
+    expect(fixture.nativeElement.textContent).toContain('Comparación de gastos');
+    expect(fixture.nativeElement.textContent).not.toContain('Ingresos');
     expect(fixture.nativeElement.textContent).toContain('Avance de presupuestos');
     expect(getAccounts).toHaveBeenCalledOnce();
     expect(getRecentTransactions).toHaveBeenCalledOnce();

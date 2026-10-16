@@ -4,7 +4,7 @@
     id="summary-heading"
     class="mt-2 text-2xl font-semibold tracking-[-0.04em] text-color-emphasis"
   >
-    Ingresos y gastos · {{ period }}
+    Gastos · {{ period }}
   </h2>
 
   @if (loading()) {
@@ -30,24 +30,14 @@
       </button>
     </div>
   } @else if (summary(); as data) {
-    <div class="mt-6 grid gap-4 sm:grid-cols-2">
-      <article
-        class="rounded-3xl border border-surface bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-900"
-      >
-        <h3 class="text-sm text-muted-color">Ingresos</h3>
-        <p class="mt-2 text-3xl font-semibold tabular-nums text-color-emphasis">
-          {{ money(data.income) }}
-        </p>
-      </article>
-      <article
-        class="rounded-3xl border border-surface bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-900"
-      >
-        <h3 class="text-sm text-muted-color">Gastos</h3>
-        <p class="mt-2 text-3xl font-semibold tabular-nums text-color-emphasis">
-          {{ money(data.spending) }}
-        </p>
-      </article>
-    </div>
+    <article
+      class="mt-6 rounded-3xl border border-surface bg-surface-0 p-6 sm:max-w-lg dark:border-surface-700 dark:bg-surface-900"
+    >
+      <h3 class="text-sm text-muted-color">Gastos</h3>
+      <p class="mt-2 text-3xl font-semibold tabular-nums text-color-emphasis">
+        {{ money(data.spending) }}
+      </p>
+    </article>
     <p class="mt-3 text-xs leading-5 text-muted-color">
       No contamos movimientos etiquetados como transferencias o ahorro entre cuentas.
     </p>

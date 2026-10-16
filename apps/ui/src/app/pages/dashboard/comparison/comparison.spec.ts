@@ -41,7 +41,7 @@ describe('Comparison', () => {
     return { fixture, transferState };
   }
 
-  it('shows the change from the previous complete month without percentage division', async () => {
+  it('compares spending for comparable dates without showing income', async () => {
     const { fixture } = setup(() => of(comparison));
     await fixture.whenStable();
     fixture.detectChanges();
@@ -50,13 +50,18 @@ describe('Comparison', () => {
     expect(text).toContain('agosto de 2026');
     expect(text).toContain('hasta hoy');
     expect(text).toContain('$100.000 menos');
-    expect(text).toContain('$100.000 más');
+    expect(text).toContain('Comparación de gastos');
+    expect(text).toContain('$500.000');
+    expect(text).toContain('$600.000');
+    expect(text).not.toContain('Ingresos');
+    expect(text).not.toContain('$1.550.000');
   });
 
   it('uses transferred SSR data without refetching', () => {
     const getMonthlyComparison = vi.fn(() => of(comparison));
     const { fixture, transferState } = setup(getMonthlyComparison, 'browser', true);
     expect(fixture.nativeElement.textContent).toContain('$100.000 menos');
+    expect(fixture.nativeElement.textContent).not.toContain('Ingresos');
     expect(getMonthlyComparison).not.toHaveBeenCalled();
     expect(transferState.hasKey(COMPARISON_STATE_KEY)).toBe(false);
   });
