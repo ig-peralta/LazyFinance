@@ -43,4 +43,27 @@ describe('TransactionRepository', () => {
     expect(filter.sql).toContain('user_id');
     expect(filter.params).toEqual([userId]);
   });
+
+  it('aggregates each non-transfer movement once within Santiago month boundaries', async () => {
+    const where = vi.fn(async (_condition: SQL) => [{ income: '1550000.00', spending: '897740.00' }]);
+    const innerJoin = vi.fn(() => ({ where }));
+    const from = vi.fn(() => ({ innerJoin }));
+    const select = vi.fn((_fields: Record<string, unknown>) => ({ from }));
+    const repository = new TransactionRepository({ select } as unknown as PostgresJsDatabase<typeof schema>);
+    const userId = '00000000-0000-4000-8000-000000000001';
+
+    await expect(repository.sumByMonthForUser(userId, '2026-09')).resolves.toEqual({
+      income: '1550000.00', spending: '897740.00',
+    });
+    expect(innerJoin).toHaveBeenCalledOnce();
+    expect(Object.keys(select.mock.calls[0][0])).toEqual(['income', 'spending']);
+    const query = new PgDialect().sqlToQuery(where.mock.calls[0][0]);
+    expect(query.sql).toContain('America/Santiago');
+    expect(query.sql).toMatch(/not EXISTS/i);
+    expect(query.sql).toContain('transaction_tag');
+    expect(query.params).toEqual([
+      userId, '2026-09-01 00:00:00', '2026-10-01 00:00:00',
+      userId, 'Transferencias', 'Ahorro',
+    ]);
+  });
 });

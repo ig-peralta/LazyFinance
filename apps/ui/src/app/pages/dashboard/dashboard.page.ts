@@ -4,10 +4,11 @@ import { SessionService } from '../../services/session/session.service';
 import { Account } from './account/account';
 import { Activity } from './activity/activity';
 import { Objective } from './objective/objective';
+import { Summary } from './summary/summary';
 
 @Component({
   selector: 'dashboard-page',
-  imports: [Account, Activity, Objective, RouterLink],
+  imports: [Account, Activity, Objective, Summary, RouterLink],
   templateUrl: './dashboard.page.html',
 })
 export class DashboardPage {

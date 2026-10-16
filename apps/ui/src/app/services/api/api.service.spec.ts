@@ -85,6 +85,19 @@ describe('ApiService', () => {
     backend.verify();
   });
 
+  it('requests the monthly summary for a selected period', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    const result = firstValueFrom(TestBed.inject(ApiService).getMonthlySummary('2026-09'));
+    const backend = TestBed.inject(HttpTestingController);
+    const request = backend.expectOne(`${environment.apiUrl}/summaries/monthly?month=2026-09`);
+    expect(request.request.method).toBe('GET');
+    request.flush({ month: '2026-09', income: '0', spending: '0', tags: [] });
+    await expect(result).resolves.toMatchObject({ month: '2026-09' });
+    backend.verify();
+  });
+
   it('uses the configured server API URL and still attaches the session token', async () => {
     TestBed.configureTestingModule({
       providers: [

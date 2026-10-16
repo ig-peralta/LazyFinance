@@ -15,11 +15,17 @@ describe('DashboardPage', () => {
     const getAccounts = vi.fn(() => of([]));
     const getRecentTransactions = vi.fn(() => of([]));
     const getObjectives = vi.fn(() => of([]));
+    const getMonthlySummary = vi.fn(() =>
+      of({ month: '2026-09', income: '0', spending: '0', tags: [] }),
+    );
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
         { provide: SessionService, useValue: { user: () => ({ name: 'Camila Rojas' }), clear } },
-        { provide: ApiService, useValue: { getAccounts, getRecentTransactions, getObjectives } },
+        {
+          provide: ApiService,
+          useValue: { getAccounts, getRecentTransactions, getObjectives, getMonthlySummary },
+        },
       ],
     });
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
@@ -32,9 +38,11 @@ describe('DashboardPage', () => {
     expect(fixture.nativeElement.textContent).toContain('Cuentas');
     expect(fixture.nativeElement.textContent).toContain('Tus últimos movimientos');
     expect(fixture.nativeElement.textContent).toContain('Presupuestos y metas');
+    expect(fixture.nativeElement.textContent).toContain('Gastos por etiqueta');
     expect(getAccounts).toHaveBeenCalledOnce();
     expect(getRecentTransactions).toHaveBeenCalledOnce();
     expect(getObjectives).toHaveBeenCalledOnce();
+    expect(getMonthlySummary).toHaveBeenCalledOnce();
 
     (fixture.nativeElement.querySelector('header button') as HTMLButtonElement).click();
     expect(clear).toHaveBeenCalledOnce();

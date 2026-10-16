@@ -10,6 +10,7 @@ import { DrizzleModule } from './drizzle/drizzle.module';
 import { AuthModule } from './auth/auth.module';
 import { TransactionsModule } from './transactions/transactions.module';
 import { ObjectivesModule } from './objectives/objectives.module';
+import { SummariesModule } from './summaries/summaries.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { ObjectivesModule } from './objectives/objectives.module';
     AccountsModule,
     TransactionsModule,
     ObjectivesModule,
+    SummariesModule,
     BalanceModule,
   ],
   controllers: [

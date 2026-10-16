@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import type {
   AccountSummary,
   AuthPrincipal,
+  MonthlySummary,
   ObjectiveSummary,
   RecentTransaction,
 } from '@lazyfinance/contracts';
@@ -29,5 +30,9 @@ export class ApiService {
 
   getObjectives() {
     return this.http.get<ObjectiveSummary[]>(`${this.apiUrl}/objectives`);
+  }
+
+  getMonthlySummary(month: string) {
+    return this.http.get<MonthlySummary>(`${this.apiUrl}/summaries/monthly`, { params: { month } });
   }
 }

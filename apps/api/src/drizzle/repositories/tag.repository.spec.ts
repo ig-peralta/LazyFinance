@@ -48,4 +48,26 @@ describe('TagRepository', () => {
     expect(filter.sql).toContain('user_id');
     expect(filter.params).toEqual([...objectiveIds, userId]);
   });
+
+  it('groups debit totals by tag while excluding internal movements', async () => {
+    const orderBy = vi.fn(async () => []);
+    const groupBy = vi.fn(() => ({ orderBy }));
+    const where = vi.fn((_condition: SQL) => ({ groupBy }));
+    const innerJoin = vi.fn(() => ({ innerJoin, where }));
+    const from = vi.fn(() => ({ innerJoin }));
+    const select = vi.fn((_fields: Record<string, unknown>) => ({ from }));
+    const repository = new TagRepository({ select } as unknown as PostgresJsDatabase<typeof schema>);
+    const userId = '00000000-0000-4000-8000-000000000001';
+
+    await expect(repository.sumDebitsByTagForMonth(userId, '2026-09')).resolves.toEqual([]);
+    expect(groupBy).toHaveBeenCalledOnce();
+    expect(Object.keys(select.mock.calls[0][0])).toEqual(['id', 'name', 'color', 'amount', 'count']);
+    const query = new PgDialect().sqlToQuery(where.mock.calls[0][0]);
+    expect(query.sql).toMatch(/not EXISTS/i);
+    expect(query.sql).toContain('America/Santiago');
+    expect(query.params).toEqual([
+      userId, userId, 'debit', '2026-09-01 00:00:00', '2026-10-01 00:00:00',
+      userId, 'Transferencias', 'Ahorro',
+    ]);
+  });
 });
