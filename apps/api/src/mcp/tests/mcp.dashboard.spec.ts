@@ -3,13 +3,13 @@ import { Test } from '@nestjs/testing';
 import { MCP_STRATEGY, McpStrategy } from '@rekog/mcp-nest';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { AccountsService } from '../accounts/accounts.service';
-import { AppModule } from '../app.module';
-import { AuthService } from '../auth/auth.service';
-import { DRIZZLE_PG_CLIENT } from '../drizzle/drizzle.tokens';
-import { ObjectivesService } from '../objectives/objectives.service';
-import { SummariesService } from '../summaries/summaries.service';
-import { TransactionsService } from '../transactions/transactions.service';
+import { AccountsService } from '../../accounts/accounts.service';
+import { AppModule } from '../../app.module';
+import { AuthService } from '../../auth/auth.service';
+import { DRIZZLE_PG_CLIENT } from '../../drizzle/drizzle.tokens';
+import { ObjectivesService } from '../../objectives/objectives.service';
+import { SummariesService } from '../../summaries/summaries.service';
+import { TransactionsService } from '../../transactions/transactions.service';
 
 describe('Dashboard MCP tools', () => {
   let app: INestApplication;
