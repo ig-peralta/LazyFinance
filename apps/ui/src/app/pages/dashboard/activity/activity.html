@@ -1,0 +1,81 @@
+<section class="mt-14" aria-labelledby="activity-heading">
+  <div>
+    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Actividad reciente</p>
+    <h2
+      id="activity-heading"
+      class="mt-2 text-2xl font-semibold tracking-[-0.04em] text-color-emphasis"
+    >
+      Tus últimos movimientos
+    </h2>
+    <p class="mt-2 text-sm text-muted-color">
+      Hasta diez movimientos, ordenados del más reciente al más antiguo.
+    </p>
+  </div>
+
+  @if (loading()) {
+    <div
+      role="status"
+      class="mt-6 rounded-3xl border border-surface bg-surface-0 p-8 text-sm text-muted-color dark:border-surface-700 dark:bg-surface-900"
+    >
+      Cargando tus movimientos…
+    </div>
+  } @else if (error()) {
+    <div
+      role="alert"
+      class="mt-6 rounded-3xl border border-surface bg-surface-0 p-8 dark:border-surface-700 dark:bg-surface-900"
+    >
+      <p class="font-semibold text-color-emphasis">No pudimos cargar tus movimientos.</p>
+      <p class="mt-2 text-sm text-muted-color">Inténtalo de nuevo en un momento.</p>
+      <button
+        data-testid="retry-activity"
+        type="button"
+        class="mt-5 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-contrast"
+        (click)="loadRecent()"
+      >
+        Reintentar
+      </button>
+    </div>
+  } @else if (transactions().length === 0) {
+    <div
+      class="mt-6 rounded-3xl border border-surface bg-surface-0 p-8 dark:border-surface-700 dark:bg-surface-900"
+    >
+      <p class="font-semibold text-color-emphasis">Todavía no hay movimientos para mostrar.</p>
+      <p class="mt-2 text-sm text-muted-color">
+        Cuando haya movimientos disponibles, aparecerán aquí.
+      </p>
+    </div>
+  } @else {
+    <ul
+      class="mt-6 divide-y divide-surface overflow-hidden rounded-3xl border border-surface bg-surface-0 dark:divide-surface-700 dark:border-surface-700 dark:bg-surface-900"
+    >
+      @for (transaction of transactions(); track transaction.id) {
+        <li
+          class="flex flex-col gap-3 p-5 sm:flex-row sm:items-start sm:justify-between sm:gap-6 sm:p-6"
+        >
+          <div class="min-w-0">
+            <p class="font-semibold text-color-emphasis">
+              {{ transaction.merchant || transaction.description || 'Movimiento' }}
+            </p>
+            <p class="mt-1 text-sm text-muted-color">
+              {{ transaction.account.alias || 'Cuenta' }} ·
+              {{ formattedDate(transaction.bookedAt) }}
+            </p>
+            @if (transaction.tags.length) {
+              <div class="mt-3 flex flex-wrap gap-2">
+                @for (tag of transaction.tags; track tag.id) {
+                  <span
+                    class="rounded-full bg-surface-100 px-2.5 py-1 text-xs text-muted-color dark:bg-surface-800"
+                    >{{ tag.name }}</span
+                  >
+                }
+              </div>
+            }
+          </div>
+          <p class="shrink-0 text-lg font-semibold tabular-nums text-color-emphasis">
+            {{ formattedAmount(transaction.amount) }}
+          </p>
+        </li>
+      }
+    </ul>
+  }
+</section>

@@ -1,0 +1,88 @@
+<section class="mt-14" aria-labelledby="summary-heading">
+  <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Tu mes en curso</p>
+  <h2
+    id="summary-heading"
+    class="mt-2 text-2xl font-semibold tracking-[-0.04em] text-color-emphasis"
+  >
+    Gastos · {{ period }}
+  </h2>
+
+  @if (loading()) {
+    <div
+      role="status"
+      class="mt-6 rounded-3xl border border-surface bg-surface-0 p-8 text-sm text-muted-color dark:border-surface-700 dark:bg-surface-900"
+    >
+      Calculando el resumen…
+    </div>
+  } @else if (error()) {
+    <div
+      role="alert"
+      class="mt-6 rounded-3xl border border-surface bg-surface-0 p-8 dark:border-surface-700 dark:bg-surface-900"
+    >
+      <p class="font-semibold text-color-emphasis">No pudimos cargar el resumen.</p>
+      <button
+        type="button"
+        data-testid="retry-summary"
+        class="mt-5 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-contrast"
+        (click)="loadSummary()"
+      >
+        Reintentar
+      </button>
+    </div>
+  } @else if (summary(); as data) {
+    <article
+      class="mt-6 rounded-3xl border border-surface bg-surface-0 p-6 sm:max-w-lg dark:border-surface-700 dark:bg-surface-900"
+    >
+      <h3 class="text-sm text-muted-color">Gastos</h3>
+      <p class="mt-2 text-3xl font-semibold tabular-nums text-color-emphasis">
+        {{ money(data.spending) }}
+      </p>
+    </article>
+    <p class="mt-3 text-xs leading-5 text-muted-color">
+      No contamos movimientos etiquetados como transferencias o ahorro entre cuentas.
+    </p>
+
+    @if (data.tags.length) {
+      <figure
+        class="mt-8 rounded-3xl border border-surface bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-900"
+        aria-labelledby="tags-chart-heading"
+      >
+        <figcaption id="tags-chart-heading" class="text-lg font-semibold text-color-emphasis">
+          Gastos por etiqueta
+        </figcaption>
+        <ol class="mt-6 space-y-5">
+          @for (tag of tagBars(); track tag.id) {
+            <li>
+              <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-sm">
+                <span class="font-medium text-color-emphasis">
+                  {{ tag.name }}
+                  <span class="font-normal text-muted-color">· {{ tag.count }} movimientos</span>
+                </span>
+                <span class="font-semibold tabular-nums text-color-emphasis">{{
+                  money(tag.amount)
+                }}</span>
+              </div>
+              <div
+                aria-hidden="true"
+                class="mt-2 h-3 overflow-hidden rounded-full bg-surface-100 dark:bg-surface-800"
+              >
+                <div
+                  data-testid="tag-bar"
+                  class="h-full rounded-full bg-primary"
+                  [style.width.%]="tag.width"
+                ></div>
+              </div>
+            </li>
+          }
+        </ol>
+        <p class="mt-6 text-xs leading-5 text-muted-color">
+          Cada barra se compara con la etiqueta de mayor gasto. Una compra puede tener varias
+          etiquetas; estos montos pueden superponerse y no suman necesariamente el total de gastos.
+        </p>
+      </figure>
+    } @else {
+      <h3 class="mt-8 text-lg font-semibold text-color-emphasis">Gastos por etiqueta</h3>
+      <p class="mt-3 text-sm text-muted-color">Sin gastos etiquetados en este mes.</p>
+    }
+  }
+</section>

@@ -1,0 +1,84 @@
+<section class="mt-12" aria-labelledby="accounts-heading">
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Tu dinero</p>
+      <h2
+        id="accounts-heading"
+        class="mt-2 text-2xl font-semibold tracking-[-0.04em] text-color-emphasis"
+      >
+        Cuentas
+      </h2>
+    </div>
+    <span class="text-xs font-medium text-muted-color">Saldos en pesos chilenos</span>
+  </div>
+
+  @if (loading()) {
+    <div
+      role="status"
+      class="mt-6 rounded-3xl border border-surface bg-surface-0 p-8 text-sm text-muted-color dark:border-surface-700 dark:bg-surface-900"
+    >
+      Cargando tus cuentas…
+    </div>
+  } @else if (error()) {
+    <div
+      role="alert"
+      class="mt-6 rounded-3xl border border-surface bg-surface-0 p-8 dark:border-surface-700 dark:bg-surface-900"
+    >
+      <p class="font-semibold text-color-emphasis">No pudimos cargar tus cuentas.</p>
+      <p class="mt-2 text-sm text-muted-color">Inténtalo de nuevo en un momento.</p>
+      <button
+        data-testid="retry-accounts"
+        type="button"
+        class="mt-5 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-contrast"
+        (click)="loadAccounts()"
+      >
+        Reintentar
+      </button>
+    </div>
+  } @else if (accounts().length === 0) {
+    <div
+      class="mt-6 rounded-3xl border border-surface bg-surface-0 p-8 dark:border-surface-700 dark:bg-surface-900"
+    >
+      <p class="font-semibold text-color-emphasis">Todavía no hay cuentas para mostrar.</p>
+      <p class="mt-2 text-sm text-muted-color">Cuando haya cuentas disponibles, aparecerán aquí.</p>
+    </div>
+  } @else {
+    <div class="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      @for (account of accounts(); track account.id) {
+        <p-card
+          styleClass="h-full rounded-3xl border border-surface bg-surface-0 shadow-sm dark:border-surface-700 dark:bg-surface-900"
+        >
+          <div class="flex items-start justify-between gap-4">
+            <div
+              class="flex size-11 items-center justify-center rounded-2xl bg-primary-50 text-primary-700 dark:bg-primary-950 dark:text-primary-200"
+            >
+              <svg aria-hidden="true" viewBox="0 0 24 24" class="size-5" fill="none">
+                <path
+                  d="M3.5 8h17v10a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2V8Zm0 0V6a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2v2m-17 5h17"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </div>
+            <span
+              class="rounded-full bg-surface-100 px-3 py-1.5 text-xs font-medium text-muted-color dark:bg-surface-800"
+              >{{ account.currency }}</span
+            >
+          </div>
+          <h3 class="mt-6 text-lg font-semibold tracking-[-0.03em] text-color-emphasis">
+            {{ account.alias || accountTypeLabel(account.type) }}
+          </h3>
+          <p class="mt-1 text-sm text-muted-color">{{ accountTypeLabel(account.type) }}</p>
+          <p class="mt-8 text-xs font-semibold uppercase tracking-[0.12em] text-muted-color">
+            {{ accountBalanceLabel(account) }}
+          </p>
+          <p class="mt-2 text-3xl font-semibold tracking-[-0.04em] text-color-emphasis">
+            {{ formatAccountBalance(account) }}
+          </p>
+        </p-card>
+      }
+    </div>
+  }
+</section>

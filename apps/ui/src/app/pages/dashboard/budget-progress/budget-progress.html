@@ -1,0 +1,76 @@
+<section class="mt-14" aria-labelledby="budget-progress-heading">
+  <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Controla tus límites</p>
+  <h2
+    id="budget-progress-heading"
+    class="mt-2 text-2xl font-semibold tracking-[-0.04em] text-color-emphasis"
+  >
+    Avance de presupuestos
+  </h2>
+  <p class="mt-2 text-sm text-muted-color">
+    Gastos registrados hasta hoy en {{ label }}. Las metas de ahorro no se incluyen en este cálculo.
+  </p>
+
+  @if (loading()) {
+    <p role="status" class="mt-6 text-sm text-muted-color">Calculando tus presupuestos…</p>
+  } @else if (error()) {
+    <div
+      role="alert"
+      class="mt-6 rounded-3xl border border-surface bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-900"
+    >
+      <p>No pudimos calcular tus presupuestos.</p>
+      <button
+        type="button"
+        data-testid="retry-progress"
+        class="mt-4 text-sm font-semibold text-primary"
+        (click)="loadProgress()"
+      >
+        Reintentar
+      </button>
+    </div>
+  } @else if (budgets().length === 0) {
+    <p class="mt-6 text-sm text-muted-color">
+      No hay presupuestos con etiquetas y períodos calculables para este mes.
+    </p>
+  } @else {
+    <div class="mt-6 grid gap-4 md:grid-cols-2">
+      @for (budget of budgets(); track budget.id) {
+        <article
+          class="rounded-3xl border border-surface bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-900"
+        >
+          <div class="flex items-start justify-between gap-3">
+            <h3 class="font-semibold text-color-emphasis">{{ budget.name }}</h3>
+            <span class="text-xs text-muted-color">{{ periodLabel(budget.period) }}</span>
+          </div>
+          <p class="mt-5 text-sm text-muted-color">
+            {{ money(budget.spent) }} de {{ money(budget.limit) }} usados
+          </p>
+          <div
+            role="progressbar"
+            [attr.aria-label]="budget.name"
+            [attr.aria-valuenow]="barWidth(budget.percentage)"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            class="mt-3 h-2.5 overflow-hidden rounded-full bg-surface-200 dark:bg-surface-700"
+          >
+            <div
+              class="h-full rounded-full bg-primary"
+              [style.width.%]="barWidth(budget.percentage)"
+            ></div>
+          </div>
+          <p
+            class="mt-3 text-sm font-semibold"
+            [class.text-primary]="budget.percentage <= 100"
+            [class.text-color-emphasis]="budget.percentage > 100"
+          >
+            {{ budget.percentage }}% ·
+            @if (budget.percentage > 100) {
+              Excedido por {{ money(budget.remaining.slice(1)) }}
+            } @else {
+              Disponible {{ money(budget.remaining) }}
+            }
+          </p>
+        </article>
+      }
+    </div>
+  }
+</section>

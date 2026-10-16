@@ -17,7 +17,9 @@ Open <http://localhost:4200>. Angular's development server reloads as you edit. 
 
 ## Session and API requests
 
-`SessionService` restores its session cookie during SSR and browser initialization. It exposes the bearer token as a signal and can set or clear the cookie; the cookie is a transport for SSR state, not proof that the API accepted the token. Angular's HTTP interceptor attaches that token only to requests targeting `environment.apiUrl`. Development replaces `src/environments/environment.ts` with `src/environments/environment.development.ts` (local API at <http://localhost:3000>); production builds use <https://api.lazyfinance.cl>.
+`SessionService` restores its session cookie during SSR and browser initialization. It exposes the bearer token as a signal and can set or clear the cookie; the cookie is a transport for SSR state, not proof that the API accepted the token. Angular's HTTP interceptor attaches that token only to requests targeting the configured API origin. Development replaces `src/environments/environment.ts` with `src/environments/environment.development.ts` (local API at <http://localhost:3000>); production browser builds use <https://api.lazyfinance.cl>.
+
+The dashboard fetches account balances during SSR and transfers that response to the browser for hydration. Set `API_INTERNAL_URL` on the UI server when it cannot reach the browser-facing API URL; the local Docker stacks use `http://api:3000`. Without the override, the server uses the same API URL as the browser. Dashboard responses are marked private and not cacheable.
 
 ## Commands
 

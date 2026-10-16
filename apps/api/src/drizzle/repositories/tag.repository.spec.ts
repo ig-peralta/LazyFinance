@@ -1,0 +1,86 @@
+import type { SQL } from 'drizzle-orm';
+import { PgDialect } from 'drizzle-orm/pg-core';
+import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+import { describe, expect, it, vi } from 'vitest';
+import * as schema from '../schema';
+import { TagRepository } from './tag.repository';
+
+describe('TagRepository', () => {
+  it('queries tags only for the selected transactions and their owner', async () => {
+    const rows = [{
+      transactionId: '00000000-0000-4000-8000-000000000011',
+      id: '00000000-0000-4000-8000-000000000031',
+      name: 'Ocio',
+      color: '#9333EA',
+    }];
+    const orderBy = vi.fn(async (..._ordering: SQL[]) => rows);
+    const where = vi.fn((_condition: SQL) => ({ orderBy }));
+    const from = vi.fn(() => ({ innerJoin: () => ({ where }) }));
+    const select = vi.fn((_fields: Record<string, unknown>) => ({ from }));
+    const repository = new TagRepository({ select } as unknown as PostgresJsDatabase<typeof schema>);
+    const userId = '00000000-0000-4000-8000-000000000001';
+    const transactionIds = [rows[0].transactionId, '00000000-0000-4000-8000-000000000012'];
+
+    await expect(repository.listForTransactions(userId, transactionIds)).resolves.toEqual(rows);
+    expect(select).toHaveBeenCalledOnce();
+    expect(Object.keys(select.mock.calls[0][0])).toEqual(['transactionId', 'id', 'name', 'color']);
+
+    const filter = new PgDialect().sqlToQuery(where.mock.calls[0][0]);
+    expect(filter.sql).toContain('transaction_id');
+    expect(filter.sql).toContain('user_id');
+    expect(filter.params).toEqual([...transactionIds, userId]);
+    expect(orderBy).toHaveBeenCalledOnce();
+  });
+
+  it('queries tags only for selected objectives owned by the user', async () => {
+    const orderBy = vi.fn(async (..._ordering: SQL[]) => []);
+    const where = vi.fn((_condition: SQL) => ({ orderBy }));
+    const from = vi.fn(() => ({ innerJoin: () => ({ where }) }));
+    const select = vi.fn((_fields: Record<string, unknown>) => ({ from }));
+    const repository = new TagRepository({ select } as unknown as PostgresJsDatabase<typeof schema>);
+    const userId = '00000000-0000-4000-8000-000000000001';
+    const objectiveIds = ['00000000-0000-4000-8000-000000000041'];
+
+    await expect(repository.listForObjectives(userId, objectiveIds)).resolves.toEqual([]);
+    expect(Object.keys(select.mock.calls[0][0])).toEqual(['objectiveId', 'id', 'name', 'color']);
+    const filter = new PgDialect().sqlToQuery(where.mock.calls[0][0]);
+    expect(filter.sql).toContain('objective_id');
+    expect(filter.sql).toContain('user_id');
+    expect(filter.params).toEqual([...objectiveIds, userId]);
+  });
+
+  it('groups debit totals by tag while excluding internal movements', async () => {
+    const orderBy = vi.fn(async () => []);
+    const groupBy = vi.fn(() => ({ orderBy }));
+    const where = vi.fn((_condition: SQL) => ({ groupBy }));
+    const innerJoin = vi.fn(() => ({ innerJoin, where }));
+    const from = vi.fn(() => ({ innerJoin }));
+    const select = vi.fn((_fields: Record<string, unknown>) => ({ from }));
+    const repository = new TagRepository({ select } as unknown as PostgresJsDatabase<typeof schema>);
+    const userId = '00000000-0000-4000-8000-000000000001';
+
+    await expect(repository.sumDebitsByTagForMonth(userId, '2026-09')).resolves.toEqual([]);
+    expect(groupBy).toHaveBeenCalledOnce();
+    expect(Object.keys(select.mock.calls[0][0])).toEqual(['id', 'name', 'color', 'amount', 'count']);
+    const query = new PgDialect().sqlToQuery(where.mock.calls[0][0]);
+    expect(query.sql).toMatch(/not EXISTS/i);
+    expect(query.sql).toContain('America/Santiago');
+    expect(query.params).toEqual([
+      userId, userId, 'debit', '2026-09-01 00:00:00', '2026-10-01 00:00:00',
+      userId, 'Transferencias', 'Ahorro',
+    ]);
+  });
+
+  it('cuts off tag totals at the current instant', async () => {
+    const where = vi.fn((_condition: SQL) => ({ groupBy: () => ({ orderBy: async () => [] }) }));
+    const innerJoin = vi.fn(() => ({ innerJoin, where }));
+    const from = vi.fn(() => ({ innerJoin }));
+    const repository = new TagRepository({ select: () => ({ from }) } as unknown as PostgresJsDatabase<typeof schema>);
+    const now = new Date('2026-10-16T15:00:00.000Z');
+
+    await repository.sumDebitsByTagForMonth('demo-id', '2026-10', now);
+    const query = new PgDialect().sqlToQuery(where.mock.calls[0][0]);
+    expect(query.params).toContain(now.toISOString());
+    expect(query.sql).toContain('<=');
+  });
+});

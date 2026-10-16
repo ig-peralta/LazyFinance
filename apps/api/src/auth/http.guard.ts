@@ -1,3 +1,4 @@
+import type { AuthPrincipal } from '@lazyfinance/contracts';
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { AuthenticatedRequest } from './auth.types';
@@ -21,7 +22,10 @@ export class HttpAuthGuard implements CanActivate {
     if (isPublic) return true;
 
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
-    request.user = await this.auth.authenticate(request.headers.authorization);
+    const principal = await this.auth.authenticate(request.headers.authorization);
+    request.principal = principal;
+    // @rekog/mcp-nest reads req.user for per-tool authorization.
+    (request as AuthenticatedRequest & { user: AuthPrincipal }).user = principal;
     return true;
   }
 }

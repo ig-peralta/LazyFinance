@@ -12,7 +12,7 @@ import type { AuthenticatedRequest } from './auth.types';
 class ProbeHttpController {
   @Get()
   getProbe(@Req() request: AuthenticatedRequest) {
-    return request.user;
+    return request.principal;
   }
 }
 

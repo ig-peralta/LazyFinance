@@ -25,6 +25,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: '4000'
+      API_INTERNAL_URL: http://api:3000
     ports:
       - '4200:4000'
     networks:
