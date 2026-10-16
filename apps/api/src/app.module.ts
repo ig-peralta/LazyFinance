@@ -3,7 +3,6 @@ import { APP_GUARD } from '@nestjs/core';
 import { AppHttpController } from './app.http';
 import { AccountsModule } from './accounts/accounts.module';
 import { HttpAuthGuard } from './auth/http.guard';
-import { BalanceModule } from './balance/balance.module';
 import { McpModule } from './mcp/mcp.module';
 import { EnvironmentModule } from './environment/environment.module';
 import { DrizzleModule } from './drizzle/drizzle.module';
@@ -22,7 +21,6 @@ import { SummariesModule } from './summaries/summaries.module';
     TransactionsModule,
     ObjectivesModule,
     SummariesModule,
-    BalanceModule,
   ],
   controllers: [
     AppHttpController,
