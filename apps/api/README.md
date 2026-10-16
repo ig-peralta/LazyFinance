@@ -29,6 +29,7 @@ The API loads `apps/api/.env` when present (the file is gitignored). Its validat
 | --- | --- | --- |
 | `PORT` | `3000` | HTTP and MCP listening port. |
 | `POSTGRES_URL` | `postgresql://user:password@localhost:5432/postgres` | PostgreSQL connection string; matches the local resource stack. |
+| `CORS_ORIGINS` | `http://localhost:4200,http://127.0.0.1:4200` | Comma-separated allowed browser origins for direct API requests. Set this to your UI's origin if it uses another host or port. |
 
 ## Commands
 

@@ -10,6 +10,7 @@ services:
       NODE_ENV: production
       PORT: '3000'
       POSTGRES_URL: postgresql://user:password@postgres:5432/postgres
+      CORS_ORIGINS: '${CORS_ORIGINS:-http://localhost:4200,http://127.0.0.1:4200}'
     ports:
       - '3000:3000'
     networks:
