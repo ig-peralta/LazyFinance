@@ -9,14 +9,17 @@ import {
   signal,
 } from '@angular/core';
 import { SsrCookieService } from 'ngx-cookie-service-ssr';
-
-type SessionState = { token: string } | null;
+import { firstValueFrom } from 'rxjs';
+import { ApiService } from '../api/api.service';
+import { isSessionState } from './session.utils';
+import type { SessionState, SessionUser } from './session.types';
 
 const SESSION_COOKIE = 'lazyfinance-session';
 
 @Injectable({ providedIn: 'root' })
 export class SessionService {
   private readonly cookies = inject(SsrCookieService);
+  private readonly api = inject(ApiService);
   private readonly document = inject(DOCUMENT);
   private readonly request = inject(REQUEST, { optional: true });
   private readonly isServer = isPlatformServer(inject(PLATFORM_ID));
@@ -24,8 +27,9 @@ export class SessionService {
   private readonly resolving = signal(true);
 
   readonly isResolving = this.resolving.asReadonly();
+  readonly user = computed(() => this.state()?.user ?? null);
   readonly token = computed(() => this.state()?.token ?? null);
-  readonly active = computed(() => this.token() !== null);
+  readonly active = computed(() => this.user() !== null);
 
   initServerSide(): void {
     if (this.isServer) this.loadCookie();
@@ -36,14 +40,17 @@ export class SessionService {
     // future firebase initiazation should be done here
   }
 
-  setToken(token: string): void {
+  async loginWithToken(token: string): Promise<SessionUser> {
     const trimmed = token.trim();
-    if (!trimmed) {
-      this.clear();
-      return;
-    }
+    if (!trimmed) throw new Error('A token is required');
 
-    this.state.set({ token: trimmed });
+    const user = await firstValueFrom(this.api.getPrincipal(trimmed));
+    this.setState({ user, token: trimmed });
+    return user;
+  }
+
+  private setState(state: Exclude<SessionState, null>): void {
+    this.state.set(state);
     this.cookies.set(SESSION_COOKIE, JSON.stringify(this.state()), {
       path: '/',
       sameSite: 'Lax',
@@ -65,14 +72,15 @@ export class SessionService {
     if (cookie) {
       try {
         const parsed: unknown = JSON.parse(cookie);
-        if (
-          parsed &&
-          typeof parsed === 'object' &&
-          'token' in parsed &&
-          typeof parsed.token === 'string' &&
-          parsed.token.trim()
-        ) {
-          state = { token: parsed.token.trim() };
+        if (isSessionState(parsed)) {
+          state = {
+            token: parsed.token.trim(),
+            user: {
+              userId: parsed.user.userId,
+              email: parsed.user.email,
+              name: parsed.user.name,
+            },
+          };
         }
       } catch {
         // Ignore malformed cookies and let the client clear them.

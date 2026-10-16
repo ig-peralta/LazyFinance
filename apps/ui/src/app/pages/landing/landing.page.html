@@ -41,6 +41,12 @@
         >
         <a href="#principles" class="transition-colors hover:text-color-emphasis">Tú decides</a>
       </div>
+      <a
+        routerLink="/login"
+        class="rounded-full border border-primary px-4 py-2 text-sm font-semibold text-primary"
+      >
+        {{ session.active() ? 'Mi cuenta' : 'Iniciar sesión' }}
+      </a>
     </nav>
   </header>
 
