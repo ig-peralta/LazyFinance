@@ -1,5 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { SessionService } from '../../services/session/session.service';
 
 const DEMO_TOKEN = 'lazyfinance-demo-token';
@@ -11,6 +11,7 @@ const DEMO_TOKEN = 'lazyfinance-demo-token';
 })
 export class LoginPage {
   readonly session = inject(SessionService);
+  private readonly router = inject(Router);
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
 
@@ -21,6 +22,7 @@ export class LoginPage {
     this.error.set(null);
     try {
       await this.session.loginWithToken(DEMO_TOKEN);
+      await this.router.navigateByUrl('/dashboard');
     } catch {
       this.error.set('No se pudo iniciar la sesión de demostración. Inténtalo de nuevo.');
     } finally {

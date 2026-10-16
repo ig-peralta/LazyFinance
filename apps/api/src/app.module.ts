@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { AppHttpController } from './app.http';
-import { HttpAuthGuard } from './auth/http-auth.guard';
+import { AccountsModule } from './accounts/accounts.module';
+import { HttpAuthGuard } from './auth/http.guard';
 import { BalanceModule } from './balance/balance.module';
 import { McpModule } from './mcp/mcp.module';
 import { EnvironmentModule } from './environment/environment.module';
@@ -14,6 +15,7 @@ import { AuthModule } from './auth/auth.module';
     McpModule,
     DrizzleModule,
     AuthModule,
+    AccountsModule,
     BalanceModule,
   ],
   controllers: [

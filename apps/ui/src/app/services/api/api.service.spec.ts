@@ -1,10 +1,13 @@
 import '@angular/compiler';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
 import { afterEach, describe, expect, it } from 'vitest';
 import { environment } from '../../../environments/environment';
+import { apiInterceptor } from '../../interceptors/api.interceptor';
+import { SessionService } from '../session/session.service';
+import { API_URL } from '../../tokens/api-url';
 import { ApiService } from './api.service';
 
 describe('ApiService', () => {
@@ -28,6 +31,49 @@ describe('ApiService', () => {
     };
     request.flush(principal);
     await expect(result).resolves.toEqual(principal);
+    backend.verify();
+  });
+
+  it('requests account summaries from the API', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    const api = TestBed.inject(ApiService);
+    const backend = TestBed.inject(HttpTestingController);
+    const result = firstValueFrom(api.getAccounts());
+
+    const request = backend.expectOne(`${environment.apiUrl}/accounts`);
+    expect(request.request.method).toBe('GET');
+    request.flush([
+      {
+        id: '00000000-0000-4000-8000-000000000002',
+        alias: 'Cuenta corriente',
+        type: 'checking',
+        currency: 'CLP',
+        balance: '125000.00',
+      },
+    ]);
+
+    await expect(result).resolves.toMatchObject([{ balance: '125000.00' }]);
+    backend.verify();
+  });
+
+  it('uses the configured server API URL and still attaches the session token', async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(withInterceptors([apiInterceptor])),
+        provideHttpClientTesting(),
+        { provide: API_URL, useValue: 'http://api:3000' },
+        { provide: SessionService, useValue: { token: () => 'demo-token' } },
+      ],
+    });
+    const result = firstValueFrom(TestBed.inject(ApiService).getAccounts());
+    const backend = TestBed.inject(HttpTestingController);
+    const request = backend.expectOne('http://api:3000/accounts');
+
+    expect(request.request.headers.get('Authorization')).toBe('Bearer demo-token');
+    request.flush([]);
+    await expect(result).resolves.toEqual([]);
     backend.verify();
   });
 });

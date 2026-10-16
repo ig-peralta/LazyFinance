@@ -6,6 +6,6 @@ import type { AuthenticatedRequest } from './auth.types';
 export class AuthHttpController {
   @Get('principal')
   getPrincipal(@Req() request: AuthenticatedRequest): AuthPrincipal {
-    return request.user;
+    return request.principal;
   }
 }

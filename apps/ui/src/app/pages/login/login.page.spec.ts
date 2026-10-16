@@ -1,7 +1,7 @@
 import '@angular/compiler';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SessionService } from '../../services/session/session.service';
 import { LoginPage } from './login.page';
@@ -33,6 +33,7 @@ describe('LoginPage', () => {
         { provide: SessionService, useValue: { active, user, loginWithToken, clear } },
       ],
     });
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     const fixture = TestBed.createComponent(LoginPage);
     fixture.detectChanges();
 
@@ -58,6 +59,7 @@ describe('LoginPage', () => {
     fixture.detectChanges();
 
     expect(loginWithToken).toHaveBeenCalledWith('lazyfinance-demo-token');
+    expect(navigate).toHaveBeenCalledWith('/dashboard');
     expect(fixture.nativeElement.textContent).toContain(principal.name);
 
     (fixture.nativeElement.querySelector('[data-testid="logout"]') as HTMLButtonElement).click();
