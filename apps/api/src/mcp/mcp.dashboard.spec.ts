@@ -32,7 +32,7 @@ describe('Dashboard MCP tools', () => {
   const summaries = {
     getMonthlyForUser: vi.fn(async (_userId: string, month: string) => ({
       month,
-      income: '0.00',
+      income: '1379000.00',
       spending: '15000.00',
       tags: [],
     })),
@@ -40,7 +40,11 @@ describe('Dashboard MCP tools', () => {
       month,
       previousMonth: '2026-08',
       partial: false,
-      income: { current: '0.00', previous: '0.00', change: '0.00' },
+      income: {
+        current: '1379000.00',
+        previous: '1250000.00',
+        change: '129000.00',
+      },
       spending: {
         current: '15000.00',
         previous: '10000.00',
@@ -117,7 +121,7 @@ describe('Dashboard MCP tools', () => {
         destructiveHint: boolean;
       };
       inputSchema: { properties?: { month?: { description: string } } };
-      outputSchema: { type: string };
+      outputSchema: { type: string; properties?: Record<string, unknown> };
     }>;
     expect(tools.map(({ name }) => name).sort()).toEqual([
       'comparar_gastos_mensuales',
@@ -145,6 +149,14 @@ describe('Dashboard MCP tools', () => {
       tools.find(({ name }) => name === 'consultar_saldos_cuentas')
         ?.outputSchema.type,
     ).toBe('object');
+    for (const name of [
+      'consultar_resumen_gastos_mensuales',
+      'comparar_gastos_mensuales',
+    ]) {
+      const tool = tools.find((item) => item.name === name);
+      expect(tool?.description.toLowerCase()).not.toContain('ingreso');
+      expect(tool?.outputSchema.properties).not.toHaveProperty('income');
+    }
   });
 
   it('scopes every tool call to the caller and returns validated structured results', async () => {
@@ -165,6 +177,18 @@ describe('Dashboard MCP tools', () => {
         expect(response.body.result.structuredContent.accounts[0].alias).toBe(
           token,
         );
+      }
+      if (
+        name === 'consultar_resumen_gastos_mensuales' ||
+        name === 'comparar_gastos_mensuales'
+      ) {
+        expect(response.body.result.structuredContent).not.toHaveProperty(
+          'income',
+        );
+        expect(JSON.stringify(response.body.result)).not.toContain(
+          '1379000.00',
+        );
+        expect(response.body.result.structuredContent.spending).toBeDefined();
       }
     }
     expect(accounts.getActiveForUser).toHaveBeenCalledWith('bob');
