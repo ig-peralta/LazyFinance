@@ -80,6 +80,18 @@ describe('HTTP authentication', () => {
     expect(response.body).toEqual({ userId: demoUser.id, email: demoUser.email, name: demoUser.name });
   });
 
+  it('returns the principal only for a valid bearer token', async () => {
+    await request(app.getHttpServer()).get('/auth/principal').expect(401);
+
+    const response = await request(app.getHttpServer())
+      .get('/auth/principal')
+      .set('Authorization', 'Bearer lazyfinance-demo-token')
+      .expect(200);
+
+    expect(response.body).toEqual({ userId: demoUser.id, email: demoUser.email, name: demoUser.name });
+    expect(response.body).not.toHaveProperty('apiToken');
+  });
+
   it('allows the UI origin to preflight Authorization headers', async () => {
     const response = await request(app.getHttpServer())
       .options('/api/probe')
