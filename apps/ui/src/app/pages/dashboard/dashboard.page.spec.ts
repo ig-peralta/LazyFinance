@@ -64,6 +64,11 @@ describe('DashboardPage', () => {
     expect(getMonthlySummary).toHaveBeenCalledOnce();
     expect(getMonthlyComparison).toHaveBeenCalledOnce();
     expect(getSpendingProgress).toHaveBeenCalledOnce();
+    const headings = Array.from(
+      fixture.nativeElement.querySelectorAll('h2') as NodeListOf<HTMLElement>,
+      (heading) => heading.textContent?.trim(),
+    );
+    expect(headings.at(-1)).toBe('Tus últimos movimientos');
 
     (fixture.nativeElement.querySelector('header button') as HTMLButtonElement).click();
     expect(clear).toHaveBeenCalledOnce();

@@ -6,6 +6,7 @@ import {
   PLATFORM_ID,
   PendingTasks,
   TransferState,
+  computed,
   inject,
   makeStateKey,
   signal,
@@ -34,6 +35,20 @@ export class Summary implements OnInit {
   protected readonly month = this.serverState?.month ?? currentMonth();
   protected readonly period = monthLabel(this.month);
   protected readonly summary = signal<MonthlySummary | null>(this.serverState?.summary ?? null);
+  protected readonly tagBars = computed(() => {
+    const tags = [...(this.summary()?.tags ?? [])].sort(
+      (left, right) =>
+        Number(right.amount) - Number(left.amount) || left.name.localeCompare(right.name),
+    );
+    const maximum = Number(tags[0]?.amount ?? 0);
+    return tags.map((tag) => ({
+      ...tag,
+      width:
+        maximum > 0 && Number.isFinite(Number(tag.amount))
+          ? Math.max(0, Math.min(100, (Number(tag.amount) / maximum) * 100))
+          : 0,
+    }));
+  });
   protected readonly loading = signal(this.serverState === null);
   protected readonly error = signal(this.serverState?.error ?? false);
 

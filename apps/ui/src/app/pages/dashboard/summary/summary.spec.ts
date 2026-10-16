@@ -19,7 +19,7 @@ const summary: MonthlySummary = {
       id: '00000000-0000-4000-8000-000000000031',
       name: 'Comida',
       color: null,
-      amount: '10000.00',
+      amount: '5000.00',
       count: 1,
     },
     {
@@ -68,7 +68,16 @@ describe('Summary', () => {
     expect(text).toContain('$10.000');
     expect(text).toContain('Comida');
     expect(text).toContain('Ocio');
+    expect(text).toContain('$5.000');
     expect(text).toContain('pueden superponerse');
+    const items = fixture.nativeElement.querySelectorAll('figure ol li') as NodeListOf<HTMLElement>;
+    const bars = fixture.nativeElement.querySelectorAll(
+      '[data-testid="tag-bar"]',
+    ) as NodeListOf<HTMLElement>;
+    expect(items[0].textContent).toContain('Ocio');
+    expect(items[1].textContent).toContain('Comida');
+    expect(bars[0].style.width).toBe('100%');
+    expect(bars[1].style.width).toBe('50%');
     expect(getMonthlySummary).toHaveBeenCalledOnce();
   });
 
