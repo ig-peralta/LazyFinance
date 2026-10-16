@@ -58,6 +58,20 @@ describe('ApiService', () => {
     backend.verify();
   });
 
+  it('requests recent transactions from the API', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    const result = firstValueFrom(TestBed.inject(ApiService).getRecentTransactions());
+    const backend = TestBed.inject(HttpTestingController);
+    const request = backend.expectOne(`${environment.apiUrl}/transactions/recent`);
+
+    expect(request.request.method).toBe('GET');
+    request.flush([]);
+    await expect(result).resolves.toEqual([]);
+    backend.verify();
+  });
+
   it('uses the configured server API URL and still attaches the session token', async () => {
     TestBed.configureTestingModule({
       providers: [

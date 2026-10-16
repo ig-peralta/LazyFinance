@@ -8,6 +8,7 @@ import { McpModule } from './mcp/mcp.module';
 import { EnvironmentModule } from './environment/environment.module';
 import { DrizzleModule } from './drizzle/drizzle.module';
 import { AuthModule } from './auth/auth.module';
+import { TransactionsModule } from './transactions/transactions.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { AuthModule } from './auth/auth.module';
     DrizzleModule,
     AuthModule,
     AccountsModule,
+    TransactionsModule,
     BalanceModule,
   ],
   controllers: [

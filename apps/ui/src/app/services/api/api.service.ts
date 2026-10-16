@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import type { AccountSummary, AuthPrincipal } from '@lazyfinance/contracts';
+import type { AccountSummary, AuthPrincipal, RecentTransaction } from '@lazyfinance/contracts';
 import { API_URL } from '../../tokens/api-url';
 
 @Injectable({ providedIn: 'root' })
@@ -16,5 +16,9 @@ export class ApiService {
 
   getAccounts() {
     return this.http.get<AccountSummary[]>(`${this.apiUrl}/accounts`);
+  }
+
+  getRecentTransactions() {
+    return this.http.get<RecentTransaction[]>(`${this.apiUrl}/transactions/recent`);
   }
 }

@@ -2,10 +2,11 @@ import { Component, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { SessionService } from '../../services/session/session.service';
 import { Account } from './account/account';
+import { Activity } from './activity/activity';
 
 @Component({
   selector: 'dashboard-page',
-  imports: [Account, RouterLink],
+  imports: [Account, Activity, RouterLink],
   templateUrl: './dashboard.page.html',
 })
 export class DashboardPage {
