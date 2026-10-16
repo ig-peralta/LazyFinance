@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { AccountSummarySchema } from '../accounts';
+import { TagSummarySchema } from '../tags';
 
 export const RecentTransactionSchema = z.object({
   id: z.uuid(),
@@ -9,11 +10,7 @@ export const RecentTransactionSchema = z.object({
   merchant: z.string().nullable(),
   description: z.string().nullable(),
   account: AccountSummarySchema.pick({ id: true, alias: true, type: true, currency: true }),
-  tags: z.array(z.object({
-    id: z.uuid(),
-    name: z.string(),
-    color: z.string().nullable(),
-  })),
+  tags: z.array(TagSummarySchema),
 });
 
 export type RecentTransaction = z.infer<typeof RecentTransactionSchema>;

@@ -1,0 +1,99 @@
+<section class="mt-14" aria-labelledby="objectives-heading">
+  <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Planifica a tu ritmo</p>
+  <h2
+    id="objectives-heading"
+    class="mt-2 text-2xl font-semibold tracking-[-0.04em] text-color-emphasis"
+  >
+    Presupuestos y metas
+  </h2>
+  <p class="mt-2 text-sm text-muted-color">
+    Los objetivos que has definido, con sus montos y etiquetas.
+  </p>
+
+  @if (loading()) {
+    <div
+      role="status"
+      class="mt-6 rounded-3xl border border-surface bg-surface-0 p-8 text-sm text-muted-color dark:border-surface-700 dark:bg-surface-900"
+    >
+      Cargando tus objetivos…
+    </div>
+  } @else if (error()) {
+    <div
+      role="alert"
+      class="mt-6 rounded-3xl border border-surface bg-surface-0 p-8 dark:border-surface-700 dark:bg-surface-900"
+    >
+      <p class="font-semibold text-color-emphasis">No pudimos cargar tus objetivos.</p>
+      <button
+        type="button"
+        data-testid="retry-objectives"
+        class="mt-5 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-contrast"
+        (click)="loadObjectives()"
+      >
+        Reintentar
+      </button>
+    </div>
+  } @else if (objectives().length === 0) {
+    <div
+      class="mt-6 rounded-3xl border border-surface bg-surface-0 p-8 dark:border-surface-700 dark:bg-surface-900"
+    >
+      <p class="font-semibold text-color-emphasis">Aún no hay presupuestos ni metas.</p>
+    </div>
+  } @else {
+    @if (budgets().length) {
+      <h3 class="mt-7 text-lg font-semibold text-color-emphasis">Presupuestos de gasto</h3>
+      <div class="mt-4 grid gap-4 md:grid-cols-2">
+        @for (item of budgets(); track item.id) {
+          <article
+            class="rounded-3xl border border-surface bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-900"
+          >
+            <h4 class="font-semibold text-color-emphasis">{{ item.name }}</h4>
+            <p class="mt-1 text-sm text-muted-color">{{ periodLabel(item) }}</p>
+            <p class="mt-5 text-xs font-semibold uppercase tracking-wide text-muted-color">
+              Límite
+            </p>
+            <p class="mt-1 text-2xl font-semibold tabular-nums text-color-emphasis">
+              {{ target(item.amount) }}
+            </p>
+            @if (item.tags.length) {
+              <div class="mt-4 flex flex-wrap gap-2">
+                @for (tag of item.tags; track tag.id) {
+                  <span
+                    class="rounded-full bg-surface-100 px-2.5 py-1 text-xs text-muted-color dark:bg-surface-800"
+                    >{{ tag.name }}</span
+                  >
+                }
+              </div>
+            }
+          </article>
+        }
+      </div>
+    }
+    @if (goals().length) {
+      <h3 class="mt-8 text-lg font-semibold text-color-emphasis">Metas de ahorro</h3>
+      <div class="mt-4 grid gap-4 md:grid-cols-2">
+        @for (item of goals(); track item.id) {
+          <article
+            class="rounded-3xl border border-surface bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-900"
+          >
+            <h4 class="font-semibold text-color-emphasis">{{ item.name }}</h4>
+            <p class="mt-1 text-sm text-muted-color">{{ periodLabel(item) }}</p>
+            <p class="mt-5 text-xs font-semibold uppercase tracking-wide text-muted-color">Meta</p>
+            <p class="mt-1 text-2xl font-semibold tabular-nums text-color-emphasis">
+              {{ target(item.amount) }}
+            </p>
+            @if (item.tags.length) {
+              <div class="mt-4 flex flex-wrap gap-2">
+                @for (tag of item.tags; track tag.id) {
+                  <span
+                    class="rounded-full bg-surface-100 px-2.5 py-1 text-xs text-muted-color dark:bg-surface-800"
+                    >{{ tag.name }}</span
+                  >
+                }
+              </div>
+            }
+          </article>
+        }
+      </div>
+    }
+  }
+</section>

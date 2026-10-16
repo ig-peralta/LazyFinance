@@ -72,6 +72,19 @@ describe('ApiService', () => {
     backend.verify();
   });
 
+  it('requests the user objectives', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    const result = firstValueFrom(TestBed.inject(ApiService).getObjectives());
+    const backend = TestBed.inject(HttpTestingController);
+    const request = backend.expectOne(`${environment.apiUrl}/objectives`);
+    expect(request.request.method).toBe('GET');
+    request.flush([]);
+    await expect(result).resolves.toEqual([]);
+    backend.verify();
+  });
+
   it('uses the configured server API URL and still attaches the session token', async () => {
     TestBed.configureTestingModule({
       providers: [

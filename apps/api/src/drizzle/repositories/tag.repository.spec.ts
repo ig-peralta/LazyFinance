@@ -31,4 +31,21 @@ describe('TagRepository', () => {
     expect(filter.params).toEqual([...transactionIds, userId]);
     expect(orderBy).toHaveBeenCalledOnce();
   });
+
+  it('queries tags only for selected objectives owned by the user', async () => {
+    const orderBy = vi.fn(async (..._ordering: SQL[]) => []);
+    const where = vi.fn((_condition: SQL) => ({ orderBy }));
+    const from = vi.fn(() => ({ innerJoin: () => ({ where }) }));
+    const select = vi.fn((_fields: Record<string, unknown>) => ({ from }));
+    const repository = new TagRepository({ select } as unknown as PostgresJsDatabase<typeof schema>);
+    const userId = '00000000-0000-4000-8000-000000000001';
+    const objectiveIds = ['00000000-0000-4000-8000-000000000041'];
+
+    await expect(repository.listForObjectives(userId, objectiveIds)).resolves.toEqual([]);
+    expect(Object.keys(select.mock.calls[0][0])).toEqual(['objectiveId', 'id', 'name', 'color']);
+    const filter = new PgDialect().sqlToQuery(where.mock.calls[0][0]);
+    expect(filter.sql).toContain('objective_id');
+    expect(filter.sql).toContain('user_id');
+    expect(filter.params).toEqual([...objectiveIds, userId]);
+  });
 });
