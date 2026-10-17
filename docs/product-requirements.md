@@ -1,221 +1,118 @@
 # LazyFinance — Product Requirements Document
 
-> **Product:** LazyFinance.
-> **Status:** draft vision and scope. Written as if no prior code existed.
-> **Document type:** product requirements and tentative roadmap.
+> **Status:** product vision and staged requirements.
+> **Initial scope:** personal finance understanding, starting with controlled demo data and CLP.
 
----
+## 1. Product vision
 
-## 1. Purpose
+LazyFinance helps people understand their finances and make better decisions without having to reconcile account balances and transaction lists by hand. Its central experience is **our own conversational agent**: users ask questions in text first, and later by voice. A web dashboard provides a visual view of the same financial information. Financial logic lives in the backend and is also available through MCP so other compatible agents and applications can use it.
 
-Define, in product terms, what LazyFinance is, what problem it solves, what it aims to achieve, what its functional capabilities are, and how its future stages are envisioned. The document avoids implementation details and focuses on what the system must allow its users to do.
+Personal finance analysis is the starting point, not the limit of the product. We want a trustworthy financial foundation from which we can grow in many directions: richer analysis, new interactions, additional data sources, and potentially other financial capabilities. Architectural choices should make those possibilities feasible without requiring us to define or implement all of them today.
 
----
+Examples of questions we want to support:
 
-## 2. Problem and Context
+- “How much have I spent this month, and on what?”
+- “Am I spending more than last month?”
+- “How am I doing against my grocery budget?”
+- “Will I have enough money to reach the end of the month?”
+- “Is this charge unusual or duplicated?”
+- “What could I change to reach my savings goal?”
 
-People often do not understand their banking situation beyond how much money is in the account and the movements of the last few days. Questions arise that a balance alone cannot answer:
+The initial agent reads, explains, and recommends; transaction execution is **outside its initial scope**, not ruled out forever. Any future action capability would require its own product decisions, authorization, and user controls. Answers must distinguish observed facts from estimates and make clear when data is incomplete.
 
-- Will I make it to the end of the month?
-- Am I spending more or less than last month?
-- Is there any strange or duplicate charge?
-- Where should I cut back to meet my savings goal?
+## 2. Foundational approach
 
-The project's value lies in the difference between **having financial information** and **being able to interpret it**. The user does not want to review lists of movements and do the math by hand: they want an understandable answer.
+Develop the product from a representative financial core outward, using controlled data before depending on bank connectivity:
 
----
+- Define users, provider connections, accounts, movements, tags, and spending/saving objectives; seed representative Chilean account and transaction history to exercise the model without a live provider.
+- Build user-scoped financial logic and API contracts for balances, activity, spending summaries, comparisons, and budget/goal information. Make the meaning of each figure explicit: overlapping tags do not form exclusive categories, income timing is not available money, and spending-budget progress is not savings-goal progress.
+- Expose those capabilities in a visual dashboard and through MCP tools. Use a temporary login mechanism for development, then introduce full authentication. These interfaces share financial logic rather than each calculating its own figures.
 
-## 3. Project Description
+This foundation lets us test decisions while the model is still adaptable. Provider connectivity follows validation of the core instead of driving its shape from the outset.
 
-LazyFinance is a **conversational AI agent focused on personal finance analysis**. The user interacts through written questions and, in later stages, through voice commands.
+### Architecture for growth
 
-Examples of interaction:
+- Keep financial concepts and calculations independent of a particular provider, UI, authentication mechanism, or agent. The same user-scoped capabilities should serve the dashboard, our agent, and authorized MCP clients.
+- Define clear contracts where data enters and where capabilities are exposed; preserve provenance, account ownership, and reconciliation information so additional providers or financial functions can be introduced without changing the meaning of existing data.
+- Prefer simple, tested abstractions around demonstrated needs over speculative implementations. Preserve room for future account types, currencies, workflows, and action-oriented features without pretending their requirements are already settled.
+- Treat privacy, access boundaries, and correctness as foundation-level concerns, including if future features go beyond read-only analysis.
 
-> "With what I've spent this week, will I make it to the end of the month?"
+## 3. Development sequence and decision gates
 
-> "How much did I spend on groceries and food delivery this month compared to last month?"
+### Stage A — Establish and validate the financial core
 
-> "Analyze my account and tell me if there is any unusual charge or duplicate purchase."
+Use representative demo scenarios to build and revisit the model, adding the minimum financial behaviors needed to determine whether it works. The goal is **good enough to validate the data model**, not a polished UI or an exhaustive analysis engine. Prioritize correctness and explicit semantics for:
 
-> "I want to save a certain amount in three months, what should I cut back on?"
+- Accounts and balances, including what a balance means for different account types and when it was last updated.
+- Movements, signs, dates, provenance, and relationships among transfers, credit-card payments, income, and spending so summaries do not mistake money moving between accounts for new income or expense.
+- Tags and classifications, including overlapping tags, untagged movements, and how they affect totals and budgets.
+- Spending budgets versus savings goals: their distinct definitions, periods, progress, and what counts as a contribution to a goal.
+- Trustworthy monthly and period comparisons, with clear treatment of incomplete periods and available balances.
 
-The system analyzes the user's financial movements, applies domain financial logic, and returns an answer in natural language. **The value is not in showing banking data, but in interpreting it and turning it into useful information for making decisions.**
+Identify and add any **missing core capabilities** revealed by those scenarios before calling the model validated. The exact set should be decided from the review rather than assuming that every future analysis feature belongs in this gate. Exercise representative cases through the domain/API and, where relevant, the dashboard and MCP tools.
 
----
+**Exit criteria:** the team can demonstrate realistic account, transaction, transfer, budget, and goal scenarios; explain what each amount and relationship represents; produce consistent user-scoped results; and resolve assumptions that would block provider data ingestion, while recording remaining nonblocking questions. The model can still be refined afterward. **Begin Fintoc integration only after this gate.**
 
-## 4. What It Aims to Achieve (Value Proposition)
+### Stage B — Advance several tracks after core validation
 
-1. **Understand the current financial situation:** answer questions about balances, spending, and movements without forcing the user to review them manually.
-2. **Control and monitor budgets and savings goals:** help the user track spending limits and savings targets.
-3. **Personalized recommendations:** suggestions based on the user's banking behavior, not generic advice.
-4. **A seamless interface:** query by text or voice naturally, complemented by a web control dashboard.
-5. **Flexibility and integration:** use LazyFinance from different applications and tools the user already uses daily, not only from its own screen.
+These are concurrent workstreams, not a single strict implementation order:
 
-The conceptual value flow is:
+1. **Financial core and API:** refine the model, calculations, contracts, and missing analysis capabilities on the validated foundation.
+2. **Web UI:** refine the dashboard and workflows so users can understand data quality, budgets, goals, and explanations, not just see summary cards.
+3. **User authentication:** move from temporary development login to full user authentication, with Firebase as the intended identity platform. Keep financial data isolated per user across UI, API, and MCP.
+4. **MCP access:** define and implement appropriate authorization for third-party MCP clients. Evaluate OAuth and its client/discovery flows before committing to a scheme; temporary development credentials are not the final integration model.
+5. **Provider connectivity:** define a provider-neutral connector contract and normalization rules for accounts, balances, and movements, then implement Fintoc as an adapter. The design must support additional provider adapters without rewriting core financial logic. Validate ingestion and reconciliation against the Stage A model rather than shaping the model solely around Fintoc.
+6. **Our conversational agent:** build a text-first experience that uses the same backend financial capabilities, answers with appropriate context, and distinguishes facts from projections. MCP remains available to external clients; it does not replace our agent.
 
-```
-User asks a question
-  → LazyFinance obtains the banking information
-  → analyzes the data
-  → applies the relevant financial logic
-  → returns an answer in natural language
-```
+### Stage C — Broaden the experience
 
----
+Add **voice interaction** to our agent after the text flow is useful and reliable. Expand analysis (for example, projections, anomalies, duplicate charges, price changes, and goal simulations) as their data requirements and behavior are validated. Add further provider adapters and other financial capabilities in response to validated needs; the roadmap is a starting sequence, not a ceiling on what LazyFinance can become.
 
-## 5. How It Will Work (Conceptual Vision)
+## 4. Product capabilities and expectations
 
-### 5.1 Banking Data Ingestion
+### Financial understanding
 
-Layer responsible for obtaining accounts, balances, and banking movements. During development the **sandbox/simulated Fintoc environment** is used, so initially no real third-party accounts are involved, while leaving the architecture prepared to do so in the future.
+- Show per-account balances and recent movements, with enough context to interpret the account type and data freshness.
+- Summarize spending by period and tag, compare comparable periods, and track spending against budgets. Do not imply that overlapping tags add up to a unique total.
+- Model income and internal movements accurately in the financial core. Do not present income timing as proof of available funds; use account balances for claims about available money.
+- Distinguish spending-budget progress from savings-goal progress. Define measurable savings contributions before presenting goal progress or simulations as facts.
+- Add projections and anomaly/pattern detection only with explainable rules, representative scenarios, and clear caveats about uncertainty.
 
-The project envisions **integration with multiple banking providers**, so a single user can connect more than one source and the system does not become coupled to a single provider.
+### Interaction and access
 
-### 5.2 Financial Processing and Domain Logic
+- Provide a user-scoped dashboard and, subsequently, a first-party text agent that explains financial results in natural language; extend that agent to voice later.
+- Initially expose appropriate read-only financial capabilities through MCP for other agents and applications, with clear tool descriptions and authenticated, user-scoped access.
+- Treat authorization, privacy, and data provenance as cross-cutting requirements. A connected provider or agent must not expose another user's data.
 
-Layer of domain logic that interprets raw data. It is responsible for the analysis functions described in the capabilities section (balance, spending summary, categorization, period comparison, projection, anomaly detection, budgets and savings goals).
+### Banking data
 
-### 5.3 Tool Server (MCP)
+- Validate the core with controlled demo data until the Stage A gate is met.
+- Support ingestion from a provider-neutral interface with provider-specific adapters; Fintoc is the first planned adapter, not the architecture itself.
+- Normalize provider-specific identifiers, balances, dates, transaction types, and sync state without losing information needed to reconcile or explain imported data. Prevent duplicate imports and make refresh/failure states visible.
 
-LazyFinance exposes its financial capabilities through a **tool server based on MCP (Model Context Protocol)**. This separates the responsibilities of the AI agent (which converses and reasons) from those of the backend (which accesses data and executes financial logic).
+## 5. Decisions to settle during core validation
 
-MCP is also a **core feature of the product**: it enables flexibility of use and integration with tools people use in their daily lives. Different assistants, applications, or interfaces can connect to the same LazyFinance backend without the financial logic depending on a specific agent.
+These questions guide the model validation and the decisions needed for an extensible foundation:
 
-### 5.4 Interaction Layer
+1. How should transfers and credit-card payments be represented so balances and spending are both correct without relying on tag names to identify internal movements?
+2. Which balance is meaningful for checking, savings, and credit-card accounts, and how should freshness and reconciliation be represented?
+3. How are saving-goal contributions and progress measured, separately from spending budgets and tag-linked transactions?
+4. Which objective types, recurrence rules, periods, and constraints should the model support, and which are needed now?
+5. What does the first useful set of missing core flows require (for example, managing classifications or objectives), and which insights can wait until later?
+6. Which provider-agnostic fields and identifiers must be stable before implementing an adapter, without prematurely encoding Fintoc-specific behavior?
 
-First by text (written conversation), then by voice, complemented by a **dashboard or web control center** to monitor budgets, goals, and financial situation visually.
+Document each decision and validate it against seeded scenarios before changing the corresponding schema or building broader integrations on it.
 
----
+## 6. Scope boundaries and measures of progress
 
-## 6. Actors
+**Not required for the core validation gate:** live/sandbox Fintoc integration, a polished dashboard, Firebase authentication, final MCP authorization, voice interaction, multi-currency/FX, or advanced predictions. These are subsequent work; Stage A still requires correct user scoping and meaningful demo behavior.
 
-- **End user:** person with personal financial information who wants to understand and manage it.
-- **AI agent:** language model that interprets the question, decides which tools to invoke, and writes the answer.
-- **LazyFinance backend:** exposes tools via MCP, accesses banking data, and executes financial logic.
-- **Banking providers:** data sources (Fintoc in sandbox initially, other providers in the future).
-- **External tools:** daily-use applications and assistants that integrate via MCP.
+**Outside the initial agent scope:** executing transactions or moving money. This is a sequencing decision, not a permanent boundary on the product. Sharing accounts/budgets between people is likewise deferred until the individual experience is established; neither future capability should be constrained by shortcuts in the initial architecture.
 
----
+We will consider the direction successful when:
 
-## 7. Agent Scope and Limits
-
-LazyFinance is an **advisor**, not an autonomous financial actor:
-
-- The agent **reads, analyzes, explains, and suggests** (nudges).
-- The user **confirms** any relevant action.
-- The initial scope is limited to **query and analysis**, without executing transactions: the agent does not move money on its own.
-
----
-
-## 8. Functional Capabilities
-
-### 8.1 Understand the Current Financial Situation
-
-- Obtain the **current balance** of the user's accounts.
-- **Summarize spending** for a period.
-- Analyze spending **by category or tag** (flexible classification of movements, without rigid system-imposed hierarchies).
-
-### 8.2 Monitor and Compare Over Time
-
-- **Compare periods** (for example, this month against last month).
-- **Project month-end cash flow**, estimating whether the user will make it or not with current spending.
-
-### 8.3 Detect Patterns and Anomalies
-
-- Detect **unusual charges**.
-- Identify **duplicate purchases**.
-- Detect **price increases** (for example, in recurring subscriptions).
-
-### 8.4 Budgets and Savings Goals
-
-- **Control and monitor spending budgets.**
-- Define and monitor **savings goals.**
-- **Simulate savings goals** (for example, "I want to save X in N months, what should I cut back on?").
-- Organize spending and goals through **tags**, so a single movement can contribute to several budgets or goals.
-
-### 8.5 Personalized Recommendations
-
-- Generate **recommendations based on the user's banking behavior** (spending patterns, habits, and evolution over time).
-
-### 8.6 Interaction and Interface
-
-- **Text-based conversational interface** as the first stage of interaction.
-- **Voice prompts** as the second stage.
-- **Dashboard / web control center** to monitor budgets, goals, and financial situation.
-- **Seamless** experience: the user queries naturally, without friction between channels.
-
-### 8.7 Integrations
-
-- **Integration with multiple banking providers** (Fintoc in sandbox initially, extensible to others and to real data).
-- **Integration into other daily-use applications**, enabled by the MCP server.
-
-### 8.8 MCP Tool Server (Core Feature)
-
-- Expose the backend's financial functions as tools consumable by an AI agent.
-- Separate the agent's responsibility (conversation and reasoning) from the backend's (data and logic).
-- Provide **flexibility of use**: different agents and tools can connect to the same backend.
-- Facilitate **integration with tools people use in their daily lives**.
-
----
-
-## 9. Objectives
-
-### 9.1 Main Objective
-
-Develop an AI-based agent that allows users to query and understand their personal financial information in natural language, integrating banking data through the Fintoc API.
-
-### 9.2 Specific Objectives
-
-1. Integrate Fintoc (accounts, balances, and movements).
-2. Build the domain financial logic.
-3. Implement the MCP tool server.
-4. Build the text-based conversational interface.
-5. Add voice interaction.
-6. Validate the system with sandbox data and representative use cases.
-
----
-
-## 10. Roadmap (Tentative Stages)
-
-The stages are ordered incrementally and are tentative; they may be reordered based on what is validated in each phase.
-
-1. **Banking connectivity.** Integrate Fintoc (sandbox) to obtain accounts, balances, and movements, with an architecture extensible to multiple providers and to real data.
-2. **Domain financial logic.** Implement the analysis functions: balance, spending summary, tag-based categorization, period comparison, month-end projection, anomaly and price-increase detection, and budgets/goals with savings simulation.
-3. **MCP tool server.** Expose the above functions to the agent, enabling flexibility of use and integration with daily-use tools.
-4. **Text-based conversational agent.** First interaction interface with the agent.
-5. **Dashboard / web control center.** Visual panel to monitor budgets, goals, and financial situation.
-6. **Voice interaction.** Second interaction stage, once the text-based flow is validated.
-7. **Validation.** Testing with sandbox data and representative use cases, within a scope limited to query and analysis (without executing transactions).
-
----
-
-## 11. Out of Scope Initially (Explicitly Deferred)
-
-- **Transaction execution:** the agent does not move money in the initial scope.
-- **Real third-party banking data:** initially sandbox/simulated environment only.
-- **Full user authentication:** a temporary mechanism is initially considered; real authentication is defined later.
-- **Multi-currency and FX conversion:** initially a single currency.
-- **Sharing accounts or budgets between people:** the initial scope is individual.
-- **Detailed history of goal evolution:** deferred until the required behavior is understood.
-
----
-
-## 12. Risks and Open Questions
-
-- **Banking provider dependency:** moving from sandbox to real data may change integration assumptions.
-- **Definition of "contribution" to a savings goal:** summing movements is not enough; what counts as a contribution must be specified.
-- **Goal history:** the evolution data needed for analysis and recommendations is still undefined.
-- **Multi-provider:** define how to normalize differences between providers without coupling to any single one.
-- **Privacy and security:** banking data is sensitive; the design must protect it from the start.
-
----
-
-## 13. Success Criteria (Proposed)
-
-- A user can ask a question in natural language and receive a correct and understandable financial answer.
-- The system answers queries about balance, spending by category, period comparison, and month-end projection.
-- The system detects unusual charges, duplicates, and price increases.
-- The user can define and monitor budgets and savings goals, with simulation.
-- The agent suggests and the user confirms; no transactions are executed without consent.
-- The capabilities are consumable via MCP by different agents and daily-use tools.
-- The system works validated on sandbox data with representative use cases.
+- Representative demo scenarios produce coherent balances, spending, comparisons, budgets, and goal interpretations, and the model's remaining limitations are explicit.
+- A user can understand those results in the dashboard and ask our own text agent useful questions, with answers grounded in user-scoped financial data.
+- Other clients can use the appropriate backend capabilities through securely authorized MCP access.
+- Fintoc can be introduced through a provider adapter after core validation, with the same financial logic able to support another provider later.
+- Voice extends the proven text experience rather than defining the initial agent experience.
