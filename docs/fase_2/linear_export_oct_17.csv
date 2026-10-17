@@ -1,0 +1,136 @@
+"ID","Team","Title","Description","Status","Estimate","Priority","Project ID","Project","Creator","Assignee","Labels","Cycle Number","Cycle Name","Cycle Start","Cycle End","Created","Updated","Started","Triaged","Completed","Canceled","Archived","Due Date","Parent issue","Initiatives","Project Milestone ID","Project Milestone","SLA Status","UUID","Time in status (minutes)","Related to","Blocked by","Duplicate of"
+"LAZ-6","LazyFinance","Establish the NestJS API and MCP transport foundation","**Delivered slice:** scaffold the API within the monorepo, prove the MCP HTTP route with a healthcheck and mock balance POC, then move to the `@rekog/mcp-nest` integration.
+
+The mock balance tools were a proof of concept and were later removed in favor of real user-scoped tools; this issue records the transport foundation, not a current balance implementation.
+
+**Evidence:** [monorepo/API scaffold](<https://github.com/ig-peralta/LazyFinance/commit/3e3de6f>), [initial MCP POC](<https://github.com/ig-peralta/LazyFinance/commit/a80905d>), [MCP library replacement](<https://github.com/ig-peralta/LazyFinance/commit/fed082a>).
+
+**Product requirements:** [Linear document](<https://linear.app/lazyfinance/document/lazyfinance-product-requirements-document-f5e3f9499c0b>).","Done",,"No priority","a47fe413-6c27-474a-a963-cf4f1c9ff7fb","LazyFinance product development","ignacio.peralta.acev@gmail.com",,"",,,,,"2026-10-17T02:15:06.397Z","2026-10-17T02:27:59.144Z",,,"2026-10-17T02:15:06.427Z",,,,,"","a3684feb-8028-49c6-bd9e-cea6fbed56fe","Stage A - Financial core validation",,"72244a7a-fe0d-42da-96ed-d4676d87b1ce",82,,,
+"LAZ-7","LazyFinance","Deliver an authenticated demo financial dashboard","**Delivered slice:** user-scoped API and server-rendered dashboard for account balances, recent activity, budgets and goals, month-to-date spending by tag, comparable previous-month spending, and spending-budget progress. Internal transfers are excluded from summary spending; income remains in API data but is not treated as available funds in the overview.
+
+Functional foundation for testing the core; visual polish and goal-contribution semantics are later work.
+
+**Evidence:** [merged implementation commit](<https://github.com/ig-peralta/LazyFinance/commit/295b379>).
+
+**Product requirements:** [Linear document](<https://linear.app/lazyfinance/document/lazyfinance-product-requirements-document-f5e3f9499c0b>).","Done",,"No priority","a47fe413-6c27-474a-a963-cf4f1c9ff7fb","LazyFinance product development","ignacio.peralta.acev@gmail.com",,"",,,,,"2026-10-17T02:15:06.917Z","2026-10-17T02:31:26.351Z",,,"2026-10-17T02:15:06.959Z",,,,,"","a3684feb-8028-49c6-bd9e-cea6fbed56fe","Stage A - Financial core validation",,"a07143e0-45a5-4b81-9e9f-f0f5f15e0bbb",82,,,
+"LAZ-8","LazyFinance","Seed representative Chilean financial history for core validation","**Delivered slice:** repeatable CLP demo dataset with checking, savings, and credit-card accounts, reconciled balances, tags, spending budgets, saving objectives, recurring entries, transfers, and dated transaction history. Add migration/seed commands and setup guidance.
+
+This is controlled test data for checking model behavior, **not active Fintoc ingestion**.
+
+**Evidence:** [merged implementation commit](<https://github.com/ig-peralta/LazyFinance/commit/91b1c38>).
+
+**Product requirements:** [Linear document](<https://linear.app/lazyfinance/document/lazyfinance-product-requirements-document-f5e3f9499c0b>).","Done",,"No priority","a47fe413-6c27-474a-a963-cf4f1c9ff7fb","LazyFinance product development","ignacio.peralta.acev@gmail.com",,"",,,,,"2026-10-17T02:15:07.166Z","2026-10-17T02:31:27.011Z",,,"2026-10-17T02:15:07.214Z",,,,,"","a3684feb-8028-49c6-bd9e-cea6fbed56fe","Stage A - Financial core validation",,"6c251d2d-9e84-4837-b840-6bc51b334cd4",82,,,
+"LAZ-9","LazyFinance","Expose user-scoped financial reads through MCP","**Delivered slice:** replace mock balance tools with six authenticated, read-only dashboard-backed MCP tools for balances, transactions, objectives, budget progress, monthly spending and spending comparison. Add Spanish discovery metadata, schemas and integration coverage. Monthly MCP summaries expose spending only.
+
+This records the first tool surface; MCP authorization for external clients (potentially OAuth) remains a Stage B decision.
+
+**Evidence:** [merged implementation commit](<https://github.com/ig-peralta/LazyFinance/commit/bdd8d64>).
+
+**Product requirements:** [Linear document](<https://linear.app/lazyfinance/document/lazyfinance-product-requirements-document-f5e3f9499c0b>).","Done",,"No priority","a47fe413-6c27-474a-a963-cf4f1c9ff7fb","LazyFinance product development","ignacio.peralta.acev@gmail.com",,"",,,,,"2026-10-17T02:15:07.404Z","2026-10-17T02:31:26.746Z",,,"2026-10-17T02:15:07.436Z",,,,,"","a3684feb-8028-49c6-bd9e-cea6fbed56fe","Stage A - Financial core validation",,"bd8b96d5-dbbf-4854-aef3-a97fbe5b9d0e",82,,,
+"LAZ-10","LazyFinance","Define the core-first product requirements and validation gate","**Delivered slice:** set the product direction around a demo-backed financial core and explicit validation gate before Fintoc; define subsequent parallel tracks for financial API, UI, Firebase auth, MCP authorization, provider-neutral adapters and a first-party text agent, with voice later. Future financial actions remain possible even though the initial agent is read-only.
+
+The requirements describe the intended development path, not a claim that Stage A or later stages have been completed.
+
+**Evidence:** [initial requirements](<https://github.com/ig-peralta/LazyFinance/commit/66ee5dd>), [product requirements correction](<https://github.com/ig-peralta/LazyFinance/commit/a052cd9>), [product requirements in Linear](<https://linear.app/lazyfinance/document/lazyfinance-product-requirements-document-f5e3f9499c0b>).","Done",,"No priority","a47fe413-6c27-474a-a963-cf4f1c9ff7fb","LazyFinance product development","ignacio.peralta.acev@gmail.com",,"",,,,,"2026-10-17T02:15:07.690Z","2026-10-17T02:27:59.560Z",,,"2026-10-17T02:15:07.740Z",,,,,"","a3684feb-8028-49c6-bd9e-cea6fbed56fe","Stage A - Financial core validation",,"320497ee-446a-4df5-a667-30d52608d996",82,,,
+"LAZ-11","LazyFinance","Implement the first PostgreSQL financial schema with Drizzle","**Delivered slice:** integrate PostgreSQL/Drizzle, configure runtime environment, and create the initial model for users, providers/connections, accounts, transactions, tags and objectives with migrations.
+
+This is **model v1**, not the completion of the Stage A validation gate. Semantics for transfers, balances, goal progress and provider-neutral ingestion remain to be reviewed.
+
+**Evidence:** [Drizzle integration](<https://github.com/ig-peralta/LazyFinance/commit/f520b52>), [environment configuration](<https://github.com/ig-peralta/LazyFinance/commit/ab3d946>), [core model v1](<https://github.com/ig-peralta/LazyFinance/commit/a154bd4>).
+
+**Product requirements:** [Linear document](<https://linear.app/lazyfinance/document/lazyfinance-product-requirements-document-f5e3f9499c0b>).","Done",,"No priority","a47fe413-6c27-474a-a963-cf4f1c9ff7fb","LazyFinance product development","ignacio.peralta.acev@gmail.com",,"",,,,,"2026-10-17T02:15:07.924Z","2026-10-17T02:27:59.755Z",,,"2026-10-17T02:15:07.971Z",,,,,"","a3684feb-8028-49c6-bd9e-cea6fbed56fe","Stage A - Financial core validation",,"5765ee24-9877-479d-badf-15a03cfb9fd1",82,,,
+"LAZ-12","LazyFinance","Scaffold the Angular web application and landing page","**Delivered slice:** set up an Angular app with SSR, routing, PrimeNG/Tailwind styling, a theme, and a starter landing page. This established the UI foundation for the financial dashboard; design refinement belongs to later stages.
+
+**Evidence:** [merged implementation commit](<https://github.com/ig-peralta/LazyFinance/commit/ebed8a0>).
+
+**Product requirements:** [Linear document](<https://linear.app/lazyfinance/document/lazyfinance-product-requirements-document-f5e3f9499c0b>).","Done",,"No priority","a47fe413-6c27-474a-a963-cf4f1c9ff7fb","LazyFinance product development","ignacio.peralta.acev@gmail.com",,"",,,,,"2026-10-17T02:15:08.337Z","2026-10-17T02:31:27.231Z",,,"2026-10-17T02:15:08.390Z",,,,,"","a3684feb-8028-49c6-bd9e-cea6fbed56fe","Stage A - Financial core validation",,"8cae8121-caba-4849-b223-dbea6c576516",82,,,
+"LAZ-13","LazyFinance","Make local development and deployment reproducible","**Delivered slice:** provide local PostgreSQL resources, containerized API and UI development/deployment stacks, and developer instructions for running the monorepo, migrations, and seed.
+
+Infrastructure for validating the core with demo data; not a claim that financial logic or provider ingestion is finished.
+
+**Evidence:** [local DB resources](<https://github.com/ig-peralta/LazyFinance/commit/84b61db>), [deployment stack](<https://github.com/ig-peralta/LazyFinance/commit/cbfa3a0>), [UI container integration](<https://github.com/ig-peralta/LazyFinance/commit/550064e>), [monorepo development guide](<https://github.com/ig-peralta/LazyFinance/commit/6208679>).
+
+**Product requirements:** [Linear document](<https://linear.app/lazyfinance/document/lazyfinance-product-requirements-document-f5e3f9499c0b>).","Done",,"No priority","a47fe413-6c27-474a-a963-cf4f1c9ff7fb","LazyFinance product development","ignacio.peralta.acev@gmail.com",,"",,,,,"2026-10-17T02:15:08.578Z","2026-10-17T02:28:01.272Z",,,"2026-10-17T02:15:08.604Z",,,,,"","a3684feb-8028-49c6-bd9e-cea6fbed56fe","Stage A - Financial core validation",,"f1ad748d-f925-40b6-84da-7351fcfae968",82,,,
+"LAZ-14","LazyFinance","Secure demo API and MCP access with shared principal contracts","**Delivered slice:** user-scoped bearer-token auth for HTTP and MCP, a demo login/session with SSR support, configurable CORS, and a shared auth-principal contract used by API and UI.
+
+This is temporary development authentication; full Firebase identity and the final MCP client authorization approach remain Stage B work.
+
+**Evidence:** [demo auth implementation](<https://github.com/ig-peralta/LazyFinance/commit/cc22223>), [shared contracts implementation](<https://github.com/ig-peralta/LazyFinance/commit/d451543>).
+
+**Product requirements:** [Linear document](<https://linear.app/lazyfinance/document/lazyfinance-product-requirements-document-f5e3f9499c0b>).","Done",,"No priority","a47fe413-6c27-474a-a963-cf4f1c9ff7fb","LazyFinance product development","ignacio.peralta.acev@gmail.com",,"",,,,,"2026-10-17T02:15:08.896Z","2026-10-17T02:31:27.555Z",,,"2026-10-17T02:15:08.943Z",,,,,"","a3684feb-8028-49c6-bd9e-cea6fbed56fe","Stage A - Financial core validation",,"74f10362-bbcb-4b3f-85d0-1f87d687b35f",82,,,
+"LAZ-15","LazyFinance","Identify and implement the minimum missing core financial flows","'> **Stage A - scope discovery and delivery.** Walk realistic demo scenarios across accounts, transactions, classifications, budgets and goals. Identify the few missing operations or model features required to actually validate the financial core; implement only those needed for the validation gate.
+
+**Acceptance:** record which flows are required now and which belong to later refinement, implement the required ones with consistent user-scoped behavior, and exercise them through relevant API/dashboard/MCP surfaces. Avoid pulling UI polish, Firebase, OAuth or Fintoc into this gate.
+
+[Product requirements, Stage A](<https://linear.app/lazyfinance/document/lazyfinance-product-requirements-document-f5e3f9499c0b>).
+
+**User journey:** [J3 and its acceptance story](<https://linear.app/lazyfinance/document/user-journeys-8320c2530763>), tracked by child issue [LAZ-22](https://linear.app/lazyfinance/issue/LAZ-22/as-a-user-trace-spending-against-my-budget).","Todo",,"Medium","a47fe413-6c27-474a-a963-cf4f1c9ff7fb","LazyFinance product development","ignacio.peralta.acev@gmail.com",,"",,,,,"2026-10-17T02:15:20.150Z","2026-10-17T03:35:17.879Z",,,,,,"2026-10-20T03:00:00.000Z",,"","a3684feb-8028-49c6-bd9e-cea6fbed56fe","Stage A - Financial core validation",,"65e83563-7551-4b5c-8901-854c47e31dec",82,,,
+"LAZ-16","LazyFinance","Define savings-goal contributions and objective progress","**Stage A - model review.** Decide how a contribution to a savings goal is recorded and measured separately from spending-budget progress; revisit objective kinds, periods and recurrence with representative demo scenarios.
+
+**Acceptance:** document goal and budget semantics with examples, adapt the model and relevant API/read surfaces if needed, and ensure no interface calls budget spending 'savings progress' without a defined contribution model.
+
+[Product requirements, Stage A and model decisions](<https://linear.app/lazyfinance/document/lazyfinance-product-requirements-document-f5e3f9499c0b>).
+
+**User journey:** [J4 and its acceptance story](<https://linear.app/lazyfinance/document/user-journeys-8320c2530763>), tracked by child issue [LAZ-20](https://linear.app/lazyfinance/issue/LAZ-20/as-a-user-distinguish-savings-goal-progress-from-budget-spending).","Todo",,"High","a47fe413-6c27-474a-a963-cf4f1c9ff7fb","LazyFinance product development","ignacio.peralta.acev@gmail.com",,"",,,,,"2026-10-17T02:15:20.412Z","2026-10-17T03:13:11.713Z",,,,,,"2026-10-20T03:00:00.000Z",,"","a3684feb-8028-49c6-bd9e-cea6fbed56fe","Stage A - Financial core validation",,"d4c50170-b07a-4026-8f89-c7948c4b1b03",82,,,
+"LAZ-17","LazyFinance","Review account balances, transfers, and transaction classification semantics","**Stage A - model review.** Use the seeded checking, savings and credit-card scenarios to decide how account balances, freshness, transfers, credit-card payments, income, and spending are represented. Review the current exclusion of transfers by tag name and how overlapping/untagged classifications affect totals.
+
+**Acceptance:** document the intended semantics and representative reconciliation examples; update model/calculations where needed; verify balances and user-scoped spending/comparisons remain consistent. Do not shape the core around Fintoc-specific payloads.
+
+[Product requirements, Stage A and model decisions](<https://linear.app/lazyfinance/document/lazyfinance-product-requirements-document-f5e3f9499c0b>).
+
+**User journeys:** [J1 and J2 with acceptance stories](<https://linear.app/lazyfinance/document/user-journeys-8320c2530763>), tracked by child issues [LAZ-19](https://linear.app/lazyfinance/issue/LAZ-19/as-a-user-understand-what-each-account-balance-means) and [LAZ-21](https://linear.app/lazyfinance/issue/LAZ-21/as-a-user-see-spending-without-internal-transfers-counted-as-expenses).","Todo",,"High","a47fe413-6c27-474a-a963-cf4f1c9ff7fb","LazyFinance product development","ignacio.peralta.acev@gmail.com",,"",,,,,"2026-10-17T02:15:21.232Z","2026-10-17T03:13:10.563Z",,,,,,"2026-10-20T03:00:00.000Z",,"","a3684feb-8028-49c6-bd9e-cea6fbed56fe","Stage A - Financial core validation",,"8be18b90-a23f-4e8a-98a1-baecfae138a4",82,,,
+"LAZ-18","LazyFinance","Validate the financial-core model and record the Stage A gate decision","**Stage A exit gate.** Demonstrate realistic account, transaction, transfer, spending-budget and savings-goal scenarios with controlled data. Reconcile meanings of balances and movements, show consistent user-scoped API/dashboard/MCP results where applicable, and document nonblocking limitations.
+
+**Done when:** any assumptions that would block provider ingestion are resolved; remaining questions are documented; there is an explicit decision that the model is good enough to begin Stage B parallel tracks, including the provider-neutral connector and eventual Fintoc adapter. This gate does not require polish or exhaustive analytics.
+
+[Product requirements, Stage A exit criteria](<https://linear.app/lazyfinance/document/lazyfinance-product-requirements-document-f5e3f9499c0b>).
+
+**Validation evidence:** record outcomes for [Stage A journeys J1-J4](<https://linear.app/lazyfinance/document/user-journeys-8320c2530763>) and their child stories before deciding the gate.","Todo",,"High","a47fe413-6c27-474a-a963-cf4f1c9ff7fb","LazyFinance product development","ignacio.peralta.acev@gmail.com",,"",,,,,"2026-10-17T02:15:30.481Z","2026-10-17T03:13:11.474Z",,,,,,"2026-10-20T03:00:00.000Z",,"","a3684feb-8028-49c6-bd9e-cea6fbed56fe","Stage A - Financial core validation",,"13dba218-d8c4-4339-932b-44743a42ee8a",82,,"LAZ-15, LAZ-16, LAZ-17",
+"LAZ-19","LazyFinance","As a user, understand what each account balance means","**Journey J1 - Account balances**
+
+As a user with checking, savings and credit-card accounts, I want to see balances I can interpret per account so that I do not mistake card liability or recorded income for cash available to spend.
+
+**Acceptance criteria**
+
+* Each displayed balance identifies the account and type; the rules for checking, savings and credit-card balance meanings are documented with a representative demo reconciliation.
+* The displayed amount and the underlying user-scoped API/MCP data agree for the same account, with any known freshness limitation or uncertainty explicit.
+* Monthly recorded income alone is never used to state how much cash is currently available.
+* A second user's account does not appear in the result.
+
+**Validation:** demonstrate the examples in [J1 of the user journeys](<https://linear.app/lazyfinance/document/user-journeys-8320c2530763>). See also the [product requirements](<https://linear.app/lazyfinance/document/lazyfinance-product-requirements-document-f5e3f9499c0b>). This story supplies user-facing evidence for the parent model decision; it does not require UI polish.","Todo",,"No priority","a47fe413-6c27-474a-a963-cf4f1c9ff7fb","LazyFinance product development","ignacio.peralta.acev@gmail.com",,"",,,,,"2026-10-17T03:09:22.212Z","2026-10-17T03:13:10.998Z",,,,,,"2026-10-20T03:00:00.000Z","LAZ-17","","a3684feb-8028-49c6-bd9e-cea6fbed56fe","Stage A - Financial core validation",,"a61efdf2-fd55-4362-b4ef-0a140b5c6b05",28,,,
+"LAZ-20","LazyFinance","As a user, distinguish savings-goal progress from budget spending","**Journey J4 - Savings goal**
+
+As a user with a savings target, I want any reported progress to reflect defined contributions so that I do not confuse a target or a spending-budget number with money saved.
+
+**Acceptance criteria**
+
+* Document with demo examples what counts as a contribution, how it relates to accounts and transfers, and how it differs from spending-budget progress.
+* Display the goal target and, only when justified by that rule, a traceable contribution/progress amount. Otherwise show the target without an invented percentage.
+* A tag or transfer by itself is not silently counted as a contribution unless the documented rule makes it one.
+* Objective period/recurrence rules and the user-scoped read results remain consistent with those examples.
+
+**Validation:** demonstrate [J4 of the user journeys](<https://linear.app/lazyfinance/document/user-journeys-8320c2530763>). Refer to the [product requirements](<https://linear.app/lazyfinance/document/lazyfinance-product-requirements-document-f5e3f9499c0b>).","Todo",,"No priority","a47fe413-6c27-474a-a963-cf4f1c9ff7fb","LazyFinance product development","ignacio.peralta.acev@gmail.com",,"",,,,,"2026-10-17T03:09:22.481Z","2026-10-17T03:13:10.731Z",,,,,,"2026-10-20T03:00:00.000Z","LAZ-16","","a3684feb-8028-49c6-bd9e-cea6fbed56fe","Stage A - Financial core validation",,"34ee8a9b-0914-42b4-96e0-97f811f73504",28,,,
+"LAZ-21","LazyFinance","As a user, see spending without internal transfers counted as expenses","**Journey J2 - Actual spending**
+
+As a user, I want monthly spending to represent purchases rather than money moved between my own accounts so that I can trust the total and compare periods.
+
+**Acceptance criteria**
+
+* A representative internal transfer and credit-card payment do not inflate spending or create new income; genuine purchases still count once in the overall spending total.
+* The treatment is based on documented movement semantics, not an unexplained tag-name convention. Any classification exceptions are explicit.
+* Overlapping tag amounts are not described as exclusive categories, and untagged spending does not disappear from the overall total.
+* A partial current-month comparison uses a comparable prior period; totals and the comparison agree across user-scoped API/dashboard/MCP reads where exposed.
+
+**Validation:** demonstrate transfer, payment, tagged and untagged examples from [J2 of the user journeys](<https://linear.app/lazyfinance/document/user-journeys-8320c2530763>). See the [product requirements](<https://linear.app/lazyfinance/document/lazyfinance-product-requirements-document-f5e3f9499c0b>).","Todo",,"No priority","a47fe413-6c27-474a-a963-cf4f1c9ff7fb","LazyFinance product development","ignacio.peralta.acev@gmail.com",,"",,,,,"2026-10-17T03:09:22.730Z","2026-10-17T03:13:11.230Z",,,,,,"2026-10-20T03:00:00.000Z","LAZ-17","","a3684feb-8028-49c6-bd9e-cea6fbed56fe","Stage A - Financial core validation",,"85dab865-38a9-4429-8c3d-4b3d4297cace",28,,,
+"LAZ-22","LazyFinance","As a user, trace spending against my budget","**Journey J3 - Spending budget**
+
+As a user with a grocery spending limit, I want to see what has been spent and what remains for its period so that I can understand whether I am within budget.
+
+**Acceptance criteria**
+
+* The budget's limit, spent, remaining and period are displayed or exposed consistently and can be traced to eligible user-owned transactions.
+* An eligible movement bearing more than one relevant tag counts once within this budget; internal money movements do not consume the limit.
+* Untagged spending is not silently presented as classified grocery spending, and the user can tell when category coverage is incomplete.
+* At least one recurring-budget scenario is validated against representative demo movements; any missing classification/budget flow essential to trust this result is captured in the parent issue.
+
+**Validation:** walk [J3 of the user journeys](<https://linear.app/lazyfinance/document/user-journeys-8320c2530763>) using the [product requirements](<https://linear.app/lazyfinance/document/lazyfinance-product-requirements-document-f5e3f9499c0b>) as scope. A scenario already supported by the dashboard still needs observable validation, not a duplicate implementation.","Todo",,"No priority","a47fe413-6c27-474a-a963-cf4f1c9ff7fb","LazyFinance product development","ignacio.peralta.acev@gmail.com",,"",,,,,"2026-10-17T03:09:23.024Z","2026-10-17T03:13:12.025Z",,,,,,"2026-10-20T03:00:00.000Z","LAZ-15","","a3684feb-8028-49c6-bd9e-cea6fbed56fe","Stage A - Financial core validation",,"86a40fce-a492-4573-aca2-4c19f51953da",28,,,
