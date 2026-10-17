@@ -1,5 +1,5 @@
 import { relations, sql } from 'drizzle-orm';
-import { check, index, numeric, pgEnum, pgTable, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
+import { boolean, check, index, numeric, pgEnum, pgTable, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
 import { account } from './account.table';
 
 export const transactionTypeEnum = pgEnum('transaction_type', ['debit', 'credit']);
@@ -19,6 +19,10 @@ export const transaction = pgTable(
     merchant: varchar('merchant', { length: 120 }),
     description: varchar('description', { length: 240 }),
     externalId: varchar('external_id', { length: 64 }),
+    // True when this movement is between two accounts the same user owns
+    // (an internal transfer or a credit-card payment) — set when the
+    // movement is recorded, never inferred later from a tag's name.
+    isInternalTransfer: boolean('is_internal_transfer').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

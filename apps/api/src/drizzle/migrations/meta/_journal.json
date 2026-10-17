@@ -71,6 +71,13 @@
       "when": 1788309612577,
       "tag": "0009_make_provider_connection_id_not_null",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792269228146,
+      "tag": "0010_add_transaction_is_internal_transfer",
+      "breakpoints": true
     }
   ]
 }
