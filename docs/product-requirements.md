@@ -1,4 +1,4 @@
-# LazyFinance — Product Requirements Document
+# LazyFinance - Product Requirements Document
 
 > **Status:** product vision and staged requirements.
 > **Initial scope:** personal finance understanding, starting with controlled demo data and CLP.
@@ -39,7 +39,7 @@ This foundation lets us test decisions while the model is still adaptable. Provi
 
 ## 3. Development sequence and decision gates
 
-### Stage A — Establish and validate the financial core
+### Stage A - Establish and validate the financial core
 
 Use representative demo scenarios to build and revisit the model, adding the minimum financial behaviors needed to determine whether it works. The goal is **good enough to validate the data model**, not a polished UI or an exhaustive analysis engine. Prioritize correctness and explicit semantics for:
 
@@ -53,7 +53,7 @@ Identify and add any **missing core capabilities** revealed by those scenarios b
 
 **Exit criteria:** the team can demonstrate realistic account, transaction, transfer, budget, and goal scenarios; explain what each amount and relationship represents; produce consistent user-scoped results; and resolve assumptions that would block provider data ingestion, while recording remaining nonblocking questions. The model can still be refined afterward. **Begin Fintoc integration only after this gate.**
 
-### Stage B — Advance several tracks after core validation
+### Stage B - Advance several tracks after core validation
 
 These are concurrent workstreams, not a single strict implementation order:
 
@@ -64,7 +64,7 @@ These are concurrent workstreams, not a single strict implementation order:
 5. **Provider connectivity:** define a provider-neutral connector contract and normalization rules for accounts, balances, and movements, then implement Fintoc as an adapter. The design must support additional provider adapters without rewriting core financial logic. Validate ingestion and reconciliation against the Stage A model rather than shaping the model solely around Fintoc.
 6. **Our conversational agent:** build a text-first experience that uses the same backend financial capabilities, answers with appropriate context, and distinguishes facts from projections. MCP remains available to external clients; it does not replace our agent.
 
-### Stage C — Broaden the experience
+### Stage C - Broaden the experience
 
 Add **voice interaction** to our agent after the text flow is useful and reliable. Expand analysis (for example, projections, anomalies, duplicate charges, price changes, and goal simulations) as their data requirements and behavior are validated. Add further provider adapters and other financial capabilities in response to validated needs; the roadmap is a starting sequence, not a ceiling on what LazyFinance can become.
 
