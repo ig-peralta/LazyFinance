@@ -1,6 +1,4 @@
-import { and, gte, inArray, lt, not, sql } from 'drizzle-orm';
-import { tag } from '../schema/tag.table';
-import { transactionTag } from '../schema/transaction-tag.table';
+import { and, eq, gte, lt, sql } from 'drizzle-orm';
 import { transaction } from '../schema/transaction.table';
 
 export function nextMonth(month: string): string {
@@ -26,13 +24,10 @@ export function inSantiagoPeriod(start: string, end: string) {
   );
 }
 
-// The demo data marks internal payments and savings transfers with these tags.
-export function excludesInternalTransfers(userId: string) {
-  return not(sql`EXISTS (
-    SELECT 1 FROM ${transactionTag}
-    INNER JOIN ${tag} ON ${transactionTag.tagId} = ${tag.id}
-    WHERE ${transactionTag.transactionId} = ${transaction.id}
-      AND ${tag.userId} = ${userId}
-      AND ${inArray(tag.name, ['Transferencias', 'Ahorro'])}
-  )`);
+// A movement between two accounts the same user owns (an internal transfer
+// or a credit-card payment) is marked directly on the row when it is
+// recorded — see transaction.isInternalMovement. This does not depend on
+// any tag's name, which the user is free to rename or delete.
+export function excludesInternalTransfers() {
+  return eq(transaction.isInternalMovement, false);
 }

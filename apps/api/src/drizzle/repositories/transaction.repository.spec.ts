@@ -59,11 +59,9 @@ describe('TransactionRepository', () => {
     expect(Object.keys(select.mock.calls[0][0])).toEqual(['income', 'spending']);
     const query = new PgDialect().sqlToQuery(where.mock.calls[0][0]);
     expect(query.sql).toContain('America/Santiago');
-    expect(query.sql).toMatch(/not EXISTS/i);
-    expect(query.sql).toContain('transaction_tag');
+    expect(query.sql).toContain('is_internal_movement');
     expect(query.params).toEqual([
-      userId, '2026-09-01 00:00:00', '2026-10-01 00:00:00',
-      userId, 'Transferencias', 'Ahorro',
+      userId, '2026-09-01 00:00:00', '2026-10-01 00:00:00', false,
     ]);
   });
 
@@ -78,7 +76,7 @@ describe('TransactionRepository', () => {
     expect(query.sql).toContain('<=');
     expect(query.params).toEqual([
       'demo-id', '2026-10-01 00:00:00', '2026-11-01 00:00:00',
-      now.toISOString(), 'demo-id', 'Transferencias', 'Ahorro',
+      now.toISOString(), false,
     ]);
   });
 
@@ -92,10 +90,9 @@ describe('TransactionRepository', () => {
     expect(Object.keys(select.mock.calls[0][0])).toEqual(['id', 'bookedAt', 'amount', 'tagId']);
     const sql = new PgDialect().sqlToQuery(where.mock.calls[0][0]);
     expect(sql.sql).toContain('America/Santiago');
-    expect(sql.sql).toMatch(/not EXISTS/i);
+    expect(sql.sql).toContain('is_internal_movement');
     expect(sql.params).toEqual([
-      'demo-id', 'demo-id', 'debit', '2026-01-01 00:00:00', '2026-10-01 00:00:00',
-      'demo-id', 'Transferencias', 'Ahorro',
+      'demo-id', 'demo-id', 'debit', '2026-01-01 00:00:00', '2026-10-01 00:00:00', false,
     ]);
   });
 });

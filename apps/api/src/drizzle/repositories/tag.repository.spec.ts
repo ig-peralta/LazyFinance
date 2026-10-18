@@ -63,11 +63,10 @@ describe('TagRepository', () => {
     expect(groupBy).toHaveBeenCalledOnce();
     expect(Object.keys(select.mock.calls[0][0])).toEqual(['id', 'name', 'color', 'amount', 'count']);
     const query = new PgDialect().sqlToQuery(where.mock.calls[0][0]);
-    expect(query.sql).toMatch(/not EXISTS/i);
+    expect(query.sql).toContain('is_internal_movement');
     expect(query.sql).toContain('America/Santiago');
     expect(query.params).toEqual([
-      userId, userId, 'debit', '2026-09-01 00:00:00', '2026-10-01 00:00:00',
-      userId, 'Transferencias', 'Ahorro',
+      userId, userId, 'debit', '2026-09-01 00:00:00', '2026-10-01 00:00:00', false,
     ]);
   });
 
