@@ -22,7 +22,7 @@ export const transaction = pgTable(
     // True when this movement is between two accounts the same user owns
     // (an internal transfer or a credit-card payment) — set when the
     // movement is recorded, never inferred later from a tag's name.
-    isInternalTransfer: boolean('is_internal_transfer').notNull().default(false),
+    isInternalMovement: boolean('is_internal_movement').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

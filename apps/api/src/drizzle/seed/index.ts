@@ -107,6 +107,7 @@ async function seed() {
             merchant: sql`excluded.merchant`,
             description: sql`excluded.description`,
             externalId: sql`excluded.external_id`,
+            isInternalMovement: sql`excluded.is_internal_movement`,
           },
         });
       }
