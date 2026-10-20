@@ -1,5 +1,7 @@
 # LazyFinance
 
+LazyFinance aims to help people understand their finances and make better decisions without manually reconciling balances and transactions. Its vision centers on a first-party conversational agent (text first, voice later) and a visual dashboard, backed by shared financial logic available to other applications through MCP and designed to support broader financial capabilities over time.
+
 LazyFinance is a pnpm/Turborepo monorepo with an Angular web app and a NestJS API. The development stack includes PostgreSQL, Drizzle for database access and migrations, and MCP over Streamable HTTP for API integrations.
 
 | Workspace | Stack | Development guide |
