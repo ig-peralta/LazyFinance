@@ -6,6 +6,7 @@ export const AccountSummarySchema = z.object({
   type: z.enum(['checking', 'savings', 'credit_card']),
   currency: z.literal('CLP'),
   balance: z.string(),
+  lastSyncedAt: z.iso.datetime().nullable(),
 });
 
 export type AccountSummary = z.infer<typeof AccountSummarySchema>;
