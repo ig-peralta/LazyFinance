@@ -13,6 +13,7 @@ describe('AccountRepository', () => {
       type: 'checking' as const,
       currency: 'CLP' as const,
       balance: '125000.00',
+      lastSyncedAt: null,
     }];
     const orderBy = vi.fn(async () => rows);
     const where = vi.fn((_condition: SQL) => ({ orderBy }));
@@ -22,7 +23,7 @@ describe('AccountRepository', () => {
     const userId = '00000000-0000-4000-8000-000000000001';
 
     await expect(repository.listActiveForUser(userId)).resolves.toEqual(rows);
-    expect(Object.keys(select.mock.calls[0][0])).toEqual(['id', 'alias', 'type', 'currency', 'balance']);
+    expect(Object.keys(select.mock.calls[0][0])).toEqual(['id', 'alias', 'type', 'currency', 'balance', 'lastSyncedAt']);
 
     const { sql, params } = new PgDialect().sqlToQuery(where.mock.calls[0][0]);
     expect(sql).toContain('user_id');

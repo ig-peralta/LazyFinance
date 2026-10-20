@@ -6,7 +6,11 @@ import { AccountRepository } from '../drizzle/repositories/account.repository';
 export class AccountsService {
   constructor(private readonly accounts: AccountRepository) {}
 
-  getActiveForUser(userId: string): Promise<AccountSummary[]> {
-    return this.accounts.listActiveForUser(userId);
+  async getActiveForUser(userId: string): Promise<AccountSummary[]> {
+    const rows = await this.accounts.listActiveForUser(userId);
+    return rows.map(({ lastSyncedAt, ...item }) => ({
+      ...item,
+      lastSyncedAt: lastSyncedAt?.toISOString() ?? null,
+    }));
   }
 }

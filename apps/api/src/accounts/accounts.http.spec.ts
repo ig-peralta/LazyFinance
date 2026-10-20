@@ -19,6 +19,7 @@ describe('GET /accounts', () => {
     type: 'checking',
     currency: 'CLP',
     balance: '125000.00',
+    lastSyncedAt: null,
   }];
   const listActiveForUser = vi.fn(async (userId: string) => userId === demoUser.id ? accounts : []);
   let app: INestApplication;

@@ -21,6 +21,7 @@ describe('Dashboard MCP tools', () => {
         type: 'checking',
         currency: 'CLP',
         balance: '25000.00',
+        lastSyncedAt: null,
       },
     ]),
   };
