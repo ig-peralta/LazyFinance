@@ -56,7 +56,7 @@ export class TransactionRepository {
         eq(account.userId, userId),
         inSantiagoPeriod(start, end),
         asOf ? lte(transaction.bookedAt, asOf) : undefined,
-        excludesInternalTransfers(userId),
+        excludesInternalTransfers(),
       ));
     return row;
   }
@@ -79,7 +79,7 @@ export class TransactionRepository {
         eq(transaction.type, 'debit'),
         inSantiagoPeriod(start, end),
         asOf ? lte(transaction.bookedAt, asOf) : undefined,
-        excludesInternalTransfers(userId),
+        excludesInternalTransfers(),
       ));
   }
 }

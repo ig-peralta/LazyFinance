@@ -71,6 +71,20 @@
       "when": 1788309612577,
       "tag": "0009_make_provider_connection_id_not_null",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792269228146,
+      "tag": "0010_add_transaction_is_internal_transfer",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1792355628000,
+      "tag": "0011_rename_is_internal_transfer_to_movement",
+      "breakpoints": true
     }
   ]
 }

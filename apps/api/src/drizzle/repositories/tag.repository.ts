@@ -72,7 +72,7 @@ export class TagRepository {
         eq(transaction.type, 'debit'),
         inSantiagoPeriod(start, end),
         asOf ? lte(transaction.bookedAt, asOf) : undefined,
-        excludesInternalTransfers(userId),
+        excludesInternalTransfers(),
       ))
       .groupBy(tag.id, tag.name, tag.color)
       .orderBy(desc(amount), asc(tag.name));

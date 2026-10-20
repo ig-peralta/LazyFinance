@@ -33,6 +33,7 @@ export function buildLedger(asOf = new Date()): LedgerEntry[] {
         merchant: string,
         tags: TagKey[],
         description = merchant,
+        isInternalMovement = false,
       ): boolean {
         const bookedAt = bookedDate(year, month, day);
         if (bookedAt > asOf) return false;
@@ -47,6 +48,7 @@ export function buildLedger(asOf = new Date()): LedgerEntry[] {
           merchant,
           description,
           externalId: `demo:${id}`,
+          isInternalMovement,
           tags,
         });
         return true;
@@ -59,8 +61,8 @@ export function buildLedger(asOf = new Date()): LedgerEntry[] {
       }
 
       if (previousCardSpending > 0) {
-        add('checking', 'card-payment', 9, -previousCardSpending, 'Banco', ['transfer'], 'Pago de tarjeta de crédito');
-        add('creditCard', 'card-payment', 9, previousCardSpending, 'Banco', ['transfer'], 'Pago recibido de cuenta corriente');
+        add('checking', 'card-payment', 9, -previousCardSpending, 'Banco', ['transfer'], 'Pago de tarjeta de crédito', true);
+        add('creditCard', 'card-payment', 9, previousCardSpending, 'Banco', ['transfer'], 'Pago recibido de cuenta corriente', true);
       }
 
       const salary = Math.round(1_550_000 * 1.06 ** (year - 2024) / 1000) * 1000 + (month >= 6 ? 30_000 : 0);
@@ -125,8 +127,8 @@ export function buildLedger(asOf = new Date()): LedgerEntry[] {
       }
 
       const savings = month === 0 ? 80_000 : month === 11 ? 100_000 : 140_000 + (year - 2024) * 10_000;
-      add('checking', 'savings-transfer', 28, -savings, 'Ahorro programado', ['transfer'], 'Transferencia a cuenta de ahorro');
-      add('savings', 'savings-transfer', 28, savings, 'Ahorro programado', ['savings'], 'Abono desde cuenta corriente');
+      add('checking', 'savings-transfer', 28, -savings, 'Ahorro programado', ['transfer'], 'Transferencia a cuenta de ahorro', true);
+      add('savings', 'savings-transfer', 28, savings, 'Ahorro programado', ['savings'], 'Abono desde cuenta corriente', true);
 
       previousCardSpending = cardSpending;
     }
