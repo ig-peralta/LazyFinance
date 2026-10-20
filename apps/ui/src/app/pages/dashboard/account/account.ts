@@ -21,6 +21,13 @@ import { SessionService } from '../../../services/session/session.service';
 type AccountsState = { accounts: AccountSummary[]; error: boolean };
 export const ACCOUNTS_STATE_KEY = makeStateKey<AccountsState | null>('dashboard-accounts');
 
+const dateFormatter = new Intl.DateTimeFormat('es-CL', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+  timeZone: 'America/Santiago',
+});
+
 @Component({
   selector: 'dashboard-account',
   imports: [Card],
@@ -89,5 +96,10 @@ export class Account implements OnInit {
   protected formatAccountBalance(account: AccountSummary): string {
     const balance = Number(account.balance);
     return formatClp(account.type === 'credit_card' && balance < 0 ? -balance : balance);
+  }
+
+  protected freshnessLabel(account: AccountSummary): string {
+    if (!account.lastSyncedAt) return 'Sin información de actualización';
+    return `Actualizado ${dateFormatter.format(new Date(account.lastSyncedAt))}`;
   }
 }
