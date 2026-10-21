@@ -46,6 +46,16 @@ Each journey describes a user's situation, the experience they need, and an obse
 
 **Stage A check:** Decide contribution semantics and objective period/recurrence behavior against representative examples. See [LAZ-16](https://linear.app/lazyfinance/issue/LAZ-16).
 
+### J5 - Define what I expect to earn and identify what I received
+
+**Situation:** I have a fixed salary, variable commissions, or irregular freelance payments. I want to declare when and how much I expect to be paid while keeping that plan distinct from actual deposits.
+
+**Journey:** Define owned income sources and their schedules, add dated expectations for irregular work, and explicitly attribute an existing credit transaction to a source. Compare expected payments with received income and inspect unclassified credits.
+
+**Observable outcome:** Regular timing and amount variability are independent. Every-two-weeks and twice-monthly schedules use their actual calendar dates. Estimated and unknown amounts are explicit. A late or different-amount receipt retains its booked facts. Refunds and internal transfers are not silently treated as earnings, and declarations never change account balances.
+
+**Stage A check:** Demonstrate the source, expectation, receipt, ownership, and period scenarios in [LAZ-25](https://linear.app/lazyfinance/issue/LAZ-25) and the [income model](income-model.md) through the backend API and read-only MCP tool.
+
 ## Later journeys - Detail shortly before implementation
 
 ### Stage B - Ask our own text agent
@@ -69,3 +79,4 @@ Keep acceptance criteria and implementation work in Linear issues. For Stage A, 
 | J2/J3   | [LAZ-23 - Classify each transaction with at most one tag](https://linear.app/lazyfinance/issue/LAZ-23) | [LAZ-17](https://linear.app/lazyfinance/issue/LAZ-17) |
 | J3      | [LAZ-22 - Trace budget spending](https://linear.app/lazyfinance/issue/LAZ-22)                    | [LAZ-15](https://linear.app/lazyfinance/issue/LAZ-15) |
 | J4      | [LAZ-20 - Measure savings-goal progress honestly](https://linear.app/lazyfinance/issue/LAZ-20)   | [LAZ-16](https://linear.app/lazyfinance/issue/LAZ-16) |
+| J5      | [LAZ-25 - Define income sources and payment schedules](https://linear.app/lazyfinance/issue/LAZ-25) | [LAZ-15](https://linear.app/lazyfinance/issue/LAZ-15) |

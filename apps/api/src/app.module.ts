@@ -10,6 +10,7 @@ import { AuthModule } from './auth/auth.module';
 import { TransactionsModule } from './transactions/transactions.module';
 import { ObjectivesModule } from './objectives/objectives.module';
 import { SummariesModule } from './summaries/summaries.module';
+import { IncomeModule } from './income/income.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { SummariesModule } from './summaries/summaries.module';
     TransactionsModule,
     ObjectivesModule,
     SummariesModule,
+    IncomeModule,
   ],
   controllers: [
     AppHttpController,

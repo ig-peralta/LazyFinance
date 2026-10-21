@@ -11,6 +11,8 @@ import { DRIZZLE_PG_CLIENT } from '../../drizzle/drizzle.tokens';
 import { ObjectivesService } from '../../objectives/objectives.service';
 import { SummariesService } from '../../summaries/summaries.service';
 import { TransactionsService } from '../../transactions/transactions.service';
+import { IncomeService } from '../../income/income.service';
+import { santiagoMonth } from '../../_utils/santiago-time';
 
 describe('Dashboard MCP tools', () => {
   let app: INestApplication;
@@ -53,7 +55,9 @@ describe('Dashboard MCP tools', () => {
   const summaries = {
     getMonthlyForUser: vi.fn(async (_userId: string, month: string) => ({
       month,
-      income: '1379000.00',
+      receivedIncome: '1379000.00',
+      expectedIncome: { amount: '1500000.00', estimatedAmount: '0.00', unknownAmountCount: 0, paymentCount: 1 },
+      unclassifiedCredits: { amount: '0.00', count: 0 },
       spending: '15000.00',
       tags: [],
     })),
@@ -61,7 +65,7 @@ describe('Dashboard MCP tools', () => {
       month,
       previousMonth: '2026-08',
       partial: false,
-      income: {
+      receivedIncome: {
         current: '1379000.00',
         previous: '1250000.00',
         change: '129000.00',
@@ -71,6 +75,18 @@ describe('Dashboard MCP tools', () => {
         previous: '10000.00',
         change: '5000.00',
       },
+    })),
+  };
+  const income = {
+    getSummaryForUser: vi.fn(async (_userId: string, month = santiagoMonth(new Date())) => ({
+      month, currency: 'CLP', asOf: new Date().toISOString(),
+      expectedIncome: { amount: '1500000.00', estimatedAmount: '0.00', unknownAmountCount: 0, paymentCount: 1 },
+      receivedIncome: '0.00', unclassifiedCredits: { amount: '10000.00', count: 1 },
+      expectedPayments: [{
+        sourceId: '00000000-0000-4000-8000-000000000051', sourceName: 'Sueldo', expectationId: null,
+        date: `${month}-25`, amount: '1500000.00', amountType: 'exact',
+      }],
+      receipts: [],
     })),
   };
 
@@ -107,6 +123,8 @@ describe('Dashboard MCP tools', () => {
       .useValue(objectives)
       .overrideProvider(SummariesService)
       .useValue(summaries)
+      .overrideProvider(IncomeService)
+      .useValue(income)
       .compile();
 
     app = module.createNestApplication();
@@ -121,7 +139,7 @@ describe('Dashboard MCP tools', () => {
     await app.close();
   });
 
-  it('advertises six Spanish, read-only tools with discoverable input/output schemas', async () => {
+  it('advertises seven Spanish, read-only tools with discoverable input/output schemas', async () => {
     const initialized = await post('alice', 'initialize', {
       protocolVersion: '2025-06-18',
       capabilities: {},
@@ -147,6 +165,7 @@ describe('Dashboard MCP tools', () => {
     expect(tools.map(({ name }) => name).sort()).toEqual([
       'comparar_gastos_mensuales',
       'consultar_avance_presupuestos',
+      'consultar_ingresos',
       'consultar_movimientos_recientes',
       'consultar_presupuestos_y_metas',
       'consultar_resumen_gastos_mensuales',
@@ -177,6 +196,8 @@ describe('Dashboard MCP tools', () => {
       const tool = tools.find((item) => item.name === name);
       expect(tool?.description.toLowerCase()).not.toContain('ingreso');
       expect(tool?.outputSchema.properties).not.toHaveProperty('income');
+      expect(tool?.outputSchema.properties).not.toHaveProperty('receivedIncome');
+      expect(tool?.outputSchema.properties).not.toHaveProperty('expectedIncome');
     }
   });
 
@@ -188,6 +209,7 @@ describe('Dashboard MCP tools', () => {
       ['consultar_avance_presupuestos', 'bob', { month: '2026-09' }],
       ['consultar_resumen_gastos_mensuales', 'alice', { month: '2026-09' }],
       ['comparar_gastos_mensuales', 'bob', { month: '2026-09' }],
+      ['consultar_ingresos', 'alice', { month: '2026-09' }],
     ];
     for (const [name, token, args] of calls) {
       const response = await call(token, name, args).expect(200);
@@ -201,6 +223,11 @@ describe('Dashboard MCP tools', () => {
       }
       if (name === 'consultar_movimientos_recientes') {
         expect(response.body.result.structuredContent.transactions).toEqual(recent);
+      }
+      if (name === 'consultar_ingresos') {
+        expect(response.body.result.structuredContent.expectedIncome.amount).toBe('1500000.00');
+        expect(response.body.result.structuredContent.receivedIncome).toBe('0.00');
+        expect(response.body.result.structuredContent.unclassifiedCredits.count).toBe(1);
       }
       if (
         name === 'consultar_resumen_gastos_mensuales' ||
@@ -217,6 +244,7 @@ describe('Dashboard MCP tools', () => {
     }
     expect(accounts.getActiveForUser).toHaveBeenCalledWith('bob');
     expect(transactions.getRecentForUser).toHaveBeenCalledWith('alice');
+    expect(income.getSummaryForUser).toHaveBeenCalledWith('alice', '2026-09');
     expect(objectives.getForUser).toHaveBeenCalledWith('alice');
     expect(objectives.getSpendingProgressForUser).toHaveBeenCalledWith(
       'bob',
@@ -230,6 +258,14 @@ describe('Dashboard MCP tools', () => {
       'bob',
       '2026-09',
     );
+  });
+
+  it('allows future income expectations while keeping received income separate', async () => {
+    const response = await call('alice', 'consultar_ingresos', { month: '9999-12' }).expect(200);
+    expect(response.body.result.isError).not.toBe(true);
+    expect(response.body.result.structuredContent.month).toBe('9999-12');
+    expect(response.body.result.structuredContent.expectedPayments[0].date).toBe('9999-12-25');
+    expect(response.body.result.structuredContent.receivedIncome).toBe('0.00');
   });
 
   it('defaults to the current Santiago month and rejects invalid or future months', async () => {

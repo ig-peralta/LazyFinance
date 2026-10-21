@@ -10,11 +10,13 @@ import { SummariesService } from './summaries.service';
 describe('GET /summaries/monthly', () => {
   const userId = '00000000-0000-4000-8000-000000000001';
   const getMonthlyForUser = vi.fn(async (_userId: string, month: string) => ({
-    month, income: '1550000.00', spending: '700000.00', tags: [],
+    month, receivedIncome: '1550000.00', spending: '700000.00', tags: [],
+    expectedIncome: { amount: '1600000.00', estimatedAmount: '0.00', unknownAmountCount: 0, paymentCount: 1 },
+    unclassifiedCredits: { amount: '0.00', count: 0 },
   }));
   const getComparisonForUser = vi.fn(async (_userId: string, month: string) => ({
     month, previousMonth: '2026-08', partial: false,
-    income: { current: '1550000.00', previous: '1500000.00', change: '50000.00' },
+    receivedIncome: { current: '1550000.00', previous: '1500000.00', change: '50000.00' },
     spending: { current: '700000.00', previous: '600000.00', change: '100000.00' },
   }));
   let app: INestApplication;
@@ -53,7 +55,12 @@ describe('GET /summaries/monthly', () => {
   it('returns only the authenticated user’s selected month', async () => {
     const response = await request(app.getHttpServer()).get('/summaries/monthly?month=2026-09')
       .set('Authorization', 'Bearer demo-token').expect(200);
-    expect(response.body).toEqual({ month: '2026-09', income: '1550000.00', spending: '700000.00', tags: [] });
+    expect(response.body).toEqual({
+      month: '2026-09', receivedIncome: '1550000.00', spending: '700000.00', tags: [],
+      expectedIncome: { amount: '1600000.00', estimatedAmount: '0.00', unknownAmountCount: 0, paymentCount: 1 },
+      unclassifiedCredits: { amount: '0.00', count: 0 },
+    });
+    expect(response.body).not.toHaveProperty('income');
     expect(response.headers['cache-control']).toBe('private, no-store');
     expect(getMonthlyForUser).toHaveBeenCalledWith(userId, '2026-09');
   });

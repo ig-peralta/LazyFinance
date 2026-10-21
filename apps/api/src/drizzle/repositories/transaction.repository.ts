@@ -6,7 +6,10 @@ import * as schema from '../schema';
 import { account } from '../schema/account.table';
 import { transaction } from '../schema/transaction.table';
 import { tag } from '../schema/tag.table';
+import { incomeReceipt } from '../schema/income-receipt.table';
+import { incomeSource } from '../schema/income-source.table';
 import { excludesInternalTransfers, inSantiagoPeriod, monthBounds } from './financial-filters';
+import { fromCents, toCents } from '../../_utils/money';
 
 const RECENT_LIMIT = 10;
 
@@ -14,7 +17,7 @@ const RECENT_LIMIT = 10;
 export class TransactionRepository {
   constructor(
     @Inject(DRIZZLE_PG_CLIENT)
-    private readonly db: PostgresJsDatabase<typeof schema>,
+    private readonly db: Pick<PostgresJsDatabase<typeof schema>, 'select'>,
   ) {}
 
   async listRecentForUser(userId: string) {
@@ -48,18 +51,27 @@ export class TransactionRepository {
   async sumForPeriod(userId: string, start: string, end: string, asOf?: Date) {
     const [row] = await this.db
       .select({
-        income: sql<string>`coalesce(sum(case when ${transaction.type} = 'credit' then ${transaction.amount} else 0 end), 0)`,
+        receivedIncome: sql<string>`coalesce(sum(case when ${transaction.type} = 'credit' AND ${incomeSource.id} IS NOT NULL then ${transaction.amount} else 0 end), 0)`,
+        unclassifiedCreditAmount: sql<string>`coalesce(sum(case when ${transaction.type} = 'credit' AND ${incomeSource.id} IS NULL then ${transaction.amount} else 0 end), 0)`,
+        unclassifiedCreditCount: sql<number>`count(*) filter (where ${transaction.type} = 'credit' AND ${incomeSource.id} IS NULL)::int`,
         spending: sql<string>`coalesce(-sum(case when ${transaction.type} = 'debit' then ${transaction.amount} else 0 end), 0)`,
       })
       .from(transaction)
       .innerJoin(account, eq(transaction.accountId, account.id))
+      .leftJoin(incomeReceipt, eq(incomeReceipt.transactionId, transaction.id))
+      .leftJoin(incomeSource, and(eq(incomeSource.id, incomeReceipt.sourceId), eq(incomeSource.userId, userId)))
       .where(and(
         eq(account.userId, userId),
         inSantiagoPeriod(start, end),
         asOf ? lte(transaction.bookedAt, asOf) : undefined,
         excludesInternalTransfers(),
       ));
-    return row;
+    return {
+      ...row,
+      receivedIncome: fromCents(toCents(row.receivedIncome)),
+      unclassifiedCreditAmount: fromCents(toCents(row.unclassifiedCreditAmount)),
+      spending: fromCents(toCents(row.spending)),
+    };
   }
 
   async listTaggedDebitsForPeriod(userId: string, start: string, end: string, asOf?: Date) {

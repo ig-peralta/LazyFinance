@@ -5,22 +5,32 @@ import { santiagoMonth, santiagoParts } from '../_utils/santiago-time';
 import { monthBounds, previousMonth } from '../drizzle/repositories/financial-filters';
 import { TagRepository } from '../drizzle/repositories/tag.repository';
 import { TransactionRepository } from '../drizzle/repositories/transaction.repository';
+import { IncomeService } from '../income/income.service';
 
 @Injectable()
 export class SummariesService {
   constructor(
     private readonly transactions: TransactionRepository,
     private readonly tags: TagRepository,
+    private readonly income: IncomeService,
   ) {}
 
   async getMonthlyForUser(userId: string, month: string, now = new Date()): Promise<MonthlySummary> {
     const asOf = month === santiagoMonth(now) ? now : undefined;
-    const [totals, tags] = await Promise.all([
+    const [totals, tags, expected] = await Promise.all([
       asOf ? this.transactions.sumByMonthForUser(userId, month, asOf) : this.transactions.sumByMonthForUser(userId, month),
       asOf ? this.tags.sumDebitsByTagForMonth(userId, month, asOf) : this.tags.sumDebitsByTagForMonth(userId, month),
+      this.income.getExpectedForUser(userId, month),
     ]);
 
-    return { month, income: totals.income, spending: totals.spending, tags };
+    return {
+      month,
+      expectedIncome: expected.totals,
+      receivedIncome: totals.receivedIncome,
+      unclassifiedCredits: { amount: totals.unclassifiedCreditAmount, count: totals.unclassifiedCreditCount },
+      spending: totals.spending,
+      tags,
+    };
   }
 
   async getComparisonForUser(userId: string, month: string, now = new Date()): Promise<MonthlyComparison> {
@@ -44,10 +54,10 @@ export class SummariesService {
       month,
       previousMonth: previous,
       partial,
-      income: {
-        current: current.income,
-        previous: earlier.income,
-        change: fromCents(toCents(current.income) - toCents(earlier.income)),
+      receivedIncome: {
+        current: current.receivedIncome,
+        previous: earlier.receivedIncome,
+        change: fromCents(toCents(current.receivedIncome) - toCents(earlier.receivedIncome)),
       },
       spending: {
         current: current.spending,

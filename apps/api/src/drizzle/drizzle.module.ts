@@ -6,6 +6,7 @@ import { ObjectiveRepository } from './repositories/objective.repository';
 import { TagRepository } from './repositories/tag.repository';
 import { TransactionRepository } from './repositories/transaction.repository';
 import { UserRepository } from './repositories/user.repository';
+import { IncomeRepository } from './repositories/income.repository';
 
 @Module({
   exports: [
@@ -15,7 +16,8 @@ import { UserRepository } from './repositories/user.repository';
     TagRepository,
     TransactionRepository,
     UserRepository,
+    IncomeRepository,
   ],
-  providers: [...drizzleProvider, AccountRepository, ObjectiveRepository, TagRepository, TransactionRepository, UserRepository],
+  providers: [...drizzleProvider, AccountRepository, ObjectiveRepository, TagRepository, TransactionRepository, UserRepository, IncomeRepository],
 })
 export class DrizzleModule {}
