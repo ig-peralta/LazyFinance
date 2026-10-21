@@ -4,11 +4,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { SummariesService } from './summaries.service';
 
 describe('SummariesService', () => {
-  it('keeps overall totals separate from overlapping tag totals', async () => {
+  it('includes untagged spending in the total beyond the exclusive tag breakdown', async () => {
     const sumByMonthForUser = vi.fn(async () => ({ income: '1550000.00', spending: '10000.00' }));
     const sumDebitsByTagForMonth = vi.fn(async () => [
-      { id: '00000000-0000-4000-8000-000000000031', name: 'Comida', color: null, amount: '10000.00', count: 1 },
-      { id: '00000000-0000-4000-8000-000000000032', name: 'Ocio', color: null, amount: '10000.00', count: 1 },
+      { id: '00000000-0000-4000-8000-000000000031', name: 'Comida', color: null, amount: '4000.00', count: 1 },
+      { id: '00000000-0000-4000-8000-000000000032', name: 'Ocio', color: null, amount: '5000.00', count: 1 },
     ]);
     const service = new SummariesService(
       { sumByMonthForUser } as unknown as TransactionRepository,

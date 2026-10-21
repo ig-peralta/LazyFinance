@@ -22,17 +22,17 @@ Each journey describes a user's situation, the experience they need, and an obse
 
 **Journey:** View monthly spending and the comparison; inspect transactions and tag breakdowns when something seems surprising.
 
-**Observable outcome:** Internal transfers and payments that merely move money between my own accounts do not inflate spending or income. Debit spending is counted once in the overall total; overlapping tags can each show the same movement and are not presented as mutually exclusive categories. A partial month is compared with a comparable prior period, not a full month.
+**Observable outcome:** Internal transfers and payments that merely move money between my own accounts do not inflate spending or income. Debit spending is counted once in the overall total. Each movement has at most one tag, so tagged spending groups are exclusive; untagged spending stays in the overall total. A partial month is compared with a comparable prior period, not a full month.
 
-**Stage A check:** Use transfer, card-payment, tagged and untagged examples to agree the rules before changing the model or calculations. See [LAZ-17](https://linear.app/lazyfinance/issue/LAZ-17).
+**Stage A check:** Use transfer, card-payment, tagged and untagged examples to validate the rules. See [LAZ-17](https://linear.app/lazyfinance/issue/LAZ-17) and the single-tag classification decision in [LAZ-23](https://linear.app/lazyfinance/issue/LAZ-23).
 
 ### J3 - Know how I am doing against a spending budget
 
 **Situation:** I set a grocery spending limit and want to see what has been spent, what remains, and which movements count during its period.
 
-**Journey:** Inspect the budget alongside the period and relevant spending. Check whether the result still makes sense when a movement has more than one tag or no tag.
+**Journey:** Inspect the budget alongside the period and relevant spending. Check whether the result still makes sense when a budget selects several tags or a movement has no tag.
 
-**Observable outcome:** Spent and remaining amounts can be traced to eligible user-owned movements and a clearly defined period. A multi-tagged movement counts once per budget, not twice within that budget; excluded internal movements do not consume the limit. Where untagged spending cannot be attributed, the presentation does not imply complete category coverage.
+**Observable outcome:** Spent and remaining amounts can be traced to eligible user-owned movements and a clearly defined period. Each eligible movement counts once per budget when its single tag matches any of the budget's selected tags; excluded internal movements do not consume the limit. Where untagged spending cannot be attributed, the presentation does not imply complete category coverage.
 
 **Stage A check:** Exercise representative monthly and recurring-budget scenarios, and identify any minimum classification or budget workflow needed to make the result trustworthy. See [LAZ-15](https://linear.app/lazyfinance/issue/LAZ-15) and [LAZ-17](https://linear.app/lazyfinance/issue/LAZ-17).
 
@@ -66,5 +66,6 @@ Keep acceptance criteria and implementation work in Linear issues. For Stage A, 
 | ------- | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
 | J1      | [LAZ-19 - Interpret account balances](https://linear.app/lazyfinance/issue/LAZ-19)               | [LAZ-17](https://linear.app/lazyfinance/issue/LAZ-17) |
 | J2      | [LAZ-21 - Exclude internal movements from spending](https://linear.app/lazyfinance/issue/LAZ-21) | [LAZ-17](https://linear.app/lazyfinance/issue/LAZ-17) |
+| J2/J3   | [LAZ-23 - Classify each transaction with at most one tag](https://linear.app/lazyfinance/issue/LAZ-23) | [LAZ-17](https://linear.app/lazyfinance/issue/LAZ-17) |
 | J3      | [LAZ-22 - Trace budget spending](https://linear.app/lazyfinance/issue/LAZ-22)                    | [LAZ-15](https://linear.app/lazyfinance/issue/LAZ-15) |
 | J4      | [LAZ-20 - Measure savings-goal progress honestly](https://linear.app/lazyfinance/issue/LAZ-20)   | [LAZ-16](https://linear.app/lazyfinance/issue/LAZ-16) |

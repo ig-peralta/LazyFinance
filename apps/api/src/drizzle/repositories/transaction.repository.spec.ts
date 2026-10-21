@@ -6,7 +6,7 @@ import * as schema from '../schema';
 import { TransactionRepository } from './transaction.repository';
 
 describe('TransactionRepository', () => {
-  it('queries only the ten newest transactions belonging to the user', async () => {
+  it('queries the ten newest user-owned transactions with only their owner’s tag', async () => {
     const rows = [{
       id: '00000000-0000-4000-8000-000000000011',
       bookedAt: new Date('2026-10-15T15:00:00.000Z'),
@@ -18,11 +18,13 @@ describe('TransactionRepository', () => {
       accountAlias: 'Tarjeta',
       accountType: 'credit_card',
       currency: 'CLP',
+      tag: { id: '00000000-0000-4000-8000-000000000031', name: 'Suscripciones', color: null },
     }];
     const limit = vi.fn(async (_count: number) => rows);
     const orderBy = vi.fn((..._ordering: SQL[]) => ({ limit }));
     const where = vi.fn((_condition: SQL) => ({ orderBy }));
-    const from = vi.fn(() => ({ innerJoin: () => ({ where }) }));
+    const leftJoin = vi.fn((_table: unknown, _condition: SQL) => ({ where }));
+    const from = vi.fn(() => ({ innerJoin: () => ({ leftJoin }) }));
     const select = vi.fn((_fields: Record<string, unknown>) => ({ from }));
     const repository = new TransactionRepository({ select } as unknown as PostgresJsDatabase<typeof schema>);
     const userId = '00000000-0000-4000-8000-000000000001';
@@ -31,7 +33,7 @@ describe('TransactionRepository', () => {
     expect(select).toHaveBeenCalledOnce();
     expect(Object.keys(select.mock.calls[0][0])).toEqual([
       'id', 'bookedAt', 'amount', 'type', 'merchant', 'description',
-      'accountId', 'accountAlias', 'accountType', 'currency',
+      'accountId', 'accountAlias', 'accountType', 'currency', 'tag',
     ]);
     expect(limit).toHaveBeenCalledWith(10);
 
@@ -42,6 +44,10 @@ describe('TransactionRepository', () => {
     const filter = dialect.sqlToQuery(where.mock.calls[0][0]);
     expect(filter.sql).toContain('user_id');
     expect(filter.params).toEqual([userId]);
+    const tagFilter = dialect.sqlToQuery(leftJoin.mock.calls[0][1]);
+    expect(tagFilter.sql).toContain('tag_id');
+    expect(tagFilter.sql).toContain('user_id');
+    expect(tagFilter.params).toEqual([userId]);
   });
 
   it('aggregates each non-transfer movement once within Santiago month boundaries', async () => {

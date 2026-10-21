@@ -96,10 +96,11 @@ async function seed() {
       }
 
       for (const group of batches(entries)) {
-        await tx.insert(schema.transaction).values(group.map(({ tags: _, ...entry }) => entry)).onConflictDoUpdate({
+        await tx.insert(schema.transaction).values(group).onConflictDoUpdate({
           target: schema.transaction.id,
           set: {
             accountId: sql`excluded.account_id`,
+            tagId: sql`excluded.tag_id`,
             bookedAt: sql`excluded.booked_at`,
             amount: sql`excluded.amount`,
             type: sql`excluded.type`,
@@ -110,14 +111,6 @@ async function seed() {
             isInternalMovement: sql`excluded.is_internal_movement`,
           },
         });
-      }
-
-      const links = entries.flatMap((entry) => entry.tags.map((key) => ({
-        transactionId: entry.id,
-        tagId: seedId(`tag:${key}`),
-      })));
-      for (const group of batches(links)) {
-        await tx.insert(schema.transactionTag).values(group).onConflictDoNothing();
       }
 
       const totals = await tx.select({

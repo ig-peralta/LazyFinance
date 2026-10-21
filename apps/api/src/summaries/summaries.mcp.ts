@@ -20,7 +20,7 @@ export class SummariesMcpController {
   @Tool({
     name: 'consultar_resumen_gastos_mensuales',
     description:
-      'Resume los gastos registrados en un mes calendario y los desglosa por etiqueta con importe y número de movimientos, en CLP. Por defecto consulta el mes actual hasta hoy (America/Santiago); excluye transferencias y ahorro entre cuentas. Las etiquetas pueden superponerse: sus importes no necesariamente suman el gasto total.',
+      'Resume los gastos registrados en un mes calendario y los desglosa por etiqueta con importe y número de movimientos, en CLP. Por defecto consulta el mes actual hasta hoy (America/Santiago); excluye transferencias y ahorro entre cuentas. Cada compra tiene como máximo una etiqueta: los grupos no se superponen, pero el total también incluye gastos sin etiqueta.',
     parameters: monthParameters,
     annotations: {
       title: 'Consultar gastos por mes y etiqueta',

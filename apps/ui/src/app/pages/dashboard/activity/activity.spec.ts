@@ -24,10 +24,7 @@ const recent: RecentTransaction[] = [
       type: 'credit_card',
       currency: 'CLP',
     },
-    tags: [
-      { id: '00000000-0000-4000-8000-000000000031', name: 'Suscripciones', color: '#7C3AED' },
-      { id: '00000000-0000-4000-8000-000000000032', name: 'Ocio', color: null },
-    ],
+    tag: { id: '00000000-0000-4000-8000-000000000031', name: 'Suscripciones', color: '#7C3AED' },
   },
   {
     id: '00000000-0000-4000-8000-000000000012',
@@ -42,7 +39,7 @@ const recent: RecentTransaction[] = [
       type: 'savings',
       currency: 'CLP',
     },
-    tags: [],
+    tag: null,
   },
 ];
 
@@ -71,7 +68,7 @@ describe('Activity', () => {
     return { fixture, clear, navigate, transferState };
   }
 
-  it('shows movements in API order with account, signed amount, date and all tags', async () => {
+  it('shows each movement’s single tag or its unclassified state', async () => {
     const getRecentTransactions = vi.fn(() => of(recent));
     const { fixture } = setup(getRecentTransactions);
     await fixture.whenStable();
@@ -83,10 +80,10 @@ describe('Activity', () => {
     expect(items[0].textContent).toContain('Tarjeta');
     expect(items[0].textContent).toContain('15 de octubre de 2026');
     expect(items[0].textContent).toContain('Suscripciones');
-    expect(items[0].textContent).toContain('Ocio');
     expect(items[0].textContent).toContain('-$6.990');
     expect(items[1].textContent).toContain('Ahorro');
     expect(items[1].textContent).toContain('$140.000');
+    expect(items[1].textContent).toContain('Sin etiqueta');
     expect(getRecentTransactions).toHaveBeenCalledOnce();
   });
 

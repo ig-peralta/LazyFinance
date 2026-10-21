@@ -55,12 +55,10 @@ export class ObjectivesService {
       : this.transactions.listTaggedDebitsForPeriod(userId, start, end));
 
     return candidates.map(({ objective, window, tagIds }) => {
-      const counted = new Set<string>();
       let spent = 0n;
       for (const transaction of transactions) {
         const date = santiagoTimestamp(transaction.bookedAt);
-        if (!tagIds.has(transaction.tagId) || date < window.start || date >= window.end || counted.has(transaction.id)) continue;
-        counted.add(transaction.id);
+        if (!tagIds.has(transaction.tagId) || date < window.start || date >= window.end) continue;
         spent -= toCents(transaction.amount);
       }
       const limit = toCents(objective.amount);

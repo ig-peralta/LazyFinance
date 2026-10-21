@@ -61,7 +61,7 @@ describe('ObjectivesService', () => {
     expect(listForObjectives).not.toHaveBeenCalled();
   });
 
-  it('counts a multi-tagged movement once per budget and separates monthly from yearly spend', async () => {
+  it('combines single-tag movements across budget tags and separates monthly from yearly spend', async () => {
     const groceryId = '00000000-0000-4000-8000-000000000051';
     const vacationId = '00000000-0000-4000-8000-000000000052';
     const groceriesTag = '00000000-0000-4000-8000-000000000031';
@@ -78,8 +78,8 @@ describe('ObjectivesService', () => {
       { objectiveId: vacationId, id: vacationTag, name: 'Vacaciones', color: null },
     ]);
     const listTaggedDebitsForPeriod = vi.fn(async () => [
-      { id: '00000000-0000-4000-8000-000000000061', amount: '-300000.00', bookedAt: new Date('2026-09-15T15:00:00Z'), tagId: groceriesTag },
-      { id: '00000000-0000-4000-8000-000000000061', amount: '-300000.00', bookedAt: new Date('2026-09-15T15:00:00Z'), tagId: familyTag },
+      { id: '00000000-0000-4000-8000-000000000061', amount: '-250000.00', bookedAt: new Date('2026-09-15T15:00:00Z'), tagId: groceriesTag },
+      { id: '00000000-0000-4000-8000-000000000064', amount: '-50000.00', bookedAt: new Date('2026-09-15T15:00:00Z'), tagId: familyTag },
       { id: '00000000-0000-4000-8000-000000000062', amount: '-200000.00', bookedAt: new Date('2026-01-14T15:00:00Z'), tagId: vacationTag },
       { id: '00000000-0000-4000-8000-000000000063', amount: '-150000.00', bookedAt: new Date('2026-09-17T15:00:00Z'), tagId: vacationTag },
     ]);

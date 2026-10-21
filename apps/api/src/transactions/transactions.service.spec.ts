@@ -1,4 +1,3 @@
-import type { TagRepository } from '../drizzle/repositories/tag.repository';
 import type { TransactionRepository } from '../drizzle/repositories/transaction.repository';
 import { describe, expect, it, vi } from 'vitest';
 import { TransactionsService } from './transactions.service';
@@ -8,7 +7,8 @@ const firstId = '00000000-0000-4000-8000-000000000011';
 const secondId = '00000000-0000-4000-8000-000000000012';
 
 describe('TransactionsService', () => {
-  it('loads tags for the selected movements and assembles their API response', async () => {
+  it('assembles tagged and untagged movements with a singular nullable tag', async () => {
+    const tag = { id: '00000000-0000-4000-8000-000000000032', name: 'Suscripciones', color: null };
     const rows = [
       {
         id: firstId,
@@ -21,6 +21,7 @@ describe('TransactionsService', () => {
         accountAlias: 'Tarjeta',
         accountType: 'credit_card' as const,
         currency: 'CLP' as const,
+        tag,
       },
       {
         id: secondId,
@@ -33,18 +34,11 @@ describe('TransactionsService', () => {
         accountAlias: null,
         accountType: 'savings' as const,
         currency: 'CLP' as const,
+        tag: null,
       },
     ];
-    const tags = [
-      { transactionId: firstId, id: '00000000-0000-4000-8000-000000000031', name: 'Ocio', color: '#9333EA' },
-      { transactionId: firstId, id: '00000000-0000-4000-8000-000000000032', name: 'Suscripciones', color: null },
-    ];
     const listRecentForUser = vi.fn(async () => rows);
-    const listForTransactions = vi.fn(async () => tags);
-    const service = new TransactionsService(
-      { listRecentForUser } as unknown as TransactionRepository,
-      { listForTransactions } as unknown as TagRepository,
-    );
+    const service = new TransactionsService({ listRecentForUser } as unknown as TransactionRepository);
 
     await expect(service.getRecentForUser(userId)).resolves.toEqual([
       {
@@ -55,7 +49,7 @@ describe('TransactionsService', () => {
         merchant: 'Netflix',
         description: null,
         account: { id: rows[0].accountId, alias: 'Tarjeta', type: 'credit_card', currency: 'CLP' },
-        tags: tags.map(({ transactionId: _, ...tag }) => tag),
+        tag,
       },
       {
         id: secondId,
@@ -65,22 +59,16 @@ describe('TransactionsService', () => {
         merchant: null,
         description: 'Ahorro',
         account: { id: rows[1].accountId, alias: null, type: 'savings', currency: 'CLP' },
-        tags: [],
+        tag: null,
       },
     ]);
     expect(listRecentForUser).toHaveBeenCalledWith(userId);
-    expect(listForTransactions).toHaveBeenCalledWith(userId, [firstId, secondId]);
   });
 
-  it('does not query tags when the user has no transactions', async () => {
+  it('returns no movements for an empty history', async () => {
     const listRecentForUser = vi.fn(async () => []);
-    const listForTransactions = vi.fn();
-    const service = new TransactionsService(
-      { listRecentForUser } as unknown as TransactionRepository,
-      { listForTransactions } as unknown as TagRepository,
-    );
+    const service = new TransactionsService({ listRecentForUser } as unknown as TransactionRepository);
 
     await expect(service.getRecentForUser(userId)).resolves.toEqual([]);
-    expect(listForTransactions).not.toHaveBeenCalled();
   });
 });

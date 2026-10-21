@@ -31,7 +31,7 @@ export class ObjectivesMcpController {
   @Tool({
     name: 'consultar_avance_presupuestos',
     description:
-      'Calcula por presupuesto de gasto el límite, gasto acumulado, saldo restante y porcentaje consumido para un mes en CLP. Si no se indica mes, usa el actual en America/Santiago. Cuenta una compra con varias etiquetas una sola vez por presupuesto; no calcula avance de metas de ahorro.',
+      'Calcula por presupuesto de gasto el límite, gasto acumulado, saldo restante y porcentaje consumido para un mes en CLP. Si no se indica mes, usa el actual en America/Santiago. Cada compra tiene como máximo una etiqueta y cuenta una vez si coincide con alguna del presupuesto; no calcula avance de metas de ahorro.',
     parameters: monthParameters,
     annotations: {
       title: 'Consultar avance de presupuestos de gasto',

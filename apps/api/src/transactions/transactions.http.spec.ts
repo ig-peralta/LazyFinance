@@ -17,7 +17,16 @@ describe('GET /transactions/recent', () => {
     merchant: 'Netflix',
     description: null,
     account: { id: '00000000-0000-4000-8000-000000000021', alias: 'Tarjeta', type: 'credit_card', currency: 'CLP' },
-    tags: [{ id: '00000000-0000-4000-8000-000000000031', name: 'Suscripciones', color: '#7C3AED' }],
+    tag: { id: '00000000-0000-4000-8000-000000000031', name: 'Suscripciones', color: '#7C3AED' },
+  }, {
+    id: '00000000-0000-4000-8000-000000000012',
+    bookedAt: '2026-10-14T15:00:00.000Z',
+    amount: '-15000.00',
+    type: 'debit',
+    merchant: 'Almuerzo',
+    description: null,
+    account: { id: '00000000-0000-4000-8000-000000000021', alias: 'Tarjeta', type: 'credit_card', currency: 'CLP' },
+    tag: null,
   }];
   const getRecentForUser = vi.fn(async (id: string) => id === userId ? transactions : []);
   let app: INestApplication;

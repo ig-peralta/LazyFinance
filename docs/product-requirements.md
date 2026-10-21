@@ -25,7 +25,7 @@ The initial agent reads, explains, and recommends; transaction execution is **ou
 Develop the product from a representative financial core outward, using controlled data before depending on bank connectivity:
 
 - Define users, provider connections, accounts, movements, tags, and spending/saving objectives; seed representative Chilean account and transaction history to exercise the model without a live provider.
-- Build user-scoped financial logic and API contracts for balances, activity, spending summaries, comparisons, and budget/goal information. Make the meaning of each figure explicit: overlapping tags do not form exclusive categories, income timing is not available money, and spending-budget progress is not savings-goal progress.
+- Build user-scoped financial logic and API contracts for balances, activity, spending summaries, comparisons, and budget/goal information. Make the meaning of each figure explicit: a transaction has at most one tag, untagged spending remains in overall totals, income timing is not available money, and spending-budget progress is not savings-goal progress.
 - Expose those capabilities in a visual dashboard and through MCP tools. Use a temporary login mechanism for development, then introduce full authentication. These interfaces share financial logic rather than each calculating its own figures.
 
 This foundation lets us test decisions while the model is still adaptable. Provider connectivity follows validation of the core instead of driving its shape from the outset.
@@ -45,7 +45,7 @@ Use representative demo scenarios to build and revisit the model, adding the min
 
 - Accounts and balances, including what a balance means for different account types and when it was last updated.
 - Movements, signs, dates, provenance, and relationships among transfers, credit-card payments, income, and spending so summaries do not mistake money moving between accounts for new income or expense.
-- Tags and classifications, including overlapping tags, untagged movements, and how they affect totals and budgets.
+- Tags and classifications: each transaction has zero or one tag, while a budget can select several tags. Tagged spending groups are exclusive; untagged movements remain part of overall totals. See the classification decision in [LAZ-23](https://linear.app/lazyfinance/issue/LAZ-23).
 - Spending budgets versus savings goals: their distinct definitions, periods, progress, and what counts as a contribution to a goal.
 - Trustworthy monthly and period comparisons, with clear treatment of incomplete periods and available balances.
 
@@ -73,7 +73,7 @@ Add **voice interaction** to our agent after the text flow is useful and reliabl
 ### Financial understanding
 
 - Show per-account balances and recent movements, with enough context to interpret the account type and data freshness.
-- Summarize spending by period and tag, compare comparable periods, and track spending against budgets. Do not imply that overlapping tags add up to a unique total.
+- Summarize spending by period and tag, compare comparable periods, and track spending against budgets. Each transaction belongs to at most one tag group; show that untagged spending can make the breakdown incomplete. Count each eligible movement once per budget when its tag matches any of the budget's selected tags.
 - Model income and internal movements accurately in the financial core. Do not present income timing as proof of available funds; use account balances for claims about available money.
 - Distinguish spending-budget progress from savings-goal progress. Define measurable savings contributions before presenting goal progress or simulations as facts.
 - Add projections and anomaly/pattern detection only with explainable rules, representative scenarios, and clear caveats about uncertainty.

@@ -5,7 +5,6 @@ import { DRIZZLE_PG_CLIENT } from '../drizzle.tokens';
 import * as schema from '../schema';
 import { tag } from '../schema/tag.table';
 import { objectiveTag } from '../schema/objective-tag.table';
-import { transactionTag } from '../schema/transaction-tag.table';
 import { account } from '../schema/account.table';
 import { transaction } from '../schema/transaction.table';
 import { excludesInternalTransfers, inSantiagoPeriod, monthBounds } from './financial-filters';
@@ -16,23 +15,6 @@ export class TagRepository {
     @Inject(DRIZZLE_PG_CLIENT)
     private readonly db: PostgresJsDatabase<typeof schema>,
   ) {}
-
-  async listForTransactions(userId: string, transactionIds: string[]) {
-    return this.db
-      .select({
-        transactionId: transactionTag.transactionId,
-        id: tag.id,
-        name: tag.name,
-        color: tag.color,
-      })
-      .from(transactionTag)
-      .innerJoin(tag, eq(transactionTag.tagId, tag.id))
-      .where(and(
-        inArray(transactionTag.transactionId, transactionIds),
-        eq(tag.userId, userId),
-      ))
-      .orderBy(asc(tag.name), asc(tag.id));
-  }
 
   async listForObjectives(userId: string, objectiveIds: string[]) {
     return this.db
@@ -60,12 +42,11 @@ export class TagRepository {
         name: tag.name,
         color: tag.color,
         amount,
-        count: sql<number>`count(distinct ${transaction.id})::int`,
+        count: sql<number>`count(*)::int`,
       })
       .from(transaction)
       .innerJoin(account, eq(transaction.accountId, account.id))
-      .innerJoin(transactionTag, eq(transactionTag.transactionId, transaction.id))
-      .innerJoin(tag, eq(transactionTag.tagId, tag.id))
+      .innerJoin(tag, eq(transaction.tagId, tag.id))
       .where(and(
         eq(account.userId, userId),
         eq(tag.userId, userId),
