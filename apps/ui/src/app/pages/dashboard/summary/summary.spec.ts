@@ -13,7 +13,7 @@ import { SUMMARY_STATE_KEY, Summary } from './summary';
 const summary: MonthlySummary = {
   month: '2026-09',
   income: '1550000.00',
-  spending: '10000.00',
+  spending: '20000.00',
   tags: [
     {
       id: '00000000-0000-4000-8000-000000000031',
@@ -57,7 +57,7 @@ describe('Summary', () => {
     return { fixture, clear, navigate, transferState };
   }
 
-  it('shows spending and potentially overlapping tag totals without income', async () => {
+  it('shows exclusive tag totals and explains unclassified spending without income', async () => {
     const getMonthlySummary = vi.fn(() => of(summary));
     const { fixture } = setup(getMonthlySummary);
     await fixture.whenStable();
@@ -67,10 +67,12 @@ describe('Summary', () => {
     expect(text).not.toContain('Ingresos');
     expect(text).not.toContain('$1.550.000');
     expect(text).toContain('$10.000');
+    expect(text).toContain('$20.000');
     expect(text).toContain('Comida');
     expect(text).toContain('Ocio');
     expect(text).toContain('$5.000');
-    expect(text).toContain('pueden superponerse');
+    expect(text).toContain('como máximo una');
+    expect(text).toContain('compras sin etiqueta');
     const items = fixture.nativeElement.querySelectorAll('figure ol li') as NodeListOf<HTMLElement>;
     const bars = fixture.nativeElement.querySelectorAll(
       '[data-testid="tag-bar"]',

@@ -60,15 +60,15 @@
               {{ transaction.account.alias || 'Cuenta' }} ·
               {{ formattedDate(transaction.bookedAt) }}
             </p>
-            @if (transaction.tags.length) {
-              <div class="mt-3 flex flex-wrap gap-2">
-                @for (tag of transaction.tags; track tag.id) {
-                  <span
-                    class="rounded-full bg-surface-100 px-2.5 py-1 text-xs text-muted-color dark:bg-surface-800"
-                    >{{ tag.name }}</span
-                  >
-                }
+            @if (transaction.tag; as tag) {
+              <div class="mt-3">
+                <span
+                  class="rounded-full bg-surface-100 px-2.5 py-1 text-xs text-muted-color dark:bg-surface-800"
+                  >{{ tag.name }}</span
+                >
               </div>
+            } @else {
+              <p class="mt-3 text-xs text-muted-color">Sin etiqueta</p>
             }
           </div>
           <p class="shrink-0 text-lg font-semibold tabular-nums text-color-emphasis">

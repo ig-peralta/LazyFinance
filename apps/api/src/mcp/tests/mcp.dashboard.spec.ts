@@ -1,3 +1,4 @@
+import type { RecentTransaction } from '@lazyfinance/contracts';
 import { INestApplication, UnauthorizedException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { MCP_STRATEGY, McpStrategy } from '@rekog/mcp-nest';
@@ -25,7 +26,26 @@ describe('Dashboard MCP tools', () => {
       },
     ]),
   };
-  const transactions = { getRecentForUser: vi.fn(async () => []) };
+  const recent: RecentTransaction[] = [{
+    id: '00000000-0000-4000-8000-000000000021',
+    bookedAt: '2026-09-15T15:00:00.000Z',
+    amount: '-15000.00',
+    type: 'debit',
+    merchant: 'Netflix',
+    description: null,
+    account: { id: '00000000-0000-4000-8000-000000000011', alias: 'Tarjeta', type: 'credit_card', currency: 'CLP' },
+    tag: { id: '00000000-0000-4000-8000-000000000031', name: 'Suscripciones', color: null },
+  }, {
+    id: '00000000-0000-4000-8000-000000000022',
+    bookedAt: '2026-09-14T15:00:00.000Z',
+    amount: '-10000.00',
+    type: 'debit',
+    merchant: 'Almuerzo',
+    description: null,
+    account: { id: '00000000-0000-4000-8000-000000000011', alias: 'Tarjeta', type: 'credit_card', currency: 'CLP' },
+    tag: null,
+  }];
+  const transactions = { getRecentForUser: vi.fn(async () => recent) };
   const objectives = {
     getForUser: vi.fn(async () => []),
     getSpendingProgressForUser: vi.fn(async () => []),
@@ -178,6 +198,9 @@ describe('Dashboard MCP tools', () => {
         expect(response.body.result.structuredContent.accounts[0].alias).toBe(
           token,
         );
+      }
+      if (name === 'consultar_movimientos_recientes') {
+        expect(response.body.result.structuredContent.transactions).toEqual(recent);
       }
       if (
         name === 'consultar_resumen_gastos_mensuales' ||

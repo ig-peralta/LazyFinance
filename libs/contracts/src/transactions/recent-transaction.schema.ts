@@ -10,7 +10,7 @@ export const RecentTransactionSchema = z.object({
   merchant: z.string().nullable(),
   description: z.string().nullable(),
   account: AccountSummarySchema.pick({ id: true, alias: true, type: true, currency: true }),
-  tags: z.array(TagSummarySchema),
+  tag: TagSummarySchema.nullable(),
 });
 
 export type RecentTransaction = z.infer<typeof RecentTransactionSchema>;

@@ -6,7 +6,6 @@ import * as schema from '../schema';
 import { account } from '../schema/account.table';
 import { transaction } from '../schema/transaction.table';
 import { tag } from '../schema/tag.table';
-import { transactionTag } from '../schema/transaction-tag.table';
 import { excludesInternalTransfers, inSantiagoPeriod, monthBounds } from './financial-filters';
 
 const RECENT_LIMIT = 10;
@@ -31,9 +30,11 @@ export class TransactionRepository {
         accountAlias: account.alias,
         accountType: account.type,
         currency: account.currency,
+        tag: { id: tag.id, name: tag.name, color: tag.color },
       })
       .from(transaction)
       .innerJoin(account, eq(transaction.accountId, account.id))
+      .leftJoin(tag, and(eq(transaction.tagId, tag.id), eq(tag.userId, userId)))
       .where(eq(account.userId, userId))
       .orderBy(desc(transaction.bookedAt), desc(transaction.id))
       .limit(RECENT_LIMIT);
@@ -71,8 +72,7 @@ export class TransactionRepository {
       })
       .from(transaction)
       .innerJoin(account, eq(transaction.accountId, account.id))
-      .innerJoin(transactionTag, eq(transactionTag.transactionId, transaction.id))
-      .innerJoin(tag, eq(transactionTag.tagId, tag.id))
+      .innerJoin(tag, eq(transaction.tagId, tag.id))
       .where(and(
         eq(account.userId, userId),
         eq(tag.userId, userId),

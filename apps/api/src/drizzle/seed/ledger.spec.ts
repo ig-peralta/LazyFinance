@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildLedger } from './ledger';
+import { tags } from './catalog';
+import { seedId } from './helpers';
 import { accounts } from './profile';
 
 const asOf = new Date('2026-10-15T20:00:00.000Z');
@@ -13,13 +15,24 @@ describe('Chilean demo ledger', () => {
     expect([...months].sort()[0]).toBe('2024-01');
     expect(new Set(entries.map(({ id }) => id)).size).toBe(entries.length);
     expect(buildLedger(asOf)).toEqual(entries);
+    const tagIds = new Set(tags.map(({ key }) => seedId(`tag:${key}`)));
 
     for (const entry of entries) {
       expect(entry.bookedAt.getTime()).toBeLessThanOrEqual(asOf.getTime());
       expect(Number(entry.amount)).not.toBe(0);
       expect(entry.type).toBe(Number(entry.amount) < 0 ? 'debit' : 'credit');
-      expect(entry.tags.length).toBeGreaterThan(0);
+      expect(entry.tagId === null || tagIds.has(entry.tagId)).toBe(true);
     }
+  });
+
+  it('uses primary categories and includes unclassified spending', () => {
+    const entries = buildLedger(asOf);
+    expect(entries.filter(({ merchant }) => merchant === 'Netflix')
+      .every(({ tagId }) => tagId === seedId('tag:subscriptions'))).toBe(true);
+    expect(entries.filter(({ merchant }) => merchant === 'Restaurante Barrio Italia')
+      .every(({ tagId }) => tagId === seedId('tag:dining'))).toBe(true);
+    expect(entries.some(({ merchant, tagId, amount }) =>
+      merchant === 'Almuerzo en oficina' && tagId === null && Number(amount) < 0)).toBe(true);
   });
 
   it('balances savings transfers across accounts and includes seasonal variation', () => {
