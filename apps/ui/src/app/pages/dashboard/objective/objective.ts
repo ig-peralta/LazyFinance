@@ -15,18 +15,12 @@ import { Router } from '@angular/router';
 import type { ObjectiveSummary } from '@lazyfinance/contracts';
 import { firstValueFrom } from 'rxjs';
 import { formatClp } from '../../../../utils/currency';
+import { formatDate } from '../../../../utils/date';
 import { ApiService } from '../../../services/api/api.service';
 import { SessionService } from '../../../services/session/session.service';
 
 type ObjectiveState = { objectives: ObjectiveSummary[]; error: boolean };
 export const OBJECTIVE_STATE_KEY = makeStateKey<ObjectiveState | null>('dashboard-objectives');
-
-const dateFormatter = new Intl.DateTimeFormat('es-CL', {
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-  timeZone: 'America/Santiago',
-});
 
 @Component({
   selector: 'dashboard-objective',
@@ -99,7 +93,7 @@ export class Objective implements OnInit {
       }
     }
     if (item.startDate && item.endDate) {
-      return `Inicio: ${dateFormatter.format(new Date(item.startDate))} · Fin: ${dateFormatter.format(new Date(item.endDate))}`;
+      return `Inicio: ${formatDate(new Date(item.startDate))} · Fin: ${formatDate(new Date(item.endDate))}`;
     }
     return 'Período único';
   }

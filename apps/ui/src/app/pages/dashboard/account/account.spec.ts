@@ -45,6 +45,7 @@ describe('Account', () => {
           type: 'checking' as const,
           currency: 'CLP' as const,
           balance: '125000.00',
+          lastSyncedAt: null,
         },
         {
           id: '00000000-0000-4000-8000-000000000003',
@@ -52,6 +53,7 @@ describe('Account', () => {
           type: 'credit_card' as const,
           currency: 'CLP' as const,
           balance: '-49990.00',
+          lastSyncedAt: '2026-10-15T15:00:00.000Z',
         },
       ]),
     );
@@ -64,6 +66,8 @@ describe('Account', () => {
     expect(text).toContain('$125.000');
     expect(text).toContain('Saldo adeudado');
     expect(text).toContain('$49.990');
+    expect(text).toContain('Sin información de actualización');
+    expect(text).toContain('Actualizado');
     expect(getAccounts).toHaveBeenCalledOnce();
   });
 
@@ -86,6 +90,7 @@ describe('Account', () => {
         type: 'checking',
         currency: 'CLP',
         balance: '125000.00',
+        lastSyncedAt: null,
       },
     ];
     const getAccounts = vi.fn(() => of([]));

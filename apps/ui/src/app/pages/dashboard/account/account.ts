@@ -15,6 +15,7 @@ import type { AccountSummary } from '@lazyfinance/contracts';
 import { Card } from 'primeng/card';
 import { firstValueFrom } from 'rxjs';
 import { formatClp } from '../../../../utils/currency';
+import { formatDate } from '../../../../utils/date';
 import { ApiService } from '../../../services/api/api.service';
 import { SessionService } from '../../../services/session/session.service';
 
@@ -89,5 +90,10 @@ export class Account implements OnInit {
   protected formatAccountBalance(account: AccountSummary): string {
     const balance = Number(account.balance);
     return formatClp(account.type === 'credit_card' && balance < 0 ? -balance : balance);
+  }
+
+  protected freshnessLabel(account: AccountSummary): string {
+    if (!account.lastSyncedAt) return 'Sin información de actualización';
+    return `Actualizado ${formatDate(new Date(account.lastSyncedAt))}`;
   }
 }
