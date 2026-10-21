@@ -6,6 +6,7 @@ import * as schema from '../schema';
 import { objectives, tags } from './catalog';
 import { clp, seedId } from './helpers';
 import { buildLedger } from './ledger';
+import { buildIncomeReceipts, incomeExpectations, incomeSources } from './income';
 import { accounts, demoConnectionId, demoUser, openingBalances, type AccountKey } from './profile';
 
 const batchSize = 100;
@@ -95,6 +96,24 @@ async function seed() {
         }))).onConflictDoNothing();
       }
 
+      for (const source of incomeSources) {
+        await tx.insert(schema.incomeSource).values({ ...source, createdAt: demoUser.createdAt }).onConflictDoUpdate({
+          target: schema.incomeSource.id,
+          set: {
+            name: source.name, currency: source.currency, regularity: source.regularity,
+            amountKind: source.amountKind, expectedAmount: source.expectedAmount, schedule: source.schedule,
+            startDate: source.startDate, endDate: null, archivedAt: null,
+          },
+        });
+      }
+
+      for (const expectation of incomeExpectations) {
+        await tx.insert(schema.incomeExpectation).values(expectation).onConflictDoUpdate({
+          target: schema.incomeExpectation.id,
+          set: { date: expectation.date, amount: expectation.amount, isEstimate: expectation.isEstimate },
+        });
+      }
+
       for (const group of batches(entries)) {
         await tx.insert(schema.transaction).values(group).onConflictDoUpdate({
           target: schema.transaction.id,
@@ -110,6 +129,13 @@ async function seed() {
             externalId: sql`excluded.external_id`,
             isInternalMovement: sql`excluded.is_internal_movement`,
           },
+        });
+      }
+
+      for (const group of batches(buildIncomeReceipts(entries))) {
+        await tx.insert(schema.incomeReceipt).values(group).onConflictDoUpdate({
+          target: schema.incomeReceipt.transactionId,
+          set: { sourceId: sql`excluded.source_id`, confirmedAt: sql`excluded.confirmed_at` },
         });
       }
 

@@ -6,3 +6,6 @@ export * from './account.table';
 export * from './transaction.table';
 export * from './objective.table';
 export * from './objective-tag.table';
+export * from './income-source.table';
+export * from './income-expectation.table';
+export * from './income-receipt.table';

@@ -92,6 +92,13 @@
       "when": 1792543584295,
       "tag": "0012_single_tag_per_transaction",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792556729106,
+      "tag": "0013_income_sources_schedules_and_receipts",
+      "breakpoints": true
     }
   ]
 }

@@ -16,14 +16,18 @@ describe('DashboardPage', () => {
     const getRecentTransactions = vi.fn(() => of([]));
     const getObjectives = vi.fn(() => of([]));
     const getMonthlySummary = vi.fn(() =>
-      of({ month: '2026-09', income: '0', spending: '0', tags: [] }),
+      of({
+        month: '2026-09', receivedIncome: '0', spending: '0', tags: [],
+        expectedIncome: { amount: '0.00', estimatedAmount: '0.00', unknownAmountCount: 0, paymentCount: 0 },
+        unclassifiedCredits: { amount: '0.00', count: 0 },
+      }),
     );
     const getMonthlyComparison = vi.fn(() =>
       of({
         month: '2026-09',
         previousMonth: '2026-08',
         partial: false,
-        income: { current: '0', previous: '0', change: '0.00' },
+        receivedIncome: { current: '0', previous: '0', change: '0.00' },
         spending: { current: '0', previous: '0', change: '0.00' },
       }),
     );

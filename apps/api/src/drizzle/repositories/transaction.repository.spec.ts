@@ -51,18 +51,19 @@ describe('TransactionRepository', () => {
   });
 
   it('aggregates each non-transfer movement once within Santiago month boundaries', async () => {
-    const where = vi.fn(async (_condition: SQL) => [{ income: '1550000.00', spending: '897740.00' }]);
-    const innerJoin = vi.fn(() => ({ where }));
+    const totals = { receivedIncome: '1550000.00', unclassifiedCreditAmount: '10000.00', unclassifiedCreditCount: 1, spending: '897740.00' };
+    const where = vi.fn(async (_condition: SQL) => [totals]);
+    const leftJoin = vi.fn((_table: unknown, _condition: SQL) => ({ leftJoin, where }));
+    const innerJoin = vi.fn(() => ({ leftJoin }));
     const from = vi.fn(() => ({ innerJoin }));
     const select = vi.fn((_fields: Record<string, unknown>) => ({ from }));
     const repository = new TransactionRepository({ select } as unknown as PostgresJsDatabase<typeof schema>);
     const userId = '00000000-0000-4000-8000-000000000001';
 
-    await expect(repository.sumByMonthForUser(userId, '2026-09')).resolves.toEqual({
-      income: '1550000.00', spending: '897740.00',
-    });
+    await expect(repository.sumByMonthForUser(userId, '2026-09')).resolves.toEqual(totals);
     expect(innerJoin).toHaveBeenCalledOnce();
-    expect(Object.keys(select.mock.calls[0][0])).toEqual(['income', 'spending']);
+    expect(Object.keys(select.mock.calls[0][0])).toEqual(['receivedIncome', 'unclassifiedCreditAmount', 'unclassifiedCreditCount', 'spending']);
+    expect(new PgDialect().sqlToQuery(leftJoin.mock.calls[1][1]).params).toEqual([userId]);
     const query = new PgDialect().sqlToQuery(where.mock.calls[0][0]);
     expect(query.sql).toContain('America/Santiago');
     expect(query.sql).toContain('is_internal_movement');
@@ -72,8 +73,9 @@ describe('TransactionRepository', () => {
   });
 
   it('excludes future-dated movements from an in-progress month', async () => {
-    const where = vi.fn(async (_condition: SQL) => [{ income: '0', spending: '10.00' }]);
-    const from = vi.fn(() => ({ innerJoin: () => ({ where }) }));
+    const where = vi.fn(async (_condition: SQL) => [{ receivedIncome: '0', unclassifiedCreditAmount: '0', unclassifiedCreditCount: 0, spending: '10.00' }]);
+    const leftJoin = vi.fn(() => ({ leftJoin, where }));
+    const from = vi.fn(() => ({ innerJoin: () => ({ leftJoin }) }));
     const repository = new TransactionRepository({ select: () => ({ from }) } as unknown as PostgresJsDatabase<typeof schema>);
     const now = new Date('2026-10-16T15:00:00.000Z');
 

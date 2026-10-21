@@ -13,7 +13,7 @@ const comparison: MonthlyComparison = {
   month: '2026-09',
   previousMonth: '2026-08',
   partial: true,
-  income: { current: '1550000.00', previous: '1450000.00', change: '100000.00' },
+  receivedIncome: { current: '1550000.00', previous: '1450000.00', change: '100000.00' },
   spending: { current: '500000.00', previous: '600000.00', change: '-100000.00' },
 };
 

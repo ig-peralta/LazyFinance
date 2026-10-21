@@ -5,7 +5,7 @@ export const MonthlyComparisonSchema = z.object({
   month: MonthSchema,
   previousMonth: MonthSchema,
   partial: z.boolean(),
-  income: z.object({ current: z.string(), previous: z.string(), change: z.string() }),
+  receivedIncome: z.object({ current: z.string(), previous: z.string(), change: z.string() }),
   spending: z.object({ current: z.string(), previous: z.string(), change: z.string() }),
 });
 

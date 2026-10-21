@@ -12,7 +12,9 @@ import { SUMMARY_STATE_KEY, Summary } from './summary';
 
 const summary: MonthlySummary = {
   month: '2026-09',
-  income: '1550000.00',
+  receivedIncome: '1550000.00',
+  expectedIncome: { amount: '1600000.00', estimatedAmount: '0.00', unknownAmountCount: 0, paymentCount: 1 },
+  unclassifiedCredits: { amount: '0.00', count: 0 },
   spending: '20000.00',
   tags: [
     {
