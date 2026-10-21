@@ -51,6 +51,7 @@ describe('ApiService', () => {
         type: 'checking',
         currency: 'CLP',
         balance: '125000.00',
+        lastSyncedAt: null,
       },
     ]);
 

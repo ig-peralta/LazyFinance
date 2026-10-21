@@ -1,4 +1,3 @@
-import type { AccountSummary } from '@lazyfinance/contracts';
 import { Inject, Injectable } from '@nestjs/common';
 import { and, asc, eq } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
@@ -13,7 +12,7 @@ export class AccountRepository {
     private readonly db: PostgresJsDatabase<typeof schema>,
   ) {}
 
-  listActiveForUser(userId: string): Promise<AccountSummary[]> {
+  listActiveForUser(userId: string) {
     return this.db
       .select({
         id: account.id,
@@ -21,6 +20,7 @@ export class AccountRepository {
         type: account.type,
         currency: account.currency,
         balance: account.balance,
+        lastSyncedAt: account.lastSyncedAt,
       })
       .from(account)
       .where(and(eq(account.userId, userId), eq(account.active, true)))
