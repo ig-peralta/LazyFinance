@@ -1,0 +1,115 @@
+<div class="min-h-screen bg-surface-50 text-color dark:bg-surface-950">
+  <header
+    class="border-b border-surface bg-surface-0 dark:border-surface-700 dark:bg-surface-950"
+    (keydown.escape)="closeMenu()"
+  >
+    <div
+      class="mx-auto flex h-[76px] max-w-7xl items-center justify-between gap-6 px-5 sm:px-8 lg:px-12"
+    >
+      <a
+        routerLink="/"
+        class="flex items-center gap-3 rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
+        aria-label="Inicio de LazyFinance"
+      >
+        <span
+          class="flex size-10 items-center justify-center rounded-2xl bg-primary text-primary-contrast"
+        >
+          <svg aria-hidden="true" viewBox="0 0 24 24" class="size-5" fill="none">
+            <path
+              d="M4 17.5 9 12l3.2 3.2L20 7"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M14.8 7H20v5.2"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </span>
+        <span class="text-lg font-semibold tracking-[-0.04em]"
+          >Lazy<span class="font-normal">Finance</span></span
+        >
+      </a>
+
+      <nav aria-label="Navegación principal" class="hidden flex-1 md:block">
+        <ul class="flex items-center gap-1">
+          @for (link of links; track link.path) {
+            <li>
+              <a
+                [routerLink]="link.path"
+                routerLinkActive="bg-surface-100 text-primary dark:bg-surface-800"
+                ariaCurrentWhenActive="page"
+                [attr.aria-label]="link.description"
+                class="block rounded-xl px-4 py-2 text-sm font-semibold text-muted-color hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              >
+                {{ link.label }}
+              </a>
+            </li>
+          }
+        </ul>
+      </nav>
+
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          class="hidden rounded-xl px-3 py-2 text-sm font-semibold text-muted-color hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary md:block"
+          (click)="logout()"
+        >
+          Cerrar sesión
+        </button>
+        <button
+          type="button"
+          class="rounded-xl px-3 py-2 text-sm font-semibold text-muted-color hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary md:hidden"
+          aria-controls="mobile-menu"
+          [attr.aria-expanded]="menuOpen()"
+          (click)="toggleMenu()"
+        >
+          {{ menuOpen() ? 'Cerrar menú' : 'Abrir menú' }}
+        </button>
+      </div>
+    </div>
+
+    @if (menuOpen()) {
+      <nav
+        id="mobile-menu"
+        aria-label="Navegación principal móvil"
+        class="border-t border-surface px-5 py-3 dark:border-surface-700 sm:px-8 md:hidden"
+      >
+        <ul class="flex flex-col gap-1">
+          @for (link of links; track link.path) {
+            <li>
+              <a
+                [routerLink]="link.path"
+                routerLinkActive="bg-surface-100 text-primary dark:bg-surface-800"
+                ariaCurrentWhenActive="page"
+                [attr.aria-label]="link.description"
+                class="block rounded-xl px-4 py-3 text-sm font-semibold text-muted-color hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                (click)="closeMenu()"
+              >
+                {{ link.label }}
+              </a>
+            </li>
+          }
+          <li>
+            <button
+              type="button"
+              class="block w-full rounded-xl px-4 py-3 text-left text-sm font-semibold text-muted-color hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              (click)="logout()"
+            >
+              Cerrar sesión
+            </button>
+          </li>
+        </ul>
+      </nav>
+    }
+  </header>
+
+  <main class="mx-auto max-w-7xl px-5 py-10 sm:px-8 sm:py-14 lg:px-12">
+    <router-outlet />
+  </main>
+</div>
