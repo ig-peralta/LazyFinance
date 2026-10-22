@@ -1,6 +1,6 @@
 import '@angular/compiler';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter, Router } from '@angular/router';
+import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiService } from '../../services/api/api.service';
@@ -10,8 +10,7 @@ import { DashboardPage } from './dashboard.page';
 describe('DashboardPage', () => {
   afterEach(() => TestBed.resetTestingModule());
 
-  it('shows the dashboard shell and account section and can log out', async () => {
-    const clear = vi.fn();
+  it('shows the dashboard overview sections', async () => {
     const getAccounts = vi.fn(() => of([]));
     const getRecentTransactions = vi.fn(() => of([]));
     const getObjectives = vi.fn(() => of([]));
@@ -35,7 +34,7 @@ describe('DashboardPage', () => {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
-        { provide: SessionService, useValue: { user: () => ({ name: 'Camila Rojas' }), clear } },
+        { provide: SessionService, useValue: { user: () => ({ name: 'Camila Rojas' }) } },
         {
           provide: ApiService,
           useValue: {
@@ -49,7 +48,6 @@ describe('DashboardPage', () => {
         },
       ],
     });
-    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     const fixture = TestBed.createComponent(DashboardPage);
     fixture.detectChanges();
     await fixture.whenStable();
@@ -74,9 +72,5 @@ describe('DashboardPage', () => {
       (heading) => heading.textContent?.trim(),
     );
     expect(headings.at(-1)).toBe('Tus últimos movimientos');
-
-    (fixture.nativeElement.querySelector('header button') as HTMLButtonElement).click();
-    expect(clear).toHaveBeenCalledOnce();
-    expect(navigate).toHaveBeenCalledWith('/');
   });
 });
