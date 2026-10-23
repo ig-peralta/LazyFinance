@@ -1,4 +1,4 @@
-import { and, eq, gte, lt, sql } from 'drizzle-orm';
+import { and, eq, gte, isNull, lt, sql } from 'drizzle-orm';
 import { transaction } from '../schema/transaction.table';
 
 export function nextMonth(month: string): string {
@@ -24,10 +24,9 @@ export function inSantiagoPeriod(start: string, end: string) {
   );
 }
 
-// A movement between two accounts the same user owns (an internal transfer
-// or a credit-card payment) is marked directly on the row when it is
-// recorded — see transaction.isInternalMovement. This does not depend on
-// any tag's name, which the user is free to rename or delete.
+// Only booked, confirmed-external movements enter spending/income totals.
+// Null internal status means unresolved, not confirmed external. A revoked
+// provider movement keeps its row and user decisions but cannot count again.
 export function excludesInternalTransfers() {
-  return eq(transaction.isInternalMovement, false);
+  return and(eq(transaction.isInternalMovement, false), isNull(transaction.removedAt));
 }

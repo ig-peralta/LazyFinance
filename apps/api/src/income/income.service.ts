@@ -142,7 +142,8 @@ export class IncomeService {
       await this.source(repository, userId, sourceId, true);
       const transaction = await repository.findTransactionForUser(userId, transactionId);
       if (!transaction) throw new NotFoundException('Transaction not found');
-      if (transaction.type !== 'credit' || transaction.isInternalMovement || transaction.bookedAt > now) {
+      if (transaction.type !== 'credit' || transaction.isInternalMovement !== false ||
+        transaction.removedAt !== null || transaction.bookedAt > now) {
         throw new BadRequestException('Received income requires a booked, non-internal credit transaction');
       }
       let receipt = await repository.findReceiptForUser(userId, transactionId);
@@ -182,6 +183,7 @@ export class IncomeService {
         expectedIncome: expected.totals,
         receivedIncome: received.receivedIncome,
         unclassifiedCredits: { amount: received.unclassifiedCreditAmount, count: received.unclassifiedCreditCount },
+        unresolvedMovementCount: received.unresolvedMovementCount ?? 0,
         expectedPayments: expected.payments,
         receipts: receipts.map(receiptResponse),
       };

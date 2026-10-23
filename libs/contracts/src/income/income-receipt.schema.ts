@@ -26,6 +26,7 @@ export const IncomeSummarySchema = z.object({
   expectedIncome: ExpectedIncomeTotalsSchema,
   receivedIncome: z.string(),
   unclassifiedCredits: UnclassifiedCreditsSchema,
+  unresolvedMovementCount: z.number().int().nonnegative().optional(),
   expectedPayments: z.array(ExpectedIncomePaymentSchema),
   receipts: z.array(IncomeReceiptSchema),
 });

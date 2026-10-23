@@ -12,6 +12,7 @@ export const MonthlySummarySchema = z.object({
   receivedIncome: z.string(),
   unclassifiedCredits: UnclassifiedCreditsSchema,
   spending: z.string(),
+  unresolvedMovementCount: z.number().int().nonnegative().optional(),
   tags: z.array(TagSummarySchema.extend({ amount: z.string(), count: z.number().int() })),
 });
 

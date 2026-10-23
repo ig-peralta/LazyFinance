@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, desc, eq, lte, sql } from 'drizzle-orm';
+import { and, desc, eq, isNull, lte, sql } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { DRIZZLE_PG_CLIENT } from '../drizzle.tokens';
 import * as schema from '../schema';
@@ -38,7 +38,7 @@ export class TransactionRepository {
       .from(transaction)
       .innerJoin(account, eq(transaction.accountId, account.id))
       .leftJoin(tag, and(eq(transaction.tagId, tag.id), eq(tag.userId, userId)))
-      .where(eq(account.userId, userId))
+      .where(and(eq(account.userId, userId), isNull(transaction.removedAt)))
       .orderBy(desc(transaction.bookedAt), desc(transaction.id))
       .limit(RECENT_LIMIT);
   }
@@ -49,12 +49,14 @@ export class TransactionRepository {
   }
 
   async sumForPeriod(userId: string, start: string, end: string, asOf?: Date) {
+    const eligible = sql`${transaction.isInternalMovement} = false`;
     const [row] = await this.db
       .select({
-        receivedIncome: sql<string>`coalesce(sum(case when ${transaction.type} = 'credit' AND ${incomeSource.id} IS NOT NULL then ${transaction.amount} else 0 end), 0)`,
-        unclassifiedCreditAmount: sql<string>`coalesce(sum(case when ${transaction.type} = 'credit' AND ${incomeSource.id} IS NULL then ${transaction.amount} else 0 end), 0)`,
-        unclassifiedCreditCount: sql<number>`count(*) filter (where ${transaction.type} = 'credit' AND ${incomeSource.id} IS NULL)::int`,
-        spending: sql<string>`coalesce(-sum(case when ${transaction.type} = 'debit' then ${transaction.amount} else 0 end), 0)`,
+        receivedIncome: sql<string>`coalesce(sum(case when ${eligible} AND ${transaction.type} = 'credit' AND ${incomeSource.id} IS NOT NULL then ${transaction.amount} else 0 end), 0)`,
+        unclassifiedCreditAmount: sql<string>`coalesce(sum(case when ${eligible} AND ${transaction.type} = 'credit' AND ${incomeSource.id} IS NULL then ${transaction.amount} else 0 end), 0)`,
+        unclassifiedCreditCount: sql<number>`count(*) filter (where ${eligible} AND ${transaction.type} = 'credit' AND ${incomeSource.id} IS NULL)::int`,
+        spending: sql<string>`coalesce(-sum(case when ${eligible} AND ${transaction.type} = 'debit' then ${transaction.amount} else 0 end), 0)`,
+        unresolvedMovementCount: sql<number>`count(*) filter (where ${transaction.isInternalMovement} IS NULL)::int`,
       })
       .from(transaction)
       .innerJoin(account, eq(transaction.accountId, account.id))
@@ -64,7 +66,7 @@ export class TransactionRepository {
         eq(account.userId, userId),
         inSantiagoPeriod(start, end),
         asOf ? lte(transaction.bookedAt, asOf) : undefined,
-        excludesInternalTransfers(),
+        isNull(transaction.removedAt),
       ));
     return {
       ...row,

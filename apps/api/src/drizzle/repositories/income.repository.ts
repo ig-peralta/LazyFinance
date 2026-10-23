@@ -1,6 +1,6 @@
 import type { IncomeExpectationInput, IncomeSourceInput } from '@lazyfinance/contracts';
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, eq, getTableColumns, gte, lt, lte } from 'drizzle-orm';
+import { and, asc, eq, getTableColumns, gte, isNull, lt, lte } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { DRIZZLE_PG_CLIENT } from '../drizzle.tokens';
 import * as schema from '../schema';
@@ -135,6 +135,7 @@ export class IncomeRepository {
     return this.receiptsQuery().where(and(
       eq(incomeSource.userId, userId), eq(account.userId, userId),
       eq(transaction.type, 'credit'), eq(transaction.isInternalMovement, false),
+      isNull(transaction.removedAt),
       inSantiagoPeriod(start, end), lte(transaction.bookedAt, asOf),
     )).orderBy(asc(transaction.bookedAt), asc(transaction.id));
   }

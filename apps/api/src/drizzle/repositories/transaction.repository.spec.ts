@@ -43,6 +43,7 @@ describe('TransactionRepository', () => {
     expect(ordering[1]).toMatch(/transaction.*id.*desc/i);
     const filter = dialect.sqlToQuery(where.mock.calls[0][0]);
     expect(filter.sql).toContain('user_id');
+    expect(filter.sql).toContain('removed_at');
     expect(filter.params).toEqual([userId]);
     const tagFilter = dialect.sqlToQuery(leftJoin.mock.calls[0][1]);
     expect(tagFilter.sql).toContain('tag_id');
@@ -51,7 +52,7 @@ describe('TransactionRepository', () => {
   });
 
   it('aggregates each non-transfer movement once within Santiago month boundaries', async () => {
-    const totals = { receivedIncome: '1550000.00', unclassifiedCreditAmount: '10000.00', unclassifiedCreditCount: 1, spending: '897740.00' };
+    const totals = { receivedIncome: '1550000.00', unclassifiedCreditAmount: '10000.00', unclassifiedCreditCount: 1, spending: '897740.00', unresolvedMovementCount: 0 };
     const where = vi.fn(async (_condition: SQL) => [totals]);
     const leftJoin = vi.fn((_table: unknown, _condition: SQL) => ({ leftJoin, where }));
     const innerJoin = vi.fn(() => ({ leftJoin }));
@@ -62,18 +63,22 @@ describe('TransactionRepository', () => {
 
     await expect(repository.sumByMonthForUser(userId, '2026-09')).resolves.toEqual(totals);
     expect(innerJoin).toHaveBeenCalledOnce();
-    expect(Object.keys(select.mock.calls[0][0])).toEqual(['receivedIncome', 'unclassifiedCreditAmount', 'unclassifiedCreditCount', 'spending']);
+    expect(Object.keys(select.mock.calls[0][0])).toEqual(['receivedIncome', 'unclassifiedCreditAmount', 'unclassifiedCreditCount', 'spending', 'unresolvedMovementCount']);
+    const selections = select.mock.calls[0][0];
+    expect(new PgDialect().sqlToQuery(selections.receivedIncome as SQL).sql).toContain('is_internal_movement');
+    expect(new PgDialect().sqlToQuery(selections.unresolvedMovementCount as SQL).sql).toContain('IS NULL');
     expect(new PgDialect().sqlToQuery(leftJoin.mock.calls[1][1]).params).toEqual([userId]);
     const query = new PgDialect().sqlToQuery(where.mock.calls[0][0]);
     expect(query.sql).toContain('America/Santiago');
-    expect(query.sql).toContain('is_internal_movement');
+    expect(query.sql).toContain('removed_at');
+    expect(query.sql).not.toContain('= false');
     expect(query.params).toEqual([
-      userId, '2026-09-01 00:00:00', '2026-10-01 00:00:00', false,
+      userId, '2026-09-01 00:00:00', '2026-10-01 00:00:00',
     ]);
   });
 
   it('excludes future-dated movements from an in-progress month', async () => {
-    const where = vi.fn(async (_condition: SQL) => [{ receivedIncome: '0', unclassifiedCreditAmount: '0', unclassifiedCreditCount: 0, spending: '10.00' }]);
+    const where = vi.fn(async (_condition: SQL) => [{ receivedIncome: '0', unclassifiedCreditAmount: '0', unclassifiedCreditCount: 0, spending: '10.00', unresolvedMovementCount: 0 }]);
     const leftJoin = vi.fn(() => ({ leftJoin, where }));
     const from = vi.fn(() => ({ innerJoin: () => ({ leftJoin }) }));
     const repository = new TransactionRepository({ select: () => ({ from }) } as unknown as PostgresJsDatabase<typeof schema>);
@@ -84,7 +89,7 @@ describe('TransactionRepository', () => {
     expect(query.sql).toContain('<=');
     expect(query.params).toEqual([
       'demo-id', '2026-10-01 00:00:00', '2026-11-01 00:00:00',
-      now.toISOString(), false,
+      now.toISOString(),
     ]);
   });
 
@@ -99,6 +104,7 @@ describe('TransactionRepository', () => {
     const sql = new PgDialect().sqlToQuery(where.mock.calls[0][0]);
     expect(sql.sql).toContain('America/Santiago');
     expect(sql.sql).toContain('is_internal_movement');
+    expect(sql.sql).toContain('removed_at');
     expect(sql.params).toEqual([
       'demo-id', 'demo-id', 'debit', '2026-01-01 00:00:00', '2026-10-01 00:00:00', false,
     ]);
