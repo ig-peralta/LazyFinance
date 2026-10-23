@@ -86,6 +86,14 @@ describe('Summary', () => {
     expect(getMonthlySummary).toHaveBeenCalledOnce();
   });
 
+  it('warns when movements excluded from the totals still need an internal-status decision', async () => {
+    const { fixture } = setup(() => of({ ...summary, unresolvedMovementCount: 2 }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Hay 2 movimientos por revisar');
+    expect(fixture.nativeElement.textContent).toContain('totales de gastos e ingresos pueden estar incompletos');
+  });
+
   it('renders on the server and hydrates without refetching', async () => {
     const server = setup(() => of(summary), 'server');
     await server.fixture.whenStable();

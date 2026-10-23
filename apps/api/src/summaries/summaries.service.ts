@@ -29,6 +29,7 @@ export class SummariesService {
       receivedIncome: totals.receivedIncome,
       unclassifiedCredits: { amount: totals.unclassifiedCreditAmount, count: totals.unclassifiedCreditCount },
       spending: totals.spending,
+      unresolvedMovementCount: totals.unresolvedMovementCount ?? 0,
       tags,
     };
   }
@@ -63,6 +64,10 @@ export class SummariesService {
         current: current.spending,
         previous: earlier.spending,
         change: fromCents(toCents(current.spending) - toCents(earlier.spending)),
+      },
+      unresolvedMovementCount: {
+        current: current.unresolvedMovementCount ?? 0,
+        previous: earlier.unresolvedMovementCount ?? 0,
       },
     };
   }

@@ -7,7 +7,7 @@ import type { IncomeService } from '../income/income.service';
 const expectedIncome = { amount: '1600000.00', estimatedAmount: '50000.00', unknownAmountCount: 1, paymentCount: 3 };
 const income = { getExpectedForUser: vi.fn(async () => ({ totals: expectedIncome })) } as unknown as IncomeService;
 const totals = (receivedIncome: string, spending: string) => ({
-  receivedIncome, spending, unclassifiedCreditAmount: '0.00', unclassifiedCreditCount: 0,
+  receivedIncome, spending, unclassifiedCreditAmount: '0.00', unclassifiedCreditCount: 0, unresolvedMovementCount: 0,
 });
 
 describe('SummariesService', () => {
@@ -49,6 +49,7 @@ describe('SummariesService', () => {
       month: '2026-01', previousMonth: '2025-12', partial: false,
       receivedIncome: { current: '100000.01', previous: '100000.02', change: '-0.01' },
       spending: { current: '1000.00', previous: '1100.00', change: '-100.00' },
+      unresolvedMovementCount: { current: 0, previous: 0 },
     });
     expect(sumDebitsByTagForMonth).not.toHaveBeenCalled();
     expect(sumByMonthForUser).toHaveBeenCalledWith('demo-id', '2025-12');

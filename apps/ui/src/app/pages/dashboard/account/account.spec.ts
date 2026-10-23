@@ -71,6 +71,25 @@ describe('Account', () => {
     expect(getAccounts).toHaveBeenCalledOnce();
   });
 
+  it('does not present an unknown provider balance as zero or as a fresh balance', async () => {
+    const getAccounts = vi.fn(() => of([{
+      id: '00000000-0000-4000-8000-000000000004',
+      alias: 'Nueva cuenta',
+      type: 'checking' as const,
+      currency: 'CLP' as const,
+      balance: null,
+      lastSyncedAt: null,
+    }]));
+    const { fixture } = setup(getAccounts);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Saldo no disponible');
+    expect(text).toContain('Sin saldo confirmado');
+    expect(text).not.toContain('$0');
+  });
+
   it('fetches accounts on the server and saves them for hydration', async () => {
     const getAccounts = vi.fn(() => of([]));
     const { fixture, transferState } = setup(getAccounts, 'server');

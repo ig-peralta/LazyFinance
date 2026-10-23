@@ -41,6 +41,12 @@
     <p class="mt-3 text-xs leading-5 text-muted-color">
       No contamos transferencias ni pagos de tarjeta entre tus propias cuentas.
     </p>
+    @if (data.unresolvedMovementCount) {
+      <p role="status" class="mt-3 text-sm leading-5 text-muted-color">
+        Hay {{ data.unresolvedMovementCount }} movimientos por revisar para determinar si son internos.
+        Los totales de gastos e ingresos pueden estar incompletos.
+      </p>
+    }
 
     @if (data.tags.length) {
       <figure

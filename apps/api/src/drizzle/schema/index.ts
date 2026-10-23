@@ -2,6 +2,8 @@ export * from './user.table';
 export * from './provider.table';
 export * from './tag.table';
 export * from './provider-connection.table';
+export * from './provider-sync-state.table';
+export * from './provider-movement-removal.table';
 export * from './account.table';
 export * from './transaction.table';
 export * from './objective.table';
