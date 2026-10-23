@@ -1,62 +1,18 @@
-<main class="min-h-screen bg-surface-50 text-color dark:bg-surface-950">
-  <header class="border-b border-surface bg-surface-0 dark:border-surface-700 dark:bg-surface-950">
-    <nav
-      aria-label="Navegación principal"
-      class="mx-auto flex h-[76px] max-w-7xl items-center justify-between px-5 sm:px-8 lg:px-12"
-    >
-      <a routerLink="/" class="flex items-center gap-3" aria-label="Inicio de LazyFinance">
-        <span
-          class="flex size-10 items-center justify-center rounded-2xl bg-primary text-primary-contrast"
-        >
-          <svg aria-hidden="true" viewBox="0 0 24 24" class="size-5" fill="none">
-            <path
-              d="M4 17.5 9 12l3.2 3.2L20 7"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-            <path
-              d="M14.8 7H20v5.2"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-          </svg>
-        </span>
-        <span class="text-lg font-semibold tracking-[-0.04em]"
-          >Lazy<span class="font-normal">Finance</span></span
-        >
-      </a>
-      <button
-        type="button"
-        class="text-sm font-semibold text-muted-color hover:text-primary"
-        (click)="logout()"
-      >
-        Cerrar sesión
-      </button>
-    </nav>
-  </header>
+<div class="max-w-2xl">
+  <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+    Hola, {{ session.user()?.name }}
+  </p>
+  <h1 class="mt-4 text-4xl font-semibold tracking-[-0.05em] text-color-emphasis sm:text-5xl">
+    Tu dinero, más claro.
+  </h1>
+  <p class="mt-4 text-base leading-7 text-muted-color">
+    Un vistazo a tus finanzas de demostración.
+  </p>
+</div>
 
-  <div class="mx-auto max-w-7xl px-5 py-10 sm:px-8 sm:py-14 lg:px-12">
-    <div class="max-w-2xl">
-      <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-        Hola, {{ session.user()?.name }}
-      </p>
-      <h1 class="mt-4 text-4xl font-semibold tracking-[-0.05em] text-color-emphasis sm:text-5xl">
-        Tu dinero, más claro.
-      </h1>
-      <p class="mt-4 text-base leading-7 text-muted-color">
-        Un vistazo a tus finanzas de demostración.
-      </p>
-    </div>
-
-    <dashboard-account class="block" />
-    <dashboard-summary class="block" />
-    <dashboard-comparison class="block" />
-    <dashboard-objective class="block" />
-    <dashboard-budget-progress class="block" />
-    <dashboard-activity class="block" />
-  </div>
-</main>
+<dashboard-account class="block" />
+<dashboard-summary class="block" />
+<dashboard-comparison class="block" />
+<dashboard-objective class="block" />
+<dashboard-budget-progress class="block" />
+<dashboard-activity class="block" />
