@@ -1,13 +1,8 @@
-import { pgEnum, pgTable, timestamp, uuid } from 'drizzle-orm/pg-core';
-
-// NOTE: the list of providers should come from a centralized source
-// with the responsibility of keeping track of the providers that are
-// implemented in the codebase
-export const providerIdentifierEnum = pgEnum('provider_identifier', ['fintoc', 'manual']);
+import { pgTable, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
 
 export const provider = pgTable('provider', {
   id: uuid('id').defaultRandom().primaryKey(),
-  identifier: providerIdentifierEnum('identifier').notNull().unique(),
+  identifier: varchar('identifier', { length: 64 }).notNull().unique(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

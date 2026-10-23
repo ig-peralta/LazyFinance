@@ -82,17 +82,20 @@ export class Account implements OnInit {
   }
 
   protected accountBalanceLabel(account: AccountSummary): string {
+    if (account.balance === null) return 'Saldo no disponible';
     if (account.type !== 'credit_card') return 'Saldo en cuenta';
     if (Number(account.balance) < 0) return 'Saldo adeudado';
     return Number(account.balance) > 0 ? 'Saldo a favor' : 'Saldo de tarjeta';
   }
 
   protected formatAccountBalance(account: AccountSummary): string {
+    if (account.balance === null) return '—';
     const balance = Number(account.balance);
     return formatClp(account.type === 'credit_card' && balance < 0 ? -balance : balance);
   }
 
   protected freshnessLabel(account: AccountSummary): string {
+    if (account.balance === null) return 'Sin saldo confirmado';
     if (!account.lastSyncedAt) return 'Sin información de actualización';
     return `Actualizado ${formatDate(new Date(account.lastSyncedAt))}`;
   }

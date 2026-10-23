@@ -5,7 +5,7 @@ export const AccountSummarySchema = z.object({
   alias: z.string().nullable(),
   type: z.enum(['checking', 'savings', 'credit_card']),
   currency: z.literal('CLP'),
-  balance: z.string(),
+  balance: z.string().nullable(),
   lastSyncedAt: z.iso.datetime().nullable(),
 });
 

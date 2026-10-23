@@ -40,4 +40,16 @@ describe('AccountsService', () => {
     const [account] = await service.getActiveForUser(userId);
     expect(account.lastSyncedAt).toBe('2026-10-15T15:00:00.000Z');
   });
+
+  it('keeps a missing provider balance distinct from zero', async () => {
+    const listActiveForUser = vi.fn(async () => [{
+      id: '00000000-0000-4000-8000-000000000004',
+      alias: null, type: 'checking' as const, currency: 'CLP' as const,
+      balance: null, lastSyncedAt: null,
+    }]);
+    const [account] = await new AccountsService({ listActiveForUser } as unknown as AccountRepository)
+      .getActiveForUser(userId);
+    expect(account.balance).toBeNull();
+    expect(account.lastSyncedAt).toBeNull();
+  });
 });

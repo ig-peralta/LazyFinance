@@ -268,7 +268,7 @@ describe.skipIf(!process.env.TEST_POSTGRES_URL)('Income backend against PostgreS
       const income = context.app.get(IncomeService);
       for (const [amount, date] of [['400.00', '2026-09-10'], ['500.00', '2026-10-10'], ['900.00', '2026-10-20']]) {
         const id = randomUUID();
-        await context.tx.insert(schema.transaction).values({ id, accountId: context.accountId, amount, type: 'credit', source: 'manual', bookedAt: new Date(`${date}T15:00:00Z`) });
+        await context.tx.insert(schema.transaction).values({ id, accountId: context.accountId, amount, type: 'credit', source: 'manual', bookedAt: new Date(`${date}T15:00:00Z`), isInternalMovement: false });
         await income.confirmReceiptForUser(context.userId, id, { sourceId }, new Date('2026-10-21T15:00:00Z'));
       }
       await income.confirmReceiptForUser(context.userId, context.salaryId, { sourceId });
