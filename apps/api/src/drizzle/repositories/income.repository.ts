@@ -134,7 +134,7 @@ export class IncomeRepository {
     const { start, end } = monthBounds(month);
     return this.receiptsQuery().where(and(
       eq(incomeSource.userId, userId), eq(account.userId, userId),
-      eq(transaction.type, 'credit'), eq(transaction.isInternalMovement, false),
+      eq(transaction.type, 'credit'), eq(transaction.isInternalMovement, false), eq(transaction.reviewStatus, 'clear'),
       isNull(transaction.removedAt),
       inSantiagoPeriod(start, end), lte(transaction.bookedAt, asOf),
     )).orderBy(asc(transaction.bookedAt), asc(transaction.id));

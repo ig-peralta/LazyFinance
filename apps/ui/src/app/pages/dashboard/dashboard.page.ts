@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, viewChild } from '@angular/core';
 import { SessionService } from '../../services/session/session.service';
 import { Account } from './account/account';
 import { Activity } from './activity/activity';
@@ -14,4 +14,11 @@ import { BudgetProgressView } from './budget-progress/budget-progress';
 })
 export class DashboardPage {
   protected readonly session = inject(SessionService);
+  private readonly summary = viewChild(Summary);
+  private readonly budgetProgress = viewChild(BudgetProgressView);
+
+  protected refreshAfterTagDecision(): void {
+    void this.summary()?.refresh();
+    void this.budgetProgress()?.refresh();
+  }
 }

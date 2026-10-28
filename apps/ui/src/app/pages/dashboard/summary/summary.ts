@@ -86,6 +86,10 @@ export class Summary implements OnInit {
     }
   }
 
+  refresh(): Promise<void> {
+    return this.loadSummary();
+  }
+
   protected money(value: string): string {
     return formatClp(Number(value));
   }

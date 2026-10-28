@@ -115,11 +115,14 @@ async function seed() {
       }
 
       for (const group of batches(entries)) {
-        await tx.insert(schema.transaction).values(group).onConflictDoUpdate({
+        await tx.insert(schema.transaction).values(group.map((entry) => ({
+          ...entry,
+          tagDecisionOrigin: entry.tagId ? 'manual' as const : 'unreviewed' as const,
+          tagDecidedAt: entry.tagId ? entry.bookedAt : null,
+        }))).onConflictDoUpdate({
           target: schema.transaction.id,
           set: {
             accountId: sql`excluded.account_id`,
-            tagId: sql`excluded.tag_id`,
             bookedAt: sql`excluded.booked_at`,
             amount: sql`excluded.amount`,
             type: sql`excluded.type`,

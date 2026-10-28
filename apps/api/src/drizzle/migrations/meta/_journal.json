@@ -113,6 +113,27 @@
       "when": 1792755824618,
       "tag": "0015_provider_neutral_source",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1793187475625,
+      "tag": "0016_banking_ingestion_and_review",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793190922737,
+      "tag": "0017_tag_decisions_and_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793192399257,
+      "tag": "0018_tag_rule_idempotency",
+      "breakpoints": true
     }
   ]
 }

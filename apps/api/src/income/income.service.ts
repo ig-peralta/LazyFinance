@@ -142,7 +142,7 @@ export class IncomeService {
       await this.source(repository, userId, sourceId, true);
       const transaction = await repository.findTransactionForUser(userId, transactionId);
       if (!transaction) throw new NotFoundException('Transaction not found');
-      if (transaction.type !== 'credit' || transaction.isInternalMovement !== false ||
+      if (transaction.type !== 'credit' || transaction.isInternalMovement !== false || transaction.reviewStatus !== 'clear' ||
         transaction.removedAt !== null || transaction.bookedAt > now) {
         throw new BadRequestException('Received income requires a booked, non-internal credit transaction');
       }

@@ -18,6 +18,7 @@ describe('GET /transactions/recent', () => {
     description: null,
     account: { id: '00000000-0000-4000-8000-000000000021', alias: 'Tarjeta', type: 'credit_card', currency: 'CLP' },
     tag: { id: '00000000-0000-4000-8000-000000000031', name: 'Suscripciones', color: '#7C3AED' },
+    tagDecisionOrigin: 'manual', tagRuleId: null, reviewStatus: 'clear',
   }, {
     id: '00000000-0000-4000-8000-000000000012',
     bookedAt: '2026-10-14T15:00:00.000Z',
@@ -27,6 +28,7 @@ describe('GET /transactions/recent', () => {
     description: null,
     account: { id: '00000000-0000-4000-8000-000000000021', alias: 'Tarjeta', type: 'credit_card', currency: 'CLP' },
     tag: null,
+    tagDecisionOrigin: 'unreviewed', tagRuleId: null, reviewStatus: 'clear',
   }];
   const getRecentForUser = vi.fn(async (id: string) => id === userId ? transactions : []);
   let app: INestApplication;

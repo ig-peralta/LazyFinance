@@ -34,6 +34,9 @@ export class TransactionRepository {
         accountType: account.type,
         currency: account.currency,
         tag: { id: tag.id, name: tag.name, color: tag.color },
+        tagDecisionOrigin: transaction.tagDecisionOrigin,
+        tagRuleId: transaction.tagRuleId,
+        reviewStatus: transaction.reviewStatus,
       })
       .from(transaction)
       .innerJoin(account, eq(transaction.accountId, account.id))
@@ -49,14 +52,14 @@ export class TransactionRepository {
   }
 
   async sumForPeriod(userId: string, start: string, end: string, asOf?: Date) {
-    const eligible = sql`${transaction.isInternalMovement} = false`;
+    const eligible = sql`${transaction.isInternalMovement} = false AND ${transaction.reviewStatus} = 'clear'`;
     const [row] = await this.db
       .select({
         receivedIncome: sql<string>`coalesce(sum(case when ${eligible} AND ${transaction.type} = 'credit' AND ${incomeSource.id} IS NOT NULL then ${transaction.amount} else 0 end), 0)`,
         unclassifiedCreditAmount: sql<string>`coalesce(sum(case when ${eligible} AND ${transaction.type} = 'credit' AND ${incomeSource.id} IS NULL then ${transaction.amount} else 0 end), 0)`,
         unclassifiedCreditCount: sql<number>`count(*) filter (where ${eligible} AND ${transaction.type} = 'credit' AND ${incomeSource.id} IS NULL)::int`,
         spending: sql<string>`coalesce(-sum(case when ${eligible} AND ${transaction.type} = 'debit' then ${transaction.amount} else 0 end), 0)`,
-        unresolvedMovementCount: sql<number>`count(*) filter (where ${transaction.isInternalMovement} IS NULL)::int`,
+        unresolvedMovementCount: sql<number>`count(*) filter (where ${transaction.isInternalMovement} IS NULL OR ${transaction.reviewStatus} = 'needs_review')::int`,
       })
       .from(transaction)
       .innerJoin(account, eq(transaction.accountId, account.id))

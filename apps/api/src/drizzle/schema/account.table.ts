@@ -27,6 +27,7 @@ export const account = pgTable(
     balance: numeric('balance', { precision: 15, scale: 2 }),
     active: boolean('active').notNull().default(true),
     lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }),
+    providerObservedAt: timestamp('provider_observed_at', { withTimezone: true }),
     historyCompleteness: historyCompletenessEnum('history_completeness').notNull().default('unknown'),
     historyFrom: date('history_from'),
     historyThrough: date('history_through'),

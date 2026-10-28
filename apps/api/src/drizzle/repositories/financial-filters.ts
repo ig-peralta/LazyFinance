@@ -28,5 +28,5 @@ export function inSantiagoPeriod(start: string, end: string) {
 // Null internal status means unresolved, not confirmed external. A revoked
 // provider movement keeps its row and user decisions but cannot count again.
 export function excludesInternalTransfers() {
-  return and(eq(transaction.isInternalMovement, false), isNull(transaction.removedAt));
+  return and(eq(transaction.isInternalMovement, false), eq(transaction.reviewStatus, 'clear'), isNull(transaction.removedAt));
 }

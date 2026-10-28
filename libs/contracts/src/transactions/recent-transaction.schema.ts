@@ -11,6 +11,9 @@ export const RecentTransactionSchema = z.object({
   description: z.string().nullable(),
   account: AccountSummarySchema.pick({ id: true, alias: true, type: true, currency: true }),
   tag: TagSummarySchema.nullable(),
+  tagDecisionOrigin: z.enum(['unreviewed', 'manual', 'rule']),
+  tagRuleId: z.uuid().nullable(),
+  reviewStatus: z.enum(['clear', 'needs_review']),
 });
 
 export type RecentTransaction = z.infer<typeof RecentTransactionSchema>;

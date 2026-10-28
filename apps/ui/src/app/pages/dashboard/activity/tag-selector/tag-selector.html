@@ -1,0 +1,98 @@
+<div class="relative inline-flex flex-wrap items-center gap-2">
+  <button #trigger pButton type="button" size="small" severity="secondary" [outlined]="true" [rounded]="true"
+    [loading]="saving()" [attr.aria-expanded]="opened()" aria-haspopup="dialog"
+    [attr.aria-controls]="'tag-picker-' + transaction().id"
+    class="!px-3 !py-1.5 !text-xs"
+    [attr.aria-label]="'Elegir etiqueta para ' + (transaction().merchant || transaction().description || 'movimiento')"
+    (click)="togglePicker()">
+    {{ transaction().tag?.name || '+ Etiquetar' }}
+  </button>
+  @if (transaction().tagDecisionOrigin === 'rule') {
+    <p-tag value="Automática" severity="info" [rounded]="true" />
+  } @else if (transaction().tagDecisionOrigin === 'manual' && !transaction().tag) {
+    <span class="text-xs text-muted-color">Sin etiqueta · tu decisión</span>
+  }
+  @if (transaction().tagDecisionOrigin === 'unreviewed' && !transaction().tag && suggestion(); as choice) {
+    <button pButton type="button" size="small" [text]="true" [rounded]="true"
+      [disabled]="saving()" class="!px-2 !py-1.5 !text-xs"
+      [attr.aria-label]="'Usar sugerencia ' + choice.tagName"
+      (click)="applySuggestion()">
+      Sugerencia: {{ choice.tagName }}
+    </button>
+  }
+  @if (error()) {
+    <p role="alert" class="w-full rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-200">{{ error() }}</p>
+  }
+  @if (opened()) {
+    <div #panel [id]="'tag-picker-' + transaction().id" role="dialog"
+      [attr.aria-label]="'Etiquetar ' + (transaction().merchant || transaction().description || 'movimiento')"
+      class="absolute left-0 top-full z-50 mt-2 w-[min(22rem,calc(100vw-6rem))] rounded-2xl border border-surface bg-surface-0 shadow-xl dark:border-surface-700 dark:bg-surface-900">
+      <p-card styleClass="!border-0 !bg-transparent !shadow-none">
+        <div class="space-y-2.5">
+          <div>
+            <p class="text-sm font-semibold text-color-emphasis">Etiquetar movimiento</p>
+            <p class="mt-1 truncate text-xs text-muted-color">
+              {{ transaction().merchant || transaction().description || 'Movimiento' }}
+            </p>
+          </div>
+          @if (loadingTags()) {
+            <div role="status" aria-label="Cargando etiquetas" class="space-y-2 animate-pulse">
+              <div class="h-10 rounded-xl bg-surface-100 dark:bg-surface-800"></div>
+              <div class="h-20 rounded-xl bg-surface-100 dark:bg-surface-800"></div>
+            </div>
+          } @else {
+            <input pInputText type="search" [value]="searchTerm()" (input)="searchTags($event)"
+              aria-label="Buscar o crear etiqueta" placeholder="Buscar o crear etiqueta"
+              class="w-full !rounded-xl" />
+            <div class="max-h-[min(9rem,25vh)] space-y-0.5 overflow-y-auto [scrollbar-width:thin]">
+              @for (choice of matchingTags(); track choice.id) {
+                <button pButton type="button" severity="secondary" [text]="true"
+                  [disabled]="saving()" class="!flex !w-full !justify-start !rounded-xl !px-3 !py-2 !text-sm"
+                  [attr.aria-label]="'Aplicar etiqueta ' + choice.name"
+                  (click)="chooseTag(choice)">
+                  <span aria-hidden="true" class="mr-2 size-2 rounded-full bg-primary"></span>{{ choice.name }}
+                </button>
+              } @empty {
+                <p class="px-2 py-3 text-xs text-muted-color">Escribe un nombre para crear una etiqueta.</p>
+              }
+            </div>
+            @if (canCreateTag()) {
+              <button pButton type="button" [outlined]="true" [rounded]="true" size="small"
+                [disabled]="saving()" class="!w-full !justify-center !text-xs"
+                (click)="createAndTag()">Crear «{{ searchTerm().trim() }}» y usar</button>
+            }
+            <div class="flex flex-wrap gap-1 border-t border-surface pt-1 dark:border-surface-700">
+              <button pButton type="button" severity="secondary" [text]="true" size="small"
+                [disabled]="saving()" (click)="chooseTag(null)">Dejar sin etiqueta</button>
+              @if (transaction().tagDecisionOrigin !== 'unreviewed') {
+                <button pButton type="button" severity="secondary" [text]="true" size="small"
+                  [disabled]="saving()" (click)="resetTagDecision()">Marcar sin revisar</button>
+              }
+            </div>
+            @if (transaction().merchant) {
+              <div class="rounded-xl bg-surface-50 px-3 py-2 dark:bg-surface-800">
+                <label class="flex cursor-pointer items-center gap-3">
+                  <span class="relative inline-flex shrink-0 items-center">
+                    <input type="checkbox" class="peer sr-only" [checked]="autoForMerchant()"
+                      (change)="toggleAuto($event)" aria-label="Recordar etiqueta para futuros movimientos" />
+                    <span aria-hidden="true" class="h-5 w-9 rounded-full bg-surface-300 transition-colors peer-checked:bg-primary peer-focus-visible:ring-2 peer-focus-visible:ring-primary/50 dark:bg-surface-600"></span>
+                    <span aria-hidden="true" class="absolute left-0.5 size-4 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-4"></span>
+                  </span>
+                  <span class="text-xs leading-5 text-color">
+                    Recordar para futuros movimientos de este comercio y cuenta
+                  </span>
+                </label>
+                @if (autoForMerchant() && transaction().tag) {
+                  <button pButton type="button" [text]="true" size="small" class="!mt-2 !px-0 !text-xs"
+                    [disabled]="saving()" (click)="chooseTag(transaction().tag)">
+                    Activar con {{ transaction().tag?.name }}
+                  </button>
+                }
+              </div>
+            }
+          }
+        </div>
+      </p-card>
+    </div>
+  }
+</div>
