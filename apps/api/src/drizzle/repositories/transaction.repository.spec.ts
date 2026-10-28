@@ -19,6 +19,7 @@ describe('TransactionRepository', () => {
       accountType: 'credit_card',
       currency: 'CLP',
       tag: { id: '00000000-0000-4000-8000-000000000031', name: 'Suscripciones', color: null },
+      tagDecisionOrigin: 'manual' as const, tagRuleId: null, reviewStatus: 'clear' as const,
     }];
     const limit = vi.fn(async (_count: number) => rows);
     const orderBy = vi.fn((..._ordering: SQL[]) => ({ limit }));
@@ -33,7 +34,7 @@ describe('TransactionRepository', () => {
     expect(select).toHaveBeenCalledOnce();
     expect(Object.keys(select.mock.calls[0][0])).toEqual([
       'id', 'bookedAt', 'amount', 'type', 'merchant', 'description',
-      'accountId', 'accountAlias', 'accountType', 'currency', 'tag',
+      'accountId', 'accountAlias', 'accountType', 'currency', 'tag', 'tagDecisionOrigin', 'tagRuleId', 'reviewStatus',
     ]);
     expect(limit).toHaveBeenCalledWith(10);
 
@@ -104,9 +105,10 @@ describe('TransactionRepository', () => {
     const sql = new PgDialect().sqlToQuery(where.mock.calls[0][0]);
     expect(sql.sql).toContain('America/Santiago');
     expect(sql.sql).toContain('is_internal_movement');
+    expect(sql.sql).toContain('review_status');
     expect(sql.sql).toContain('removed_at');
     expect(sql.params).toEqual([
-      'demo-id', 'demo-id', 'debit', '2026-01-01 00:00:00', '2026-10-01 00:00:00', false,
+      'demo-id', 'demo-id', 'debit', '2026-01-01 00:00:00', '2026-10-01 00:00:00', false, 'clear',
     ]);
   });
 });

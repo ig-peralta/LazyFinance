@@ -2,12 +2,15 @@ import { relations, sql } from 'drizzle-orm';
 import { boolean, check, date, index, jsonb, numeric, pgEnum, pgTable, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
 import { account } from './account.table';
 import { tag } from './tag.table';
+import { tagRule } from './tag-rule.table';
 
 export const transactionTypeEnum = pgEnum('transaction_type', ['debit', 'credit']);
 export const bookedPrecisionEnum = pgEnum('booked_precision', ['instant', 'calendar_day']);
 export const providerInternalAssessmentEnum = pgEnum('provider_internal_assessment', ['internal', 'external', 'unknown']);
 export const movementRelationEnum = pgEnum('movement_relation', ['transfer_pair', 'card_payment_pair', 'reversal']);
 export const movementRemovalReasonEnum = pgEnum('movement_removal_reason', ['removed', 'reversed']);
+export const movementReviewStatusEnum = pgEnum('movement_review_status', ['clear', 'needs_review']);
+export const tagDecisionOriginEnum = pgEnum('tag_decision_origin', ['unreviewed', 'manual', 'rule']);
 
 export const transaction = pgTable(
   'transaction',
@@ -17,6 +20,9 @@ export const transaction = pgTable(
       .notNull()
       .references(() => account.id, { onDelete: 'cascade' }),
     tagId: uuid('tag_id').references(() => tag.id, { onDelete: 'set null' }),
+    tagDecisionOrigin: tagDecisionOriginEnum('tag_decision_origin').notNull().default('unreviewed'),
+    tagRuleId: uuid('tag_rule_id').references(() => tagRule.id, { onDelete: 'restrict' }),
+    tagDecidedAt: timestamp('tag_decided_at', { withTimezone: true }),
     bookedAt: timestamp('booked_at', { withTimezone: true }).notNull(),
     bookedPrecision: bookedPrecisionEnum('booked_precision').notNull().default('instant'),
     bookedOn: date('booked_on'),
@@ -27,6 +33,7 @@ export const transaction = pgTable(
     description: varchar('description', { length: 240 }),
     externalId: varchar('external_id', { length: 512 }),
     providerUpdatedAt: timestamp('provider_updated_at', { withTimezone: true }),
+    providerObservedAt: timestamp('provider_observed_at', { withTimezone: true }),
     providerKind: varchar('provider_kind', { length: 32 }).$type<'transfer' | 'card_payment' | 'reversal' | 'other' | 'unknown'>(),
     relationKind: movementRelationEnum('relation_kind'),
     relatedAccountExternalId: varchar('related_account_external_id', { length: 512 }),
@@ -38,6 +45,7 @@ export const transaction = pgTable(
     isInternalMovement: boolean('is_internal_movement'),
     providerInternalAssessment: providerInternalAssessmentEnum('provider_internal_assessment').notNull().default('unknown'),
     userInternalOverride: boolean('user_internal_override'),
+    reviewStatus: movementReviewStatusEnum('review_status').notNull().default('clear'),
     removedAt: timestamp('removed_at', { withTimezone: true }),
     removalReason: movementRemovalReasonEnum('removal_reason'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -54,6 +62,9 @@ export const transaction = pgTable(
       sql`(${t.type} = 'debit' AND ${t.amount} < 0) OR (${t.type} = 'credit' AND ${t.amount} > 0)`,
     ),
     check('transaction_source_check', sql`${t.source} IN ('manual', 'provider')`),
+    check('transaction_tag_decision_check', sql`(${t.tagDecisionOrigin} = 'unreviewed' AND ${t.tagId} IS NULL AND ${t.tagRuleId} IS NULL)
+      OR (${t.tagDecisionOrigin} = 'manual' AND ${t.tagRuleId} IS NULL)
+      OR (${t.tagDecisionOrigin} = 'rule' AND ${t.tagId} IS NOT NULL AND ${t.tagRuleId} IS NOT NULL)`),
     check('transaction_booked_precision_check', sql`(${t.bookedPrecision} = 'instant' AND ${t.bookedOn} IS NULL)
       OR (${t.bookedPrecision} = 'calendar_day' AND ${t.bookedOn} IS NOT NULL)`),
     check('transaction_relation_check', sql`(${t.relationKind} IS NULL AND ${t.relatedAccountExternalId} IS NULL AND ${t.relatedMovementExternalId} IS NULL)

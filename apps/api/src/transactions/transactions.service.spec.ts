@@ -22,6 +22,7 @@ describe('TransactionsService', () => {
         accountType: 'credit_card' as const,
         currency: 'CLP' as const,
         tag,
+        tagDecisionOrigin: 'manual' as const, tagRuleId: null, reviewStatus: 'clear' as const,
       },
       {
         id: secondId,
@@ -35,6 +36,7 @@ describe('TransactionsService', () => {
         accountType: 'savings' as const,
         currency: 'CLP' as const,
         tag: null,
+        tagDecisionOrigin: 'unreviewed' as const, tagRuleId: null, reviewStatus: 'clear' as const,
       },
     ];
     const listRecentForUser = vi.fn(async () => rows);
@@ -50,6 +52,7 @@ describe('TransactionsService', () => {
         description: null,
         account: { id: rows[0].accountId, alias: 'Tarjeta', type: 'credit_card', currency: 'CLP' },
         tag,
+        tagDecisionOrigin: 'manual', tagRuleId: null, reviewStatus: 'clear',
       },
       {
         id: secondId,
@@ -60,6 +63,7 @@ describe('TransactionsService', () => {
         description: 'Ahorro',
         account: { id: rows[1].accountId, alias: null, type: 'savings', currency: 'CLP' },
         tag: null,
+        tagDecisionOrigin: 'unreviewed', tagRuleId: null, reviewStatus: 'clear',
       },
     ]);
     expect(listRecentForUser).toHaveBeenCalledWith(userId);

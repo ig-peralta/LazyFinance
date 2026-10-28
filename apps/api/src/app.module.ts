@@ -11,6 +11,8 @@ import { TransactionsModule } from './transactions/transactions.module';
 import { ObjectivesModule } from './objectives/objectives.module';
 import { SummariesModule } from './summaries/summaries.module';
 import { IncomeModule } from './income/income.module';
+import { BankingIngestionModule } from './banking/ingestion/banking-ingestion.module';
+import { TaggingModule } from './transactions/tagging/tagging.module';
 
 @Module({
   imports: [
@@ -23,6 +25,8 @@ import { IncomeModule } from './income/income.module';
     ObjectivesModule,
     SummariesModule,
     IncomeModule,
+    BankingIngestionModule,
+    TaggingModule,
   ],
   controllers: [
     AppHttpController,

@@ -37,6 +37,7 @@ describe('Dashboard MCP tools', () => {
     description: null,
     account: { id: '00000000-0000-4000-8000-000000000011', alias: 'Tarjeta', type: 'credit_card', currency: 'CLP' },
     tag: { id: '00000000-0000-4000-8000-000000000031', name: 'Suscripciones', color: null },
+    tagDecisionOrigin: 'manual', tagRuleId: null, reviewStatus: 'clear',
   }, {
     id: '00000000-0000-4000-8000-000000000022',
     bookedAt: '2026-09-14T15:00:00.000Z',
@@ -46,6 +47,7 @@ describe('Dashboard MCP tools', () => {
     description: null,
     account: { id: '00000000-0000-4000-8000-000000000011', alias: 'Tarjeta', type: 'credit_card', currency: 'CLP' },
     tag: null,
+    tagDecisionOrigin: 'unreviewed', tagRuleId: null, reviewStatus: 'clear',
   }];
   const transactions = { getRecentForUser: vi.fn(async () => recent) };
   const objectives = {

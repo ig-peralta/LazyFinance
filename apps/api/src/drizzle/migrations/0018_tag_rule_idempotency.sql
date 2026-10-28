@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "tag_rule_active_owner_match_uniq" ON "tag_rule" USING btree ("user_id","tag_id","direction","match_field","match_value",coalesce("account_id", '00000000-0000-0000-0000-000000000000'::uuid)) WHERE "tag_rule"."active" = true;

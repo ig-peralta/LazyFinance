@@ -4,13 +4,13 @@ import { Test } from '@nestjs/testing';
 import { MCP_STRATEGY, type McpStrategy } from '@rekog/mcp-nest';
 import { eq, sql } from 'drizzle-orm';
 import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../app.module';
 import { DRIZZLE_PG_CLIENT } from '../drizzle/drizzle.tokens';
 import * as schema from '../drizzle/schema';
+import { migrateTestDatabase } from '../drizzle/test-migrations';
 import { SummariesService } from '../summaries/summaries.service';
 import { IncomeService } from './income.service';
 
@@ -48,7 +48,7 @@ describe.skipIf(!process.env.TEST_POSTGRES_URL)('Income backend against PostgreS
   beforeAll(async () => {
     client = postgres(process.env.TEST_POSTGRES_URL!, { max: 1 });
     db = drizzle(client, { schema });
-    await migrate(db, { migrationsFolder: 'src/drizzle/migrations' });
+    await migrateTestDatabase(db, process.env.TEST_POSTGRES_URL!);
   });
 
   afterAll(async () => client?.end());

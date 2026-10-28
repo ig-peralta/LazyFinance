@@ -1,13 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
-import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AccountRepository } from '../../drizzle/repositories/account.repository';
 import { IncomeRepository } from '../../drizzle/repositories/income.repository';
 import { TransactionRepository } from '../../drizzle/repositories/transaction.repository';
 import * as schema from '../../drizzle/schema';
+import { migrateTestDatabase } from '../../drizzle/test-migrations';
 import { IncomeService } from '../../income/income.service';
 
 describe.skipIf(!process.env.TEST_POSTGRES_URL)('normalized banking storage against PostgreSQL', () => {
@@ -21,7 +21,7 @@ describe.skipIf(!process.env.TEST_POSTGRES_URL)('normalized banking storage agai
 
   it('preserves identity, unknown balances and decisions while excluding unresolved and removed movements', async () => {
     const db = drizzle(client, { schema });
-    await migrate(db, { migrationsFolder: 'src/drizzle/migrations' });
+    await migrateTestDatabase(db, process.env.TEST_POSTGRES_URL!);
     const rollback = new Error('Rollback normalized banking fixtures');
 
     await db.transaction(async (tx) => {
@@ -71,7 +71,7 @@ describe.skipIf(!process.env.TEST_POSTGRES_URL)('normalized banking storage agai
       await tx.insert(schema.transaction).values({
         id: movementId, accountId: firstAccount, externalId: 'provider-credit', source: 'provider',
         bookedAt: new Date('2026-10-15T15:00:00Z'), bookedPrecision: 'calendar_day', bookedOn: '2026-10-15',
-        amount: '500.00', type: 'credit', tagId, providerKind: 'other', isInternalMovement: null,
+        amount: '500.00', type: 'credit', tagId, tagDecisionOrigin: 'manual', providerKind: 'other', isInternalMovement: null,
       });
       const transactions = new TransactionRepository(tx);
       const asOf = new Date('2026-10-20T18:00:00Z');
