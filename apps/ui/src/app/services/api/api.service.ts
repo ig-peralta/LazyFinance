@@ -8,6 +8,10 @@ import type {
   MonthlySummary,
   ObjectiveSummary,
   RecentTransaction,
+  TagDecision,
+  TagRuleInput,
+  TagSuggestion,
+  TagSummary,
 } from '@lazyfinance/contracts';
 import { API_URL } from '../../tokens/api-url';
 
@@ -28,6 +32,30 @@ export class ApiService {
 
   getRecentTransactions() {
     return this.http.get<RecentTransaction[]>(`${this.apiUrl}/transactions/recent`);
+  }
+
+  getTags() {
+    return this.http.get<TagSummary[]>(`${this.apiUrl}/tags`);
+  }
+
+  createTag(name: string) {
+    return this.http.post<TagSummary>(`${this.apiUrl}/tags`, { name });
+  }
+
+  getTagSuggestions(transactionId: string) {
+    return this.http.get<TagSuggestion[]>(`${this.apiUrl}/transactions/${transactionId}/tag-suggestions`);
+  }
+
+  setTagDecision(transactionId: string, tagId: string | null) {
+    return this.http.put<TagDecision>(`${this.apiUrl}/transactions/${transactionId}/tag`, { tagId });
+  }
+
+  resetTagDecision(transactionId: string) {
+    return this.http.delete<TagDecision>(`${this.apiUrl}/transactions/${transactionId}/tag-decision`);
+  }
+
+  createTagRule(rule: TagRuleInput) {
+    return this.http.post<void>(`${this.apiUrl}/tag-rules`, rule);
   }
 
   getObjectives() {

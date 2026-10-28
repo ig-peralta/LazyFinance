@@ -67,6 +67,10 @@ export class BudgetProgressView implements OnInit {
     }
   }
 
+  refresh(): Promise<void> {
+    return this.loadProgress();
+  }
+
   protected money(value: string): string {
     return formatClp(Number(value));
   }

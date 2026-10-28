@@ -1,11 +1,13 @@
 import '@angular/compiler';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { By } from '@angular/platform-browser';
 import { of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiService } from '../../services/api/api.service';
 import { SessionService } from '../../services/session/session.service';
 import { DashboardPage } from './dashboard.page';
+import { Activity } from './activity/activity';
 
 describe('DashboardPage', () => {
   afterEach(() => TestBed.resetTestingModule());
@@ -72,5 +74,13 @@ describe('DashboardPage', () => {
       (heading) => heading.textContent?.trim(),
     );
     expect(headings.at(-1)).toBe('Tus últimos movimientos');
+
+    // Tag changes affect the tag breakdown and budgets, but not balances or comparisons.
+    (fixture.debugElement.query(By.directive(Activity)).componentInstance as Activity).tagChanged.emit();
+    await fixture.whenStable();
+    expect(getMonthlySummary).toHaveBeenCalledTimes(2);
+    expect(getSpendingProgress).toHaveBeenCalledTimes(2);
+    expect(getAccounts).toHaveBeenCalledOnce();
+    expect(getMonthlyComparison).toHaveBeenCalledOnce();
   });
 });
