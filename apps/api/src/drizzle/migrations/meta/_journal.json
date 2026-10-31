@@ -134,6 +134,13 @@
       "when": 1793192399257,
       "tag": "0018_tag_rule_idempotency",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1793437678531,
+      "tag": "0019_external_identity_mapping",
+      "breakpoints": true
     }
   ]
 }

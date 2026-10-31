@@ -1,4 +1,5 @@
 export * from './user.table';
+export * from './external-identity.table';
 export * from './provider.table';
 export * from './tag.table';
 export * from './tag-rule.table';

@@ -32,7 +32,7 @@ The API loads `apps/api/.env` when present (the file is gitignored). Its validat
 | `PORT` | `3000` | HTTP and MCP listening port. |
 | `POSTGRES_URL` | `postgresql://user:password@localhost:5432/postgres` | PostgreSQL connection string; matches the local resource stack. |
 | `CORS_ORIGINS` | `http://localhost:4200,http://127.0.0.1:4200` | Comma-separated allowed browser origins for direct API requests. Set this to your UI's origin if it uses another host or port. |
-| `FIREBASE_PROJECT_ID` | Unset | Required for `AUTH_PROVIDER=firebase`. The verifier is available now; user provisioning and protected-request wiring follow in LAZ-44. |
+| `FIREBASE_PROJECT_ID` | Unset | Required for `AUTH_PROVIDER=firebase`. Verified ID tokens resolve to internal application users on protected requests. |
 | `FIREBASE_CLIENT_EMAIL` | Unset | Optional Firebase Admin service-account email. Set together with `FIREBASE_PRIVATE_KEY` and `FIREBASE_PROJECT_ID`. |
 | `FIREBASE_PRIVATE_KEY` | Unset | Optional Firebase Admin service-account PEM key. Accepts real or escaped newlines; set together with the service-account email. |
 
@@ -46,8 +46,8 @@ for the login UI. In local `mock` mode, `POST /auth/mock/login` accepts
 `{ "email": "demo@lazyfinance.cl", "password": "password" }`
 after the demo seed is applied and returns a bearer token. Invalid credentials
 return 401; the endpoint is unavailable in Firebase mode, which also rejects
-demo tokens. The Firebase browser login and application-user mapping are the
-subsequent LAZ-43 and LAZ-44 slices.
+demo tokens. Firebase ID tokens on protected routes are verified and resolved
+to the corresponding internal user; browser sign-in follows in LAZ-43.
 
 ## Commands
 

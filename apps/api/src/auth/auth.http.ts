@@ -23,6 +23,7 @@ export class AuthHttpController {
   }
 
   @Get('principal')
+  @Header('Cache-Control', 'private, no-store')
   getPrincipal(@Req() request: AuthenticatedRequest): AuthPrincipal {
     return request.principal;
   }
