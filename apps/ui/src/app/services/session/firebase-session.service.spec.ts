@@ -7,11 +7,13 @@ import { from, of, throwError } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiService } from '../api/api.service';
 import { FirebaseService } from '../firebase/firebase.service';
+import { initializeServices } from '../initializer';
 import { SessionService } from './session.service';
 
 const cookieName = 'lazyfinance-session';
 const first = { userId: 'user-a', email: 'first@example.com', name: 'First user' };
 const second = { userId: 'user-b', email: 'second@example.com', name: 'Second user' };
+const initialize = () => TestBed.runInInjectionContext(initializeServices);
 
 function firebaseUser(uid: string, token: string) {
   let currentToken = token;
@@ -24,6 +26,7 @@ function firebaseUser(uid: string, token: string) {
 function setup() {
   const firstUser = firebaseUser('firebase-a', 'token-a');
   const secondUser = firebaseUser('firebase-b', 'token-b');
+  let initialized = false;
   let onTokenChanged: (user: FirebaseUser | null) => void = () => {};
   const auth = {
     currentUser: firstUser.user as FirebaseUser | null,
@@ -35,8 +38,8 @@ function setup() {
     }),
   };
   const firebase = {
-    init: vi.fn(async () => auth),
-    auth: () => auth,
+    init: vi.fn(async () => { initialized = true; return auth; }),
+    auth: () => initialized ? auth : null,
     signInWithGoogle: vi.fn(async () => auth.currentUser!),
     signOut: vi.fn(async () => { auth.currentUser = null; onTokenChanged(null); }),
   };
@@ -59,7 +62,7 @@ describe('Firebase browser session', () => {
   it('restores the SDK user through the API and stores only the verified ID token for SSR', async () => {
     document.cookie = `${cookieName}=${encodeURIComponent(JSON.stringify({ token: 'forged', user: second }))}; Path=/`;
     const { session, firebase, getPrincipal } = setup();
-    await session.initClientSide();
+    await initialize();
 
     expect(firebase.init).toHaveBeenCalledOnce();
     expect(getPrincipal).toHaveBeenCalledExactlyOnceWith('token-a');
@@ -71,7 +74,7 @@ describe('Firebase browser session', () => {
 
   it('refreshes rotated ID tokens without switching to a stale account response', async () => {
     const { session, firstUser, secondUser, auth, getPrincipal, onTokenChanged } = setup();
-    await session.initClientSide();
+    await initialize();
 
     firstUser.setToken('token-a-refresh');
     onTokenChanged(firstUser.user);
@@ -96,7 +99,7 @@ describe('Firebase browser session', () => {
   it('clears a rejected restored token and can recover after Firebase rotates it', async () => {
     const { session, firstUser, getPrincipal, onTokenChanged } = setup();
     getPrincipal.mockImplementationOnce(() => throwError(() => new Error('Expired token')));
-    await session.initClientSide();
+    await initialize();
     expect(session.active()).toBe(false);
     expect(TestBed.inject(SsrCookieService).get(cookieName)).toBe('');
 
@@ -106,9 +109,21 @@ describe('Firebase browser session', () => {
     expect(session.token()).toBe('token-a-refresh');
   });
 
+  it('fails closed if app-wide Firebase initialization is unavailable', async () => {
+    document.cookie = `${cookieName}=${encodeURIComponent(JSON.stringify({ token: 'old-token' }))}; Path=/`;
+    const { session, firebase, getPrincipal } = setup();
+    firebase.init.mockRejectedValueOnce(new Error('Firebase Web config unavailable'));
+    await initialize();
+
+    expect(session.isResolving()).toBe(false);
+    expect(session.active()).toBe(false);
+    expect(getPrincipal).not.toHaveBeenCalled();
+    expect(TestBed.inject(SsrCookieService).get(cookieName)).toBe('');
+  });
+
   it('finishes resolving when a Google popup and token observer race', async () => {
     const { session, secondUser, auth, firebase, onTokenChanged } = setup();
-    await session.initClientSide();
+    await initialize();
     firebase.signInWithGoogle.mockImplementation(async () => {
       auth.currentUser = secondUser.user;
       onTokenChanged(secondUser.user);
@@ -122,7 +137,7 @@ describe('Firebase browser session', () => {
 
   it('clears browser state and the SSR cookie on Firebase sign-out', async () => {
     const { session, firebase } = setup();
-    await session.initClientSide();
+    await initialize();
     await session.logout();
 
     expect(firebase.signOut).toHaveBeenCalledOnce();
@@ -132,7 +147,7 @@ describe('Firebase browser session', () => {
 
   it('does not restore a session from a late API response after logout', async () => {
     const { session, firstUser, getPrincipal, onTokenChanged } = setup();
-    await session.initClientSide();
+    await initialize();
     let finish!: (principal: typeof first) => void;
     getPrincipal.mockImplementationOnce(() => from(new Promise<typeof first>((resolve) => { finish = resolve; })));
     firstUser.setToken('old-token');

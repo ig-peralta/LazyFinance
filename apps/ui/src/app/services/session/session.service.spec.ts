@@ -6,12 +6,14 @@ import { SsrCookieService } from 'ngx-cookie-service-ssr';
 import { of, throwError } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiService } from '../api/api.service';
+import { initializeServices } from '../initializer';
 import { SessionService } from './session.service';
 
 const cookieName = 'lazyfinance-session';
 const principal = { userId: 'demo-user', email: 'demo@lazyfinance.cl', name: 'Camila Rojas' };
 const getPrincipal = vi.fn((_token: string) => of(principal));
 const getAuthConfig = vi.fn(() => of<AuthConfig>({ provider: 'mock' }));
+const initialize = () => TestBed.runInInjectionContext(initializeServices);
 
 beforeEach(() => {
   getPrincipal.mockReset();
@@ -45,7 +47,7 @@ describe('SessionService', () => {
 
     const session = TestBed.inject(SessionService);
     expect(session.isResolving()).toBe(true);
-    await session.initServerSide();
+    await initialize();
     expect(getPrincipal).toHaveBeenCalledExactlyOnceWith(token);
     expect(session.token()).toBe(token);
     expect(session.user()).toEqual(principal);
@@ -67,7 +69,7 @@ describe('SessionService', () => {
     });
 
     const session = TestBed.inject(SessionService);
-    await session.initServerSide();
+    await initialize();
     expect(session.token()).toBeNull();
     expect(session.active()).toBe(false);
     expect(session.isResolving()).toBe(false);
@@ -84,7 +86,7 @@ describe('SessionService', () => {
     });
 
     const session = TestBed.inject(SessionService);
-    await session.initServerSide();
+    await initialize();
     await session.loginWithToken('server-token');
 
     expect(session.user()).toEqual(principal);
@@ -98,7 +100,7 @@ describe('SessionService', () => {
     document.cookie = `${cookieName}=${encodeURIComponent(JSON.stringify({ token: 'saved-token' }))}; Path=/`;
     const session = TestBed.inject(SessionService);
 
-    await session.initClientSide();
+    await initialize();
     expect(getPrincipal).toHaveBeenCalledExactlyOnceWith('saved-token');
 
     expect(session.token()).toBe('saved-token');
@@ -110,7 +112,7 @@ describe('SessionService', () => {
     document.cookie = `${cookieName}=${encodeURIComponent(JSON.stringify({ token: 'demo-token', user: principal }))}; Path=/`;
     const session = TestBed.inject(SessionService);
 
-    await session.initClientSide();
+    await initialize();
 
     expect(session.active()).toBe(false);
     expect(session.token()).toBeNull();
@@ -120,7 +122,7 @@ describe('SessionService', () => {
 
   it('logs in only after the API returns a principal, then persists and clears the session', async () => {
     const session = TestBed.inject(SessionService);
-    await session.initClientSide();
+    await initialize();
     await session.loginWithToken('  demo-token  ');
 
     expect(getPrincipal).toHaveBeenCalledWith('demo-token');
@@ -140,7 +142,7 @@ describe('SessionService', () => {
   it('does not create a session when the API rejects the token', async () => {
     getPrincipal.mockImplementationOnce(() => throwError(() => new Error('unauthorized')));
     const session = TestBed.inject(SessionService);
-    await session.initClientSide();
+    await initialize();
 
     await expect(session.loginWithToken('invalid-token')).rejects.toThrow('unauthorized');
     expect(session.active()).toBe(false);
@@ -161,7 +163,7 @@ describe('SessionService', () => {
 
     const session = TestBed.inject(SessionService);
     expect(session.active()).toBe(false);
-    await session.initServerSide();
+    await initialize();
     expect(getPrincipal).toHaveBeenCalledExactlyOnceWith('verified-id-token');
     expect(session.user()).toEqual(principal);
     expect(session.token()).toBe('verified-id-token');
@@ -179,7 +181,7 @@ describe('SessionService', () => {
       { provide: RESPONSE_INIT, useValue: response },
     ] });
     const session = TestBed.inject(SessionService);
-    await session.initServerSide();
+    await initialize();
     expect(session.active()).toBe(false);
     expect(getPrincipal).not.toHaveBeenCalled();
 
@@ -195,7 +197,7 @@ describe('SessionService', () => {
       { provide: RESPONSE_INIT, useValue: { headers: new Headers() } },
     ] });
     const restored = TestBed.inject(SessionService);
-    await restored.initServerSide();
+    await initialize();
     expect(restored.active()).toBe(false);
     expect(getPrincipal).toHaveBeenCalledWith('expired-id-token');
   });

@@ -8,7 +8,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import type { AuthPrincipal, AuthProvider } from '@lazyfinance/contracts';
+import type { AuthConfig, AuthPrincipal, AuthProvider } from '@lazyfinance/contracts';
 import type { User as FirebaseUser } from 'firebase/auth';
 import { SsrCookieService } from 'ngx-cookie-service-ssr';
 import { firstValueFrom } from 'rxjs';
@@ -44,10 +44,10 @@ export class SessionService {
   readonly token = computed(() => this.state()?.token ?? null);
   readonly active = computed(() => this.user() !== null);
 
-  async initServerSide(): Promise<void> {
+  async initServerSide(config: AuthConfig | null): Promise<void> {
     if (!this.isServer) return;
     try {
-      const config = await firstValueFrom(this.api.getAuthConfig());
+      if (!config) return;
       this.providerState.set(config.provider);
       const token = this.readTokenCookie();
       if (!token) return;
@@ -62,10 +62,13 @@ export class SessionService {
     }
   }
 
-  async initClientSide(): Promise<void> {
+  async initClientSide(config: AuthConfig | null): Promise<void> {
     if (this.isServer) return;
     try {
-      const config = await firstValueFrom(this.api.getAuthConfig());
+      if (!config) {
+        this.clearLocalState();
+        return;
+      }
       this.providerState.set(config.provider);
       if (config.provider === 'mock') {
         const token = this.readTokenCookie();
@@ -76,7 +79,8 @@ export class SessionService {
         return;
       }
 
-      const auth = await this.firebase.init();
+      const auth = this.firebase.auth();
+      if (!auth) throw new Error('Firebase Auth could not be initialized');
       await auth.authStateReady();
       await new Promise<void>((resolve) => {
         let initial = true;

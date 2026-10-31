@@ -1,5 +1,5 @@
 import '@angular/compiler';
-import { Component, REQUEST, RESPONSE_INIT, inject, provideAppInitializer, provideZonelessChangeDetection } from '@angular/core';
+import { Component, REQUEST, RESPONSE_INIT, provideAppInitializer, provideZonelessChangeDetection } from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { provideServerRendering, renderApplication } from '@angular/platform-server';
 import { provideRouter, RouterOutlet } from '@angular/router';
@@ -8,7 +8,7 @@ import { of, throwError, type Observable } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 import { authGuard } from '../../guards/auth.guard';
 import { ApiService } from '../api/api.service';
-import { SessionService } from './session.service';
+import { initializeServices } from '../initializer';
 
 @Component({ selector: 'session-ssr-root', imports: [RouterOutlet], template: '<router-outlet />' })
 class SsrRoot {}
@@ -32,7 +32,7 @@ describe('Firebase protected SSR', () => {
           { path: 'dashboard', component: PrivatePage, canActivate: [authGuard] },
           { path: 'login', component: LoginPage },
         ]),
-        provideAppInitializer(() => inject(SessionService).initServerSide()),
+        provideAppInitializer(initializeServices),
         { provide: REQUEST, useValue: request },
         { provide: RESPONSE_INIT, useValue: { headers: new Headers() } },
         { provide: ApiService, useValue: {
