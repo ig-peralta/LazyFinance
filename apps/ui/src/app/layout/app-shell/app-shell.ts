@@ -12,6 +12,7 @@ export class AppShell {
   private readonly router = inject(Router);
 
   protected readonly menuOpen = signal(false);
+  protected readonly logoutError = signal<string | null>(null);
   protected readonly links = [
     { path: '/dashboard', label: 'Resumen', description: 'Ir al resumen de tus finanzas' },
     { path: '/etiquetas', label: 'Etiquetas', description: 'Ir a la gestión de etiquetas' },
@@ -30,8 +31,13 @@ export class AppShell {
     this.menuOpen.set(false);
   }
 
-  protected logout(): void {
-    this.session.clear();
-    void this.router.navigateByUrl('/');
+  protected async logout(): Promise<void> {
+    this.logoutError.set(null);
+    try {
+      await this.session.logout();
+      await this.router.navigateByUrl('/');
+    } catch {
+      this.logoutError.set('No se pudo cerrar la sesión completamente. Inténtalo de nuevo.');
+    }
   }
 }

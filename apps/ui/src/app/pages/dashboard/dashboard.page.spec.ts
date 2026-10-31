@@ -1,13 +1,11 @@
 import '@angular/compiler';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { By } from '@angular/platform-browser';
 import { of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiService } from '../../services/api/api.service';
 import { SessionService } from '../../services/session/session.service';
 import { DashboardPage } from './dashboard.page';
-import { Activity } from './activity/activity';
 
 describe('DashboardPage', () => {
   afterEach(() => TestBed.resetTestingModule());
@@ -76,7 +74,8 @@ describe('DashboardPage', () => {
     expect(headings.at(-1)).toBe('Tus últimos movimientos');
 
     // Tag changes affect the tag breakdown and budgets, but not balances or comparisons.
-    (fixture.debugElement.query(By.directive(Activity)).componentInstance as Activity).tagChanged.emit();
+    expect(fixture.nativeElement.querySelector('dashboard-activity')).not.toBeNull();
+    (fixture.componentInstance as unknown as { refreshAfterTagDecision(): void }).refreshAfterTagDecision();
     await fixture.whenStable();
     expect(getMonthlySummary).toHaveBeenCalledTimes(2);
     expect(getSpendingProgress).toHaveBeenCalledTimes(2);
