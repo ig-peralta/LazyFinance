@@ -20,7 +20,7 @@ class ProbeHttpController {
 describe('HTTP authentication', () => {
   const demoUser = {
     id: '00000000-0000-4000-8000-000000000001',
-    email: 'demo@lazyfinance.local',
+    email: 'demo@lazyfinance.cl',
     name: 'Camila Rojas',
   };
   let app: INestApplication;
@@ -108,7 +108,7 @@ describe('HTTP authentication', () => {
     expect(queries).toBe(0);
 
     const response = await request(app.getHttpServer()).post('/auth/mock/login')
-      .send({ email: demoUser.email, password: 'lazyfinance-local-password' }).expect(201);
+      .send({ email: demoUser.email, password: 'password' }).expect(201);
     expect(response.body).toEqual({ token: 'lazyfinance-demo-token' });
     expect(response.headers['cache-control']).toBe('no-store');
     expect(queries).toBe(1);
@@ -130,7 +130,7 @@ describe('HTTP authentication', () => {
       await request(firebaseApp.getHttpServer()).get('/auth/config')
         .expect(200, { provider: 'firebase' });
       await request(firebaseApp.getHttpServer()).post('/auth/mock/login')
-        .send({ email: demoUser.email, password: 'lazyfinance-local-password' }).expect(404);
+        .send({ email: demoUser.email, password: 'password' }).expect(404);
       await request(firebaseApp.getHttpServer()).get('/auth/principal')
         .set('Authorization', 'Bearer lazyfinance-demo-token').expect(401);
     } finally {

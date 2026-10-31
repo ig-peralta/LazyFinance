@@ -5,7 +5,7 @@ const joinedAt = new Date('2023-12-01T15:00:00.000Z');
 
 export const demoUser = {
   id: '00000000-0000-4000-8000-000000000001',
-  email: 'demo@lazyfinance.local',
+  email: 'demo@lazyfinance.cl',
   name: 'Camila Rojas',
   apiToken: 'lazyfinance-demo-token',
   createdAt: joinedAt,

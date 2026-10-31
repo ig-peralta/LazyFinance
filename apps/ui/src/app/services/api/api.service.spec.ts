@@ -18,7 +18,7 @@ describe('ApiService', () => {
     const api = TestBed.inject(ApiService);
     const backend = TestBed.inject(HttpTestingController);
     const config = firstValueFrom(api.getAuthConfig());
-    const login = firstValueFrom(api.loginMock('demo@lazyfinance.local', 'password'));
+    const login = firstValueFrom(api.loginMock('demo@lazyfinance.cl', 'password'));
 
     const configRequest = backend.expectOne(`${environment.apiUrl}/auth/config`);
     expect(configRequest.request.method).toBe('GET');
@@ -26,7 +26,7 @@ describe('ApiService', () => {
 
     const loginRequest = backend.expectOne(`${environment.apiUrl}/auth/mock/login`);
     expect(loginRequest.request.method).toBe('POST');
-    expect(loginRequest.request.body).toEqual({ email: 'demo@lazyfinance.local', password: 'password' });
+    expect(loginRequest.request.body).toEqual({ email: 'demo@lazyfinance.cl', password: 'password' });
     loginRequest.flush({ token: 'mock-session-token' });
 
     await expect(config).resolves.toEqual({ provider: 'mock' });
@@ -47,7 +47,7 @@ describe('ApiService', () => {
 
     const principal = {
       userId: 'demo-user',
-      email: 'demo@lazyfinance.local',
+      email: 'demo@lazyfinance.cl',
       name: 'Camila Rojas',
     };
     request.flush(principal);

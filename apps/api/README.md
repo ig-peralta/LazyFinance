@@ -43,7 +43,7 @@ project's root `.env`; `apps/api/.env` applies only when running the API directl
 
 `GET /auth/config` is public and returns only `{ "provider": "mock" | "firebase" }`
 for the login UI. In local `mock` mode, `POST /auth/mock/login` accepts
-`{ "email": "demo@lazyfinance.local", "password": "lazyfinance-local-password" }`
+`{ "email": "demo@lazyfinance.cl", "password": "password" }`
 after the demo seed is applied and returns a bearer token. Invalid credentials
 return 401; the endpoint is unavailable in Firebase mode, which also rejects
 demo tokens. The Firebase browser login and application-user mapping are the
@@ -63,7 +63,7 @@ Run these from the monorepo root:
 | `pnpm --filter api migrate` | Apply pending migrations using the API's Drizzle Kit config. |
 | `pnpm --filter api drizzle <command>` | Run Drizzle Kit with this app's config. |
 
-The demo user is `demo@lazyfinance.local` with the local password above and bearer token `lazyfinance-demo-token`. The seed creates CLP accounts, categories, objectives, and a dated transaction history from January 2024 through the present, including recurring income and expenses, transfers, credit-card payments, and seasonal spending in Chile. It uses the API's `POSTGRES_URL` (including `apps/api/.env` when present); run migrations first. Rerunning it updates the same demo records without deleting other users' data. The credentials and dataset are for local development only.
+The demo user is `demo@lazyfinance.cl` with the local password above and bearer token `lazyfinance-demo-token`. The seed creates CLP accounts, categories, objectives, and a dated transaction history from January 2024 through the present, including recurring income and expenses, transfers, credit-card payments, and seasonal spending in Chile. It uses the API's `POSTGRES_URL` (including `apps/api/.env` when present); run migrations first. Rerunning it updates the same demo records without deleting other users' data. Rerun the seed on existing local databases to update the demo email. The credentials and dataset are for local development only.
 
 ### Drizzle Kit
 

@@ -2,8 +2,8 @@ import type { AuthPrincipal, MockLoginInput, MockLoginResult } from '@lazyfinanc
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { UserRepository } from '../../drizzle/repositories/user.repository';
 
-const mockEmail = 'demo@lazyfinance.local';
-const mockPassword = 'lazyfinance-local-password';
+const mockEmail = 'demo@lazyfinance.cl';
+const mockPassword = 'password';
 const mockToken = 'lazyfinance-demo-token';
 
 @Injectable()

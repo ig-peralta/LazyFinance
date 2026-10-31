@@ -5,7 +5,7 @@ import { MockAuthService } from './mock-auth.service';
 
 const demoUser = {
   id: '00000000-0000-4000-8000-000000000001',
-  email: 'demo@lazyfinance.local',
+  email: 'demo@lazyfinance.cl',
   name: 'Camila Rojas',
 };
 
@@ -18,7 +18,7 @@ function createService(record: typeof demoUser | null = demoUser) {
 describe('MockAuthService', () => {
   it('issues the seeded mock user token after checking local credentials', async () => {
     const { service, findByApiToken } = createService();
-    await expect(service.login({ email: demoUser.email, password: 'lazyfinance-local-password' }))
+    await expect(service.login({ email: demoUser.email, password: 'password' }))
       .resolves.toEqual({ token: 'lazyfinance-demo-token' });
     expect(findByApiToken).toHaveBeenCalledExactlyOnceWith('lazyfinance-demo-token');
   });
@@ -27,16 +27,16 @@ describe('MockAuthService', () => {
     const { service, findByApiToken } = createService();
     await expect(service.login({ email: demoUser.email, password: 'wrong' }))
       .rejects.toBeInstanceOf(UnauthorizedException);
-    await expect(service.login({ email: 'other@example.com', password: 'lazyfinance-local-password' }))
+    await expect(service.login({ email: 'other@example.com', password: 'password' }))
       .rejects.toBeInstanceOf(UnauthorizedException);
     expect(findByApiToken).not.toHaveBeenCalled();
   });
 
   it('refuses a login if the seeded user is unavailable or does not match', async () => {
-    await expect(createService(null).service.login({ email: demoUser.email, password: 'lazyfinance-local-password' }))
+    await expect(createService(null).service.login({ email: demoUser.email, password: 'password' }))
       .rejects.toBeInstanceOf(UnauthorizedException);
     await expect(createService({ ...demoUser, email: 'other@example.com' }).service.login({
-      email: demoUser.email, password: 'lazyfinance-local-password',
+      email: demoUser.email, password: 'password',
     })).rejects.toBeInstanceOf(UnauthorizedException);
   });
 

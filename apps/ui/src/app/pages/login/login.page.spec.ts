@@ -10,7 +10,7 @@ import { LoginPage } from './login.page';
 
 const principal = {
   userId: 'demo-user',
-  email: 'demo@lazyfinance.local',
+  email: 'demo@lazyfinance.cl',
   name: 'Camila Rojas',
 };
 
@@ -57,13 +57,13 @@ describe('LoginPage', () => {
     expect(password.disabled).toBe(false);
     expect(fixture.nativeElement.querySelector('[data-testid="google-login"]')).toBeNull();
 
-    password.value = 'lazyfinance-local-password';
+    password.value = 'password';
     (fixture.nativeElement.querySelector('form') as HTMLFormElement)
       .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(loginMock).toHaveBeenCalledWith(email.value, 'lazyfinance-local-password');
+    expect(loginMock).toHaveBeenCalledWith(email.value, 'password');
     expect(loginWithToken).toHaveBeenCalledExactlyOnceWith('mock-session-token');
     expect(navigate).toHaveBeenCalledWith('/dashboard');
     expect(fixture.nativeElement.textContent).toContain(principal.name);
@@ -83,7 +83,7 @@ describe('LoginPage', () => {
     expect((fixture.nativeElement.querySelector('[data-testid="google-login"]') as HTMLButtonElement).disabled)
       .toBe(true);
     expect(clear).toHaveBeenCalledOnce();
-    await fixture.componentInstance.loginWithMock('demo@lazyfinance.local', 'lazyfinance-local-password');
+    await fixture.componentInstance.loginWithMock('demo@lazyfinance.cl', 'password');
     expect(loginMock).not.toHaveBeenCalled();
     expect(loginWithToken).not.toHaveBeenCalled();
   });

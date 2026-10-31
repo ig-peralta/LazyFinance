@@ -6,7 +6,7 @@ import { AuthService } from './auth.service';
 
 const principal = {
   userId: '00000000-0000-4000-8000-000000000001',
-  email: 'demo@lazyfinance.local',
+  email: 'demo@lazyfinance.cl',
   name: 'Camila Rojas',
 };
 
@@ -55,7 +55,7 @@ describe('AuthService', () => {
 
   it('delegates valid mock credentials only in mock mode', async () => {
     const { service, login } = createService();
-    const credentials = { email: principal.email, password: 'local-password' };
+    const credentials = { email: principal.email, password: 'password' };
     await expect(service.loginMock(credentials)).resolves.toEqual({ token: 'lazyfinance-demo-token' });
     expect(login).toHaveBeenCalledExactlyOnceWith(credentials);
   });
