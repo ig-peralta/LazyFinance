@@ -1,5 +1,5 @@
 import '@angular/compiler';
-import { Component, REQUEST, RESPONSE_INIT, provideAppInitializer, provideZonelessChangeDetection } from '@angular/core';
+import { Component, REQUEST, RESPONSE_INIT, inject, provideAppInitializer, provideZonelessChangeDetection } from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { provideServerRendering, renderApplication } from '@angular/platform-server';
 import { provideRouter, RouterOutlet } from '@angular/router';
@@ -9,12 +9,15 @@ import { describe, expect, it, vi } from 'vitest';
 import { authGuard } from '../../guards/auth.guard';
 import { ApiService } from '../api/api.service';
 import { initializeServices } from '../initializer';
+import { SessionService } from './session.service';
 
 @Component({ selector: 'session-ssr-root', imports: [RouterOutlet], template: '<router-outlet />' })
 class SsrRoot {}
 
-@Component({ template: '<p>PRIVATE_FINANCIAL_DATA</p>' })
-class PrivatePage {}
+@Component({ template: '<p>PRIVATE_FINANCIAL_DATA {{ session.user()?.email }}</p>' })
+class PrivatePage {
+  readonly session = inject(SessionService);
+}
 
 @Component({ template: '<p>LOGIN_REQUIRED</p>' })
 class LoginPage {}
@@ -63,6 +66,25 @@ describe('Firebase protected SSR', () => {
     const forged = await render(JSON.stringify({ token: 'signed-token', user: { userId: 'other' } }), getPrincipal);
     expect(forged).not.toContain('PRIVATE_FINANCIAL_DATA');
     expect(getPrincipal).toHaveBeenCalledTimes(1);
+  });
+
+  it('revalidates each SSR request when the browser switches between two identities', async () => {
+    const getPrincipal = vi.fn((token: string) => token === 'first-token'
+      ? of({ userId: 'first', email: 'first@example.com', name: 'First' })
+      : token === 'second-token'
+        ? of({ userId: 'second', email: 'second@example.com', name: 'Second' })
+        : throwError(() => new Error('Invalid token')));
+    const first = await render(JSON.stringify({ token: 'first-token' }), getPrincipal);
+    const second = await render(JSON.stringify({ token: 'second-token' }), getPrincipal);
+    const rejected = await render(JSON.stringify({ token: 'first-token-expired' }), getPrincipal);
+
+    expect(first).toContain('first@example.com');
+    expect(first).not.toContain('second@example.com');
+    expect(second).toContain('second@example.com');
+    expect(second).not.toContain('first@example.com');
+    expect(rejected).not.toContain('PRIVATE_FINANCIAL_DATA');
+    expect(getPrincipal.mock.calls.map(([token]) => token))
+      .toEqual(['first-token', 'second-token', 'first-token-expired']);
   });
 
   it('requires API verification for the local mock provider too', async () => {
