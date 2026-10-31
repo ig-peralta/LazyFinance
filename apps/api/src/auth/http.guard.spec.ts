@@ -6,6 +6,7 @@ import { AppModule } from '../app.module';
 import { configureCors } from '../cors';
 import { DRIZZLE_PG_CLIENT } from '../drizzle/drizzle.tokens';
 import { ENV_SCHEMA } from '../environment/environment.schema';
+import { EnvironmentService } from '../environment/environment.service';
 import type { AuthenticatedRequest } from './auth.types';
 
 @Controller('api/probe')
@@ -90,6 +91,51 @@ describe('HTTP authentication', () => {
 
     expect(response.body).toEqual({ userId: demoUser.id, email: demoUser.email, name: demoUser.name });
     expect(response.body).not.toHaveProperty('apiToken');
+  });
+
+  it('advertises the mock provider publicly without disclosing credentials', async () => {
+    const response = await request(app.getHttpServer()).get('/auth/config').expect(200);
+    expect(response.body).toEqual({ provider: 'mock' });
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(queries).toBe(0);
+  });
+
+  it('logs in with local credentials only when the demo user is seeded', async () => {
+    await request(app.getHttpServer()).post('/auth/mock/login')
+      .send({ email: demoUser.email, password: 'wrong' }).expect(401);
+    await request(app.getHttpServer()).post('/auth/mock/login')
+      .send({ email: demoUser.email }).expect(400);
+    expect(queries).toBe(0);
+
+    const response = await request(app.getHttpServer()).post('/auth/mock/login')
+      .send({ email: demoUser.email, password: 'lazyfinance-local-password' }).expect(201);
+    expect(response.body).toEqual({ token: 'lazyfinance-demo-token' });
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(queries).toBe(1);
+  });
+
+  it('advertises Firebase and refuses both mock login and a demo token in Firebase mode', async () => {
+    const db = {
+      select: () => { throw new Error('Demo database lookup must not run'); },
+    };
+    const module = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(DRIZZLE_PG_CLIENT).useValue(db)
+      .overrideProvider(EnvironmentService).useValue({
+        get: (key: string) => key === 'AUTH_PROVIDER' ? 'firebase' : 'lazyfinance-dev',
+      }).compile();
+    const firebaseApp = module.createNestApplication();
+    await firebaseApp.init();
+
+    try {
+      await request(firebaseApp.getHttpServer()).get('/auth/config')
+        .expect(200, { provider: 'firebase' });
+      await request(firebaseApp.getHttpServer()).post('/auth/mock/login')
+        .send({ email: demoUser.email, password: 'lazyfinance-local-password' }).expect(404);
+      await request(firebaseApp.getHttpServer()).get('/auth/principal')
+        .set('Authorization', 'Bearer lazyfinance-demo-token').expect(401);
+    } finally {
+      await firebaseApp.close();
+    }
   });
 
   it('allows the UI origin to preflight Authorization headers', async () => {

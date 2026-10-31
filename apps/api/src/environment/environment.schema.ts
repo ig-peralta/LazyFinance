@@ -8,6 +8,8 @@ const corsOrigin = z.url().refine(
 );
 
 export const ENV_SCHEMA = z.object({
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  AUTH_PROVIDER: z.enum(['firebase', 'mock']).default('mock'),
   PORT: z.coerce.number().positive().default(3000),
   POSTGRES_URL: z.url().default("postgresql://user:password@localhost:5432/postgres"),
   FIREBASE_PROJECT_ID: z.string().trim().min(1).optional(),
@@ -18,6 +20,20 @@ export const ENV_SCHEMA = z.object({
     .transform((value) => value.split(',').map((origin) => origin.trim()))
     .pipe(z.array(corsOrigin).min(1)),
 }).superRefine((values, context) => {
+  if (values.AUTH_PROVIDER === 'mock' && values.NODE_ENV === 'production') {
+    context.addIssue({
+      code: 'custom',
+      message: 'Mock authentication is only available in development',
+      path: ['AUTH_PROVIDER'],
+    });
+  }
+  if (values.AUTH_PROVIDER === 'firebase' && !values.FIREBASE_PROJECT_ID) {
+    context.addIssue({
+      code: 'custom',
+      message: 'FIREBASE_PROJECT_ID is required for Firebase authentication',
+      path: ['FIREBASE_PROJECT_ID'],
+    });
+  }
   const hasEmail = values.FIREBASE_CLIENT_EMAIL !== undefined;
   const hasKey = values.FIREBASE_PRIVATE_KEY !== undefined;
   if (hasEmail !== hasKey) {

@@ -1,9 +1,27 @@
-import type { AuthPrincipal } from '@lazyfinance/contracts';
-import { Controller, Get, Req } from '@nestjs/common';
+import type { AuthConfig, AuthPrincipal, MockLoginResult } from '@lazyfinance/contracts';
+import { Body, Controller, Get, Header, Post, Req } from '@nestjs/common';
+import { AuthService } from './auth.service';
 import type { AuthenticatedRequest } from './auth.types';
+import { Public } from './public.decorator';
 
 @Controller('auth')
 export class AuthHttpController {
+  constructor(private readonly auth: AuthService) {}
+
+  @Get('config')
+  @Public()
+  @Header('Cache-Control', 'no-store')
+  getConfig(): AuthConfig {
+    return this.auth.config();
+  }
+
+  @Post('mock/login')
+  @Public()
+  @Header('Cache-Control', 'no-store')
+  loginMock(@Body() body: unknown): Promise<MockLoginResult> {
+    return this.auth.loginMock(body);
+  }
+
   @Get('principal')
   getPrincipal(@Req() request: AuthenticatedRequest): AuthPrincipal {
     return request.principal;

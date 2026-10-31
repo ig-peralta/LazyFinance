@@ -41,3 +41,23 @@ describe('Firebase project configuration', () => {
     expect(() => ENV_SCHEMA.parse(configuration)).toThrow();
   });
 });
+
+describe('authentication provider configuration', () => {
+  it('defaults to mock for local development and accepts Firebase with a project ID', () => {
+    expect(ENV_SCHEMA.parse({}).AUTH_PROVIDER).toBe('mock');
+    expect(ENV_SCHEMA.parse({ AUTH_PROVIDER: 'firebase', FIREBASE_PROJECT_ID: 'lazyfinance-dev' }).AUTH_PROVIDER)
+      .toBe('firebase');
+  });
+
+  it.each(['demo', '', 'other'])('rejects unknown providers: %s', (provider) => {
+    expect(() => ENV_SCHEMA.parse({ AUTH_PROVIDER: provider })).toThrow();
+  });
+
+  it('requires a project ID for Firebase and blocks mock authentication in production', () => {
+    expect(() => ENV_SCHEMA.parse({ AUTH_PROVIDER: 'firebase' })).toThrow();
+    expect(() => ENV_SCHEMA.parse({ NODE_ENV: 'production', AUTH_PROVIDER: 'mock' })).toThrow();
+    expect(ENV_SCHEMA.parse({
+      NODE_ENV: 'production', AUTH_PROVIDER: 'firebase', FIREBASE_PROJECT_ID: 'lazyfinance-prod',
+    }).AUTH_PROVIDER).toBe('firebase');
+  });
+});
