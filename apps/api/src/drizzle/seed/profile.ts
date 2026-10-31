@@ -7,7 +7,6 @@ export const demoUser = {
   id: '00000000-0000-4000-8000-000000000001',
   email: 'demo@lazyfinance.cl',
   name: 'Camila Rojas',
-  apiToken: 'lazyfinance-demo-token',
   createdAt: joinedAt,
 } satisfies NewUserRow;
 

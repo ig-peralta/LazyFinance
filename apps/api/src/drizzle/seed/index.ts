@@ -1,4 +1,4 @@
-import { eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { loadEnvironmentVariables } from '../../environment/environment.loader';
@@ -8,6 +8,7 @@ import { clp, seedId } from './helpers';
 import { buildLedger } from './ledger';
 import { buildIncomeReceipts, incomeExpectations, incomeSources } from './income';
 import { accounts, demoConnectionId, demoUser, openingBalances, type AccountKey } from './profile';
+import { mockIdentity } from '../../auth/mock/mock-auth.constants';
 
 const batchSize = 100;
 
@@ -30,8 +31,23 @@ async function seed() {
     await db.transaction(async (tx) => {
       await tx.insert(schema.user).values(demoUser).onConflictDoUpdate({
         target: schema.user.id,
-        set: { name: demoUser.name, email: demoUser.email, apiToken: demoUser.apiToken, createdAt: demoUser.createdAt },
+        set: { name: demoUser.name, email: demoUser.email, createdAt: demoUser.createdAt },
       });
+      await tx.insert(schema.externalIdentity).values({
+        provider: mockIdentity.provider,
+        issuer: mockIdentity.issuer,
+        providerSubject: mockIdentity.providerSubject,
+        userId: demoUser.id,
+      }).onConflictDoNothing();
+      const [linkedMock] = await tx.select({ userId: schema.externalIdentity.userId })
+        .from(schema.externalIdentity).where(and(
+          eq(schema.externalIdentity.provider, mockIdentity.provider),
+          eq(schema.externalIdentity.issuer, mockIdentity.issuer),
+          eq(schema.externalIdentity.providerSubject, mockIdentity.providerSubject),
+        )).limit(1);
+      if (linkedMock.userId !== demoUser.id) {
+        throw new Error('Mock identity is linked to another financial user');
+      }
 
       let manualProviderId = '';
       for (const identifier of ['manual', 'fintoc'] as const) {

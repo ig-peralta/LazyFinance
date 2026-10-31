@@ -4,7 +4,9 @@ import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppModule } from '../app.module';
 import { DRIZZLE_PG_CLIENT } from '../drizzle/drizzle.tokens';
-import { UserRepository } from '../drizzle/repositories/user.repository';
+import { ExternalIdentityRepository } from '../drizzle/repositories/external-identity.repository';
+import { MockAuthService } from '../auth/mock/mock-auth.service';
+import { testMockAuth } from '../auth/testing/mock-auth-fixtures';
 import { SummariesService } from './summaries.service';
 
 describe('GET /summaries/monthly', () => {
@@ -24,13 +26,13 @@ describe('GET /summaries/monthly', () => {
   beforeEach(async () => {
     getMonthlyForUser.mockClear();
     getComparisonForUser.mockClear();
+    const { verifier, resolver } = testMockAuth({
+      'demo-token': { userId, email: 'demo@lazyfinance.cl', name: 'Camila' },
+    });
     const module = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(DRIZZLE_PG_CLIENT).useValue({})
-      .overrideProvider(UserRepository).useValue({
-        findByApiToken: async (token: string) => token === 'demo-token'
-          ? { id: userId, email: 'demo@lazyfinance.cl', name: 'Camila' }
-          : null,
-      })
+      .overrideProvider(MockAuthService).useValue(verifier)
+      .overrideProvider(ExternalIdentityRepository).useValue(resolver)
       .overrideProvider(SummariesService).useValue({ getMonthlyForUser, getComparisonForUser })
       .compile();
     app = module.createNestApplication();

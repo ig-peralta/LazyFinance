@@ -1,12 +1,13 @@
 import { INestApplication } from '@nestjs/common';
 import { MCP_STRATEGY, McpStrategy } from '@rekog/mcp-nest';
 import { Test } from '@nestjs/testing';
-import type { SQL } from 'drizzle-orm';
-import { PgDialect } from 'drizzle-orm/pg-core';
+import { UnauthorizedException } from '@nestjs/common';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../app.module';
 import { DRIZZLE_PG_CLIENT } from '../drizzle/drizzle.tokens';
+import { ExternalIdentityRepository } from '../drizzle/repositories/external-identity.repository';
+import { mockIdentity } from '../auth/mock/mock-auth.constants';
 
 const demoToken = 'lazyfinance-demo-token';
 const initialization = {
@@ -24,20 +25,14 @@ describe('MCP HTTP authentication', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
-    const db = {
-      select: () => ({
-        from: () => ({
-          where: (condition: SQL) => ({
-            limit: async () => new PgDialect().sqlToQuery(condition).params[0] === demoToken
-              ? [{ id: '00000000-0000-4000-8000-000000000001', email: 'demo@lazyfinance.cl', name: 'Camila Rojas' }]
-              : [],
-          }),
-        }),
-      }),
-    };
-
     const module = await Test.createTestingModule({ imports: [AppModule] })
-      .overrideProvider(DRIZZLE_PG_CLIENT).useValue(db).compile();
+      .overrideProvider(DRIZZLE_PG_CLIENT).useValue({})
+      .overrideProvider(ExternalIdentityRepository).useValue({
+        resolveExisting: async (identity: typeof mockIdentity) => {
+          if (identity.providerSubject !== mockIdentity.providerSubject) throw new UnauthorizedException();
+          return { userId: '00000000-0000-4000-8000-000000000001', email: 'demo@lazyfinance.cl', name: 'Camila Rojas' };
+        },
+      }).compile();
 
     app = module.createNestApplication();
     const strategy = app.get<McpStrategy>(MCP_STRATEGY);

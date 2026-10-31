@@ -1,12 +1,14 @@
-import { Controller, Get, INestApplication, Req } from '@nestjs/common';
+import { Controller, Get, INestApplication, Req, UnauthorizedException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { AppModule } from '../app.module';
 import { configureCors } from '../cors';
 import { DRIZZLE_PG_CLIENT } from '../drizzle/drizzle.tokens';
+import { ExternalIdentityRepository } from '../drizzle/repositories/external-identity.repository';
 import { ENV_SCHEMA } from '../environment/environment.schema';
 import { EnvironmentService } from '../environment/environment.service';
+import { mockIdentity } from './mock/mock-auth.constants';
 import type { AuthenticatedRequest } from './auth.types';
 
 @Controller('api/probe')
@@ -30,23 +32,19 @@ describe('HTTP authentication', () => {
   beforeEach(async () => {
     users = [demoUser];
     queries = 0;
-    const db = {
-      select: () => ({
-        from: () => ({
-          where: () => ({
-            limit: async () => {
-              queries++;
-              return users;
-            },
-          }),
-        }),
-      }),
-    };
-
     const module = await Test.createTestingModule({
       imports: [AppModule],
       controllers: [ProbeHttpController],
-    }).overrideProvider(DRIZZLE_PG_CLIENT).useValue(db).compile();
+    }).overrideProvider(DRIZZLE_PG_CLIENT).useValue({})
+      .overrideProvider(ExternalIdentityRepository).useValue({
+        resolveExisting: async (identity: typeof mockIdentity) => {
+          queries++;
+          if (identity.providerSubject !== mockIdentity.providerSubject || !users.length) {
+            throw new UnauthorizedException('External identity is not linked');
+          }
+          return { userId: users[0].id, email: users[0].email, name: users[0].name };
+        },
+      }).compile();
 
     app = module.createNestApplication();
     configureCors(app, ENV_SCHEMA.parse({}).CORS_ORIGINS);
@@ -69,6 +67,9 @@ describe('HTTP authentication', () => {
 
     users = [];
     await request(app.getHttpServer()).get('/api/probe').set('Authorization', 'Bearer unknown-token').expect(401);
+    expect(queries).toBe(0);
+    await request(app.getHttpServer()).get('/api/probe')
+      .set('Authorization', 'Bearer lazyfinance-demo-token').expect(401);
     expect(queries).toBe(1);
   });
 
@@ -90,7 +91,7 @@ describe('HTTP authentication', () => {
       .expect(200);
 
     expect(response.body).toEqual({ userId: demoUser.id, email: demoUser.email, name: demoUser.name });
-    expect(response.body).not.toHaveProperty('apiToken');
+    expect(response.body).not.toHaveProperty('providerSubject');
   });
 
   it('advertises the mock provider publicly without disclosing credentials', async () => {
@@ -112,6 +113,9 @@ describe('HTTP authentication', () => {
     expect(response.body).toEqual({ token: 'lazyfinance-demo-token' });
     expect(response.headers['cache-control']).toBe('no-store');
     expect(queries).toBe(1);
+    users = [];
+    await request(app.getHttpServer()).post('/auth/mock/login')
+      .send({ email: demoUser.email, password: 'password' }).expect(401);
   });
 
   it('advertises Firebase and refuses both mock login and a demo token in Firebase mode', async () => {

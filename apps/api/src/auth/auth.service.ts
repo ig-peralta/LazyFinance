@@ -22,7 +22,9 @@ export class AuthService {
     if (this.config().provider !== 'mock') throw new NotFoundException();
     const parsed = MockLoginInputSchema.safeParse(body);
     if (!parsed.success) throw new BadRequestException('Invalid login request');
-    return this.mock.login(parsed.data);
+    const result = await this.mock.login(parsed.data);
+    await this.identities.resolveExisting(this.mock.verify(result.token));
+    return result;
   }
 
   async authenticate(authorization: string | undefined): Promise<AuthPrincipal> {
@@ -33,7 +35,7 @@ export class AuthService {
 
     switch (this.config().provider) {
       case 'mock':
-        return this.mock.authenticate(match[1]);
+        return this.identities.resolveExisting(this.mock.verify(match[1]));
       case 'firebase': {
         const identity = await this.firebase.verify(match[1]);
         return this.identities.resolveOrCreate(identity);

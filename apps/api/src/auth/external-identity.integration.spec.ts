@@ -86,7 +86,7 @@ describe.skipIf(!process.env.TEST_POSTGRES_URL)('Firebase application principals
     const userId = first.body.userId as string;
     expect(first.body).toEqual({ userId, email, name: 'Test User' });
     const [row] = await db.select().from(schema.user).where(eq(schema.user.id, userId));
-    expect(row.apiToken).toBeNull();
+    expect(row.id).toBe(userId);
 
     const second = await principalFor({ ...identity, verifiedEmail: null, displayName: 'Changed' }).expect(200);
     expect(second.body).toEqual(first.body);
@@ -148,7 +148,7 @@ describe.skipIf(!process.env.TEST_POSTGRES_URL)('Firebase application principals
     const email = `${randomUUID()}@example.com`;
     const legacyUserId = randomUUID();
     legacyUserIds.push(legacyUserId);
-    await db.insert(schema.user).values({ id: legacyUserId, email, name: 'Existing user', apiToken: randomUUID() });
+    await db.insert(schema.user).values({ id: legacyUserId, email, name: 'Existing user' });
     const collided = verified(email.toUpperCase());
     await principalFor(collided).expect(409);
     expect(await db.select().from(schema.externalIdentity)

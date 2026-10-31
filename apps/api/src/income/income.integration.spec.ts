@@ -8,6 +8,9 @@ import postgres from 'postgres';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../app.module';
+import { MockAuthService } from '../auth/mock/mock-auth.service';
+import { mockIdentity } from '../auth/mock/mock-auth.constants';
+import { testMockAuth } from '../auth/testing/mock-auth-fixtures';
 import { DRIZZLE_PG_CLIENT } from '../drizzle/drizzle.tokens';
 import * as schema from '../drizzle/schema';
 import { migrateTestDatabase } from '../drizzle/test-migrations';
@@ -61,9 +64,17 @@ describe.skipIf(!process.env.TEST_POSTGRES_URL)('Income backend against PostgreS
       const token = randomUUID();
       const otherToken = randomUUID();
       await tx.insert(schema.user).values([
-        { id: userId, name: 'Income test', email: `${userId}@test.local`, apiToken: token },
-        { id: otherUserId, name: 'Other user', email: `${otherUserId}@test.local`, apiToken: otherToken },
+        { id: userId, name: 'Income test', email: `${userId}@test.local` },
+        { id: otherUserId, name: 'Other user', email: `${otherUserId}@test.local` },
       ]);
+      await tx.insert(schema.externalIdentity).values([
+        { provider: 'mock', issuer: mockIdentity.issuer, providerSubject: token, userId },
+        { provider: 'mock', issuer: mockIdentity.issuer, providerSubject: otherToken, userId: otherUserId },
+      ]);
+      const { verifier } = testMockAuth({
+        [token]: { userId, email: `${userId}@test.local`, name: 'Income test' },
+        [otherToken]: { userId: otherUserId, email: `${otherUserId}@test.local`, name: 'Other user' },
+      });
       await tx.insert(schema.provider).values({ identifier: 'manual' }).onConflictDoNothing();
       const [provider] = await tx.select().from(schema.provider).where(eq(schema.provider.identifier, 'manual'));
       const connectionId = randomUUID();
@@ -99,7 +110,8 @@ describe.skipIf(!process.env.TEST_POSTGRES_URL)('Income backend against PostgreS
       ]);
 
       const module = await Test.createTestingModule({ imports: [AppModule] })
-        .overrideProvider(DRIZZLE_PG_CLIENT).useValue(tx).compile();
+        .overrideProvider(DRIZZLE_PG_CLIENT).useValue(tx)
+        .overrideProvider(MockAuthService).useValue(verifier).compile();
       const app = module.createNestApplication({ logger: false });
       try {
         if (startMcp) {

@@ -5,7 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppModule } from '../app.module';
 import { DRIZZLE_PG_CLIENT } from '../drizzle/drizzle.tokens';
 import { AccountRepository } from '../drizzle/repositories/account.repository';
-import { UserRepository } from '../drizzle/repositories/user.repository';
+import { ExternalIdentityRepository } from '../drizzle/repositories/external-identity.repository';
+import { MockAuthService } from '../auth/mock/mock-auth.service';
+import { testMockAuth } from '../auth/testing/mock-auth-fixtures';
 
 describe('GET /accounts', () => {
   const demoUser = {
@@ -26,15 +28,14 @@ describe('GET /accounts', () => {
 
   beforeEach(async () => {
     listActiveForUser.mockClear();
+    const { verifier, resolver } = testMockAuth({
+      'demo-token': { userId: demoUser.id, email: demoUser.email, name: demoUser.name },
+      'other-token': { userId: '00000000-0000-4000-8000-000000000003', email: 'other@lazyfinance.local', name: 'Otro' },
+    });
     const module = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(DRIZZLE_PG_CLIENT).useValue({})
-      .overrideProvider(UserRepository).useValue({
-        findByApiToken: async (token: string) => token === 'demo-token'
-          ? demoUser
-          : token === 'other-token'
-            ? { ...demoUser, id: '00000000-0000-4000-8000-000000000003' }
-            : null,
-      })
+      .overrideProvider(MockAuthService).useValue(verifier)
+      .overrideProvider(ExternalIdentityRepository).useValue(resolver)
       .overrideProvider(AccountRepository).useValue({ listActiveForUser })
       .compile();
 

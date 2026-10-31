@@ -141,6 +141,13 @@
       "when": 1793437678531,
       "tag": "0019_external_identity_mapping",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1793446270452,
+      "tag": "0020_remove_user_api_token",
+      "breakpoints": true
     }
   ]
 }

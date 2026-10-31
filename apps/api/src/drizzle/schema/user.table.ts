@@ -4,7 +4,6 @@ export const user = pgTable('user', {
   id: uuid('id').defaultRandom().primaryKey(),
   email: varchar('email', { length: 160 }).notNull().unique(),
   name: varchar('name', { length: 120 }).notNull(),
-  apiToken: varchar('api_token', { length: 64 }).unique(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true })
     .notNull()
