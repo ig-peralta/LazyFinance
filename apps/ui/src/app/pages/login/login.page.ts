@@ -1,30 +1,54 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import type { AuthProvider } from '@lazyfinance/contracts';
+import { firstValueFrom } from 'rxjs';
+import { ApiService } from '../../services/api/api.service';
 import { SessionService } from '../../services/session/session.service';
-
-const DEMO_TOKEN = 'lazyfinance-demo-token';
 
 @Component({
   selector: 'login-page',
   imports: [RouterLink],
   templateUrl: './login.page.html',
 })
-export class LoginPage {
+export class LoginPage implements OnInit {
   readonly session = inject(SessionService);
+  private readonly api = inject(ApiService);
   private readonly router = inject(Router);
+  readonly provider = signal<AuthProvider | null>(null);
+  readonly loadingConfig = signal(true);
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
 
-  async loginAsDemo(): Promise<void> {
-    if (this.loading()) return;
+  ngOnInit(): void {
+    void this.loadProvider();
+  }
+
+  async loadProvider(): Promise<void> {
+    this.loadingConfig.set(true);
+    this.error.set(null);
+    try {
+      const config = await firstValueFrom(this.api.getAuthConfig());
+      this.provider.set(config.provider);
+      if (config.provider === 'firebase' && this.session.active()) this.session.clear();
+    } catch {
+      this.provider.set(null);
+      this.error.set('No se pudieron cargar las opciones de acceso. Inténtalo de nuevo.');
+    } finally {
+      this.loadingConfig.set(false);
+    }
+  }
+
+  async loginWithMock(email: string, password: string): Promise<void> {
+    if (this.loading() || this.provider() !== 'mock') return;
 
     this.loading.set(true);
     this.error.set(null);
     try {
-      await this.session.loginWithToken(DEMO_TOKEN);
+      const { token } = await firstValueFrom(this.api.loginMock(email, password));
+      await this.session.loginWithToken(token);
       await this.router.navigateByUrl('/dashboard');
     } catch {
-      this.error.set('No se pudo iniciar la sesión de demostración. Inténtalo de nuevo.');
+      this.error.set('No se pudo iniciar sesión. Revisa tus credenciales e inténtalo de nuevo.');
     } finally {
       this.loading.set(false);
     }
