@@ -21,9 +21,11 @@ boundary in later slices.
   must equal that project ID and the issuer must equal
   `https://securetoken.google.com/<project-id>`. The verifier additionally
   checks the issuer, audience, and nonempty subject in its decoded output.
-- The verifier returns `{ provider: 'firebase', projectId, providerSubject,
-  verifiedEmail, displayName }`. `providerSubject` is the Firebase UID;
-  `verifiedEmail` is null unless Firebase asserted `email_verified: true`.
+- The verifier returns the provider-neutral `VerifiedExternalIdentity` contract:
+  `{ provider: 'firebase', issuer, providerSubject, verifiedEmail, displayName }`.
+  For Firebase, `issuer` is `https://securetoken.google.com/<project-id>` and
+  `providerSubject` is the Firebase UID. `verifiedEmail` is null unless Firebase
+  asserted `email_verified: true`.
   Neither email nor display name grants financial access. Do not accept this
   contract in a client request as proof of authentication: shape validation does
   not verify a token.
@@ -35,8 +37,9 @@ boundary in later slices.
 
 ## Application and MCP subjects
 
-LAZ-44 will resolve the verified `(provider, projectId, providerSubject)` to a
+LAZ-44 will resolve the verified `(provider, issuer, providerSubject)` to a
 single stable application `user.id` (UUID), provisioning it once if necessary.
+The issuer namespaces subjects across projects and future external providers.
 The existing shared `AuthPrincipal` remains `{ userId, email, name }`, with
 `userId` set to that internal UUID. Financial records continue to reference
 the internal UUID. Do not automatically link an existing user based on email:
@@ -50,6 +53,9 @@ chooses authorization for external MCP clients independently; its accepted
 client token should resolve to the **same internal application user ID**, not
 be treated as a Firebase ID token or substitute its own subject for `userId`.
 `AUTH_PROVIDER=mock` uses a seeded demo user and a hardcoded local password.
+It resolves the demo user directly to `AuthPrincipal`; it does not need a
+fabricated external identity. Additional external identity providers can
+produce `VerifiedExternalIdentity` and share the application-user resolver.
 The public `GET /auth/config` exposes only `{ provider: 'mock' | 'firebase' }`
 so the UI can select the appropriate login inputs. `POST /auth/mock/login`
 is available only in mock mode and returns the seeded bearer token for valid

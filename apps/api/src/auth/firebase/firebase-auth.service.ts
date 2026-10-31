@@ -1,4 +1,4 @@
-import { FirebaseIdentitySchema, type FirebaseIdentity } from '@lazyfinance/contracts';
+import { VerifiedExternalIdentitySchema, type VerifiedExternalIdentity } from '@lazyfinance/contracts';
 import { Injectable, type OnModuleInit, UnauthorizedException } from '@nestjs/common';
 import { getApps, initializeApp, type App } from 'firebase-admin/app';
 import { getAuth, type Auth } from 'firebase-admin/auth';
@@ -34,7 +34,7 @@ export class FirebaseAuthService implements OnModuleInit {
     this.projectId = projectId;
   }
 
-  async verify(idToken: string): Promise<FirebaseIdentity> {
+  async verify(idToken: string): Promise<VerifiedExternalIdentity> {
     if (typeof idToken !== 'string' || !idToken.trim()) {
       throw new UnauthorizedException('Invalid Firebase ID token');
     }
@@ -55,9 +55,9 @@ export class FirebaseAuthService implements OnModuleInit {
       throw new UnauthorizedException('Invalid Firebase ID token');
     }
 
-    const identity = FirebaseIdentitySchema.safeParse({
+    const identity = VerifiedExternalIdentitySchema.safeParse({
       provider: 'firebase',
-      projectId: this.projectId,
+      issuer: decoded.iss,
       providerSubject: decoded.uid,
       verifiedEmail: decoded.email_verified === true ? (decoded.email ?? null) : null,
       displayName: decoded.name?.trim() || null,

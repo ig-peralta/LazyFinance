@@ -1,3 +1,4 @@
+import { VerifiedExternalIdentitySchema } from '@lazyfinance/contracts';
 import { UnauthorizedException } from '@nestjs/common';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { EnvironmentService } from '../../environment/environment.service';
@@ -76,12 +77,22 @@ describe('Firebase ID token verification', () => {
     expect(admin.getAuth).toHaveBeenCalledOnce();
     await expect(firebase.verify('signed-id-token')).resolves.toEqual({
       provider: 'firebase',
-      projectId,
+      issuer: decoded.iss,
       providerSubject: decoded.uid,
       verifiedEmail: decoded.email,
       displayName: decoded.name,
     });
     expect(admin.verifyIdToken).toHaveBeenCalledExactlyOnceWith('signed-id-token');
+  });
+
+  it('uses an external identity contract that can represent another verified issuer', () => {
+    expect(VerifiedExternalIdentitySchema.parse({
+      provider: 'oidc',
+      issuer: 'https://login.example.com',
+      providerSubject: 'external-user-1',
+      verifiedEmail: null,
+      displayName: null,
+    })).toMatchObject({ provider: 'oidc', providerSubject: 'external-user-1' });
   });
 
   it('does not use an unverified or missing email as an identity link', async () => {
