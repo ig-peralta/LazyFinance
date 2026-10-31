@@ -1,6 +1,8 @@
 import { MockLoginInputSchema, type AuthConfig, type AuthPrincipal, type MockLoginResult } from '@lazyfinance/contracts';
 import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { EnvironmentService } from '../environment/environment.service';
+import { ExternalIdentityRepository } from '../drizzle/repositories/external-identity.repository';
+import { FirebaseAuthService } from './firebase/firebase-auth.service';
 import { MockAuthService } from './mock/mock-auth.service';
 
 @Injectable()
@@ -8,6 +10,8 @@ export class AuthService {
   constructor(
     private readonly environment: EnvironmentService,
     private readonly mock: MockAuthService,
+    private readonly firebase: FirebaseAuthService,
+    private readonly identities: ExternalIdentityRepository,
   ) {}
 
   config(): AuthConfig {
@@ -27,9 +31,13 @@ export class AuthService {
       throw new UnauthorizedException('Missing or invalid bearer token');
     }
 
-    // LAZ-44 will map a verified Firebase subject to the internal user principal.
-    // Until then, never fall back to a demo database token in Firebase mode.
-    if (this.config().provider !== 'mock') throw new UnauthorizedException('Missing or invalid bearer token');
-    return this.mock.authenticate(match[1]);
+    switch (this.config().provider) {
+      case 'mock':
+        return this.mock.authenticate(match[1]);
+      case 'firebase': {
+        const identity = await this.firebase.verify(match[1]);
+        return this.identities.resolveOrCreate(identity);
+      }
+    }
   }
 }
