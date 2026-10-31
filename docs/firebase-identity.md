@@ -2,8 +2,8 @@
 
 Firebase authenticates a person; LazyFinance's own `user.id` is the financial owner. The
 two identifiers must not be interchangeable. LAZ-46 supplies a verifier and a
-trusted identity contract, plus a local mock login path. LAZ-44 connects that
-identity to application users; browser/SSR Firebase sessions follow in LAZ-43.
+trusted identity contract, LAZ-44 connects external identities to application
+users, and LAZ-43 adds browser sign-in and API-revalidated SSR sessions.
 
 ## Initial sign-in and token contract
 
@@ -47,17 +47,20 @@ the same user. First-time provisioning requires a verified email. If the email
 already belongs to another application user (including the demo user), access
 returns 409 rather than automatically linking that user's financial data.
 An existing user can still resolve by subject when a later token has no verified
-email; email and display-name changes do not remap that user. Firebase users
-have no `api_token`, while the seeded mock user retains its development token.
+email; email and display-name changes do not remap that user. Authentication
+tokens are not stored on financial users.
 
 HTTP and MCP authorization currently read the same request principal. LAZ-52
 chooses authorization for external MCP clients independently; its accepted
 client token should resolve to the **same internal application user ID**, not
 be treated as a Firebase ID token or substitute its own subject for `userId`.
-`AUTH_PROVIDER=mock` uses a seeded demo user and a hardcoded local password.
-It resolves the demo user directly to `AuthPrincipal`; it does not need a
-fabricated external identity. Additional external identity providers can
-produce `VerifiedExternalIdentity` and share the application-user resolver.
+`AUTH_PROVIDER=mock` simulates an external identity provider with hardcoded
+local credentials. Its token verifier returns `VerifiedExternalIdentity` with
+`provider: 'mock'`, issuer `https://mock.lazyfinance.cl`, and subject `demo`.
+The demo seed links that identity to the existing demo financial user. Mock
+sessions resolve that link through the same identity repository as Firebase,
+but never provision another demo user if the link is missing. The fixture token
+is not stored on the `user` table and is unavailable in Firebase mode.
 The public `GET /auth/config` exposes only `{ provider: 'mock' | 'firebase' }`
 so the UI can select the appropriate login inputs. `POST /auth/mock/login`
 is available only in mock mode and returns the seeded bearer token for valid
@@ -68,19 +71,22 @@ external-client MCP authorization scheme remains a separate workstream.
 
 ## Browser and SSR session boundary
 
-The browser will initialize the Firebase client SDK only on the client, obtain
-and refresh Firebase ID tokens, and pass them to the API as bearer tokens.
-The Angular SSR process must not treat the current JSON session cookie's
-`user` field as a trusted principal: it is client-controlled. For LAZ-43,
-the recommended server-rendered session is an HTTP-only, secure, same-site
-cookie issued after verifying sign-in and revalidated on each personalized
-SSR request. That server-side verification must resolve the same internal
-application user; invalid/expired sessions must not render private financial
-data. Firebase session cookies, if chosen for that flow, need their own
-`verifySessionCookie` path and must not be passed to this ID-token verifier.
-Browser hydration should reconcile against the current Firebase user and
-clear state on sign-out, mismatch, or expiry. Private SSR responses must not
-be shared-cached.
+The browser initializes the Firebase Web SDK only on the client, signs in with
+Google, obtains and refreshes Firebase ID tokens, and sends them to the API as
+bearer tokens. Firebase's local persistence restores the browser identity.
+To hand the current token to SSR, the browser writes a secure (on HTTPS),
+SameSite=Lax cookie containing **only the ID token**, never an application
+principal. The cookie is readable by same-origin JavaScript; it is a transport,
+not a trusted session record. SSR reads the token but must call the API's
+`/auth/principal` to verify and resolve the internal user before rendering any
+protected route.
+An invalid, expired, or forged cookie is discarded; the browser can recover
+from Firebase persistence after hydration. Authentication guards wait for
+session restoration, and protected HTTP responses are excluded from Angular's
+transfer cache so a different browser identity cannot inherit private data.
+Sign-out clears both Firebase local persistence and the SSR handoff cookie.
+Mock mode uses the same token-only cookie handoff and API revalidation, without
+ever treating the cookie as a trusted user record.
 
 ## Configuration and local verification
 

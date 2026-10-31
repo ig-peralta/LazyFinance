@@ -46,8 +46,11 @@ for the login UI. In local `mock` mode, `POST /auth/mock/login` accepts
 `{ "email": "demo@lazyfinance.cl", "password": "password" }`
 after the demo seed is applied and returns a bearer token. Invalid credentials
 return 401; the endpoint is unavailable in Firebase mode, which also rejects
-demo tokens. Firebase ID tokens on protected routes are verified and resolved
-to the corresponding internal user; browser sign-in follows in LAZ-43.
+demo tokens. The mock verifier produces an external identity linked by the seed
+to the demo financial user; no user API token is stored in PostgreSQL.
+Firebase ID tokens on protected routes are verified and resolved
+to the corresponding internal user; the UI handles Google sign-in and SSR
+restoration when its public Firebase Web configuration is provided.
 
 ## Commands
 
@@ -63,7 +66,7 @@ Run these from the monorepo root:
 | `pnpm --filter api migrate` | Apply pending migrations using the API's Drizzle Kit config. |
 | `pnpm --filter api drizzle <command>` | Run Drizzle Kit with this app's config. |
 
-The demo user is `demo@lazyfinance.cl` with the local password above and bearer token `lazyfinance-demo-token`. The seed creates CLP accounts, categories, objectives, and a dated transaction history from January 2024 through the present, including recurring income and expenses, transfers, credit-card payments, and seasonal spending in Chile. It uses the API's `POSTGRES_URL` (including `apps/api/.env` when present); run migrations first. Rerunning it updates the same demo records without deleting other users' data. Rerun the seed on existing local databases to update the demo email. The credentials and dataset are for local development only.
+The demo user is `demo@lazyfinance.cl` with the local password above; the mock identity provider issues fixture token `lazyfinance-demo-token` when those credentials are supplied. The seed creates CLP accounts, categories, objectives, and a dated transaction history from January 2024 through the present, including recurring income and expenses, transfers, credit-card payments, and seasonal spending in Chile. It also links the mock external identity to the demo user. It uses the API's `POSTGRES_URL` (including `apps/api/.env` when present); run migrations first. Rerunning it updates the same demo records without deleting other users' data. Rerun the seed on existing local databases to update the demo email and identity link. The credentials and dataset are for local development only.
 
 ### Drizzle Kit
 

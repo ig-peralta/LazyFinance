@@ -17,9 +17,11 @@ Open <http://localhost:4200>. Angular's development server reloads as you edit. 
 
 ## Session and API requests
 
-`SessionService` restores its session cookie during SSR and browser initialization. It exposes the bearer token as a signal and can set or clear the cookie; the cookie is a transport for SSR state, not proof that the API accepted the token. Angular's HTTP interceptor attaches that token only to requests targeting the configured API origin. Development replaces `src/environments/environment.ts` with `src/environments/environment.development.ts` (local API at <http://localhost:3000>); production browser builds use <https://api.lazyfinance.cl>.
+`SessionService` uses the local mock external identity provider in development and Firebase Auth in the browser when `AUTH_PROVIDER=firebase`. Both modes write a token-only cookie for SSR; each SSR request revalidates that token through `/auth/principal` before trusting its user. The cookie is not proof of authentication by itself. Angular's HTTP interceptor attaches the current token only to requests targeting the configured API origin. Development replaces `src/environments/environment.ts` with `src/environments/environment.development.ts` (local API at <http://localhost:3000>); production browser builds use <https://api.lazyfinance.cl>.
 
-The dashboard fetches account balances during SSR and transfers that response to the browser for hydration. Set `API_INTERNAL_URL` on the UI server when it cannot reach the browser-facing API URL; the local Docker stacks use `http://api:3000`. Without the override, the server uses the same API URL as the browser. Dashboard responses are marked private and not cacheable.
+Both environment files contain placeholder public Firebase Web app identifiers (`apiKey`, `authDomain`, `projectId`, `appId`). Replace them with the values for the Firebase development or production project and enable Google sign-in plus the relevant authorized domains. The API uses the matching `FIREBASE_PROJECT_ID`; its Admin credentials are never included in the UI. Mock mode works without Firebase configuration or an emulator.
+
+The dashboard can fetch account balances during SSR after token verification. Authenticated API responses are not transferred into browser hydration, and protected SSR responses are marked private and not cacheable. Set `API_INTERNAL_URL` on the UI server when it cannot reach the browser-facing API URL; the local Docker stacks use `http://api:3000`. Without the override, the server uses the same API URL as the browser.
 
 ## Commands
 
