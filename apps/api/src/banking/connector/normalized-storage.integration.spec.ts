@@ -28,8 +28,8 @@ describe.skipIf(!process.env.TEST_POSTGRES_URL)('normalized banking storage agai
       const userId = randomUUID();
       const otherUserId = randomUUID();
       await tx.insert(schema.user).values([
-        { id: userId, name: 'Owner', email: `${userId}@test.local`, apiToken: randomUUID() },
-        { id: otherUserId, name: 'Other', email: `${otherUserId}@test.local`, apiToken: randomUUID() },
+        { id: userId, name: 'Owner', email: `${userId}@test.local` },
+        { id: otherUserId, name: 'Other', email: `${otherUserId}@test.local` },
       ]);
       await tx.insert(schema.provider).values({ identifier: 'fixture-bank' }).onConflictDoNothing();
       const [provider] = await tx.select().from(schema.provider).where(eq(schema.provider.identifier, 'fixture-bank'));

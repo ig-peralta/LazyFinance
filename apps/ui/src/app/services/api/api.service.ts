@@ -33,6 +33,7 @@ export class ApiService {
   getPrincipal(token: string) {
     return this.http.get<AuthPrincipal>(`${this.apiUrl}/auth/principal`, {
       headers: { Authorization: `Bearer ${token}` },
+      transferCache: false,
     });
   }
 

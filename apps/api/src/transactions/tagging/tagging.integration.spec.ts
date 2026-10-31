@@ -7,6 +7,9 @@ import postgres from 'postgres';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../../app.module';
+import { MockAuthService } from '../../auth/mock/mock-auth.service';
+import { mockIdentity } from '../../auth/mock/mock-auth.constants';
+import { testMockAuth } from '../../auth/testing/mock-auth-fixtures';
 import { BankingIngestionService } from '../../banking/ingestion/banking-ingestion.service';
 import { correctionPage, initialPage } from '../../banking/connector/fixtures/normalized-pages';
 import type { BankingConnector } from '../../banking/connector/banking-connector';
@@ -42,8 +45,12 @@ describe.skipIf(!process.env.TEST_POSTGRES_URL)('owned tag decisions and rules a
       const token = randomUUID();
       const otherToken = randomUUID();
       await tx.insert(schema.user).values([
-        { id: userId, email: `${userId}@test.local`, name: 'Owner', apiToken: token },
-        { id: otherUserId, email: `${otherUserId}@test.local`, name: 'Other', apiToken: otherToken },
+        { id: userId, email: `${userId}@test.local`, name: 'Owner' },
+        { id: otherUserId, email: `${otherUserId}@test.local`, name: 'Other' },
+      ]);
+      await tx.insert(schema.externalIdentity).values([
+        { provider: 'mock', issuer: mockIdentity.issuer, providerSubject: token, userId },
+        { provider: 'mock', issuer: mockIdentity.issuer, providerSubject: otherToken, userId: otherUserId },
       ]);
       await tx.insert(schema.provider).values({ identifier: 'fixture-bank' }).onConflictDoNothing();
       const [provider] = await tx.select().from(schema.provider).where(eq(schema.provider.identifier, 'fixture-bank'));
@@ -76,9 +83,14 @@ describe.skipIf(!process.env.TEST_POSTGRES_URL)('owned tag decisions and rules a
   }
 
   it('lets the authenticated owner choose a tag, deliberately choose none, and reset without cross-user access', async () => {
-    await withUsers(async ({ tx, userId, token, otherToken, movementId, otherMovementId }) => {
+    await withUsers(async ({ tx, userId, otherUserId, token, otherToken, movementId, otherMovementId }) => {
+      const { verifier } = testMockAuth({
+        [token]: { userId, email: `${userId}@test.local`, name: 'Owner' },
+        [otherToken]: { userId: otherUserId, email: `${otherUserId}@test.local`, name: 'Other' },
+      });
       const module = await Test.createTestingModule({ imports: [AppModule] })
-        .overrideProvider(DRIZZLE_PG_CLIENT).useValue(tx).compile();
+        .overrideProvider(DRIZZLE_PG_CLIENT).useValue(tx)
+        .overrideProvider(MockAuthService).useValue(verifier).compile();
       const app: INestApplication = module.createNestApplication({ logger: false });
       try {
         await app.init();

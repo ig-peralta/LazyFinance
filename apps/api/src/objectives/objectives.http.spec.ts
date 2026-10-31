@@ -4,7 +4,9 @@ import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppModule } from '../app.module';
 import { DRIZZLE_PG_CLIENT } from '../drizzle/drizzle.tokens';
-import { UserRepository } from '../drizzle/repositories/user.repository';
+import { ExternalIdentityRepository } from '../drizzle/repositories/external-identity.repository';
+import { MockAuthService } from '../auth/mock/mock-auth.service';
+import { testMockAuth } from '../auth/testing/mock-auth-fixtures';
 import { ObjectivesService } from './objectives.service';
 
 describe('GET /objectives', () => {
@@ -21,15 +23,14 @@ describe('GET /objectives', () => {
   beforeEach(async () => {
     getForUser.mockClear();
     getSpendingProgressForUser.mockClear();
+    const { verifier, resolver } = testMockAuth({
+      'demo-token': { userId, email: 'demo@lazyfinance.cl', name: 'Camila Rojas' },
+      'other-token': { userId: '00000000-0000-4000-8000-000000000002', email: 'other@lazyfinance.local', name: 'Otro' },
+    });
     const module = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(DRIZZLE_PG_CLIENT).useValue({})
-      .overrideProvider(UserRepository).useValue({
-        findByApiToken: async (token: string) => token === 'demo-token'
-          ? { id: userId, email: 'demo@lazyfinance.cl', name: 'Camila Rojas' }
-          : token === 'other-token'
-            ? { id: '00000000-0000-4000-8000-000000000002', email: 'other@lazyfinance.local', name: 'Otro' }
-            : null,
-      })
+      .overrideProvider(MockAuthService).useValue(verifier)
+      .overrideProvider(ExternalIdentityRepository).useValue(resolver)
       .overrideProvider(ObjectivesService).useValue({ getForUser, getSpendingProgressForUser })
       .compile();
 

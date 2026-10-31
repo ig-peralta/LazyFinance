@@ -16,8 +16,12 @@ class ObjectivesStub {}
 describe('AppShell', () => {
   afterEach(() => TestBed.resetTestingModule());
 
-  async function setup() {
+  async function setup(failLogout = false) {
     const clear = vi.fn();
+    const logout = vi.fn(async () => {
+      if (failLogout) throw new Error('Firebase sign-out failed');
+      clear();
+    });
     TestBed.configureTestingModule({
       providers: [
         provideRouter([
@@ -31,12 +35,12 @@ describe('AppShell', () => {
             ],
           },
         ]),
-        { provide: SessionService, useValue: { clear } },
+        { provide: SessionService, useValue: { clear, logout } },
       ],
     });
     const harness = await RouterTestingHarness.create('/etiquetas');
     const root = harness.fixture.nativeElement as HTMLElement;
-    return { harness, clear, root };
+    return { harness, clear, logout, root };
   }
 
   it('links to the three destinations and marks the active one', async () => {
@@ -70,7 +74,7 @@ describe('AppShell', () => {
   });
 
   it('offers logout on desktop and mobile and returns to the landing page', async () => {
-    const { harness, clear, root } = await setup();
+    const { harness, clear, logout, root } = await setup();
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     (root.querySelector('button[aria-controls="mobile-menu"]') as HTMLButtonElement).click();
     harness.detectChanges();
@@ -81,7 +85,20 @@ describe('AppShell', () => {
     expect(logouts).toHaveLength(2);
 
     logouts[0].click();
+    await harness.fixture.whenStable();
+    expect(logout).toHaveBeenCalledOnce();
     expect(clear).toHaveBeenCalledOnce();
     expect(navigate).toHaveBeenCalledWith('/');
+  });
+
+  it('hides financial content and reports a failed sign-out', async () => {
+    const { harness, root } = await setup(true);
+    const logout = Array.from(root.querySelectorAll('button'))
+      .find((button) => button.textContent?.trim() === 'Cerrar sesión') as HTMLButtonElement;
+    logout.click();
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    expect(root.querySelector('[role="alert"]')).not.toBeNull();
+    expect(root.querySelector('h1')).toBeNull();
   });
 });

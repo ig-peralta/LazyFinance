@@ -18,10 +18,30 @@ function emailConflict(error: unknown): boolean {
 export class ExternalIdentityRepository {
   constructor(@Inject(DRIZZLE_PG_CLIENT) private readonly db: PostgresJsDatabase<typeof schema>) {}
 
-  async resolveOrCreate(identity: VerifiedExternalIdentity): Promise<AuthPrincipal> {
+  async resolveExisting(identity: VerifiedExternalIdentity): Promise<AuthPrincipal> {
+    const linked = await this.findLinked(identity);
+    if (!linked) throw new UnauthorizedException('External identity is not linked');
+    return linked;
+  }
+
+  private async findLinked(identity: VerifiedExternalIdentity): Promise<AuthPrincipal | null> {
     if (identity.provider.length > 40 || identity.issuer.length > 512 || identity.providerSubject.length > 256) {
       throw new UnauthorizedException('Invalid external identity');
     }
+    const key = and(
+      eq(externalIdentity.provider, identity.provider),
+      eq(externalIdentity.issuer, identity.issuer),
+      eq(externalIdentity.providerSubject, identity.providerSubject),
+    );
+    const fields = { userId: user.id, email: user.email, name: user.name };
+    const [linked] = await this.db.select(fields).from(externalIdentity)
+      .innerJoin(user, eq(externalIdentity.userId, user.id)).where(key).limit(1);
+    return linked ?? null;
+  }
+
+  async resolveOrCreate(identity: VerifiedExternalIdentity): Promise<AuthPrincipal> {
+    const existing = await this.findLinked(identity);
+    if (existing) return existing;
 
     const key = and(
       eq(externalIdentity.provider, identity.provider),
@@ -29,9 +49,6 @@ export class ExternalIdentityRepository {
       eq(externalIdentity.providerSubject, identity.providerSubject),
     );
     const fields = { userId: user.id, email: user.email, name: user.name };
-    const [existing] = await this.db.select(fields).from(externalIdentity)
-      .innerJoin(user, eq(externalIdentity.userId, user.id)).where(key).limit(1);
-    if (existing) return existing;
 
     try {
       return await this.db.transaction(async (tx) => {
@@ -55,7 +72,6 @@ export class ExternalIdentityRepository {
         const [created] = await tx.insert(user).values({
           email,
           name: identity.displayName?.trim().slice(0, 120) || email.slice(0, 120),
-          apiToken: null,
         }).returning(fields);
         await tx.insert(externalIdentity).values({
           provider: identity.provider,

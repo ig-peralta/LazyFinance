@@ -5,7 +5,6 @@ import { AccountRepository } from './repositories/account.repository';
 import { ObjectiveRepository } from './repositories/objective.repository';
 import { TagRepository } from './repositories/tag.repository';
 import { TransactionRepository } from './repositories/transaction.repository';
-import { UserRepository } from './repositories/user.repository';
 import { ExternalIdentityRepository } from './repositories/external-identity.repository';
 import { IncomeRepository } from './repositories/income.repository';
 
@@ -16,7 +15,6 @@ import { IncomeRepository } from './repositories/income.repository';
     ObjectiveRepository,
     TagRepository,
     TransactionRepository,
-    UserRepository,
     ExternalIdentityRepository,
     IncomeRepository,
   ],
@@ -26,7 +24,6 @@ import { IncomeRepository } from './repositories/income.repository';
     ObjectiveRepository,
     TagRepository,
     TransactionRepository,
-    UserRepository,
     ExternalIdentityRepository,
     IncomeRepository,
   ],
