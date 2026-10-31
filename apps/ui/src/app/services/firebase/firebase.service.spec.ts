@@ -20,15 +20,12 @@ describe('FirebaseService', () => {
   });
 
   it('reports missing public Web app configuration rather than initializing placeholders', async () => {
+    environment.firebaseConfig.apiKey = 'REPLACE_WITH_FIREBASE_WEB_API_KEY';
     await expect(TestBed.inject(FirebaseService).init()).rejects.toThrow('Firebase Web configuration is missing');
   });
 
   it('initializes and reuses one browser Auth instance with configured public identifiers', async () => {
-    const config = {
-      apiKey: 'public-api-key', authDomain: 'lazyfinance-dev.firebaseapp.com',
-      projectId: 'lazyfinance-dev', appId: '1:123:web:abc',
-    };
-    Object.assign(environment.firebaseConfig, config);
+    const config = { ...environment.firebaseConfig };
     const firebase = TestBed.inject(FirebaseService);
     const first = await firebase.init();
     const second = await firebase.init();
