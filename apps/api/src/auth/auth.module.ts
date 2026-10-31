@@ -3,13 +3,13 @@ import { DrizzleModule } from '../drizzle/drizzle.module';
 import { EnvironmentModule } from '../environment/environment.module';
 import { AuthHttpController } from './auth.http';
 import { AuthService } from './auth.service';
-import { FirebaseIdTokenVerifier } from './firebase/firebase-id-token.verifier';
+import { FirebaseAuthService } from './firebase/firebase-auth.service';
 import { MockAuthService } from './mock/mock-auth.service';
 
 @Module({
   imports: [DrizzleModule, EnvironmentModule],
   controllers: [AuthHttpController],
-  providers: [AuthService, FirebaseIdTokenVerifier, MockAuthService],
-  exports: [AuthService, FirebaseIdTokenVerifier],
+  providers: [AuthService, FirebaseAuthService, MockAuthService],
+  exports: [AuthService, FirebaseAuthService],
 })
 export class AuthModule {}

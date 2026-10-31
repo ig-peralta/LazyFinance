@@ -121,7 +121,8 @@ describe('HTTP authentication', () => {
     const module = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(DRIZZLE_PG_CLIENT).useValue(db)
       .overrideProvider(EnvironmentService).useValue({
-        get: (key: string) => key === 'AUTH_PROVIDER' ? 'firebase' : 'lazyfinance-dev',
+        get: (key: string) => key === 'AUTH_PROVIDER' ? 'firebase'
+          : key === 'FIREBASE_PROJECT_ID' ? 'lazyfinance-dev' : undefined,
       }).compile();
     const firebaseApp = module.createNestApplication();
     await firebaseApp.init();

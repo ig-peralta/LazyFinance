@@ -82,7 +82,9 @@ is required in Firebase mode. As in Principia, the API also accepts
 They must be supplied together with the project ID; the PEM key can contain
 literal, escaped, or double-escaped newlines. Store these values in the API's
 runtime environment (or its ignored `apps/api/.env`), rather than in source.
-With credentials supplied, the Admin app initializes using that service account.
+With credentials supplied, the Admin app initializes once when the Firebase
+service starts and reuses the same Auth instance for each verification. Mock
+mode skips Admin initialization entirely.
 Without them, it still verifies ID tokens using the explicit project ID and
 public verification keys; ID-token verification alone does not require a
 service-account private key. A Firebase **user ID token is not an environment
@@ -97,7 +99,7 @@ configuration failure, and reuse of the Admin app. Run them with:
 
 ```bash
 pnpm --filter @lazyfinance/contracts build
-pnpm --filter api exec vitest run src/auth/firebase/firebase-id-token.verifier.spec.ts src/environment/environment.schema.spec.ts
+pnpm --filter api exec vitest run src/auth/firebase/firebase-auth.service.spec.ts src/auth/firebase/firebase-auth.utils.spec.ts src/environment/environment.schema.spec.ts
 pnpm --filter api exec vitest run src/auth/mock/mock-auth.service.spec.ts src/auth/http.guard.spec.ts
 ```
 
