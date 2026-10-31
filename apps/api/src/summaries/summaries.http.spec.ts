@@ -28,7 +28,7 @@ describe('GET /summaries/monthly', () => {
       .overrideProvider(DRIZZLE_PG_CLIENT).useValue({})
       .overrideProvider(UserRepository).useValue({
         findByApiToken: async (token: string) => token === 'demo-token'
-          ? { id: userId, email: 'demo@lazyfinance.local', name: 'Camila' }
+          ? { id: userId, email: 'demo@lazyfinance.cl', name: 'Camila' }
           : null,
       })
       .overrideProvider(SummariesService).useValue({ getMonthlyForUser, getComparisonForUser })

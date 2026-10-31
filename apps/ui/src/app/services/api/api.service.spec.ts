@@ -13,6 +13,27 @@ import { ApiService } from './api.service';
 describe('ApiService', () => {
   afterEach(() => TestBed.resetTestingModule());
 
+  it('fetches the public authentication provider and posts mock credentials', async () => {
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    const api = TestBed.inject(ApiService);
+    const backend = TestBed.inject(HttpTestingController);
+    const config = firstValueFrom(api.getAuthConfig());
+    const login = firstValueFrom(api.loginMock('demo@lazyfinance.cl', 'password'));
+
+    const configRequest = backend.expectOne(`${environment.apiUrl}/auth/config`);
+    expect(configRequest.request.method).toBe('GET');
+    configRequest.flush({ provider: 'mock' });
+
+    const loginRequest = backend.expectOne(`${environment.apiUrl}/auth/mock/login`);
+    expect(loginRequest.request.method).toBe('POST');
+    expect(loginRequest.request.body).toEqual({ email: 'demo@lazyfinance.cl', password: 'password' });
+    loginRequest.flush({ token: 'mock-session-token' });
+
+    await expect(config).resolves.toEqual({ provider: 'mock' });
+    await expect(login).resolves.toEqual({ token: 'mock-session-token' });
+    backend.verify();
+  });
+
   it('requests the principal with the supplied bearer token', async () => {
     TestBed.configureTestingModule({
       providers: [provideHttpClient(), provideHttpClientTesting()],
@@ -26,7 +47,7 @@ describe('ApiService', () => {
 
     const principal = {
       userId: 'demo-user',
-      email: 'demo@lazyfinance.local',
+      email: 'demo@lazyfinance.cl',
       name: 'Camila Rojas',
     };
     request.flush(principal);

@@ -83,7 +83,9 @@
           Ingresa para continuar con tus finanzas en LazyFinance.
         </p>
 
-        @if (session.active()) {
+        @if (loadingConfig()) {
+          <p class="mt-10 text-sm text-muted-color">Cargando opciones de acceso...</p>
+        } @else if (session.active()) {
           <div
             class="mt-10 rounded-2xl border border-primary-200 bg-primary-50 p-6 dark:border-primary-800 dark:bg-primary-950"
           >
@@ -117,55 +119,52 @@
             </div>
           </div>
         } @else {
-          <div class="mt-10 space-y-5">
-            <div>
-              <label for="email" class="mb-2 block text-sm font-semibold text-color-emphasis"
-                >Correo electrónico</label
-              >
-              <input
-                id="email"
-                type="email"
-                autocomplete="username"
-                placeholder="tu@correo.cl"
-                disabled
-                aria-describedby="login-unavailable"
-                class="w-full rounded-xl border border-surface bg-surface-100 px-4 py-3 text-color outline-none placeholder:text-muted-color disabled:cursor-not-allowed disabled:opacity-70 dark:border-surface-700 dark:bg-surface-900"
-              />
-            </div>
-            <div>
-              <label for="password" class="mb-2 block text-sm font-semibold text-color-emphasis"
-                >Contraseña</label
-              >
-              <input
-                id="password"
-                type="password"
-                autocomplete="current-password"
-                placeholder="••••••••"
-                disabled
-                aria-describedby="login-unavailable"
-                class="w-full rounded-xl border border-surface bg-surface-100 px-4 py-3 text-color outline-none placeholder:text-muted-color disabled:cursor-not-allowed disabled:opacity-70 dark:border-surface-700 dark:bg-surface-900"
-              />
-            </div>
-            <p id="login-unavailable" class="text-right text-xs text-muted-color">
-              Acceso con correo próximamente
-            </p>
-
-            <div class="space-y-3 pt-2">
-              <button
-                data-testid="email-login"
-                type="button"
-                disabled
-                class="flex w-full cursor-not-allowed items-center justify-center rounded-xl bg-primary px-5 py-3.5 font-semibold text-primary-contrast opacity-50"
-              >
-                Iniciar sesión
-              </button>
-              <div
-                class="flex items-center gap-4 py-2 text-xs font-medium uppercase tracking-wider text-muted-color"
-              >
-                <span class="h-px flex-1 bg-surface-200 dark:bg-surface-700"></span>
-                o continúa con
-                <span class="h-px flex-1 bg-surface-200 dark:bg-surface-700"></span>
+          @if (provider() === 'mock') {
+            <form
+              class="mt-10 space-y-5"
+              (submit)="$event.preventDefault(); loginWithMock(emailInput.value, passwordInput.value)"
+            >
+              <div>
+                <label for="email" class="mb-2 block text-sm font-semibold text-color-emphasis"
+                  >Correo electrónico</label
+                >
+                <input
+                  #emailInput
+                  id="email"
+                  name="email"
+                  type="email"
+                  autocomplete="username"
+                  placeholder="tu@correo.cl"
+                  value="demo@lazyfinance.cl"
+                  required
+                  class="w-full rounded-xl border border-surface bg-surface-100 px-4 py-3 text-color outline-none placeholder:text-muted-color dark:border-surface-700 dark:bg-surface-900"
+                />
               </div>
+              <div>
+                <label for="password" class="mb-2 block text-sm font-semibold text-color-emphasis"
+                  >Contraseña</label
+                >
+                <input
+                  #passwordInput
+                  id="password"
+                  name="password"
+                  type="password"
+                  autocomplete="current-password"
+                  required
+                  class="w-full rounded-xl border border-surface bg-surface-100 px-4 py-3 text-color outline-none placeholder:text-muted-color dark:border-surface-700 dark:bg-surface-900"
+                />
+              </div>
+              <button
+                data-testid="mock-login"
+                type="submit"
+                class="flex w-full items-center justify-center rounded-xl bg-primary px-5 py-3.5 font-semibold text-primary-contrast transition-colors hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
+                [disabled]="loading()"
+              >
+                {{ loading() ? 'Conectando...' : 'Iniciar sesión' }}
+              </button>
+            </form>
+          } @else if (provider() === 'firebase') {
+            <div class="mt-10 space-y-3">
               <button
                 data-testid="google-login"
                 type="button"
@@ -189,25 +188,23 @@
                 </svg>
                 Continuar con Google
               </button>
-              <button
-                data-testid="demo-login"
-                type="button"
-                class="flex w-full items-center justify-center rounded-xl border border-primary bg-primary-50 px-5 py-3.5 font-semibold text-primary transition-colors hover:bg-primary-100 disabled:cursor-wait disabled:opacity-60 dark:bg-primary-950 dark:hover:bg-primary-900"
-                [disabled]="loading()"
-                (click)="loginAsDemo()"
-              >
-                {{ loading() ? 'Conectando...' : 'Entrar como usuario demo' }}
-              </button>
+              <p class="text-sm text-muted-color">El acceso con Google estará disponible próximamente.</p>
             </div>
-            @if (error()) {
-              <p role="alert" class="text-sm text-red-600">{{ error() }}</p>
-            }
-          </div>
+          } @else {
+            <button type="button" class="mt-8 text-sm font-semibold text-primary" (click)="loadProvider()">
+              Reintentar
+            </button>
+          }
+          @if (error()) {
+            <p role="alert" class="mt-4 text-sm text-red-600">{{ error() }}</p>
+          }
         }
 
-        <p class="mt-10 text-center text-xs leading-5 text-muted-color">
-          El acceso de demostración utiliza información de ejemplo.
-        </p>
+        @if (provider() === 'mock') {
+          <p class="mt-10 text-center text-xs leading-5 text-muted-color">
+            El acceso de demostración utiliza información de ejemplo.
+          </p>
+        }
       </div>
     </section>
   </div>

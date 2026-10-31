@@ -7,7 +7,7 @@ import { ApiService } from '../api/api.service';
 import { SessionService } from './session.service';
 
 const cookieName = 'lazyfinance-session';
-const principal = { userId: 'demo-user', email: 'demo@lazyfinance.local', name: 'Camila Rojas' };
+const principal = { userId: 'demo-user', email: 'demo@lazyfinance.cl', name: 'Camila Rojas' };
 const getPrincipal = vi.fn((_token: string) => of(principal));
 
 beforeEach(() => {

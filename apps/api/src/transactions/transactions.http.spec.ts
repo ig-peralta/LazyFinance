@@ -39,7 +39,7 @@ describe('GET /transactions/recent', () => {
       .overrideProvider(DRIZZLE_PG_CLIENT).useValue({})
       .overrideProvider(UserRepository).useValue({
         findByApiToken: async (token: string) => token === 'demo-token'
-          ? { id: userId, email: 'demo@lazyfinance.local', name: 'Camila Rojas' }
+          ? { id: userId, email: 'demo@lazyfinance.cl', name: 'Camila Rojas' }
           : token === 'other-token'
             ? { id: '00000000-0000-4000-8000-000000000002', email: 'other@lazyfinance.local', name: 'Otro' }
             : null,

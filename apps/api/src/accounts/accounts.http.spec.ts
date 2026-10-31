@@ -10,7 +10,7 @@ import { UserRepository } from '../drizzle/repositories/user.repository';
 describe('GET /accounts', () => {
   const demoUser = {
     id: '00000000-0000-4000-8000-000000000001',
-    email: 'demo@lazyfinance.local',
+    email: 'demo@lazyfinance.cl',
     name: 'Camila Rojas',
   };
   const accounts = [{

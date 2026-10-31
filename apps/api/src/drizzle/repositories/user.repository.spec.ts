@@ -19,7 +19,7 @@ describe('UserRepository', () => {
   it('looks up the token with a parameterized query and returns the user', async () => {
     const record = {
       id: '00000000-0000-4000-8000-000000000001',
-      email: 'demo@lazyfinance.local',
+      email: 'demo@lazyfinance.cl',
       name: 'Camila Rojas',
     };
     const { repository, where } = createRepository([record]);
