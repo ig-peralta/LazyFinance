@@ -1,4 +1,4 @@
-# Firebase identity boundary (LAZ-46)
+# Firebase identity boundary
 
 Firebase authenticates a person; LazyFinance's own `user.id` is the financial owner. The
 two identifiers must not be interchangeable. LAZ-46 supplies a verifier and a
@@ -10,8 +10,8 @@ users, and LAZ-43 adds browser sign-in and API-revalidated SSR sessions.
 - The first supported production browser sign-in is **Google through Firebase Auth**.
   Enable Google sign-in for the configured Firebase project; additional providers
   need a separate product decision. The verifier checks Firebase project identity,
-  not the UI's choice of sign-in method. Until LAZ-43, the Firebase login button
-  is displayed but disabled.
+  not the UI's choice of sign-in method. The UI offers Google sign-in when the API
+  selects Firebase.
 - A first-party client sends `Authorization: Bearer <Firebase ID token>` to the
   API. This must be an ID token from Firebase Auth, not a Google OAuth access
   token, Firebase custom token, UID, or Firebase session cookie.
@@ -124,3 +124,62 @@ represent an end-to-end sign-in against a live Firebase project. The LAZ-44
 PostgreSQL integration tests inject verified identity fixtures to exercise
 first and concurrent provisioning, email collisions, and cross-user financial
 operations without a Firebase emulator. Run them with `TEST_POSTGRES_URL` set.
+
+## Integrated identity verification (LAZ-45)
+
+The UI's development and production environment files currently use the public
+Web app identifiers for `lazyfinance-dev`. For a local Firebase run, migrate a
+development PostgreSQL database and start the API with `AUTH_PROVIDER=firebase`
+and `FIREBASE_PROJECT_ID=lazyfinance-dev` (in ignored `apps/api/.env` or the
+runtime environment), then start the UI with `pnpm --filter ui dev`. Enable the
+Google provider in the Firebase project and authorize `localhost` as a sign-in
+domain. Production deployments must use matching UI and API project settings.
+Neither a service-account key nor a Firebase Auth emulator is required to
+verify ID tokens; a service-account key, if used, belongs only in the API runtime.
+
+The PostgreSQL identity-flow test runs against the actual API controllers,
+principal resolver, financial services, and a transaction that rolls back its
+fixtures. Its default path injects two verified external identities for
+deterministic first/repeat provisioning, rejection of missing/demo tokens,
+connection ownership, and two-user account, transaction, tag, objective, income
+source, expectation, and receipt isolation. A separate mock-mode test exercises
+the real demo login and confirms it cannot access a Firebase user's account.
+Run them with:
+
+```bash
+TEST_POSTGRES_URL=postgresql://user:password@localhost:5432/postgres \
+  pnpm --filter api exec vitest run src/auth/identity-flow.integration.spec.ts
+pnpm --filter ui exec ng test --watch=false
+```
+
+If `apps/api/.env` selects Firebase, set `AUTH_PROVIDER=mock NODE_ENV=test`
+when running the **full** API test suite; existing mock-mode specs assume
+local mock auth, while this integration spec selects its provider explicitly.
+
+For the live path, use **two separate verified-email Google test identities**
+with distinct emails (neither is the demo email). Sign each into the local UI,
+and obtain that person's current Firebase **ID token** from their own
+`/auth/principal` request's bearer header in the browser network panel. Set
+`TEST_FIREBASE_ID_TOKEN_A` and `TEST_FIREBASE_ID_TOKEN_B` in your local shell,
+not in source or a shared log, and run the same API test command with
+`TEST_POSTGRES_URL`. The live test is skipped unless both tokens are set. It
+uses the real Admin verifier, checks distinct stable application users and the
+same two-user financial isolation, rejects the demo and a tampered token, and
+rolls back any fixture data. Optionally set `TEST_FIREBASE_EXPIRED_ID_TOKEN`
+to a previously valid token kept past its expiry (usually about an hour) to
+verify live expiry rejection. Refresh the two active tokens before rerunning;
+Firebase rotates them automatically in the browser. Do not use Google OAuth
+access tokens, custom tokens, or tokens from another Firebase project.
+
+For browser and SSR smoke checks, in separate browser profiles sign in as each
+identity, reload a protected URL directly, confirm the same `userId` after
+reload, and confirm neither user's accounts or income appear in the other's
+profile. On logout, direct navigation to a protected route must require login;
+an expired or forged `lazyfinance-session` cookie must not render protected SSR
+content. The browser may re-establish a session from Firebase persistence
+after an expired cookie; only a valid ID token accepted by `/auth/principal`
+restores access. In mock mode (`AUTH_PROVIDER=mock`, nonproduction), seed the
+demo user and verify `/auth/mock/login` works; Firebase mode rejects that
+endpoint and the demo token. Logout clears local access, but an already-issued
+ID token remains valid on the API until it expires (see the revocation policy
+above).
