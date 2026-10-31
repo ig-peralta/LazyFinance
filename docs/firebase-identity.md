@@ -1,10 +1,9 @@
 # Firebase identity boundary (LAZ-46)
 
 Firebase authenticates a person; LazyFinance's own `user.id` is the financial owner. The
-two identifiers must not be interchangeable. This slice supplies a verifier and a
-trusted identity contract, plus a local mock login path. Application-user
-provisioning (LAZ-44) and browser/SSR Firebase sessions (LAZ-43) consume that
-boundary in later slices.
+two identifiers must not be interchangeable. LAZ-46 supplies a verifier and a
+trusted identity contract, plus a local mock login path. LAZ-44 connects that
+identity to application users; browser/SSR Firebase sessions follow in LAZ-43.
 
 ## Initial sign-in and token contract
 
@@ -37,16 +36,19 @@ boundary in later slices.
 
 ## Application and MCP subjects
 
-LAZ-44 will resolve the verified `(provider, issuer, providerSubject)` to a
+The backend resolves the verified `(provider, issuer, providerSubject)` to a
 single stable application `user.id` (UUID), provisioning it once if necessary.
 The issuer namespaces subjects across projects and future external providers.
 The existing shared `AuthPrincipal` remains `{ userId, email, name }`, with
 `userId` set to that internal UUID. Financial records continue to reference
-the internal UUID. Do not automatically link an existing user based on email:
-two different Firebase UIDs must never inherit one another's financial data.
-An existing user may still be resolved by its subject when the token has no
-verified email; first-time provisioning should require a verified email or an
-explicit alternative profile policy, since `user.email` is currently required.
+the internal UUID. The external identity has a unique database key, and first
+sign-in creates its user and mapping atomically so concurrent attempts resolve
+the same user. First-time provisioning requires a verified email. If the email
+already belongs to another application user (including the demo user), access
+returns 409 rather than automatically linking that user's financial data.
+An existing user can still resolve by subject when a later token has no verified
+email; email and display-name changes do not remap that user. Firebase users
+have no `api_token`, while the seeded mock user retains its development token.
 
 HTTP and MCP authorization currently read the same request principal. LAZ-52
 chooses authorization for external MCP clients independently; its accepted
@@ -60,8 +62,9 @@ The public `GET /auth/config` exposes only `{ provider: 'mock' | 'firebase' }`
 so the UI can select the appropriate login inputs. `POST /auth/mock/login`
 is available only in mock mode and returns the seeded bearer token for valid
 credentials; the demo token is rejected in Firebase mode. Mock mode is refused
-when `NODE_ENV=production`. LAZ-44 will connect verified Firebase identities
-to the internal principal for protected requests.
+when `NODE_ENV=production`. Firebase-mode protected HTTP and MCP requests now
+use the verified identity mapping to obtain the same internal principal; the
+external-client MCP authorization scheme remains a separate workstream.
 
 ## Browser and SSR session boundary
 
@@ -107,9 +110,11 @@ configuration failure, and reuse of the Admin app. Run them with:
 pnpm --filter @lazyfinance/contracts build
 pnpm --filter api exec vitest run src/auth/firebase/firebase-auth.service.spec.ts src/auth/firebase/firebase-auth.utils.spec.ts src/environment/environment.schema.spec.ts
 pnpm --filter api exec vitest run src/auth/mock/mock-auth.service.spec.ts src/auth/http.guard.spec.ts
+TEST_POSTGRES_URL=postgresql://user:password@localhost:5432/postgres pnpm --filter api exec vitest run src/auth/external-identity.integration.spec.ts
 ```
 
-These tests substitute the Admin SDK's verification call; they do not represent
-an end-to-end sign-in against a live Firebase project. Once LAZ-44 wires the
-principal resolver, its integration tests should confirm two different Firebase
-subjects remain isolated even with the same submitted email or user ID.
+These verifier tests substitute the Admin SDK's verification call; they do not
+represent an end-to-end sign-in against a live Firebase project. The LAZ-44
+PostgreSQL integration tests inject verified identity fixtures to exercise
+first and concurrent provisioning, email collisions, and cross-user financial
+operations without a Firebase emulator. Run them with `TEST_POSTGRES_URL` set.
