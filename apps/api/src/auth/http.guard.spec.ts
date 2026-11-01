@@ -3,7 +3,6 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { AppModule } from '../app.module';
-import { configureCors } from '../cors';
 import { DRIZZLE_PG_CLIENT } from '../drizzle/drizzle.tokens';
 import { ExternalIdentityRepository } from '../drizzle/repositories/external-identity.repository';
 import { ENV_SCHEMA } from '../environment/environment.schema';
@@ -47,7 +46,7 @@ describe('HTTP authentication', () => {
       }).compile();
 
     app = module.createNestApplication();
-    configureCors(app, ENV_SCHEMA.parse({}).CORS_ORIGINS);
+    app.enableCors({ origin: ENV_SCHEMA.parse({}).CORS_ORIGINS });
     await app.init();
   });
 

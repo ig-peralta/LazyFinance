@@ -3,7 +3,6 @@ import { MCP_STRATEGY, McpStrategy } from '@rekog/mcp-nest';
 import { AppModule } from './app.module';
 import { Logger } from '@nestjs/common';
 import { EnvironmentService } from './environment/environment.service';
-import { configureCors } from './cors';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -14,7 +13,8 @@ async function bootstrap() {
 
   const environment = app.get(EnvironmentService);
   const port = environment.get('PORT');
-  configureCors(app, environment.get('CORS_ORIGINS'));
+
+  app.enableCors({ origin: environment.get('CORS_ORIGINS') });
 
   await app.startAllMicroservices();
   await app.listen(port);
