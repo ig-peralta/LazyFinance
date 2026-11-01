@@ -3,8 +3,8 @@ import { McpContext } from '@rekog/mcp-nest';
 import { BadRequestException } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import { z } from 'zod';
-import { checkedMonth } from '../_utils/month-query';
-import { santiagoMonth } from '../_utils/santiago-time';
+import { checkedMonth } from '../utils/month-query';
+import { santiagoMonth } from '../utils/santiago-time';
 import type { AuthenticatedRequest } from '../auth/auth.types';
 
 export const readOnlyTool = {

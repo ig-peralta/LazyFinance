@@ -1,6 +1,6 @@
 import type { MonthlyComparison, MonthlySummary } from '@lazyfinance/contracts';
 import { Controller, Get, Header, Query, Req } from '@nestjs/common';
-import { checkedMonth } from '../_utils/month-query';
+import { checkedMonth } from '../utils/month-query';
 import type { AuthenticatedRequest } from '../auth/auth.types';
 import { SummariesService } from './summaries.service';
 

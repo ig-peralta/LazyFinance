@@ -12,7 +12,7 @@ import { ObjectivesService } from '../../objectives/objectives.service';
 import { SummariesService } from '../../summaries/summaries.service';
 import { TransactionsService } from '../../transactions/transactions.service';
 import { IncomeService } from '../../income/income.service';
-import { santiagoMonth } from '../../_utils/santiago-time';
+import { santiagoMonth } from '../../utils/santiago-time';
 
 describe('Dashboard MCP tools', () => {
   let app: INestApplication;

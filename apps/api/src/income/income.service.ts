@@ -11,8 +11,8 @@ import {
 } from '@lazyfinance/contracts';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { z } from 'zod';
-import { fromCents, toCents } from '../_utils/money';
-import { santiagoMonth } from '../_utils/santiago-time';
+import { fromCents, toCents } from '../utils/money';
+import { santiagoMonth } from '../utils/santiago-time';
 import { IncomeRepository } from '../drizzle/repositories/income.repository';
 import type { IncomeSourceRow } from '../drizzle/schema/income-source.table';
 import { expectedIncomeForMonth } from './income-schedule';

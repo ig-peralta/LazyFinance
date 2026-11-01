@@ -9,7 +9,7 @@ import { tag } from '../schema/tag.table';
 import { incomeReceipt } from '../schema/income-receipt.table';
 import { incomeSource } from '../schema/income-source.table';
 import { excludesInternalTransfers, inSantiagoPeriod, monthBounds } from './financial-filters';
-import { fromCents, toCents } from '../../_utils/money';
+import { fromCents, toCents } from '../../utils/money';
 
 const RECENT_LIMIT = 10;
 
