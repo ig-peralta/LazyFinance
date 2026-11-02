@@ -1,6 +1,6 @@
 # Capstone methodology (metodología)
 
-LazyFinance uses **iterative and incremental development with agile practices, without a formal Scrum framework**. This is the approach described in the [Phase 1 project definition](../submissions/fase_1/guia_estudiante.docx) and [technical report](../submissions/fase_1/informe.docx), and carried forward in the [Phase 2 progress guide](../submissions/fase_2/guia_avance.docx). The [product vision](../product/product-vision.md) explains the direction, and the [product requirements](../product/product-requirements.md) describe what the product must achieve; this document explains how we plan, build, check, and record progress.
+LazyFinance uses **iterative and incremental development with agile practices, without a formal Scrum framework**. This is the approach described in the [Phase 1 project definition](../submissions/fase1/1.5_GuiaEstudiante_Fase%201_Definicion%20Proyecto%20APT%20%28Espa%C3%B1ol%29.docx) and [technical report](../submissions/fase1/1.4_APT122_FormativaFase1.docx), and carried forward in the [Phase 2 progress guide](../submissions/fase2/2.4_GuiaEstudiante_Fase%202_DesarrolloProyecto%20APT%20%28Espa%C3%B1ol%29.docx). The [product vision](../product/product-vision.md) explains the direction, and the [product requirements](../product/product-requirements.md) describe what the product must achieve; this document explains how we plan, build, check, and record progress.
 
 ## Why this approach fits
 
