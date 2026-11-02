@@ -1,0 +1,19 @@
+# Backlog and stage evidence
+
+The team **tracks issues in Linear** during development. Reviewers do not need access to that workspace: the [dated all-issue backlog snapshot](snapshots/backlog-2026-11-02.md) reproduces the 65 project issues with their titles, stage, status, due dates, ownership/priority exceptions, and **individual Done when conditions** distilled from the issue criteria. The [product requirements](../product-requirements.md) provide the vision; the [user journeys](../user-journeys.md) and snapshot's workstream summaries explain the intended outcomes.
+
+These repository documents are **reflections of the team's Linear planning at their stated dates**, not a second live tracker. Issue IDs identify work in the snapshot and in Git history. Because the Stage B milestone is still in progress, the dated backlog snapshot is an **interim planning view**, not a claim that Stage B is complete.
+
+## Stage milestones are sprints
+
+- **Sprint A (Stage A) — financial core:** its milestone issues form the Sprint A Backlog. All 19 issues were Done when the [closure record](snapshots/stage-a-closure.md) was assembled; that record preserves the gate decision, last issue closure, worklist, and [documentary retrospective](stage-a-retrospective.md). It does not claim a start-of-sprint selection made at the time.
+- **Sprint B (Stage B) — parallel product tracks:** its milestone issues form the **live Sprint B Backlog**: 46 issues across financial APIs, web workflows, identity, MCP authorization, banking connectivity, and the text agent. The [all-issue snapshot](snapshots/backlog-2026-11-02.md) contains every parent, child, status, and due date as of November 2. Many source issues had no priority or assignee set. A separate Stage B **closure record and retrospective** will be added after its gate.
+- **Sprint C (Stage C) — expanded experience:** **no issues yet**. After Sprint B is completed and reviewed, the team will create and select Sprint C issues based on the remaining work and evidence; its high-level direction is in the [product requirements](../product-requirements.md#stage-c---broaden-the-experience).
+
+**One milestone equals one sprint; the milestone's assigned issues are its Sprint Backlog.** Sprint durations differ by stage, and this naming does not claim all Scrum ceremonies took place. The repository's Sprint A worklist records its completed scope; it cannot prove exactly what was selected at the beginning. See the [methodology](../project-method.md), [Sprint A/B/C product definitions of done](sprint-definitions-of-done.md), and [product Definition of Done](product-definition-of-done.md) for the broader exit criteria.
+
+## Producing future snapshots
+
+For a reviewer-visible checkpoint or stage closure, retrieve **all project issues** from Linear, including every page of results. Record the extraction date and each issue's ID, stage, parent, title, status, priority, assignee, and due/completion dates, preserving unset values. Include the stage gate's outcome, Git baseline, and retrospective when the stage has closed. The [November 2 backlog snapshot](snapshots/backlog-2026-11-02.md) is the accessible current checkpoint; the [Stage A closure record](snapshots/stage-a-closure.md) documents the completed-stage evidence and its provenance.
+
+Live fields can change after extraction. Later snapshots should identify their own extraction dates and never be presented as earlier planning records. Internal Linear identifiers may be kept as plain text, while reviewer-facing links point to **local documentation or public Git commits/PRs**. At the start of each future stage sprint, record its goal and selected milestone issues internally using the [stage-sprint record fields](stage-sprint-record-template.md), then summarize the outcomes in its stage-closure record.
