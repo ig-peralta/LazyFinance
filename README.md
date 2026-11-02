@@ -1,6 +1,6 @@
 # LazyFinance
 
-LazyFinance aims to help people understand their finances and make better decisions without manually reconciling balances and transactions. Its vision centers on a first-party conversational agent (text first, voice later) and a visual dashboard, backed by shared financial logic available to other applications through MCP and designed to support broader financial capabilities over time.
+LazyFinance helps people understand their finances without manually reconciling balances and transactions. Its own conversational agent (text first, voice later) and dashboard are the initial experiences built on a shared financial core. MCP opens another path: authorized agents could use permitted financial context in workflows people already know, combining it with their own capabilities. Provider-neutral data access leaves room for more sources, financial services and audiences as those uses are validated.
 
 LazyFinance is a pnpm/Turborepo monorepo with an Angular web app and a NestJS API. The development stack includes PostgreSQL, Drizzle for database access and migrations, and MCP over Streamable HTTP for API integrations.
 
@@ -22,7 +22,11 @@ Browser → Angular web app (apps/ui) → NestJS HTTP API (apps/api)
 Authorized MCP clients → NestJS MCP endpoint ──────────────┘
 ```
 
-The Angular web app (`apps/ui`) calls the NestJS HTTP API (`apps/api`). The API owns financial rules and user-scoped access, exposes selected read capabilities to external clients through MCP, and persists data in PostgreSQL through Drizzle. `libs/contracts` holds shared API contracts. Local demo data lets the team validate financial behavior without a bank connection; the provider-neutral banking boundary is in the API, while a Fintoc adapter and our own text agent are later product work. See the [product requirements](docs/product-requirements.md) and [banking connector boundary](apps/api/src/banking/README.md) for scope and design decisions.
+The Angular web app (`apps/ui`) calls the NestJS HTTP API (`apps/api`). The API owns financial rules and user-scoped access, exposes authenticated read-only MCP tools, and persists data in PostgreSQL through Drizzle. `libs/contracts` holds shared API contracts. Local demo data lets the team validate financial behavior without a bank connection; the provider-neutral banking boundary is in the API, while external-client authorization, a Fintoc adapter and our own text agent are later product work. See the [product vision](docs/product/product-vision.md), [requirements](docs/product/product-requirements.md) and [banking connector boundary](apps/api/src/banking/README.md) for direction, scope and design decisions.
+
+The [product vision](docs/product/product-vision.md#innovation-and-interoperability-across-ecosystems) describes how another agent could combine permitted LazyFinance financial context with its own tools, such as web research, in a workflow the user already knows.
+
+The [technical evidence index](docs/technical/README.md) links the architecture, non-functional requirements, environment examples and technical manual. Each distinguishes implemented behavior from planned work.
 
 ## Team and roles
 
@@ -36,13 +40,14 @@ These are initial areas of responsibility, not exclusive assignments: the team s
 
 ## Methodology
 
-The project follows **iterative and incremental development with agile practices, without claiming a formal Scrum framework**. The financial core was validated with controlled data before advancing to parallel work on the UI, identity, provider connectivity, and agent. **Each stage milestone is one sprint; its assigned Linear issues are that sprint's Sprint Backlog.** The team does not create separate Linear cycles. For reviewers without access to Linear, the repository provides a [complete dated backlog snapshot with issue-specific completion checks](docs/planning/snapshots/backlog-2026-11-02.md) and **stage-closure evidence**. Sprint C issues will be selected after the Stage B review. See the [method and its rationale](docs/project-method.md), [Sprint A/B/C product definitions of done](docs/planning/sprint-definitions-of-done.md), and [product Definition of Done](docs/planning/product-definition-of-done.md).
+The project follows **iterative and incremental development with agile practices, without claiming a formal Scrum framework**. The financial core was validated with controlled data before advancing to parallel work on the UI, identity, provider connectivity, and agent. **Each stage milestone is one sprint; its assigned Linear issues are that sprint's Sprint Backlog.** The team does not create separate Linear cycles. For reviewers without access to Linear, the repository provides a [complete dated backlog snapshot with issue-specific completion checks](docs/planning/snapshots/backlog-2026-11-02.md) and **stage-closure evidence**. Sprint C issues will be selected after the Stage B review. See the [method and its rationale](docs/planning/project-method.md), [Sprint A/B/C product definitions of done](docs/planning/sprint-definitions-of-done.md), and [product Definition of Done](docs/planning/product-definition-of-done.md).
 
 ## Project evidence
 
-- [Product vision, scope, and stage gates](docs/product-requirements.md) and [observable user journeys](docs/user-journeys.md).
-- [Methodology and planning evidence](docs/project-method.md), including the [all-issue backlog snapshot and individual completion checks](docs/planning/snapshots/backlog-2026-11-02.md), completed [Sprint A issue/gate record](docs/planning/snapshots/stage-a-closure.md), and [documentary retrospective](docs/planning/stage-a-retrospective.md). Future stage-closure records are added after their gate.
-- [Phase 1 project definition and technical report](docs/fase_1/) and [Phase 2 progress guide](docs/fase_2/guia_avance.docx).
+- [Product vision, innovation and stage direction](docs/product/product-vision.md), [product requirements](docs/product/product-requirements.md), [non-functional requirements](docs/product/non-functional-requirements.md) and [observable user journeys](docs/product/user-journeys.md).
+- [Methodology and planning evidence](docs/planning/project-method.md), including the [all-issue backlog snapshot and individual completion checks](docs/planning/snapshots/backlog-2026-11-02.md), completed [Sprint A issue/gate record](docs/planning/snapshots/stage-a-closure.md), and [documentary retrospective](docs/planning/stage-a-retrospective.md). Future stage-closure records are added after their gate.
+- [Phase 1 project definition and technical report](docs/submissions/fase_1/) and [Phase 2 progress guide](docs/submissions/fase_2/guia_avance.docx).
+- [Technical evidence](docs/technical/README.md), including [architecture](docs/technical/architecture.md), [income model](docs/technical/income-model.md), [Firebase identity boundary](docs/technical/firebase-identity.md) and the [technical manual](docs/technical/technical-manual.md).
 
 ## Prerequisites
 
@@ -68,6 +73,8 @@ pnpm dev
 ```
 
 The UI runs at <http://localhost:4200> and the API at <http://localhost:3000>. The API needs PostgreSQL available at startup. The local resource stack provides it at `localhost:5432`, matching the API's default `POSTGRES_URL`. Stop the database with `pnpm resources:down` when finished.
+
+For non-default local settings, copy [`apps/api/.env.example`](apps/api/.env.example) to the ignored `apps/api/.env`; the root [`.env.example`](.env.example) describes local full-stack Compose variables. The [technical manual](docs/technical/technical-manual.md) covers their different scopes and the full-stack schema-initialization limitation.
 
 To run just one app, use `pnpm --filter ui dev` or `pnpm --filter api dev` from the root. The API still needs PostgreSQL; see the [API README](apps/api/README.md) for environment variables and Drizzle commands.
 

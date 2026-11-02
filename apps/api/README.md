@@ -23,21 +23,22 @@ pnpm --filter api dev
 
 The API listens on <http://localhost:3000> by default; MCP clients can connect to <http://localhost:3000/mcp>. The app must be able to connect to PostgreSQL when it starts.
 
-The API loads `apps/api/.env` when present (the file is gitignored). Its validated settings are:
+The API loads `apps/api/.env` when present (the file is gitignored). Copy the checked-in [`.env.example`](.env.example) there to override the local defaults without committing credentials. Its validated settings are:
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `NODE_ENV` | `development` | Runtime mode. Mock auth is rejected when set to `production`. |
-| `AUTH_PROVIDER` | `mock` | Authentication provider: `mock` for local demo access or `firebase` for the Firebase identity track. |
-| `PORT` | `3000` | HTTP and MCP listening port. |
-| `POSTGRES_URL` | `postgresql://user:password@localhost:5432/postgres` | PostgreSQL connection string; matches the local resource stack. |
-| `CORS_ORIGINS` | `http://localhost:4200,http://127.0.0.1:4200` | Comma-separated allowed browser origins for direct API requests. Set this to your UI's origin if it uses another host or port. |
-| `FIREBASE_PROJECT_ID` | Unset | Required for `AUTH_PROVIDER=firebase`. Verified ID tokens resolve to internal application users on protected requests. |
-| `FIREBASE_CLIENT_EMAIL` | Unset | Optional Firebase Admin service-account email. Set together with `FIREBASE_PRIVATE_KEY` and `FIREBASE_PROJECT_ID`. |
-| `FIREBASE_PRIVATE_KEY` | Unset | Optional Firebase Admin service-account PEM key. Accepts real or escaped newlines; set together with the service-account email. |
+| Variable                | Default                                              | Purpose                                                                                                                         |
+| ----------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`              | `development`                                        | Runtime mode. Mock auth is rejected when set to `production`.                                                                   |
+| `AUTH_PROVIDER`         | `mock`                                               | Authentication provider: `mock` for local demo access or `firebase` for the Firebase identity track.                            |
+| `PORT`                  | `3000`                                               | HTTP and MCP listening port.                                                                                                    |
+| `POSTGRES_URL`          | `postgresql://user:password@localhost:5432/postgres` | PostgreSQL connection string; matches the local resource stack.                                                                 |
+| `CORS_ORIGINS`          | `http://localhost:4200,http://127.0.0.1:4200`        | Comma-separated allowed browser origins for direct API requests. Set this to your UI's origin if it uses another host or port.  |
+| `FIREBASE_PROJECT_ID`   | Unset                                                | Required for `AUTH_PROVIDER=firebase`. Verified ID tokens resolve to internal application users on protected requests.          |
+| `FIREBASE_CLIENT_EMAIL` | Unset                                                | Optional Firebase Admin service-account email. Set together with `FIREBASE_PRIVATE_KEY` and `FIREBASE_PROJECT_ID`.              |
+| `FIREBASE_PRIVATE_KEY`  | Unset                                                | Optional Firebase Admin service-account PEM key. Accepts real or escaped newlines; set together with the service-account email. |
 
-See [Firebase identity boundary](../../docs/firebase-identity.md) for accepted tokens,
+See [Firebase identity boundary](../../docs/technical/firebase-identity.md) for accepted tokens,
 the Admin configuration, and the planned application-user and SSR handoffs.
+See the [technical evidence index](../../docs/technical/README.md) for architecture, non-functional requirements and the technical manual.
 For local Compose, supply the Firebase variables in the shell or the Compose
 project's root `.env`; `apps/api/.env` applies only when running the API directly.
 
@@ -56,15 +57,15 @@ restoration when its public Firebase Web configuration is provided.
 
 Run these from the monorepo root:
 
-| Command | Purpose |
-| --- | --- |
-| `pnpm --filter api dev` | Start NestJS with file watching. |
-| `pnpm --filter api build` | Compile the API into `apps/api/dist`. |
-| `pnpm --filter api test` | Run Vitest tests. |
-| `pnpm --filter api typecheck` | Type-check without emitting files. |
-| `pnpm --filter api seed` | Populate the demo dataset; safe to run more than once. |
-| `pnpm --filter api migrate` | Apply pending migrations using the API's Drizzle Kit config. |
-| `pnpm --filter api drizzle <command>` | Run Drizzle Kit with this app's config. |
+| Command                               | Purpose                                                      |
+| ------------------------------------- | ------------------------------------------------------------ |
+| `pnpm --filter api dev`               | Start NestJS with file watching.                             |
+| `pnpm --filter api build`             | Compile the API into `apps/api/dist`.                        |
+| `pnpm --filter api test`              | Run Vitest tests.                                            |
+| `pnpm --filter api typecheck`         | Type-check without emitting files.                           |
+| `pnpm --filter api seed`              | Populate the demo dataset; safe to run more than once.       |
+| `pnpm --filter api migrate`           | Apply pending migrations using the API's Drizzle Kit config. |
+| `pnpm --filter api drizzle <command>` | Run Drizzle Kit with this app's config.                      |
 
 The demo user is `demo@lazyfinance.cl` with the local password above; the mock identity provider issues fixture token `lazyfinance-demo-token` when those credentials are supplied. The seed creates CLP accounts, categories, objectives, and a dated transaction history from January 2024 through the present, including recurring income and expenses, transfers, credit-card payments, and seasonal spending in Chile. It also links the mock external identity to the demo user. It uses the API's `POSTGRES_URL` (including `apps/api/.env` when present); run migrations first. Rerunning it updates the same demo records without deleting other users' data. Rerun the seed on existing local databases to update the demo email and identity link. The credentials and dataset are for local development only.
 

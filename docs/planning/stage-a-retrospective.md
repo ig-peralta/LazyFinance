@@ -31,8 +31,8 @@ The recorded gate reconciliation included September debit spending of **CLP 1,46
 
 ## What worked
 
-1. **Validate financial meaning before adding provider data.** The team changed direction from the Fintoc-first Phase 1 plan to the core-first approach documented in the [product requirements](../product-requirements.md). PRs #7, #10, and #11 show concrete corrections found while the model could still be exercised with controlled data. The gate could be reviewed without relying on a bank sandbox.
-2. **Use observable journeys rather than a schema-only sign-off.** [J1–J5](../user-journeys.md) connect balance, spending, budget, savings, and income questions to LAZ-19 through LAZ-23 and LAZ-25 in the [backlog snapshot](snapshots/backlog-2026-11-02.md). The gate review recorded both results and limitations instead of treating a screen or table as sufficient proof.
+1. **Validate financial meaning before adding provider data.** The team changed direction from the Fintoc-first Phase 1 plan to the core-first approach documented in the [product vision](../product/product-vision.md#development-sequence-and-decision-gates). PRs #7, #10, and #11 show concrete corrections found while the model could still be exercised with controlled data. The gate could be reviewed without relying on a bank sandbox.
+2. **Use observable journeys rather than a schema-only sign-off.** [J1–J5](../product/user-journeys.md) connect balance, spending, budget, savings, and income questions to LAZ-19 through LAZ-23 and LAZ-25 in the [backlog snapshot](snapshots/backlog-2026-11-02.md). The gate review recorded both results and limitations instead of treating a screen or table as sufficient proof.
 3. **Keep a deliberate scope boundary.** LAZ-16/LAZ-20 avoid displaying fictitious savings progress; LAZ-15 and LAZ-18 distinguish model validation from later CRUD/UI work. This made a defensible GO decision possible without claiming that Stage B functionality was finished.
 
 ## Friction and lessons

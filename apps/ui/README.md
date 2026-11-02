@@ -19,7 +19,7 @@ Open <http://localhost:4200>. Angular's development server reloads as you edit. 
 
 `initializeServices()` coordinates app-wide startup before routing: it loads the provider, initializes Firebase Auth in the browser only when selected, then initializes the session. On SSR it initializes the session without starting Firebase. Both mock and Firebase modes write a token-only cookie for SSR; each SSR request revalidates that token through `/auth/principal` before trusting its user. The cookie is not proof of authentication by itself. Angular's HTTP interceptor attaches the current token only to requests targeting the configured API origin. Development replaces `src/environments/environment.ts` with `src/environments/environment.development.ts` (local API at <http://localhost:3000>); production browser builds use <https://api.lazyfinance.cl>.
 
-Both environment files currently use the public `lazyfinance-dev` Firebase Web app identifiers. Set `AUTH_PROVIDER=firebase` and `FIREBASE_PROJECT_ID=lazyfinance-dev` on the API to test Google sign-in; enable Google sign-in and authorize the UI's local domain in Firebase. Before deploying against another Firebase project, update the corresponding UI environment file and the API project ID together. Admin credentials are never included in the UI. Mock mode works without Firebase or an emulator. See [identity-flow verification](../../docs/firebase-identity.md#integrated-identity-verification-laz-45) for the two-user checks.
+Both environment files currently use the public `lazyfinance-dev` Firebase Web app identifiers. Set `AUTH_PROVIDER=firebase` and `FIREBASE_PROJECT_ID=lazyfinance-dev` on the API to test Google sign-in; enable Google sign-in and authorize the UI's local domain in Firebase. Before deploying against another Firebase project, update the corresponding UI environment file and the API project ID together. Admin credentials are never included in the UI. Mock mode works without Firebase or an emulator. See [identity-flow verification](../../docs/technical/firebase-identity.md#integrated-identity-verification-laz-45) for the two-user checks.
 
 The dashboard can fetch account balances during SSR after token verification. Authenticated API responses are not transferred into browser hydration, and protected SSR responses are marked private and not cacheable. Set `API_INTERNAL_URL` on the UI server when it cannot reach the browser-facing API URL; the local Docker stacks use `http://api:3000`. Without the override, the server uses the same API URL as the browser.
 
@@ -27,13 +27,13 @@ The dashboard can fetch account balances during SSR after token verification. Au
 
 Run these from the monorepo root:
 
-| Command | Purpose |
-| --- | --- |
-| `pnpm --filter ui dev` | Start the Angular development server on port `4200`. |
-| `pnpm --filter ui build` | Build browser assets and the SSR server into `apps/ui/dist/ui`. |
-| `pnpm --filter ui watch` | Build in watch mode with the development configuration. |
-| `pnpm --filter ui test` | Run unit tests through Angular's Vitest-based test builder. |
-| `pnpm --filter ui serve:ssr:ui` | Run the built SSR server (build first; default port `4000`). |
+| Command                         | Purpose                                                                                            |
+| ------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `pnpm --filter ui dev`          | Start the Angular development server on port `4200`.                                               |
+| `pnpm --filter ui build`        | Build browser assets and the SSR server into `apps/ui/dist/ui`.                                    |
+| `pnpm --filter ui watch`        | Build in watch mode with the development configuration.                                            |
+| `pnpm --filter ui test`         | Run unit tests through Angular's Vitest-based test builder.                                        |
+| `pnpm --filter ui serve:ssr:ui` | Run the built SSR server (build first; default port `4000`).                                       |
 | `pnpm --filter ui ng <command>` | Pass a command to the Angular CLI; see the [Angular CLI reference](https://angular.dev/tools/cli). |
 
 The Docker UI image runs the built SSR server on container port `4000`; the Compose stacks publish it on host port `4200`.

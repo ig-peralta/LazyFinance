@@ -44,7 +44,7 @@ The gate review reconciled J1–J5 with the acceptance stories, reported tests, 
 ## Interpreting the snapshot
 
 - The foundational issues LAZ-6–LAZ-14 were entered and completed in Linear on October 17 after much of their implementation was already merged. Their completion timestamps therefore describe **issue recording**, not the original delivery dates or cycle commitments; use the [retrospective](../stage-a-retrospective.md) and its public Git commits for that history.
-- The Stage A milestone is complete, but the final decision validates a **demo-backed financial data-model foundation**, not finished Fintoc ingestion, measured savings contributions, or the first-party agent. See the [product requirements](../../product-requirements.md) and [retrospective](../stage-a-retrospective.md) for the accepted boundaries.
+- The Stage A milestone is complete, but the final decision validates a **demo-backed financial data-model foundation**, not finished Fintoc ingestion, measured savings contributions, or the first-party agent. See the [product requirements](../../product/product-requirements.md) and [retrospective](../stage-a-retrospective.md) for the accepted boundaries.
 - The next stage's issue inventory and status as of November 2 are in the [full backlog snapshot](backlog-2026-11-02.md). A Stage B closure record belongs here **after its gate**, with its own assembly date and limitations.
 
 ## Provenance and limits
