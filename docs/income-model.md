@@ -1,6 +1,6 @@
 # Income sources, expectations, and receipts
 
-[LAZ-25](https://linear.app/lazyfinance/issue/LAZ-25) defines the Stage A backend income model. Amounts are net CLP decimal strings; calendar dates use America/Santiago.
+LAZ-25, listed in the [Stage A closure record](planning/snapshots/stage-a-closure.md), defines the backend income model. Amounts are net CLP decimal strings; calendar dates use America/Santiago.
 
 ## Financial meanings
 
@@ -24,12 +24,12 @@ Source replacement changes the current planning declaration. Historical expected
 
 ## Calendar rules
 
-| Schedule | Rule |
-| --- | --- |
-| `weekly` | Every seven calendar days beginning at `anchorDate` |
+| Schedule          | Rule                                                                                    |
+| ----------------- | --------------------------------------------------------------------------------------- |
+| `weekly`          | Every seven calendar days beginning at `anchorDate`                                     |
 | `every_two_weeks` | Every fourteen calendar days beginning at `anchorDate`; some months have three payments |
-| `twice_monthly` | Two ordered payment days, each month |
-| `monthly` | One payment day, each month |
+| `twice_monthly`   | Two ordered payment days, each month                                                    |
+| `monthly`         | One payment day, each month                                                             |
 
 Monthly payment days accept 1–31 or `last`. Days beyond a month's length clamp to its last day, including February and leap years. For twice-monthly schedules, the first day must be 1–27 and precede the second; this prevents two declared payments from collapsing onto the same short-month date. For example, `[15, 30]` produces February 15 and February 28 in 2026.
 
@@ -60,17 +60,17 @@ Receipts attach to sources, not individual expected occurrences. Stage A does no
 
 All operations require the authenticated principal. Financial reads use `Cache-Control: private, no-store`.
 
-| Method | Path | Purpose |
-| --- | --- | --- |
-| GET / POST | `/income/sources` | List / create owned sources |
-| GET / PUT | `/income/sources/:id` | Read / fully replace an owned declaration |
-| POST | `/income/sources/:id/archive` | Archive a source idempotently |
-| GET / POST | `/income/sources/:id/expectations` | List / create dated irregular expectations |
-| PUT / DELETE | `/income/expectations/:id` | Replace / remove an owned expectation |
-| GET | `/income/expected?month=YYYY-MM` | Expected payments and totals |
-| GET | `/income/receipts?month=YYYY-MM` | Confirmed receipts with source and transaction references |
-| PUT / DELETE | `/income/receipts/:transactionId` | Confirm/reassign / clear an owned receipt |
-| GET | `/income/summary?month=YYYY-MM` | Full-month expectations, observed receipts, and unclassified credits |
+| Method       | Path                               | Purpose                                                              |
+| ------------ | ---------------------------------- | -------------------------------------------------------------------- |
+| GET / POST   | `/income/sources`                  | List / create owned sources                                          |
+| GET / PUT    | `/income/sources/:id`              | Read / fully replace an owned declaration                            |
+| POST         | `/income/sources/:id/archive`      | Archive a source idempotently                                        |
+| GET / POST   | `/income/sources/:id/expectations` | List / create dated irregular expectations                           |
+| PUT / DELETE | `/income/expectations/:id`         | Replace / remove an owned expectation                                |
+| GET          | `/income/expected?month=YYYY-MM`   | Expected payments and totals                                         |
+| GET          | `/income/receipts?month=YYYY-MM`   | Confirmed receipts with source and transaction references            |
+| PUT / DELETE | `/income/receipts/:transactionId`  | Confirm/reassign / clear an owned receipt                            |
+| GET          | `/income/summary?month=YYYY-MM`    | Full-month expectations, observed receipts, and unclassified credits |
 
 Income read endpoints default to the current Santiago month and allow future months. Writes use the shared Zod input contracts; receipt and source mutations are transactional. Expected-payment and income-summary reads use a repeatable-read snapshot so their component queries describe the same database state. The read-only MCP tool `consultar_ingresos` returns the same income summary service result.
 
