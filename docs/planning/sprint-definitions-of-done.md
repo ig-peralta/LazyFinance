@@ -6,7 +6,7 @@
 
 Sprint A is Done when:
 
-- [ ] A repeatable CLP dataset and documented account, movement, tag, objective, and income semantics support the representative J1–J5 scenarios in the [user journeys](../user-journeys.md).
+- [ ] A repeatable CLP dataset and documented account, movement, tag, objective, and income semantics support the representative J1–J5 scenarios in the [user journeys](../product/user-journeys.md).
 - [ ] Balances, spending excluding internal movements, comparable periods, spending budgets, target-only savings goals, and expected versus confirmed received income produce coherent, user-scoped API/dashboard/MCP results. Unknown freshness and missing contribution measurements are explicit.
 - [ ] The model's core assumptions are reconciled against tests and representative data. Decisions needed before provider ingestion are recorded, and nonblocking work is moved explicitly into Sprint B rather than claimed as delivered.
 - [ ] A GO/NO-GO decision, reviewed Git baseline, test evidence, and limitations are available in the [Sprint A closure record](snapshots/stage-a-closure.md), with the [documentary retrospective](stage-a-retrospective.md) identifying what to improve.

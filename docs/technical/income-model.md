@@ -1,6 +1,6 @@
 # Income sources, expectations, and receipts
 
-LAZ-25, listed in the [Stage A closure record](planning/snapshots/stage-a-closure.md), defines the backend income model. Amounts are net CLP decimal strings; calendar dates use America/Santiago.
+LAZ-25, listed in the [Stage A closure record](../planning/snapshots/stage-a-closure.md), defines the backend income model. Amounts are net CLP decimal strings; calendar dates use America/Santiago.
 
 ## Financial meanings
 

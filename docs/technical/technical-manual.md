@@ -1,6 +1,6 @@
 # Technical manual — installation, operation and boundaries
 
-This manual covers the **current Angular/NestJS/PostgreSQL application**. It is sufficient to reproduce the local demo and inspect its HTTP/MCP behavior. It does not claim that Fintoc linking, external MCP-client authorization, a first-party chat agent, voice or all financial-management screens are shipped. The [architecture](architecture.md), checked-in `apps/api/src/drizzle/schema` and [non-functional requirements](non-functional-requirements.md) provide additional context.
+This manual covers the **current Angular/NestJS/PostgreSQL application**. It is sufficient to reproduce the local demo and inspect its HTTP/MCP behavior. It does not claim that Fintoc linking, external MCP-client authorization, a first-party chat agent, voice or all financial-management screens are shipped. The [architecture](architecture.md), checked-in `apps/api/src/drizzle/schema` and [non-functional requirements](../product/non-functional-requirements.md) provide additional context.
 
 ## Requirements and repository layout
 

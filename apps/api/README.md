@@ -36,7 +36,7 @@ The API loads `apps/api/.env` when present (the file is gitignored). Copy the ch
 | `FIREBASE_CLIENT_EMAIL` | Unset                                                | Optional Firebase Admin service-account email. Set together with `FIREBASE_PRIVATE_KEY` and `FIREBASE_PROJECT_ID`.              |
 | `FIREBASE_PRIVATE_KEY`  | Unset                                                | Optional Firebase Admin service-account PEM key. Accepts real or escaped newlines; set together with the service-account email. |
 
-See [Firebase identity boundary](../../docs/firebase-identity.md) for accepted tokens,
+See [Firebase identity boundary](../../docs/technical/firebase-identity.md) for accepted tokens,
 the Admin configuration, and the planned application-user and SSR handoffs.
 See the [technical evidence index](../../docs/technical/README.md) for architecture, non-functional requirements and the technical manual.
 For local Compose, supply the Firebase variables in the shell or the Compose

@@ -2,7 +2,7 @@
 
 This is a **living, incremental document**. It starts with the journeys needed to validate the financial core and grows as each stage of the [product vision](product-vision.md#development-sequence-and-decision-gates) begins. The [product requirements](product-requirements.md) specify expected behavior; the journeys are not an exhaustive description of the finished product or a commitment to design every future feature upfront.
 
-Each journey describes a user's situation, the experience they need, and an observable outcome. Stage A journeys are detailed enough to test with controlled CLP demo data and reference acceptance stories tracked in Linear; their IDs and outcomes appear in the [backlog snapshot](planning/snapshots/backlog-2026-11-02.md). Stage B and C journeys are intentionally brief until their work is planned; we will expand them with examples, acceptance criteria, and issue IDs as we learn more. Keep validated journeys here as a record, and revise assumptions explicitly when the financial model changes.
+Each journey describes a user's situation, the experience they need, and an observable outcome. Stage A journeys are detailed enough to test with controlled CLP demo data and reference acceptance stories tracked in Linear; their IDs and outcomes appear in the [backlog snapshot](../planning/snapshots/backlog-2026-11-02.md). Stage B and C journeys are intentionally brief until their work is planned; we will expand them with examples, acceptance criteria, and issue IDs as we learn more. Keep validated journeys here as a record, and revise assumptions explicitly when the financial model changes.
 
 ## Stage A - Core financial understanding
 
@@ -14,7 +14,7 @@ Each journey describes a user's situation, the experience they need, and an obse
 
 **Observable outcome:** The amounts can be explained per account, remain scoped to the signed-in user, and reconcile with the representative demo history. A month's recorded income is not presented as current available cash.
 
-**Stage A check:** Reconcile checking, savings and credit-card examples and decide how balance freshness and card liability are expressed. See the account/transaction semantics review LAZ-17 in the [Stage A closure record](planning/snapshots/stage-a-closure.md).
+**Stage A check:** Reconcile checking, savings and credit-card examples and decide how balance freshness and card liability are expressed. See the account/transaction semantics review LAZ-17 in the [Stage A closure record](../planning/snapshots/stage-a-closure.md).
 
 ### J2 - Understand actual spending without double-counting money movements
 
@@ -24,7 +24,7 @@ Each journey describes a user's situation, the experience they need, and an obse
 
 **Observable outcome:** Internal transfers and payments that merely move money between my own accounts do not inflate spending or income. Debit spending is counted once in the overall total. Each movement has at most one tag, so tagged spending groups are exclusive; untagged spending stays in the overall total. A partial month is compared with a comparable prior period, not a full month.
 
-**Stage A check:** Use transfer, card-payment, tagged and untagged examples to validate the rules. See LAZ-17 and the single-tag classification decision in LAZ-23 in the [Stage A closure record](planning/snapshots/stage-a-closure.md).
+**Stage A check:** Use transfer, card-payment, tagged and untagged examples to validate the rules. See LAZ-17 and the single-tag classification decision in LAZ-23 in the [Stage A closure record](../planning/snapshots/stage-a-closure.md).
 
 ### J3 - Know how I am doing against a spending budget
 
@@ -34,7 +34,7 @@ Each journey describes a user's situation, the experience they need, and an obse
 
 **Observable outcome:** Spent and remaining amounts can be traced to eligible user-owned movements and a clearly defined period. Each eligible movement counts once per budget when its single tag matches any of the budget's selected tags; excluded internal movements do not consume the limit. Where untagged spending cannot be attributed, the presentation does not imply complete category coverage.
 
-**Stage A check:** Exercise representative monthly and recurring-budget scenarios, and identify any minimum classification or budget workflow needed to make the result trustworthy. See LAZ-15 and LAZ-17 in the [Stage A closure record](planning/snapshots/stage-a-closure.md).
+**Stage A check:** Exercise representative monthly and recurring-budget scenarios, and identify any minimum classification or budget workflow needed to make the result trustworthy. See LAZ-15 and LAZ-17 in the [Stage A closure record](../planning/snapshots/stage-a-closure.md).
 
 ### J4 - Distinguish a savings target from a spending limit
 
@@ -44,7 +44,7 @@ Each journey describes a user's situation, the experience they need, and an obse
 
 **Observable outcome:** The system distinguishes a target from measured contributions; it only shows quantified savings progress after defining and substantiating what counts as a contribution. A transfer or tag alone is not assumed to be a contribution without an agreed rule. If no reliable progress can be measured yet, the system shows the goal without an invented percentage.
 
-**Stage A check:** Decide contribution semantics and objective period/recurrence behavior against representative examples. See LAZ-16 in the [Stage A closure record](planning/snapshots/stage-a-closure.md).
+**Stage A check:** Decide contribution semantics and objective period/recurrence behavior against representative examples. See LAZ-16 in the [Stage A closure record](../planning/snapshots/stage-a-closure.md).
 
 ### J5 - Define what I expect to earn and identify what I received
 
@@ -54,7 +54,7 @@ Each journey describes a user's situation, the experience they need, and an obse
 
 **Observable outcome:** Regular timing and amount variability are independent. Every-two-weeks and twice-monthly schedules use their actual calendar dates. Estimated and unknown amounts are explicit. A late or different-amount receipt retains its booked facts. Refunds and internal transfers are not silently treated as earnings, and declarations never change account balances.
 
-**Stage A check:** Demonstrate the source, expectation, receipt, ownership, and period scenarios from LAZ-25 in the [Stage A closure record](planning/snapshots/stage-a-closure.md) and the [income model](income-model.md) through the backend API and read-only MCP tool.
+**Stage A check:** Demonstrate the source, expectation, receipt, ownership, and period scenarios from LAZ-25 in the [Stage A closure record](../planning/snapshots/stage-a-closure.md) and the [income model](../technical/income-model.md) through the backend API and read-only MCP tool.
 
 ## Later journeys - Detail shortly before implementation
 
@@ -68,7 +68,7 @@ I ask the same types of questions by voice after the text flow is reliable. The 
 
 ## Using this document
 
-Keep acceptance criteria and implementation work in Linear issues; the repository's [dated backlog snapshot](planning/snapshots/backlog-2026-11-02.md) makes the issue inventory accessible to reviewers. For Stage A, the corresponding user stories are child issues of the existing model-review and missing-flows issues; completing a story means its outcome was demonstrated, not merely that a screen or schema field exists. The [Stage A closure record](planning/snapshots/stage-a-closure.md) captures LAZ-18's gate decision and its nonblocking limitations.
+Keep acceptance criteria and implementation work in Linear issues; the repository's [dated backlog snapshot](../planning/snapshots/backlog-2026-11-02.md) makes the issue inventory accessible to reviewers. For Stage A, the corresponding user stories are child issues of the existing model-review and missing-flows issues; completing a story means its outcome was demonstrated, not merely that a screen or schema field exists. The [Stage A closure record](../planning/snapshots/stage-a-closure.md) captures LAZ-18's gate decision and its nonblocking limitations.
 
 ## Stage A user stories
 

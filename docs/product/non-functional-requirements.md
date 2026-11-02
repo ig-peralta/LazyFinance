@@ -1,6 +1,6 @@
 # Non-functional requirements
 
-These **product quality requirements** apply to LazyFinance's authenticated dashboard, connected banking, MCP access and first-party text agent. Each requirement sets an acceptance target for the planned product. The [product requirements](../product-requirements.md) define the capabilities and the [product vision](../product-vision.md) sets their sequence; these targets balance trustworthiness with the time constraints of a capstone project.
+These **product quality requirements** apply to LazyFinance's authenticated dashboard, connected banking, MCP access and first-party text agent. Each requirement sets an acceptance target for the planned product. The [product requirements](product-requirements.md) define the capabilities and the [product vision](product-vision.md) sets their sequence; these targets balance trustworthiness with the time constraints of a capstone project.
 
 Prioritize **NFR-01 through NFR-05** before exposing real-user or provider data. **NFR-06 through NFR-08** define a practical quality bar for the usable product; revisit their exact thresholds if the chosen agent runtime or deployment environment changes. Voice and additional providers inherit these rules when they enter Sprint C scope.
 
