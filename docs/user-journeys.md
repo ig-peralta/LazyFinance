@@ -1,6 +1,6 @@
 # User Journeys
 
-This is a **living, incremental document**. It starts with the journeys needed to validate the financial core and grows as each stage of the [product requirements](product-requirements.md) begins. It is not an exhaustive description of the finished product or a commitment to design every future feature upfront.
+This is a **living, incremental document**. It starts with the journeys needed to validate the financial core and grows as each stage of the [product vision](product-vision.md#development-sequence-and-decision-gates) begins. The [product requirements](product-requirements.md) specify expected behavior; the journeys are not an exhaustive description of the finished product or a commitment to design every future feature upfront.
 
 Each journey describes a user's situation, the experience they need, and an observable outcome. Stage A journeys are detailed enough to test with controlled CLP demo data and reference acceptance stories tracked in Linear; their IDs and outcomes appear in the [backlog snapshot](planning/snapshots/backlog-2026-11-02.md). Stage B and C journeys are intentionally brief until their work is planned; we will expand them with examples, acceptance criteria, and issue IDs as we learn more. Keep validated journeys here as a record, and revise assumptions explicitly when the financial model changes.
 

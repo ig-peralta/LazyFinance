@@ -1,123 +1,56 @@
-# LazyFinance - Product Requirements Document
+# LazyFinance — Product Requirements
 
-> **Status:** product vision and staged requirements.
-> **Initial scope:** personal finance understanding, starting with controlled demo data and CLP.
+> **Status:** staged product requirements and acceptance boundaries, not an assertion that every capability is shipped. The [product vision](product-vision.md) describes the why, interoperable direction and Stage A/B/C sequence; the [dated backlog](planning/snapshots/backlog-2026-11-02.md) contains issue-level completion checks, and the [product Definition of Done](planning/product-definition-of-done.md) governs an agreed release.
 
-## 1. Product vision
+## Financial understanding
 
-LazyFinance helps people understand their finances and make better decisions without having to reconcile account balances and transaction lists by hand. Its central experience is **our own conversational agent**: users ask questions in text first, and later by voice. A web dashboard provides a visual view of the same financial information. Financial logic lives in the backend and is also available through MCP so other compatible agents and applications can use it.
+- Show per-account balances and recent movements with account type, source and freshness context. A checking or savings balance is cash; a credit-card liability is not available cash. Recorded or expected income alone does not prove money is available to spend.
+- Summarize spending by period and tag, compare comparable periods, and track spending against budgets. Internal transfers and credit-card payments between owned accounts must not inflate spending or earned income. Each transaction belongs to at most one tag group; untagged spending stays in the overall total. Count an eligible movement only once for each budget whose selected tags match it.
+- Distinguish user-declared income expectations, explicitly confirmed received income and unclassified credits. A positive credit alone is not proof of earnings. Regularity of payment dates and variability of amounts are independent, and estimates or unknown amounts are labelled. Comparisons use equivalent observed periods; expected-income totals follow calendar payment dates.
+- Distinguish a spending budget from a savings goal. Do not display measured savings progress or simulations as fact until a contribution rule is defined and substantiated. Where history is incomplete, show the limitation rather than inventing a complete breakdown.
+- Add projections, anomaly/pattern detection, duplicate-charge insight or price-change analysis only with defined data requirements, explainable rules and representative validation cases. These are later candidates, not currently delivered analysis.
 
-Personal finance analysis is the starting point, not the limit of the product. We want a trustworthy financial foundation from which we can grow in many directions: richer analysis, new interactions, additional data sources, and potentially other financial capabilities. Architectural choices should make those possibilities feasible without requiring us to define or implement all of them today.
+The [user journeys](user-journeys.md) give observable examples of the foundational behaviors; the [income model](income-model.md) records the detailed income decisions.
 
-Examples of questions we want to support:
+## Integration and ecosystem capabilities
 
-- “How much have I spent this month, and on what?”
-- “Am I spending more than last month?”
-- “How am I doing against my grocery budget?”
-- “Will I have enough money to reach the end of the month?”
-- “Is this charge unusual or duplicated?”
-- “What could I change to reach my savings goal?”
+### Shared financial results across interfaces
 
-The initial agent reads, explains, and recommends; transaction execution is **outside its initial scope**, not ruled out forever. Any future action capability would require its own product decisions, authorization, and user controls. Answers must distinguish observed facts from estimates and make clear when data is incomplete.
+The API owns user-scoped financial calculations and meaning. The dashboard, HTTP API, MCP tools and future first-party agent must use those same capabilities instead of independently recalculating totals or redefining account and movement semantics. For a comparable user and period, balances, spending, budget progress and income interpretations must agree across supported interfaces, including treatment of excluded or unresolved movements, estimates and incomplete history.
 
-## 2. Foundational approach
+### Provider-neutral banking data
 
-Develop the product from a representative financial core outward, using controlled data before depending on bank connectivity:
+Ingest provider accounts, balances and booked movements through a validated, provider-neutral boundary; implement Fintoc as the first planned adapter **after** the core gate. Support additional adapters without rewriting financial rules, subject to validation of each provider's identifiers, dates, signs, account types and balance meanings. Scope provider identifiers to a connection/account, preserve source provenance and a user's own tags and income decisions, and keep repeated imports idempotent. A failed or partial sync must not silently advance a confirmed checkpoint or make an old balance appear current. These behaviors are specified in the [banking connector boundary](../apps/api/src/banking/README.md); a connector contract and ingestion groundwork do not constitute a working Fintoc integration.
 
-- Define users, provider connections, accounts, movements, tags, and spending/saving objectives; seed representative Chilean account and transaction history to exercise the model without a live provider.
-- Build user-scoped financial logic and API contracts for balances, activity, spending summaries, comparisons, and budget/goal information. Make the meaning of each figure explicit: a transaction has at most one tag, untagged spending remains in overall totals, income timing is not available money, and spending-budget progress is not savings-goal progress.
-- Expose those capabilities in a visual dashboard and through MCP tools. Use a temporary login mechanism for development, then introduce full authentication. These interfaces share financial logic rather than each calculating its own figures.
+### MCP for agents in the user's own workflow
 
-This foundation lets us test decisions while the model is still adaptable. Provider connectivity follows validation of the core instead of driving its shape from the outset.
+Expose appropriate **read-only**, user-scoped financial capabilities as MCP tools so a compatible agent can use them alongside its own tools. Tool results must preserve financial meaning, period, owner and data-quality context. Before describing third-party access as available, define and validate client discovery, user authorization, permitted capabilities, token expiry/revocation and two-user isolation with a reference client. The current authenticated MCP endpoint and its seven read-only tools establish a technical foundation; the final external-client authorization flow is separate work.
 
-### Architecture for growth
+An authorized external agent with its **own** web-search capability might combine permitted budget data with product research to recommend options. This is an integration scenario, **not** a requirement for LazyFinance to implement web search, shopping or financial writes in its initial release. Any future action-preparation workflow would require a new contract, explicit user approval, permissions and acceptance tests before being selected for delivery. Transaction execution is outside the initial agent scope, not excluded from every future product direction.
 
-- Keep financial concepts and calculations independent of a particular provider, UI, authentication mechanism, or agent. The same user-scoped capabilities should serve the dashboard, our agent, and authorized MCP clients.
-- Define clear contracts where data enters and where capabilities are exposed; preserve provenance, account ownership, and reconciliation information so additional providers or financial functions can be introduced without changing the meaning of existing data.
-- Prefer simple, tested abstractions around demonstrated needs over speculative implementations. Preserve room for future account types, currencies, workflows, and action-oriented features without pretending their requirements are already settled.
-- Treat privacy, access boundaries, and correctness as foundation-level concerns, including if future features go beyond read-only analysis.
+## First-party experience and access
 
-## 3. Development sequence and decision gates
+- Provide a user-scoped dashboard for the supported financial reads and management workflows. Empty, partial, stale and failed data must remain distinguishable.
+- Deliver a first-party text agent that answers questions about the user's finances using the same backend capabilities as the dashboard and MCP. It should distinguish observed facts, declarations and estimates; explain periods and unsupported claims; and handle missing data or tool failures without inventing figures. Text comes before any voice interaction.
+- Authenticate users for protected operations and enforce ownership across UI, HTTP, MCP, banking connections and agent calls. An external agent must not supply an arbitrary user ID as financial authority. The temporary mock identity is for local development and is not the final authorization model for other applications.
 
-### Stage A - Establish and validate the financial core
+## Staged validation and scope
 
-Use representative demo scenarios to build and revisit the model, adding the minimum financial behaviors needed to determine whether it works. The goal is **good enough to validate the data model**, not a polished UI or an exhaustive analysis engine. Prioritize correctness and explicit semantics for:
+- **Stage A — financial-core gate:** use representative CLP demo data to demonstrate coherent account, movement, transfer, budget, savings-target and income scenarios across the available user-scoped interfaces. Record unresolved nonblocking assumptions before starting a provider adapter. The [Stage A closure record](planning/snapshots/stage-a-closure.md) documents its completed, deliberately bounded data-model gate; it is not a claim that banking, external-client authorization or the agent are finished.
+- **Stage B — parallel product tracks:** refine financial services and web workflows, introduce real-user identity, complete external MCP authorization with a reference client, implement Fintoc as a provider adapter, and deliver the first-party text agent. Each track must meet its issue checks or be explicitly re-scoped at the gate; the [dated backlog](planning/snapshots/backlog-2026-11-02.md) is an interim view, not a release-completion record.
+- **Stage C — candidate expansion:** decide after the Stage B review whether to select voice, advanced analysis, additional providers or other validated financial capabilities. No Stage C issue is assumed selected yet. Shared family finances, organizational or adviser workflows, and approval-based action preparation require new ownership and permissions rules before they could become product requirements for a later release.
 
-- Accounts and balances, including what a balance means for different account types and when it was last updated.
-- Movements, signs, dates, provenance, and relationships among transfers, credit-card payments, income, and spending so summaries do not mistake money moving between accounts for new income or expense.
-- User-declared income sources with independent payment regularity and amount variability, calendar-based expectations, explicitly confirmed received income, and visible unclassified credits. See LAZ-25 in the [backlog snapshot](planning/snapshots/backlog-2026-11-02.md) and the [income model](income-model.md).
-- Tags and classifications: each transaction has zero or one tag, while a budget can select several tags. Tagged spending groups are exclusive; untagged movements remain part of overall totals. See LAZ-23 in the [Stage A closure record](planning/snapshots/stage-a-closure.md).
-- Spending budgets versus savings goals: their distinct definitions, periods, progress, and what counts as a contribution to a goal.
-- Trustworthy monthly and period comparisons, with clear treatment of incomplete periods and available balances.
+The first release scope does not include executing transactions or moving money from an agent. A future financial-action capability must not be inferred from today's read-only MCP tools. See the [product vision](product-vision.md#innovation-and-interoperability-across-ecosystems) for the direction beyond these staged requirements.
 
-Identify and add any **missing core capabilities** revealed by those scenarios before calling the model validated. The exact set should be decided from the review rather than assuming that every future analysis feature belongs in this gate. Exercise representative cases through the domain/API and, where relevant, the dashboard and MCP tools.
+## Core-model decision questions
 
-**Exit criteria:** the team can demonstrate realistic account, transaction, transfer, budget, and goal scenarios; explain what each amount and relationship represents; produce consistent user-scoped results; and resolve assumptions that would block provider data ingestion, while recording remaining nonblocking questions. The model can still be refined afterward. **Begin Fintoc integration only after this gate.**
+These questions shaped the financial-core validation and remain useful when extending the model. The [Stage A closure record](planning/snapshots/stage-a-closure.md) and linked implementation decisions document what was resolved at its gate; an open question here is not evidence that its answer was already implemented.
 
-### Stage B - Advance several tracks after core validation
+1. How should transfers and credit-card payments be represented so balances and spending remain correct without relying on tag names to identify internal movements?
+2. Which balance is meaningful for checking, savings and credit-card accounts, and how should freshness and reconciliation be represented?
+3. How are savings-goal contributions and progress measured, separately from spending budgets and tag-linked transactions?
+4. Which objective types, recurrence rules, periods and constraints are needed now, and which belong to later increments?
+5. Which minimum core workflows make classification and objectives trustworthy, and which insights can wait?
+6. Which provider-agnostic fields and identifiers must be stable before implementing an adapter without prematurely encoding Fintoc-specific behavior?
 
-These are concurrent workstreams, not a single strict implementation order:
-
-1. **Financial core and API:** refine the model, calculations, contracts, and missing analysis capabilities on the validated foundation.
-2. **Web UI:** refine the dashboard and workflows so users can understand data quality, budgets, goals, and explanations, not just see summary cards.
-3. **User authentication:** move from temporary development login to full user authentication, with Firebase as the intended identity platform. Keep financial data isolated per user across UI, API, and MCP.
-4. **MCP access:** define and implement appropriate authorization for third-party MCP clients. Evaluate OAuth and its client/discovery flows before committing to a scheme; temporary development credentials are not the final integration model.
-5. **Provider connectivity:** define a provider-neutral connector contract and normalization rules for accounts, balances, and movements, then implement Fintoc as an adapter. The design must support additional provider adapters without rewriting core financial logic. Validate ingestion and reconciliation against the Stage A model rather than shaping the model solely around Fintoc.
-6. **Our conversational agent:** build a text-first experience that uses the same backend financial capabilities, answers with appropriate context, and distinguishes facts from projections. MCP remains available to external clients; it does not replace our agent.
-
-### Stage C - Broaden the experience
-
-Add **voice interaction** to our agent after the text flow is useful and reliable. Expand analysis (for example, projections, anomalies, duplicate charges, price changes, and goal simulations) as their data requirements and behavior are validated. Add further provider adapters and other financial capabilities in response to validated needs; the roadmap is a starting sequence, not a ceiling on what LazyFinance can become.
-
-The Stage C milestone records this direction, but **Stage C issues are selected and created only after Stage B is closed and reviewed**. The team uses the results and remaining limitations from Stage B to set the Stage C iteration goal, priorities, and acceptance criteria in Linear rather than committing detailed Stage C work in advance.
-
-## 4. Product capabilities and expectations
-
-### Financial understanding
-
-- Show per-account balances and recent movements, with enough context to interpret the account type and data freshness.
-- Summarize spending by period and tag, compare comparable periods, and track spending against budgets. Each transaction belongs to at most one tag group; show that untagged spending can make the breakdown incomplete. Count each eligible movement once per budget when its tag matches any of the budget's selected tags.
-- Model income and internal movements accurately in the financial core. Separate expected income from explicitly confirmed received income; positive credits alone are not evidence of earnings. Label estimates and unknown scheduled amounts. Income comparisons use equivalent observed periods, while expected-income totals follow calendar payment dates. Use account balances for claims about available money.
-- Distinguish spending-budget progress from savings-goal progress. Define measurable savings contributions before presenting goal progress or simulations as facts.
-- Add projections and anomaly/pattern detection only with explainable rules, representative scenarios, and clear caveats about uncertainty.
-
-### Interaction and access
-
-- Provide a user-scoped dashboard and, subsequently, a first-party text agent that explains financial results in natural language; extend that agent to voice later.
-- Initially expose appropriate read-only financial capabilities through MCP for other agents and applications, with clear tool descriptions and authenticated, user-scoped access.
-- Treat authorization, privacy, and data provenance as cross-cutting requirements. A connected provider or agent must not expose another user's data.
-
-### Banking data
-
-- Validate the core with controlled demo data until the Stage A gate is met.
-- Support ingestion from a provider-neutral interface with provider-specific adapters; Fintoc is the first planned adapter, not the architecture itself.
-- Normalize provider-specific identifiers, balances, dates, transaction types, and sync state without losing information needed to reconcile or explain imported data. Prevent duplicate imports and make refresh/failure states visible.
-
-## 5. Decisions to settle during core validation
-
-These questions guide the model validation and the decisions needed for an extensible foundation:
-
-1. How should transfers and credit-card payments be represented so balances and spending are both correct without relying on tag names to identify internal movements?
-2. Which balance is meaningful for checking, savings, and credit-card accounts, and how should freshness and reconciliation be represented?
-3. How are saving-goal contributions and progress measured, separately from spending budgets and tag-linked transactions?
-4. Which objective types, recurrence rules, periods, and constraints should the model support, and which are needed now?
-5. What does the first useful set of missing core flows require (for example, managing classifications or objectives), and which insights can wait until later?
-6. Which provider-agnostic fields and identifiers must be stable before implementing an adapter, without prematurely encoding Fintoc-specific behavior?
-
-Document each decision and validate it against seeded scenarios before changing the corresponding schema or building broader integrations on it.
-
-## 6. Scope boundaries and measures of progress
-
-**Not required for the core validation gate:** live/sandbox Fintoc integration, a polished dashboard, Firebase authentication, final MCP authorization, voice interaction, multi-currency/FX, or advanced predictions. These are subsequent work; Stage A still requires correct user scoping and meaningful demo behavior.
-
-**Outside the initial agent scope:** executing transactions or moving money. This is a sequencing decision, not a permanent boundary on the product. Sharing accounts/budgets between people is likewise deferred until the individual experience is established; neither future capability should be constrained by shortcuts in the initial architecture.
-
-We will consider the direction successful when:
-
-- Representative demo scenarios produce coherent balances, spending, comparisons, budgets, and goal interpretations, and the model's remaining limitations are explicit.
-- A user can understand those results in the dashboard and ask our own text agent useful questions, with answers grounded in user-scoped financial data.
-- Other clients can use the appropriate backend capabilities through securely authorized MCP access.
-- Fintoc can be introduced through a provider adapter after core validation, with the same financial logic able to support another provider later.
-- Voice extends the proven text experience rather than defining the initial agent experience.
-
-The [product Definition of Done](planning/product-definition-of-done.md) sets the final user-flow, quality, and release-readiness checks for LazyFinance; this product direction alone is not a release-completion claim.
+Record decisions and verify representative scenarios before changing schemas or building wider integrations on them.
