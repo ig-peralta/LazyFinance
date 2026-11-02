@@ -45,8 +45,8 @@ Use representative demo scenarios to build and revisit the model, adding the min
 
 - Accounts and balances, including what a balance means for different account types and when it was last updated.
 - Movements, signs, dates, provenance, and relationships among transfers, credit-card payments, income, and spending so summaries do not mistake money moving between accounts for new income or expense.
-- User-declared income sources with independent payment regularity and amount variability, calendar-based expectations, explicitly confirmed received income, and visible unclassified credits. See [LAZ-25](https://linear.app/lazyfinance/issue/LAZ-25) and the [income model](income-model.md).
-- Tags and classifications: each transaction has zero or one tag, while a budget can select several tags. Tagged spending groups are exclusive; untagged movements remain part of overall totals. See the classification decision in [LAZ-23](https://linear.app/lazyfinance/issue/LAZ-23).
+- User-declared income sources with independent payment regularity and amount variability, calendar-based expectations, explicitly confirmed received income, and visible unclassified credits. See LAZ-25 in the [backlog snapshot](planning/snapshots/backlog-2026-11-02.md) and the [income model](income-model.md).
+- Tags and classifications: each transaction has zero or one tag, while a budget can select several tags. Tagged spending groups are exclusive; untagged movements remain part of overall totals. See LAZ-23 in the [Stage A closure record](planning/snapshots/stage-a-closure.md).
 - Spending budgets versus savings goals: their distinct definitions, periods, progress, and what counts as a contribution to a goal.
 - Trustworthy monthly and period comparisons, with clear treatment of incomplete periods and available balances.
 
@@ -68,6 +68,8 @@ These are concurrent workstreams, not a single strict implementation order:
 ### Stage C - Broaden the experience
 
 Add **voice interaction** to our agent after the text flow is useful and reliable. Expand analysis (for example, projections, anomalies, duplicate charges, price changes, and goal simulations) as their data requirements and behavior are validated. Add further provider adapters and other financial capabilities in response to validated needs; the roadmap is a starting sequence, not a ceiling on what LazyFinance can become.
+
+The Stage C milestone records this direction, but **Stage C issues are selected and created only after Stage B is closed and reviewed**. The team uses the results and remaining limitations from Stage B to set the Stage C iteration goal, priorities, and acceptance criteria in Linear rather than committing detailed Stage C work in advance.
 
 ## 4. Product capabilities and expectations
 
@@ -117,3 +119,5 @@ We will consider the direction successful when:
 - Other clients can use the appropriate backend capabilities through securely authorized MCP access.
 - Fintoc can be introduced through a provider adapter after core validation, with the same financial logic able to support another provider later.
 - Voice extends the proven text experience rather than defining the initial agent experience.
+
+The [product Definition of Done](planning/product-definition-of-done.md) sets the final user-flow, quality, and release-readiness checks for LazyFinance; this product direction alone is not a release-completion claim.
