@@ -24,6 +24,8 @@ Authorized MCP clients → NestJS MCP endpoint ───────────
 
 The Angular web app (`apps/ui`) calls the NestJS HTTP API (`apps/api`). The API owns financial rules and user-scoped access, exposes selected read capabilities to external clients through MCP, and persists data in PostgreSQL through Drizzle. `libs/contracts` holds shared API contracts. Local demo data lets the team validate financial behavior without a bank connection; the provider-neutral banking boundary is in the API, while a Fintoc adapter and our own text agent are later product work. See the [product requirements](docs/product-requirements.md) and [banking connector boundary](apps/api/src/banking/README.md) for scope and design decisions.
 
+The [technical evidence index](docs/technical/README.md) links the architecture, non-functional requirements, environment examples and technical manual. Each distinguishes implemented behavior from planned work.
+
 ## Team and roles
 
 | Team member        | Role / initial focus in the Phase 1 plan             |
@@ -43,6 +45,7 @@ The project follows **iterative and incremental development with agile practices
 - [Product vision, scope, and stage gates](docs/product-requirements.md) and [observable user journeys](docs/user-journeys.md).
 - [Methodology and planning evidence](docs/project-method.md), including the [all-issue backlog snapshot and individual completion checks](docs/planning/snapshots/backlog-2026-11-02.md), completed [Sprint A issue/gate record](docs/planning/snapshots/stage-a-closure.md), and [documentary retrospective](docs/planning/stage-a-retrospective.md). Future stage-closure records are added after their gate.
 - [Phase 1 project definition and technical report](docs/fase_1/) and [Phase 2 progress guide](docs/fase_2/guia_avance.docx).
+- [Technical evidence](docs/technical/README.md), including [architecture](docs/technical/architecture.md), [non-functional requirements](docs/technical/non-functional-requirements.md) and the [technical manual](docs/technical/technical-manual.md).
 
 ## Prerequisites
 
@@ -68,6 +71,8 @@ pnpm dev
 ```
 
 The UI runs at <http://localhost:4200> and the API at <http://localhost:3000>. The API needs PostgreSQL available at startup. The local resource stack provides it at `localhost:5432`, matching the API's default `POSTGRES_URL`. Stop the database with `pnpm resources:down` when finished.
+
+For non-default local settings, copy [`apps/api/.env.example`](apps/api/.env.example) to the ignored `apps/api/.env`; the root [`.env.example`](.env.example) describes local full-stack Compose variables. The [technical manual](docs/technical/technical-manual.md) covers their different scopes and the full-stack schema-initialization limitation.
 
 To run just one app, use `pnpm --filter ui dev` or `pnpm --filter api dev` from the root. The API still needs PostgreSQL; see the [API README](apps/api/README.md) for environment variables and Drizzle commands.
 
