@@ -1,6 +1,6 @@
 # Technical evidence index
 
-This directory documents **the current architecture and operational path alongside product quality goals**. It complements the [product requirements](../product-requirements.md) and the [dated planning snapshot](../planning/snapshots/backlog-2026-11-02.md), without treating a planned issue as delivered code.
+This directory documents **the current architecture and operational path alongside product quality goals**. It complements the [product vision](../product-vision.md), [product requirements](../product-requirements.md) and [dated planning snapshot](../planning/snapshots/backlog-2026-11-02.md), without treating a planned issue as delivered code.
 
 - [Architecture](architecture.md): Angular/SSR, NestJS HTTP/MCP, identity, financial services, Drizzle and the neutral ingestion boundary.
 - [Non-functional requirements](non-functional-requirements.md): product quality targets for ownership, privacy, financial correctness, ingestion, graceful degradation, performance, usability and reproducibility.

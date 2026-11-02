@@ -1,6 +1,6 @@
 # LazyFinance
 
-LazyFinance aims to help people understand their finances and make better decisions without manually reconciling balances and transactions. Its vision centers on a first-party conversational agent (text first, voice later) and a visual dashboard, backed by shared financial logic available to other applications through MCP and designed to support broader financial capabilities over time.
+LazyFinance helps people understand their finances without manually reconciling balances and transactions. Its own conversational agent (text first, voice later) and dashboard are the initial experiences built on a shared financial core. MCP opens another path: authorized agents could use permitted financial context in workflows people already know, combining it with their own capabilities. Provider-neutral data access leaves room for more sources, financial services and audiences as those uses are validated.
 
 LazyFinance is a pnpm/Turborepo monorepo with an Angular web app and a NestJS API. The development stack includes PostgreSQL, Drizzle for database access and migrations, and MCP over Streamable HTTP for API integrations.
 
@@ -22,7 +22,9 @@ Browser → Angular web app (apps/ui) → NestJS HTTP API (apps/api)
 Authorized MCP clients → NestJS MCP endpoint ──────────────┘
 ```
 
-The Angular web app (`apps/ui`) calls the NestJS HTTP API (`apps/api`). The API owns financial rules and user-scoped access, exposes selected read capabilities to external clients through MCP, and persists data in PostgreSQL through Drizzle. `libs/contracts` holds shared API contracts. Local demo data lets the team validate financial behavior without a bank connection; the provider-neutral banking boundary is in the API, while a Fintoc adapter and our own text agent are later product work. See the [product requirements](docs/product-requirements.md) and [banking connector boundary](apps/api/src/banking/README.md) for scope and design decisions.
+The Angular web app (`apps/ui`) calls the NestJS HTTP API (`apps/api`). The API owns financial rules and user-scoped access, exposes authenticated read-only MCP tools, and persists data in PostgreSQL through Drizzle. `libs/contracts` holds shared API contracts. Local demo data lets the team validate financial behavior without a bank connection; the provider-neutral banking boundary is in the API, while external-client authorization, a Fintoc adapter and our own text agent are later product work. See the [product vision](docs/product-vision.md), [requirements](docs/product-requirements.md) and [banking connector boundary](apps/api/src/banking/README.md) for direction, scope and design decisions.
+
+The [product vision](docs/product-vision.md#innovation-and-interoperability-across-ecosystems) describes how another agent could combine permitted LazyFinance financial context with its own tools, such as web research, in a workflow the user already knows.
 
 The [technical evidence index](docs/technical/README.md) links the architecture, non-functional requirements, environment examples and technical manual. Each distinguishes implemented behavior from planned work.
 
@@ -42,7 +44,7 @@ The project follows **iterative and incremental development with agile practices
 
 ## Project evidence
 
-- [Product vision, scope, and stage gates](docs/product-requirements.md) and [observable user journeys](docs/user-journeys.md).
+- [Product vision, innovation and stage direction](docs/product-vision.md), [product requirements](docs/product-requirements.md) and [observable user journeys](docs/user-journeys.md).
 - [Methodology and planning evidence](docs/project-method.md), including the [all-issue backlog snapshot and individual completion checks](docs/planning/snapshots/backlog-2026-11-02.md), completed [Sprint A issue/gate record](docs/planning/snapshots/stage-a-closure.md), and [documentary retrospective](docs/planning/stage-a-retrospective.md). Future stage-closure records are added after their gate.
 - [Phase 1 project definition and technical report](docs/fase_1/) and [Phase 2 progress guide](docs/fase_2/guia_avance.docx).
 - [Technical evidence](docs/technical/README.md), including [architecture](docs/technical/architecture.md), [non-functional requirements](docs/technical/non-functional-requirements.md) and the [technical manual](docs/technical/technical-manual.md).
