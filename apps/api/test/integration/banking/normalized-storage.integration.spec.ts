@@ -3,12 +3,12 @@ import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { AccountRepository } from '../../drizzle/repositories/account.repository';
-import { IncomeRepository } from '../../drizzle/repositories/income.repository';
-import { TransactionRepository } from '../../drizzle/repositories/transaction.repository';
-import * as schema from '../../drizzle/schema';
-import { migrateTestDatabase } from '../../drizzle/test-migrations';
-import { IncomeService } from '../../income/income.service';
+import { AccountRepository } from '../../../src/drizzle/repositories/account.repository';
+import { IncomeRepository } from '../../../src/drizzle/repositories/income.repository';
+import { TransactionRepository } from '../../../src/drizzle/repositories/transaction.repository';
+import * as schema from '../../../src/drizzle/schema';
+import { IncomeService } from '../../../src/income/income.service';
+import { migrateTestDatabase } from '../helpers/test-migrations';
 
 describe.skipIf(!process.env.TEST_POSTGRES_URL)('normalized banking storage against PostgreSQL', () => {
   let client: ReturnType<typeof postgres>;

@@ -7,12 +7,12 @@ import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { AppModule } from '../app.module';
-import { DRIZZLE_PG_CLIENT } from '../drizzle/drizzle.tokens';
-import * as schema from '../drizzle/schema';
-import { migrateTestDatabase } from '../drizzle/test-migrations';
-import { EnvironmentService } from '../environment/environment.service';
-import { FirebaseAuthService } from './firebase/firebase-auth.service';
+import { AppModule } from '../../../src/app.module';
+import { DRIZZLE_PG_CLIENT } from '../../../src/drizzle/drizzle.tokens';
+import * as schema from '../../../src/drizzle/schema';
+import { EnvironmentService } from '../../../src/environment/environment.service';
+import { FirebaseAuthService } from '../../../src/auth/firebase/firebase-auth.service';
+import { migrateTestDatabase } from '../helpers/test-migrations';
 
 describe.skipIf(!process.env.TEST_POSTGRES_URL)('Firebase application principals against PostgreSQL', () => {
   const issuer = `https://securetoken.google.com/laz44-${randomUUID()}`;

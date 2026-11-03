@@ -1,7 +1,7 @@
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import * as schema from './schema';
+import * as schema from '../../../src/drizzle/schema';
 
 // Separate integration specs can start in parallel. Serialize first-time
 // migrations across their processes/connections without locking normal reads.

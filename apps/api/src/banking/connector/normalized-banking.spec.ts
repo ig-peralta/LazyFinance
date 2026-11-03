@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { fromCents, toCents } from '../../utils/money';
 import type { BankingConnector } from './banking-connector';
-import { correctionPage, expiredFailure, initialPage, removalPage, retryableFailure, revokedFailure, unknownBalancePage } from './fixtures/normalized-pages';
+import { correctionPage, expiredFailure, initialPage, removalPage, retryableFailure, revokedFailure, unknownBalancePage } from '../../../test/fixtures/normalized-pages';
 import { ConnectorResultSchema, NormalizedMovementSchema } from './normalized-banking.schema';
 
 describe('provider-neutral banking connector contract', () => {

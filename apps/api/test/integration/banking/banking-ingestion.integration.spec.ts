@@ -3,19 +3,19 @@ import { and, eq } from 'drizzle-orm';
 import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { AccountRepository } from '../../drizzle/repositories/account.repository';
-import { IncomeRepository } from '../../drizzle/repositories/income.repository';
-import { TransactionRepository } from '../../drizzle/repositories/transaction.repository';
-import * as schema from '../../drizzle/schema';
-import { migrateTestDatabase } from '../../drizzle/test-migrations';
-import { IncomeService } from '../../income/income.service';
-import { TaggingService } from '../../transactions/tagging/tagging.service';
-import type { BankingConnector } from '../connector/banking-connector';
+import { AccountRepository } from '../../../src/drizzle/repositories/account.repository';
+import { IncomeRepository } from '../../../src/drizzle/repositories/income.repository';
+import { TransactionRepository } from '../../../src/drizzle/repositories/transaction.repository';
+import * as schema from '../../../src/drizzle/schema';
+import { IncomeService } from '../../../src/income/income.service';
+import { TaggingService } from '../../../src/transactions/tagging/tagging.service';
+import type { BankingConnector } from '../../../src/banking/connector/banking-connector';
 import {
   correctionPage, expiredFailure, initialPage, removalPage, retryableFailure, unknownBalancePage,
-} from '../connector/fixtures/normalized-pages';
-import type { ConnectorPage, ConnectorResult } from '../connector/normalized-banking.schema';
-import { BankingIngestionService } from './banking-ingestion.service';
+} from '../../fixtures/normalized-pages';
+import type { ConnectorPage, ConnectorResult } from '../../../src/banking/connector/normalized-banking.schema';
+import { BankingIngestionService } from '../../../src/banking/ingestion/banking-ingestion.service';
+import { migrateTestDatabase } from '../helpers/test-migrations';
 
 type Database = PostgresJsDatabase<typeof schema>;
 type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];

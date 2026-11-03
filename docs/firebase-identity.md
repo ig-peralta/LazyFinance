@@ -116,7 +116,7 @@ configuration failure, and reuse of the Admin app. Run them with:
 pnpm --filter @lazyfinance/contracts build
 pnpm --filter api exec vitest run src/auth/firebase/firebase-auth.service.spec.ts src/auth/firebase/firebase-auth.utils.spec.ts src/environment/environment.schema.spec.ts
 pnpm --filter api exec vitest run src/auth/mock/mock-auth.service.spec.ts src/auth/auth.service.spec.ts
-TEST_POSTGRES_URL=postgresql://user:password@localhost:5432/postgres pnpm --filter api exec vitest run src/auth/external-identity.integration.spec.ts
+TEST_POSTGRES_URL=postgresql://user:password@localhost:5432/postgres pnpm --filter api exec vitest run test/integration/auth/external-identity.integration.spec.ts
 ```
 
 These verifier tests substitute the Admin SDK's verification call; they do not
@@ -148,12 +148,12 @@ Run them with:
 
 ```bash
 TEST_POSTGRES_URL=postgresql://user:password@localhost:5432/postgres \
-  pnpm --filter api exec vitest run src/auth/identity-flow.integration.spec.ts
+  pnpm --filter api exec vitest run test/integration/auth/identity-flow.integration.spec.ts
 pnpm --filter ui exec ng test --watch=false
 ```
 
 If `apps/api/.env` selects Firebase, set `AUTH_PROVIDER=mock NODE_ENV=test`
-when running the **full** API test suite; existing mock-mode specs assume
+when running the API test suites; mock-mode specs assume
 local mock auth, while this integration spec selects its provider explicitly.
 
 For the live path, use **two separate verified-email Google test identities**

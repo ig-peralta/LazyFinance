@@ -97,7 +97,7 @@ Calendar and contract cases run in the normal API test suite. PostgreSQL integra
 
 ```bash
 TEST_POSTGRES_URL=postgresql://user:password@localhost:5432/lazyfinance_laz25_test \
-  pnpm --filter api exec vitest run src/income/income.integration.spec.ts
+  pnpm --filter api exec vitest run test/integration/income/income.integration.spec.ts
 ```
 
 These cases verify mutations, ownership, idempotent receipts, unclassified refunds, transfers, late/different-amount receipts, archived history, equivalent-period comparisons, balance preservation, and HTTP/MCP agreement.
