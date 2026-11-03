@@ -47,7 +47,7 @@ The project follows **iterative and incremental development with agile practices
 - [Product vision, innovation and stage direction](docs/product/product-vision.md), [product requirements](docs/product/product-requirements.md), [non-functional requirements](docs/product/non-functional-requirements.md) and [observable user journeys](docs/product/user-journeys.md).
 - [Methodology and planning evidence](docs/planning/project-method.md), including the [all-issue backlog snapshot and individual completion checks](docs/planning/snapshots/backlog-2026-11-02.md), completed [Sprint A issue/gate record](docs/planning/snapshots/stage-a-closure.md), and [documentary retrospective](docs/planning/stage-a-retrospective.md). Future stage-closure records are added after their gate.
 - [Phase 1 project definition, technical report and presentation](docs/submissions/fase1/) and [Phase 2 progress guide](docs/submissions/fase2/2.4_GuiaEstudiante_Fase%202_DesarrolloProyecto%20APT%20%28Espa%C3%B1ol%29.docx).
-- [Technical evidence](docs/technical/README.md), including [architecture](docs/technical/architecture.md), [income model](docs/technical/income-model.md), [Firebase identity boundary](docs/technical/firebase-identity.md) and the [technical manual](docs/technical/technical-manual.md).
+- [Technical evidence](docs/technical/README.md), including [architecture](docs/technical/architecture.md), [conceptual UML diagrams](docs/diagrams/README.md), [income model](docs/technical/income-model.md), [Firebase identity boundary](docs/technical/firebase-identity.md) and the [technical manual](docs/technical/technical-manual.md).
 
 ## Prerequisites
 
