@@ -24,6 +24,7 @@ describe('AccountsService', () => {
       balance: '125000.00',
       lastSyncedAt: null,
     }]);
+    expect(listActiveForUser).toHaveBeenCalledExactlyOnceWith(userId);
   });
 
   it('serializes a known sync time as an ISO string', async () => {

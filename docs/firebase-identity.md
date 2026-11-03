@@ -115,7 +115,7 @@ configuration failure, and reuse of the Admin app. Run them with:
 ```bash
 pnpm --filter @lazyfinance/contracts build
 pnpm --filter api exec vitest run src/auth/firebase/firebase-auth.service.spec.ts src/auth/firebase/firebase-auth.utils.spec.ts src/environment/environment.schema.spec.ts
-pnpm --filter api exec vitest run src/auth/mock/mock-auth.service.spec.ts src/auth/http.guard.spec.ts
+pnpm --filter api exec vitest run src/auth/mock/mock-auth.service.spec.ts src/auth/auth.service.spec.ts
 TEST_POSTGRES_URL=postgresql://user:password@localhost:5432/postgres pnpm --filter api exec vitest run src/auth/external-identity.integration.spec.ts
 ```
 

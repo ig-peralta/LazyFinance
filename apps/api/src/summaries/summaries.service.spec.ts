@@ -52,6 +52,7 @@ describe('SummariesService', () => {
       unresolvedMovementCount: { current: 0, previous: 0 },
     });
     expect(sumDebitsByTagForMonth).not.toHaveBeenCalled();
+    expect(sumByMonthForUser).toHaveBeenCalledWith('demo-id', '2026-01');
     expect(sumByMonthForUser).toHaveBeenCalledWith('demo-id', '2025-12');
   });
 

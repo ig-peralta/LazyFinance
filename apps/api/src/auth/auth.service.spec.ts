@@ -51,9 +51,17 @@ describe('AuthService', () => {
 
   it('returns the internal principal only through the selected mock provider', async () => {
     const { service, mockVerify, resolveExisting } = createService();
+    expect(service.config()).toEqual({ provider: 'mock' });
     await expect(service.authenticate('bearer lazyfinance-demo-token')).resolves.toEqual(principal);
     expect(mockVerify).toHaveBeenCalledExactlyOnceWith('lazyfinance-demo-token');
     expect(resolveExisting).toHaveBeenCalledExactlyOnceWith(mockIdentity);
+  });
+
+  it('rejects an unknown mock token before resolving an identity', async () => {
+    const { service, mockVerify, resolveExisting } = createService();
+    await expect(service.authenticate('Bearer unknown-token')).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(mockVerify).toHaveBeenCalledExactlyOnceWith('unknown-token');
+    expect(resolveExisting).not.toHaveBeenCalled();
   });
 
   it('does not accept a demo bearer token in Firebase mode', async () => {
