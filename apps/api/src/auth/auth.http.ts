@@ -2,7 +2,7 @@ import type { AuthConfig, AuthPrincipal, MockLoginResult } from '@lazyfinance/co
 import { Body, Controller, Get, Header, Post, Req } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import type { AuthenticatedRequest } from './auth.types';
-import { Public } from './public.decorator';
+import { Public } from '../decorators/public.decorator';
 
 @Controller('auth')
 export class AuthHttpController {

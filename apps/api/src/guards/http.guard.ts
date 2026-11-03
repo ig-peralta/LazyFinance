@@ -1,9 +1,9 @@
 import type { AuthPrincipal } from '@lazyfinance/contracts';
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import type { AuthenticatedRequest } from './auth.types';
-import { AuthService } from './auth.service';
-import { IS_PUBLIC_KEY } from './public.decorator';
+import type { AuthenticatedRequest } from '../auth/auth.types';
+import { AuthService } from '../auth/auth.service';
+import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 
 @Injectable()
 export class HttpAuthGuard implements CanActivate {
