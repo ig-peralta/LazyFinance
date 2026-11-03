@@ -60,13 +60,14 @@ Run these from the monorepo root:
 | --- | --- |
 | `pnpm --filter api dev` | Start NestJS with file watching. |
 | `pnpm --filter api build` | Compile the API into `apps/api/dist`. |
-| `pnpm --filter api test` | Run Vitest tests. |
+| `pnpm --filter api test` | Run unit tests under `src/`. |
+| `pnpm --filter api test:integration` | Run PostgreSQL integration tests under `test/integration/` (set `TEST_POSTGRES_URL`). |
 | `pnpm --filter api typecheck` | Type-check without emitting files. |
 | `pnpm --filter api seed` | Populate the demo dataset; safe to run more than once. |
 | `pnpm --filter api migrate` | Apply pending migrations using the API's Drizzle Kit config. |
 | `pnpm --filter api drizzle <command>` | Run Drizzle Kit with this app's config. |
 
-Feature-module unit tests live alongside their `*.service.ts` implementations as `*.service.spec.ts` and exercise the service with mocked dependencies. Cross-layer HTTP and MCP behavior belongs in the PostgreSQL-backed `*.integration.spec.ts` suites (set `TEST_POSTGRES_URL` to run them). Avoid adapter-focused `*.http.spec.ts` or `*.mcp.spec.ts` unit tests.
+Feature-module unit tests live alongside their `*.service.ts` implementations as `*.service.spec.ts` and exercise the service with mocked dependencies. Cross-layer HTTP and MCP behavior belongs in the PostgreSQL-backed `test/integration/**/*.integration.spec.ts` suites. Shared test data lives in `test/fixtures/`; integration helpers live in `test/integration/helpers/`. Avoid adapter-focused `*.http.spec.ts` or `*.mcp.spec.ts` unit tests.
 
 The demo user is `demo@lazyfinance.cl` with the local password above; the mock identity provider issues fixture token `lazyfinance-demo-token` when those credentials are supplied. The seed creates CLP accounts, categories, objectives, and a dated transaction history from January 2024 through the present, including recurring income and expenses, transfers, credit-card payments, and seasonal spending in Chile. It also links the mock external identity to the demo user. It uses the API's `POSTGRES_URL` (including `apps/api/.env` when present); run migrations first. Rerunning it updates the same demo records without deleting other users' data. Rerun the seed on existing local databases to update the demo email and identity link. The credentials and dataset are for local development only.
 
