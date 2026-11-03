@@ -33,11 +33,13 @@ export class AuthService {
       throw new UnauthorizedException('Missing or invalid bearer token');
     }
 
+    const token = match[1]
     switch (this.config().provider) {
       case 'mock':
-        return this.identities.resolveExisting(this.mock.verify(match[1]));
+        const identity = this.mock.verify(token)
+        return this.identities.resolveExisting(identity);
       case 'firebase': {
-        const identity = await this.firebase.verify(match[1]);
+        const identity = await this.firebase.verify(token);
         return this.identities.resolveOrCreate(identity);
       }
     }
