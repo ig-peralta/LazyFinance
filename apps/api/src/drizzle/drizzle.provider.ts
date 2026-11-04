@@ -1,6 +1,6 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { settleAsync } from '../utils/settle';
+import { settleAsync } from '../_utils/settle';
 import { DRIZZLE_PG_CLIENT } from './drizzle.tokens';
 import { EnvironmentService } from '../environment/environment.service';
 import * as schema from './schema';

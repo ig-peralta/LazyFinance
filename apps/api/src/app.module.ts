@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { AppHttpController } from './app.http';
 import { AccountsModule } from './accounts/accounts.module';
-import { HttpAuthGuard } from './guards/http.guard';
+import { HttpAuthGuard } from './_guards/http.guard';
 import { McpModule } from './mcp/mcp.module';
 import { EnvironmentModule } from './environment/environment.module';
 import { DrizzleModule } from './drizzle/drizzle.module';
