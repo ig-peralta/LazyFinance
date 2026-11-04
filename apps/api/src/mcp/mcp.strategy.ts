@@ -1,5 +1,6 @@
-import { McpStrategy } from '@rekog/mcp-nest';
-import { mcpHttpTransport } from './mcp.transport';
+import { McpStrategy, StreamableHttpTransport } from '@rekog/mcp-nest';
+
+export const mcpHttpTransport = new StreamableHttpTransport();
 
 export const mcpStrategy = new McpStrategy({
   name: 'lazyfinance',
