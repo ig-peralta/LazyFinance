@@ -39,4 +39,3 @@ export function settleSync<T, E = Error>(fn: () => T): Result<T, E> {
     return { value: null, error: error as E };
   }
 }
-

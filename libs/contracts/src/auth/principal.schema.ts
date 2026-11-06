@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 export const AuthPrincipalSchema = z.object({
   userId: z.string().min(1),

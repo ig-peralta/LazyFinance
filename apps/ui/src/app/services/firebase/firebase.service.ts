@@ -1,18 +1,18 @@
-import { isPlatformServer } from '@angular/common';
-import { Injectable, PLATFORM_ID, inject } from '@angular/core';
-import { getApps, initializeApp } from 'firebase/app';
+import { isPlatformServer } from "@angular/common";
+import { Injectable, inject, PLATFORM_ID } from "@angular/core";
+import { getApps, initializeApp } from "firebase/app";
 import {
-  GoogleAuthProvider,
+  type Auth,
   browserLocalPersistence,
+  GoogleAuthProvider,
   getAuth,
   setPersistence,
   signInWithPopup,
-  type Auth,
   type User,
-} from 'firebase/auth';
-import { environment } from '../../../environments/environment';
+} from "firebase/auth";
+import { environment } from "../../../environments/environment";
 
-@Injectable({ providedIn: 'root' })
+@Injectable({ providedIn: "root" })
 export class FirebaseService {
   private readonly isServer = isPlatformServer(inject(PLATFORM_ID));
   private authInstance: Auth | null = null;
@@ -22,15 +22,21 @@ export class FirebaseService {
   }
 
   async init(): Promise<Auth> {
-    if (this.isServer) throw new Error('Firebase Auth is only available in the browser');
+    if (this.isServer)
+      throw new Error("Firebase Auth is only available in the browser");
     if (this.authInstance) return this.authInstance;
     const config = environment.firebaseConfig;
-    if (Object.values(config).some((value) => !value || value.startsWith('REPLACE_WITH_'))) {
-      throw new Error('Firebase Web configuration is missing');
+    if (
+      Object.values(config).some(
+        (value) => !value || value.startsWith("REPLACE_WITH_"),
+      )
+    ) {
+      throw new Error("Firebase Web configuration is missing");
     }
 
-    const app = getApps().find(({ name }) => name === 'lazyfinance-browser')
-      ?? initializeApp(config, 'lazyfinance-browser');
+    const app =
+      getApps().find(({ name }) => name === "lazyfinance-browser") ??
+      initializeApp(config, "lazyfinance-browser");
     const auth = getAuth(app);
     await setPersistence(auth, browserLocalPersistence);
     this.authInstance = auth;
@@ -40,7 +46,7 @@ export class FirebaseService {
   async signInWithGoogle(): Promise<User> {
     const auth = await this.init();
     const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: 'select_account' });
+    provider.setCustomParameters({ prompt: "select_account" });
     return (await signInWithPopup(auth, provider)).user;
   }
 
