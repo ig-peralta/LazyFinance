@@ -10,7 +10,7 @@
 - Distinguish a spending budget from a savings goal. Do not display measured savings progress or simulations as fact until a contribution rule is defined and substantiated. Where history is incomplete, show the limitation rather than inventing a complete breakdown.
 - Add projections, anomaly/pattern detection, duplicate-charge insight or price-change analysis only with defined data requirements, explainable rules and representative validation cases. These are later candidates, not currently delivered analysis.
 
-The [user journeys](user-journeys.md) give observable examples of the foundational behaviors; the [income model](../technical/income-model.md) records the detailed income decisions.
+The [user journeys](user-journeys.md) give observable examples of the foundational behaviors; the [implemented database model](../technical/database-model.md) describes the current storage relationships and invariants.
 
 ## Integration and ecosystem capabilities
 
@@ -26,7 +26,7 @@ Ingest provider accounts, balances and booked movements through a validated, pro
 
 Expose appropriate **read-only**, user-scoped financial capabilities as MCP tools so a compatible agent can use them alongside its own tools. Tool results must preserve financial meaning, period, owner and data-quality context. Before describing third-party access as available, define and validate client discovery, user authorization, permitted capabilities, token expiry/revocation and two-user isolation with a reference client. The current authenticated MCP endpoint and its seven read-only tools establish a technical foundation; the final external-client authorization flow is separate work.
 
-An authorized external agent with its **own** web-search capability might combine permitted budget data with product research to recommend options. This is an integration scenario, **not** a requirement for LazyFinance to implement web search, shopping or financial writes in its initial release. Any future action-preparation workflow would require a new contract, explicit user approval, permissions and acceptance tests before being selected for delivery. Transaction execution is outside the initial agent scope, not excluded from every future product direction.
+The [innovation reference](innovation.md#example-a-decision-in-the-users-existing-assistant) describes a possible external-agent workflow, not a requirement for LazyFinance to implement web search, shopping or financial writes. Any future action-preparation workflow requires its own contract, explicit approval, permissions and acceptance checks before selection for delivery. Transaction execution is outside the initial agent scope, not excluded from every future product direction.
 
 ## First-party experience and access
 
@@ -40,7 +40,7 @@ An authorized external agent with its **own** web-search capability might combin
 - **Stage B — parallel product tracks:** refine financial services and web workflows, introduce real-user identity, complete external MCP authorization with a reference client, implement Fintoc as a provider adapter, and deliver the first-party text agent. Each track must meet its issue checks or be explicitly re-scoped at the gate; the [dated backlog](../planning/snapshots/backlog-2026-11-02.md) is an interim view, not a release-completion record.
 - **Stage C — candidate expansion:** decide after the Stage B review whether to select voice, advanced analysis, additional providers or other validated financial capabilities. No Stage C issue is assumed selected yet. Shared family finances, organizational or adviser workflows, and approval-based action preparation require new ownership and permissions rules before they could become product requirements for a later release.
 
-The first release scope does not include executing transactions or moving money from an agent. A future financial-action capability must not be inferred from today's read-only MCP tools. See the [product vision](product-vision.md#innovation-and-interoperability-across-ecosystems) for the direction beyond these staged requirements.
+The first release scope does not include executing transactions or moving money from an agent. A future financial-action capability must not be inferred from today's read-only MCP tools. See [innovation and interoperability](innovation.md) for opportunities beyond these staged requirements, and the [product vision](product-vision.md) for stage direction.
 
 ## Core-model decision questions
 

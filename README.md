@@ -21,11 +21,11 @@ Browser/SSR → Angular → public tRPC API → private tRPC persistence → Pos
 MCP clients ─────────→ NestJS MCP ──────┘                           identity/finance + RLS
 ```
 
-The API verifies users and owns financial rules, scheduling, tag matching and provider orchestration. It has no database connection or credentials. Persistence verifies short-lived signed service assertions and enforces user RLS in a transaction per procedure. Only migration/seed tooling receives owner credentials. There is no tenancy layer or automatic old-database adoption. Local demo data supports validation without a bank adapter; external-client authorization, Fintoc and the conversational agent remain later work. See the [implementation design](docs/planning/persistence-rpc-user-rls-plan.md) and [banking boundary](apps/api/src/banking/README.md).
+The API verifies users and owns financial rules, scheduling, tag matching and provider orchestration. It has no database connection or credentials. Persistence verifies short-lived signed service assertions and enforces user RLS in a transaction per procedure. Only migration/seed tooling receives owner credentials. There is no tenancy layer or automatic old-database adoption. Local demo data supports validation without a bank adapter; external-client authorization, Fintoc and the conversational agent remain later work. See the [architecture](docs/technical/architecture.md), [RPC/RLS security](docs/technical/persistence-security.md) and [banking boundary](apps/api/src/banking/README.md).
 
-The [product vision](docs/product/product-vision.md#innovation-and-interoperability-across-ecosystems) describes how another agent could combine permitted LazyFinance financial context with its own tools, such as web research, in a workflow the user already knows.
+The separate [innovation reference](docs/product/innovation.md) explains how reusable financial understanding could connect more sources and destinations, including an authorized agent combining LazyFinance context with its own tools. These opportunities are not claims of shipped integrations.
 
-The [technical evidence index](docs/technical/README.md) links the architecture, non-functional requirements, environment examples and technical manual. Each distinguishes implemented behavior from planned work.
+The [documentation index below](#documentation) covers the current implementation guides, product direction, planning records and academic submissions. Each distinguishes implemented behavior from targets and historical evidence.
 
 ## Team and roles
 
@@ -41,12 +41,69 @@ These are initial areas of responsibility, not exclusive assignments: the team s
 
 The project follows **iterative and incremental development with agile practices, without claiming a formal Scrum framework**. The financial core was validated with controlled data before advancing to parallel work on the UI, identity, provider connectivity, and agent. **Each stage milestone is one sprint; its assigned Linear issues are that sprint's Sprint Backlog.** The team does not create separate Linear cycles. For reviewers without access to Linear, the repository provides a [complete dated backlog snapshot with issue-specific completion checks](docs/planning/snapshots/backlog-2026-11-02.md) and **stage-closure evidence**. Sprint C issues will be selected after the Stage B review. See the [method and its rationale](docs/planning/project-method.md), [Sprint A/B/C product definitions of done](docs/planning/sprint-definitions-of-done.md), and [product Definition of Done](docs/planning/product-definition-of-done.md).
 
-## Project evidence
+## Documentation
 
-- [Product vision, innovation and stage direction](docs/product/product-vision.md), [product requirements](docs/product/product-requirements.md), [non-functional requirements](docs/product/non-functional-requirements.md) and [observable user journeys](docs/product/user-journeys.md).
-- [Methodology and planning evidence](docs/planning/project-method.md), including the [all-issue backlog snapshot and individual completion checks](docs/planning/snapshots/backlog-2026-11-02.md), completed [Sprint A issue/gate record](docs/planning/snapshots/stage-a-closure.md), and [documentary retrospective](docs/planning/stage-a-retrospective.md). Future stage-closure records are added after their gate.
-- [Phase 1 project definition, technical report and presentation](docs/submissions/fase1/) and [Phase 2 progress guide](docs/submissions/fase2/2.4_GuiaEstudiante_Fase%202_DesarrolloProyecto%20APT%20%28Espa%C3%B1ol%29.docx).
-- [Technical evidence](docs/technical/README.md), including [architecture](docs/technical/architecture.md), [conceptual UML diagrams](docs/diagrams/README.md), [income model](docs/technical/income-model.md), [Firebase identity boundary](docs/technical/firebase-identity.md) and the [technical manual](docs/technical/technical-manual.md).
+### Product and innovation
+
+| Document | Purpose |
+| --- | --- |
+| [Product vision](docs/product/product-vision.md) | Direction, foundational approach and Stage A/B/C decision gates |
+| [Innovation and interoperability](docs/product/innovation.md) | Differentiation, source/destination ecosystems, example opportunities and value hypotheses |
+| [Product requirements](docs/product/product-requirements.md) | Expected capabilities and acceptance/scope boundaries, not a shipped-feature inventory |
+| [Non-functional requirements](docs/product/non-functional-requirements.md) | Privacy, isolation, correctness, recoverability, performance and usability targets |
+| [User journeys](docs/product/user-journeys.md) | Observable financial-core outcomes and later experience candidates |
+
+### Current technical references
+
+Start with the [technical documentation index](docs/technical/README.md) for the
+reading order and distinction between implementation, evidence and targets.
+
+| Document | Purpose |
+| --- | --- |
+| [Architecture](docs/technical/architecture.md) | Three-app/runtime boundaries, responsibility split and implementation scope |
+| [Private RPC, transactions and RLS](docs/technical/persistence-security.md) | Assertions, bootstrap, runtime roles, related-owner policies, atomicity and budgets |
+| [Database model and implemented ERD](docs/technical/database-model.md) | All 17 tables, relationships/keys, representation and fresh-migration lifecycle |
+| [RPC contracts and clients](docs/technical/rpc-contracts.md) | Public/private procedures, MCP tools, type-only libraries and generation workflow |
+| [Provider-neutral identity](docs/technical/identity.md) | External provider/issuer/subject mapping, internal principals and current provider-selection limits |
+| [UI/session/SSR lifetimes](docs/technical/ui-data-lifecycle.md) | Verified scopes, resources, cancellation, command/read ordering and hydration privacy |
+| [Technical manual](docs/technical/technical-manual.md) | Installation, environment/credential separation, Compose, operation and troubleshooting |
+| [Development and verification](docs/technical/development-workflow.md) | Build/tooling/DI conventions and serverless, HTTP, DB and live-provider verification tiers |
+
+### App and domain guides
+
+- [API](apps/api/README.md), [persistence](apps/persistence/README.md) and
+  [UI](apps/ui/README.md): app-specific setup, commands and runtime constraints.
+- [Banking connector and ingestion](apps/api/src/banking/README.md): neutral
+  provider facts, sync preparation/commit, tombstones and correction review.
+- [Tag decisions and rules](apps/api/src/transactions/tagging/README.md): single
+  tag/no-tag/reset, matching, approved rules and atomic decision/event commands.
+- Configuration examples: [Compose](.env.example), [API](apps/api/.env.example),
+  [persistence](apps/persistence/.env.example); only public placeholders/demo defaults.
+
+### Planning, delivery and dated evidence
+
+| Document | Purpose |
+| --- | --- |
+| [Project method](docs/planning/project-method.md) | Iterative/incremental approach and milestone-as-sprint rationale |
+| [Backlog and stage evidence](docs/planning/backlog.md) | How live issue tracking and dated repository snapshots relate |
+| [Sprint definitions of done](docs/planning/sprint-definitions-of-done.md) | Stage A/B/C gate criteria |
+| [Product Definition of Done](docs/planning/product-definition-of-done.md) | Agreed-release exit checklist |
+| [Stage-sprint record template](docs/planning/stage-sprint-record-template.md) | Future planning/closure/retrospective record fields; not completed meeting evidence |
+| [Backlog snapshot — 2026-11-02](docs/planning/snapshots/backlog-2026-11-02.md) | All 65 issues and individual completion checks at extraction time |
+| [Stage A closure](docs/planning/snapshots/stage-a-closure.md) | Completed core-model gate, issue worklist and bounded limitations |
+| [Stage A documentary retrospective](docs/planning/stage-a-retrospective.md) | Retrospective analysis from available records, not invented meeting minutes |
+
+Historical records preserve their original context; old Drizzle references or
+earlier validation evidence do not describe the latest runtime by themselves.
+
+### Diagrams and academic submissions
+
+- [Conceptual UML inventory](docs/diagrams/README.md): three unchanged PNG sketches
+  with explicit scope/accuracy limits, not the implemented database model.
+- [Academic submission index](docs/submissions/README.md): every available shared
+  and individual document, including [Phase 1](docs/submissions/README.md#phase-1--project-definition)
+  project definition/forms/presentation and [Phase 2](docs/submissions/README.md#phase-2--development-progress)
+  progress guides/reflections. Submitted files are evidence, not current setup docs.
 
 ## Prerequisites
 
@@ -102,7 +159,7 @@ These scripts run from the repository root. Turborepo runs tasks in the workspac
 | `pnpm deploy:local`                               | Pass additional arguments to `docker compose -f docker/local/deploy.yml`.    |
 | `pnpm deploy:local:up` / `pnpm deploy:local:down` | Build and start / stop the full containerized stack.                         |
 
-Use `pnpm --filter api <script>` or `pnpm --filter ui <script>` to run an app script directly; each app README lists its scripts.
+Use `pnpm --filter <api|persistence|ui> <script>` to run an app script directly; each app README lists its scripts. `pnpm test` is not serverless-only: backend HTTP specs can open listeners and configured integration cases use a database. Choose the [appropriate verification tier](docs/technical/development-workflow.md#verification-tiers).
 
 ### Formatting and linting
 
@@ -139,3 +196,8 @@ Markdown and YAML remain manually formatted with this Biome version.
 - **Full local deployment:** copy `.env.example` to `.env`, generate keys, then `pnpm deploy:local:up`. The `init` job must succeed before persistence starts. PostgreSQL/persistence have no published ports; the API cannot join the data network. Data uses a named volume. This remains a local demonstration setup, not production secret management or TLS.
 
 Demo seeding is explicit: `pnpm deploy:local --profile tools run --rm seed`. It is not a migration or startup side effect. Existing volumes are not reset or upgraded from the old schema; choose a fresh database. Use Firebase plus `API_NODE_ENV=production` for a production-mode rehearsal; mock auth is development-only.
+
+The Docker UI's production browser bundle currently targets `https://api.lazyfinance.cl`;
+`API_INTERNAL_URL=http://api:3000` changes SSR only. For a fully local browser
+rehearsal, configure/rebuild the browser destination or explicitly route its public
+hostname to the intended API. See [browser versus SSR setup](docs/technical/technical-manual.md#browser-versus-ssr-destination).

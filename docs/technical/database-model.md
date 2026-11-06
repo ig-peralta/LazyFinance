@@ -1,0 +1,249 @@
+# Implemented database model
+
+This reference describes the checked-in Kysely migrations, not a conceptual
+product model. PostgreSQL 18 holds **17 application tables** in fixed `identity`
+and `finance` schemas. Sixteen sensitive tables force user/identity RLS;
+`finance.provider` is the shared read-only catalog exception. There is no tenancy,
+membership or account-sharing model. See [security and RLS](persistence-security.md)
+for policy/grant details.
+
+The source of truth is
+[`database/migrations`](../../apps/persistence/src/database/migrations).
+Runtime types live in schema-root `identity.tables.ts` / `finance.tables.ts` maps
+and table-local `*.tables.ts` files under
+[`identity`](../../apps/persistence/src/identity) and
+[`finance`](../../apps/persistence/src/finance). Migrations deliberately do not
+import those evolving runtime interfaces.
+
+## Tables, keys and ownership
+
+All unqualified table names in the finance section below belong to `finance`.
+`id` means a UUID primary key unless a different primary key is stated.
+
+| Table | Key / important relationship | Ownership and meaning |
+| --- | --- | --- |
+| `identity.user` | `id`; unique email, including a case-insensitive unique index | Stable financial owner; normal runtime self-read only |
+| `identity.external_identity` | PK `(provider, issuer, provider_subject)`; unique `(user_id, provider, issuer)` | External subject → user; bootstrap-only access, no stored bearer token |
+| `provider` | `id`; unique `identifier` | Shared catalog; runtime SELECT only |
+| `provider_connection` | `id` → provider; `user_id` | Owned connection lifecycle (`active`, `revoked`, `expired`) and optional test/live mode |
+| `account` | `id`; unique `(provider_connection_id, external_id)`; `user_id` | Owned account and owned connection must agree; independent nullable source balance |
+| `transaction` | `id`; unique non-null `(account_id, external_id)` | Ownership through account; provider fact plus preserved user interpretation |
+| `tag` | `id`; unique `(user_id, name)` | User-owned catalog with archive flag |
+| `tag_rule` | `id` → owned tag and optional owned account | User-owned exact-match suggestion or approved automatic rule |
+| `tag_decision_event` | `id` → movement, optional previous/new tags and rule; `user_id` | Runtime append-only audit history, with every referenced owner checked |
+| `objective` | `id`; `user_id` | User-owned amount/time-based spending/saving declaration |
+| `objective_tag` | PK `(objective_id, tag_id)` | Both ends must be owned; multiple tags may describe one budget |
+| `income_source` | `id`; `user_id` | Regularity, amount behavior, schedule and effective dates |
+| `income_expectation` | `id` → source | Source-owned dated expectation for irregular income |
+| `income_receipt` | PK `transaction_id`; `source_id` | At most one confirmed source per movement; both ends owned |
+| `provider_sync_state` | PK `provider_connection_id` | Connection-owned checkpoint, revision, success/failure and review metadata |
+| `provider_movement_removal` | PK `(provider_connection_id, account_external_id, movement_external_id)` | Connection-owned tombstone, even before the account/movement exists locally |
+| `provider_movement_conflict` | PK `(transaction_id, reason)` | Movement-owned old/incoming factual snapshots and review resolution time |
+
+Indexes support direct user lookups, parent ownership checks, account booking
+periods, active rules and source/date queries. The keys and RLS checks are
+complementary: a valid FK can still point at another user's row unless the write
+policy independently rejects it.
+
+## Implemented relationship diagram
+
+The Mermaid ERD uses `identity_` / `finance_` entity prefixes for SQL schema names.
+It shows every application-table FK, optional references and selected key columns;
+it omits other columns, indexes, check constraints and RLS expressions. It is a
+source-verified reference, not generated DDL or an ownership-policy diagram.
+
+```mermaid
+erDiagram
+    identity_user ||--o{ identity_external_identity : maps
+    identity_user ||--o{ finance_provider_connection : owns
+    identity_user ||--o{ finance_account : owns
+    identity_user ||--o{ finance_tag : owns
+    identity_user ||--o{ finance_tag_rule : owns
+    identity_user ||--o{ finance_tag_decision_event : owns
+    identity_user ||--o{ finance_objective : owns
+    identity_user ||--o{ finance_income_source : owns
+
+    finance_provider ||--o{ finance_provider_connection : identifies
+    finance_provider_connection ||--o{ finance_account : contains
+    finance_provider_connection ||--o| finance_provider_sync_state : tracks
+    finance_provider_connection ||--o{ finance_provider_movement_removal : retains
+    finance_account ||--o{ finance_transaction : contains
+    finance_account o|--o{ finance_tag_rule : scopes
+    finance_tag ||--o{ finance_tag_rule : selects
+    finance_tag o|--o{ finance_transaction : classifies
+    finance_tag_rule o|--o{ finance_transaction : explains
+
+    finance_transaction ||--o{ finance_tag_decision_event : records
+    finance_tag o|--o{ finance_tag_decision_event : previous_tag
+    finance_tag o|--o{ finance_tag_decision_event : new_tag
+    finance_tag_rule o|--o{ finance_tag_decision_event : explains
+    finance_objective ||--o{ finance_objective_tag : selects
+    finance_tag ||--o{ finance_objective_tag : groups
+    finance_income_source ||--o{ finance_income_expectation : plans
+    finance_income_source ||--o{ finance_income_receipt : receives
+    finance_transaction ||--o| finance_income_receipt : confirms
+    finance_transaction ||--o{ finance_provider_movement_conflict : flags
+
+    identity_user {
+        uuid id PK
+        string email UK
+    }
+    identity_external_identity {
+        string provider PK
+        string issuer PK
+        string provider_subject PK
+        uuid user_id FK
+    }
+    finance_provider {
+        uuid id PK
+        string identifier UK
+    }
+    finance_provider_connection {
+        uuid id PK
+        uuid user_id FK
+        uuid provider_id FK
+    }
+    finance_account {
+        uuid id PK
+        uuid user_id FK
+        uuid provider_connection_id FK
+        string external_id
+    }
+    finance_transaction {
+        uuid id PK
+        uuid account_id FK
+        uuid tag_id FK
+        uuid tag_rule_id FK
+        string external_id
+    }
+    finance_tag {
+        uuid id PK
+        uuid user_id FK
+    }
+    finance_tag_rule {
+        uuid id PK
+        uuid user_id FK
+        uuid tag_id FK
+        uuid account_id FK
+    }
+    finance_tag_decision_event {
+        uuid id PK
+        uuid user_id FK
+        uuid transaction_id FK
+        uuid previous_tag_id FK
+        uuid tag_id FK
+        uuid rule_id FK
+    }
+    finance_objective {
+        uuid id PK
+        uuid user_id FK
+    }
+    finance_objective_tag {
+        uuid objective_id PK, FK
+        uuid tag_id PK, FK
+    }
+    finance_income_source {
+        uuid id PK
+        uuid user_id FK
+    }
+    finance_income_expectation {
+        uuid id PK
+        uuid source_id FK
+    }
+    finance_income_receipt {
+        uuid transaction_id PK, FK
+        uuid source_id FK
+    }
+    finance_provider_sync_state {
+        uuid provider_connection_id PK, FK
+    }
+    finance_provider_movement_removal {
+        uuid provider_connection_id PK, FK
+        string account_external_id PK
+        string movement_external_id PK
+    }
+    finance_provider_movement_conflict {
+        uuid transaction_id PK, FK
+        string reason PK
+    }
+```
+
+There is **no transaction-tag join table**: each transaction has at most one tag.
+The many-to-many relationship is objective-to-tag. A receipt references a source,
+not a generated payday or expectation. Tombstone external IDs are intentionally
+not local account/movement FKs. Provider relation IDs in transactions are source
+evidence, not guaranteed local relational links.
+
+## Financial representation and constraints
+
+- Monetary columns use `numeric(15,2)` and cross RPC as decimal strings. CLP is the
+  implemented currency. Transaction amounts are nonzero, with negative debits and
+  positive credits enforced together. The balance is nullable and independent of
+  movement history: missing history does not establish zero cash or zero debt.
+- Checking/savings balances represent signed cash; a card balance follows the
+  negative-liability convention, not remaining available credit. Internal transfers
+  and card payments still move account balances without becoming earned income or
+  purchase spending.
+- `date` values stay strings in the pg parser. `timestamptz` values become ISO
+  strings at the RPC boundary. A date-only provider booking retains `booked_on`
+  and `calendar_day` precision while `booked_at` uses Santiago local noon; an
+  actual instant has `instant` precision and no invented calendar-day field.
+- History coverage requires ordered date bounds; `complete` requires both bounds
+  and `unknown` has neither. Provider observation time and source balance time
+  remain separate freshness facts.
+- Tag provenance is constrained: `unreviewed` has no tag/rule; `manual` can have
+  a tag or intentional null but no rule; `rule` requires both tag and rule.
+  Automatic rule mode requires an approval time. Active-rule uniqueness includes
+  owner, target tag, direction, normalized field/value and optional account scope.
+- Income sources keep regularity and fixed/variable amount behavior independent.
+  Fixed amounts and dated expectations are positive. Regular declarations require
+  a schedule, irregular declarations do not carry one, and date ranges are ordered.
+- Objective checks distinguish amount-only declarations, recurring time-based
+  periods and bounded one-off periods. A stored saving intent does not by itself
+  implement savings-progress policy.
+
+SQL checks protect representation and relationships; they do not replace API
+calendar calculations or authoritative command checks. For example, receipt
+confirmation also locks and validates a clear, booked, nonremoved, explicitly
+non-internal credit. See the [public/private procedure reference](rpc-contracts.md),
+[tag decisions/rules](../../apps/api/src/transactions/tagging/README.md) and the
+[banking boundary](../../apps/api/src/banking/README.md).
+
+## Provider facts, decisions and review
+
+Provider upserts retain local IDs and update source-owned facts. Aliases, manual
+tag/no-tag choices, user internal-status overrides and confirmed receipt links
+are separate user interpretations. Incompatible corrections preserve the bank
+fact and the user's interpretation, record a conflict and mark `needs_review`;
+removed/unresolved movements cannot silently enter confirmed totals.
+
+Removal tombstones are connection/account/movement scoped, idempotent and can
+precede first import. A replay must not resurrect a removed movement. Sync state
+advances the checkpoint only with an atomic successful commit, including durable
+conflicts/events; failure recording retains last-good facts. Neither the existence
+of review tables nor a private review query means a user-facing conflict-resolution
+workflow has been shipped.
+
+## Migration and seed lifecycle
+
+Twenty small migrations are globally ordered across `migrations/identity` and
+`migrations/finance`: schema/bootstrap foundations plus the table migrations.
+Kysely's PostgreSQL migrator owns locking and transactional DDL/ledger updates.
+Each new sensitive table brings its constraints, indexes, grants and RLS together;
+do not create an unprotected intermediate migration. The owner-only Kysely ledger
+is infrastructure, not an eighteenth application table or an RPC feature.
+
+Use a **fresh empty database**. There is no Drizzle journal adoption, old-data
+import, automatic reset or legacy relocation path. Already applied migrations
+must not be edited to upgrade a live database; add ordered migrations for future
+changes and validate them on a disposable target. Identity foundation `down`
+paths intentionally refuse destructive rollback. Database roles are cluster-wide,
+so a fresh database does not eliminate unsafe pre-existing role collisions.
+
+Seeding is explicit owner-only demo tooling, never startup or migration work.
+Stable fixture IDs allow repeatable updates and preserve existing transaction
+tag decisions; it also rewrites declared demo fixtures and recomputes demo
+balances, so it is **not** a generic import or a safe operation on real user data.
+The seeded `fintoc` catalog identifier is not evidence of a working Fintoc adapter.
+Follow the [persistence setup](../../apps/persistence/README.md) and
+[test-database precautions](development-workflow.md#verification-tiers).

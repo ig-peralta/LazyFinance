@@ -1,5 +1,10 @@
 # Banking connector boundary (LAZ-47)
 
+Current implementation: provider-neutral contracts and owned ingestion, not a
+shipped Fintoc adapter/linking flow. See the [database model](../../../../docs/technical/database-model.md),
+[private RPC/RLS](../../../../docs/technical/persistence-security.md) and
+[RPC inventories](../../../../docs/technical/rpc-contracts.md).
+
 `connector/banking-connector.ts` is the backend-only shape implemented by provider adapters. The validated data shapes live alongside it in `connector/normalized-banking.schema.ts`; they are not HTTP or cross-application contracts. An ingestion service verifies the user and connection before calling `fetchPage`, then validates each returned `ConnectorResult` before persistence. The adapter obtains provider credentials server-side. Linking a connection is a separate provider capability and need not share a provider-specific callback shape with synchronization.
 
 ## Financial meanings
@@ -26,3 +31,45 @@ Fixtures exercise this boundary without a provider SDK. Kysely tables in `apps/p
 Account snapshots preserve user aliases and distinguish a missing balance from a reported zero. Provider balance times are separate from observation times; an older observation or source balance does not replace a newer one. Date-only bookings map to Santiago local noon while retaining `bookedOn` and date precision. Existing provider amounts, dates, descriptions and source evidence are updated on the same movement ID; user tags, confirmed income receipts and user internal-status overrides stay attached. A proven same-owner, opposite-sign pair is internal; unpaired transfer/card-payment hints remain unknown. Merchant-bearing ordinary purchases may be treated as external, but this hint cannot override a user-confirmed internal decision. Income is never auto-confirmed from a positive amount.
 
 An incompatible correction updates the bank fact but preserves and suspends the user interpretation. `provider_movement_conflict` records the old and new relevant facts for review, and `transaction.review_status = needs_review` excludes that movement from totals while contributing to the unresolved-movement warning. A removed movement is likewise excluded and its receipt link retained for review. Completed runs with open conflicts advance the checkpoint **only after** conflicts are durable and report `needs_review`; they are distinct from clean completion and from failed attempts. `listPendingReviewForUser` provides owned transaction, tag and income-source references for a later user-facing review/tag-assignment workflow. Resolving conflicts and editing transaction tags are separate management actions; this service does not silently rewrite user decisions.
+
+### Private command sequence and failure boundaries
+
+| Step | Private procedure | What happens |
+| --- | --- | --- |
+| Begin | `providerSync.begin` | Verify owned connection/provider/status and obtain revision/checkpoint |
+| Fetch | None | API calls/validates the connector outside SQL, retaining the committed checkpoint throughout pagination |
+| Snapshot | `providerSync.facts` | Repeatable-read bounded relevant facts/rules and canonical fingerprint; POST override supports large scope keys |
+| Prepare | None | API computes owned-pair evidence, booking conversion, corrections and tag proposals |
+| Commit | `providerSync.commit` | Under user write lock, reject stale inputs and atomically persist authoritative changes/checkpoint |
+| Failure / review | `providerSync.failure` / `providerSync.review` | Record failed-attempt metadata separately / read owned unresolved conflicts |
+
+The sync revision orders competing runs; the factual fingerprint catches user,
+rule and relevant persisted changes between snapshot and commit. These are
+different checks. A superseded revision does not overwrite newer work. Only a
+known conflict rejection is read/prepared again (at most two retries); a lost
+response or timeout is not retried because the commit may have succeeded.
+
+The 50,000-record bound counts **accounts + movements + removals across all
+pages**, including repeated records on separate pages. UTF-8 serialized normalized
+pages also share a cumulative 32 MiB budget; private prepared bodies and factual
+results have a 64 MiB budget. Repeated cursors, incomplete pagination, decreasing
+page observation time or invalid normalized data fail the run. The service does
+not silently split an oversized run or advance its checkpoint after a partial
+financial import. Begin/failure attempt metadata is separate from the atomic
+financial commit, so "no partial writes" does not mean no attempt was recorded.
+
+Connector retryability and `retryAfter` are reported facts, not an implemented
+background scheduler. Provider synchronization has no public RPC or scheduled
+refresh trigger in this cutover. A `fintoc` catalog row or fixture is not a live
+adapter, and a private review read is not a delivered review-resolution UI.
+
+### Verification scope
+
+Connector fixtures and API unit tests cover parsing, orchestration, byte/count
+bounds and no ambiguous replay without a real provider. Real-PostgreSQL integration
+tests cover ownership, correction/removal preservation and atomic commit through
+signed RPC. See [test tiers](../../../../docs/technical/development-workflow.md#verification-tiers)
+before running them: integration checks open listeners and need disposable test
+data. Payload measurements in `scripts/measure-sync-payload.mjs` measure JSON size,
+not successful maximum-size database commits, representative RLS load or live
+provider readiness.

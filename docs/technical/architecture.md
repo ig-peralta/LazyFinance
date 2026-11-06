@@ -1,5 +1,11 @@
 # Architecture
 
+Start here for the current system map. Detailed references:
+[private RPC/RLS](persistence-security.md), [database model/ERD](database-model.md),
+[contracts/code generation](rpc-contracts.md), [UI lifetimes](ui-data-lifecycle.md),
+[provider-neutral identity](identity.md) and
+[developer verification](development-workflow.md).
+
 ## Repository and runtime boundaries
 
 `apps/ui` is Angular with a Node/Express SSR server. It calls the NestJS public
@@ -19,6 +25,21 @@ Authenticated MCP ────────────────┘           
 type-only facades. `libs/rpc-auth` is Node-only signing/verification code. Browser
 code cannot import private schemas, signing code, Nest or database implementations.
 
+| Layer | Owns | Does not own |
+| --- | --- | --- |
+| Angular browser/request-local SSR | Presentation, verified session handoff, page resources and explicit commands | SQL, private service assertions, authoritative financial calculations |
+| Public API / MCP adapters | Bearer verification, internal principal, financial/calendar rules, response composition and provider orchestration | Database pools/credentials, migrations or generic SQL |
+| Private persistence | Authenticated scoped transactions, bounded facts/aggregates, ownership checks and named atomic commands | Provider network calls, UI summaries or user-selected execution scopes |
+| PostgreSQL | Exact stored facts, constraints/keys, related-owner RLS and transaction atomicity | Firebase verification, product authorization for external MCP clients |
+
+Public/private tRPC are separate surfaces, not two routes to the same router.
+The public generated library contains 33 procedures; the private library contains
+35, including bootstrap-only `identity.resolve`. `/mcp` exposes seven authenticated
+read-only tools through the API's domain services, not direct persistence queries.
+Ordinary HTTP remains only for API `GET /`, persistence `GET /health` and MCP
+transport. Inventories and schema-change rules live in the
+[RPC reference](rpc-contracts.md).
+
 ## Authentication, sessions and ownership
 
 Only `auth.config` and `auth.loginMock` are anonymous public procedures. The API
@@ -32,6 +53,12 @@ transaction. Bootstrap can only call the narrow identity resolver function; its
 NOLOGIN owner has no finance access. Normal user identity is set transaction-locally;
 pool reuse cannot retain it. Related write policies independently reject foreign
 owners even where a foreign key alone would permit the relationship.
+
+Assertions authenticate context, not encrypted or one-time/body-bound requests.
+The API is trusted to assert users, and the persistence service is trusted to own
+SQL execution. RLS does not defend against compromise of those trusted processes
+or privileged database operators. Use protected/TLS private transport; the
+[security reference](persistence-security.md) describes these limits and roles.
 
 SSR receives only a token cookie and verifies `auth.principal` before rendering.
 Vanilla tRPC clients/auth snapshots are request-local, with no shared queue/cache.
@@ -82,4 +109,5 @@ Compose supports private persistence, separate runtime environments and an owner
 init job. Its full stack separates data/service/edge networks; database/persistence
 ports are not published. This is local deployment evidence, not production TLS,
 secret storage, backup recovery or load profiling. See the
-[technical manual](technical-manual.md) and [detailed invariant record](../planning/persistence-rpc-user-rls-plan.md).
+[technical manual](technical-manual.md) and
+[development workflow](development-workflow.md).

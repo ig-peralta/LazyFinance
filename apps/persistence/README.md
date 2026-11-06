@@ -4,8 +4,10 @@ Private NestJS/tRPC service using Kysely, `pg`, `identity`/`finance` schemas and
 PostgreSQL user RLS. The API and UI now use the matching RPC boundaries; no API
 database fallback remains. Its 35 private procedures expose identity resolution,
 bounded financial facts, income commands, tag decisions/rules, and prepared atomic
-provider sync. Product calculations remain in the API. See the
-[implementation record](../../docs/planning/persistence-rpc-user-rls-plan.md).
+provider sync. Product calculations remain in the API. Read the
+[private RPC/RLS reference](../../docs/technical/persistence-security.md),
+[implemented schema/ERD](../../docs/technical/database-model.md) and
+[contract workflow](../../docs/technical/rpc-contracts.md).
 
 ## Fresh migrations and separate database credentials
 
@@ -79,6 +81,10 @@ protected/TLS service channel in deployment.
 
 ## Validation
 
+The [verification guide](../../docs/technical/development-workflow.md#verification-tiers)
+separates serverless unit/DI checks from listener/DB integration. The commands below
+are a general workflow, not a serverless-only promise when DB tests are configured.
+
 ```sh
 pnpm rpc:generate
 pnpm rpc:check
@@ -91,6 +97,10 @@ Database integration tests require `TEST_POSTGRES_OWNER_URL` pointing to a
 **disposable database whose name ends in `_test`**. They create test-owned rows
 and provision a separate runtime login. Without that variable, database tests
 are explicitly skipped; signing and type tests still run. Never use real user data.
+
+Configured PostgreSQL integration tests open test HTTP listeners. The root
+`pnpm test:integration` runner separately runs the **API** suite against compiled
+persistence; it does not replace this persistence suite or start PostgreSQL for you.
 
 Integration coverage includes every sensitive table's isolation, forged related
 IDs, runtime-role safety, concurrent/pool-reused users, identity concurrency/email

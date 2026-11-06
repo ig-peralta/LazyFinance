@@ -4,6 +4,11 @@ The UI is an Angular/TypeScript app with routing, server-side rendering (SSR), a
 
 The interface uses PrimeNG components with an Aura-based emerald theme, Tailwind CSS v4 through PostCSS, and `tailwindcss-primeui` for styling utilities. Production builds include a browser bundle and a Node/Express SSR server.
 
+Detailed references: [session/resource lifetimes](../../docs/technical/ui-data-lifecycle.md),
+[provider-neutral identity](../../docs/technical/identity.md),
+[RPC contracts](../../docs/technical/rpc-contracts.md) and
+[development/tooling](../../docs/technical/development-workflow.md).
+
 ## Development
 
 Install dependencies from the [monorepo root](../../README.md), then start the UI:
@@ -47,7 +52,7 @@ The view consumes `accounts.value()`, `accounts.isLoading()`, `accounts.error()`
 
 Tag commands publish confirmed decisions to page-local state. Only summaries and budget progress are invalidated; recent movements reflect the confirmed choice without component output/view-child chains. A decision completed after a read started wins over that older read, while a later explicit reload can reconcile changes from elsewhere. The tag catalog is lazy and shared within the page. Rule creation is a separate command: if it fails after saving a decision, the UI reports partial success instead of replaying or pretending to roll back the saved choice. Mutations are never automatically retried; cancelling a request does not guarantee server rollback.
 
-Both environment files currently use the public `lazyfinance-dev` Firebase Web app identifiers. Set `AUTH_PROVIDER=firebase` and `FIREBASE_PROJECT_ID=lazyfinance-dev` on the API to test Google sign-in; enable Google sign-in and authorize the UI's local domain in Firebase. Before deploying against another Firebase project, update the corresponding UI environment file and the API project ID together. Admin credentials are never included in the UI. Mock mode works without Firebase or an emulator. See [identity-flow verification](../../docs/technical/firebase-identity.md#integrated-identity-verification-laz-45) for the two-user checks.
+Both environment files currently use the public `lazyfinance-dev` Firebase Web app identifiers. Set `AUTH_PROVIDER=firebase` and `FIREBASE_PROJECT_ID=lazyfinance-dev` on the API to test Google sign-in; enable Google sign-in and authorize the UI's local domain in Firebase. Before deploying against another Firebase project, update the corresponding UI environment file and the API project ID together. Admin credentials are never included in the UI. Mock mode works without Firebase or an emulator. See [provider-neutral identity](../../docs/technical/identity.md) for verifier selection, internal-user mapping and the limits of current multi-provider support.
 
 SSR can fetch balances after verification. Clients/auth snapshots are render-request-local, with no module-global client, batch queue or response cache. Fetch uses `cache: no-store` and SSR HTML is private/non-cacheable. Protected resources have no transfer-cache `id`, and components do not manually populate `TransferState`: the browser revalidates its identity and refetches rather than inheriting another session's serialized data. Disabling Angular's HTTP transfer cache alone would not protect manual/resource transfer state. `API_INTERNAL_URL` selects the SSR-only base URL (Compose: `http://api:3000`) without changing the browser URL. Tests inject `RPC_FETCH` and exercise real vanilla clients/resources with in-memory responses; no development/API/database server is needed.
 
@@ -66,3 +71,7 @@ Run these from the monorepo root:
 | `pnpm --filter ui ng <command>`               | Pass a command to the Angular CLI; see the [Angular CLI reference](https://angular.dev/tools/cli). |
 
 The Docker UI image runs the built SSR server on container port `4000`; the Compose stacks publish it on host port `4200`.
+
+Its production browser bundle still uses the configured public API URL;
+`API_INTERNAL_URL` does not rewrite it. For local containerized browser use, follow
+the [browser-versus-SSR configuration notes](../../docs/technical/technical-manual.md#browser-versus-ssr-destination).

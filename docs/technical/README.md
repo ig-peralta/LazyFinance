@@ -1,12 +1,47 @@
-# Technical evidence index
+# Technical documentation
 
-This directory documents **the current architecture and operational path alongside product quality goals**. It complements the [product vision](../product/product-vision.md), [product requirements](../product/product-requirements.md) and [dated planning snapshot](../planning/snapshots/backlog-2026-11-02.md), without treating a planned issue as delivered code.
+These guides describe **implemented behavior**, its operating constraints and the
+remaining gaps. They complement the [product vision](../product/product-vision.md)
+and [innovation direction](../product/innovation.md) alongside
+[requirements](../product/product-requirements.md); a planned issue or quality
+target is not evidence of a delivered capability.
 
-- [Architecture](architecture.md): Angular/SSR, public/private NestJS tRPC, MCP, Kysely, identity/finance schemas and user RLS.
-- [Persistence/tRPC/RLS implementation record](../planning/persistence-rpc-user-rls-plan.md): implemented boundaries, small fresh migrations, authoritative atomic commands, generated libraries, validation and remaining operational work.
-- [Conceptual UML diagrams](../diagrams/README.md): selected use-case, component and agent-sequence sketches with their scope and accuracy limits.
-- [Non-functional requirements](../product/non-functional-requirements.md): product quality targets for ownership, privacy, financial correctness, ingestion, graceful degradation, performance, usability and reproducibility.
-- [Environment examples](../../.env.example) and [API environment example](../../apps/api/.env.example): demo-only defaults and commented Firebase placeholders.
-- [Technical manual](technical-manual.md): local setup, configuration, routes, Compose limitations, schema workflow and troubleshooting.
+## Architecture and implementation references
 
-The source code and checked-in migrations take precedence if a diagram or guide becomes stale. Update this evidence alongside changes to the financial contracts, database schema, identity boundary, or deployment scripts.
+| Guide | Read it for |
+| --- | --- |
+| [Architecture](architecture.md) | Runtime/dependency boundaries, responsibility split and product scope |
+| [Private RPC, transactions and RLS](persistence-security.md) | Signed contexts, bootstrap, roles/grants, related ownership, rollback, atomic commands and limits |
+| [Implemented database model and ERD](database-model.md) | All 17 application tables, actual relationships/keys, financial representation and fresh migrations |
+| [RPC contracts and clients](rpc-contracts.md) | Public/private exports, 33/35 procedure inventories, MCP, code generation and wire semantics |
+| [UI/session/SSR lifetimes](ui-data-lifecycle.md) | Accepted credentials, candidate verification, cancellation, page resources, command/read races and hydration isolation |
+| [Provider-neutral identity](identity.md) | Provider/issuer/subject namespaces, internal principals, verifier selection, provisioning and session boundaries |
+| [Tag decisions and rules](../../apps/api/src/transactions/tagging/README.md) | Manual no-tag versus reset, matching, approved automation and atomic decision/event writes |
+| [Banking connector and ingestion](../../apps/api/src/banking/README.md) | Provider normalization, prepared sync, preserved user decisions, tombstones and review |
+
+## Setup, development and verification
+
+- [Technical manual](technical-manual.md): process/environment separation, local
+  setup, Compose topology, browser-versus-SSR configuration and troubleshooting.
+- [Development and verification](development-workflow.md): builds, Biome/editor/DI
+  conventions, serverless versus listener/DB/live-Firebase checks and change review.
+- App entry points: [API](../../apps/api/README.md),
+  [persistence](../../apps/persistence/README.md), [UI](../../apps/ui/README.md).
+- Environment examples: [root Compose](../../.env.example),
+  [API](../../apps/api/.env.example),
+  [persistence runtime](../../apps/persistence/.env.example). These contain public
+  placeholders/demo defaults, never real keys or passwords.
+
+## Evidence, targets and interpretation limits
+
+- [Non-functional requirements](../product/non-functional-requirements.md):
+  quality targets, not proof of production readiness or maximum-size load tests.
+- [Conceptual UML PNGs](../diagrams/README.md): historical product sketches with
+  explicit inaccuracies. Use the implemented ERD above for the actual data model.
+- [Dated backlog](../planning/snapshots/backlog-2026-11-02.md) and
+  [Stage A closure](../planning/snapshots/stage-a-closure.md): historical delivery
+  evidence; references to the then-current Drizzle stack are intentionally dated.
+
+Current source/configuration and migrations take precedence when a guide becomes
+stale. Update the corresponding references, generated contracts and tests together;
+do not erase historical evidence or relabel planned work as shipped.

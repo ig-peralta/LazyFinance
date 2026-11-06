@@ -4,6 +4,12 @@ NestJS financial workflow service exposing public tRPC at `/trpc` and read-only
 MCP at `/mcp`. The only ordinary HTTP route is the public `GET /` listening check.
 Business REST controllers have been retired; Angular uses vanilla tRPC clients.
 
+Technical references: [architecture](../../docs/technical/architecture.md),
+[provider-neutral identity](../../docs/technical/identity.md),
+[RPC contracts/code generation](../../docs/technical/rpc-contracts.md),
+[private RPC/RLS](../../docs/technical/persistence-security.md) and
+[development/verification](../../docs/technical/development-workflow.md).
+
 ## Boundaries
 
 - Firebase Admin/mock verification resolves an external identity through private
@@ -54,12 +60,19 @@ application's source. The browser must never import private contracts/signing co
 Public bodies are limited to 1 MiB and batches to 10 procedures. Private provider
 runs are bounded by 100 pages, 50,000 records, 32 MiB normalized JSON and 64 MiB
 prepared JSON/results. Oversized runs fail without partial writes/checkpoint
-advancement; they are never silently split into independent commits. Internal
-queries with large key scopes use POST method override; ordinary empty queries
-remain GET. The private client deadline is 120 seconds.
+advancement; they are never silently split into independent commits. The private
+`providerSync.facts` query uses POST method override for large key scopes;
+ordinary empty queries remain GET. The private client deadline is 120 seconds.
 
-Unit/router/MCP tests run without services. Database integration tests explicitly
-skip unless a test persistence server is supplied. From the root:
+Unit/DI tests can use mocked dependencies without listeners. HTTP/router/MCP tests
+can run without real persistence, but Supertest can open ephemeral HTTP listeners;
+the full API suite is **not serverless-only**. DB/workflow cases skip without the
+owner fixture URL and a matching private test service environment. Choose the
+[verification tier](../../docs/technical/development-workflow.md#verification-tiers)
+appropriate to the session.
+
+For service-starting integration checks, first provide a disposable PostgreSQL 18
+database ending in `_test`. From the root (placeholder URL):
 
 ```sh
 TEST_POSTGRES_OWNER_URL=postgresql://owner:password@localhost:5432/lazyfinance_test pnpm test:integration
