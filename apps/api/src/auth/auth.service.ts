@@ -1,9 +1,19 @@
-import { MockLoginInputSchema, type AuthConfig, type AuthPrincipal, type MockLoginResult } from '@lazyfinance/contracts';
-import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
-import { EnvironmentService } from '../environment/environment.service';
-import { ExternalIdentityRepository } from '../drizzle/repositories/external-identity.repository';
-import { FirebaseAuthService } from './firebase/firebase-auth.service';
-import { MockAuthService } from './mock/mock-auth.service';
+import {
+  type AuthConfig,
+  type AuthPrincipal,
+  MockLoginInputSchema,
+  type MockLoginResult,
+} from "@lazyfinance/contracts";
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from "@nestjs/common";
+import { EnvironmentService } from "../environment/environment.service";
+import { PersistenceClient } from "../persistence/persistence.client";
+import { FirebaseAuthService } from "./firebase/firebase-auth.service";
+import { MockAuthService } from "./mock/mock-auth.service";
 
 @Injectable()
 export class AuthService {
@@ -11,32 +21,36 @@ export class AuthService {
     private readonly environment: EnvironmentService,
     private readonly mock: MockAuthService,
     private readonly firebase: FirebaseAuthService,
-    private readonly identities: ExternalIdentityRepository,
+    private readonly identities: PersistenceClient,
   ) {}
 
   config(): AuthConfig {
-    return { provider: this.environment.get('AUTH_PROVIDER') };
+    return { provider: this.environment.get("AUTH_PROVIDER") };
   }
 
   async loginMock(body: unknown): Promise<MockLoginResult> {
-    if (this.config().provider !== 'mock') throw new NotFoundException();
+    if (this.config().provider !== "mock") throw new NotFoundException();
     const parsed = MockLoginInputSchema.safeParse(body);
-    if (!parsed.success) throw new BadRequestException('Invalid login request');
+    if (!parsed.success) throw new BadRequestException("Invalid login request");
     const result = await this.mock.login(parsed.data);
     await this.identities.resolveExisting(this.mock.verify(result.token));
     return result;
   }
 
-  async authenticate(authorization: string | undefined): Promise<AuthPrincipal> {
-    const match = /^Bearer ([A-Za-z0-9\-._~+/]+=*)$/i.exec(authorization?.trim() ?? '');
+  async authenticate(
+    authorization: string | undefined,
+  ): Promise<AuthPrincipal> {
+    const match = /^Bearer ([A-Za-z0-9\-._~+/]+=*)$/i.exec(
+      authorization?.trim() ?? "",
+    );
     if (!match) {
-      throw new UnauthorizedException('Missing or invalid bearer token');
+      throw new UnauthorizedException("Missing or invalid bearer token");
     }
 
     switch (this.config().provider) {
-      case 'mock':
+      case "mock":
         return this.identities.resolveExisting(this.mock.verify(match[1]));
-      case 'firebase': {
+      case "firebase": {
         const identity = await this.firebase.verify(match[1]);
         return this.identities.resolveOrCreate(identity);
       }

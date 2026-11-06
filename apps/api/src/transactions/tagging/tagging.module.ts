@@ -1,12 +1,11 @@
-import { Module } from '@nestjs/common';
-import { DrizzleModule } from '../../drizzle/drizzle.module';
-import { TagRulesHttpController, TagsHttpController, TransactionTagsHttpController } from './tagging.http';
-import { TaggingService } from './tagging.service';
+import { Module } from "@nestjs/common";
+import { PersistenceModule } from "../../persistence/persistence.module";
+import { TagRulesRpc, TagsRpc } from "./tagging.rpc";
+import { TaggingService } from "./tagging.service";
 
 @Module({
-  imports: [DrizzleModule],
-  controllers: [TagsHttpController, TagRulesHttpController, TransactionTagsHttpController],
-  providers: [TaggingService],
+  imports: [PersistenceModule],
+  providers: [TaggingService, TagsRpc, TagRulesRpc],
   exports: [TaggingService],
 })
 export class TaggingModule {}

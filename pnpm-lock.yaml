@@ -17,6 +17,12 @@ importers:
       '@lazyfinance/contracts':
         specifier: workspace:*
         version: link:../../libs/contracts
+      '@lazyfinance/rpc-auth':
+        specifier: workspace:*
+        version: link:../../libs/rpc-auth
+      '@lazyfinance/rpc-persistence':
+        specifier: workspace:*
+        version: link:../../libs/rpc-persistence
       '@modelcontextprotocol/core':
         specifier: ^2.0.0
         version: 2.0.0
@@ -28,50 +34,56 @@ importers:
         version: 2.0.0
       '@nestjs/common':
         specifier: ^11.0.1
-        version: 11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
+        version: 11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.1)
       '@nestjs/core':
         specifier: ^11.0.1
-        version: 11.2.1(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/microservices@11.2.1)(@nestjs/platform-express@11.2.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+        version: 11.2.1(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/microservices@11.2.1)(@nestjs/platform-express@11.2.1)(reflect-metadata@0.2.2)(rxjs@7.8.1)
       '@nestjs/microservices':
         specifier: ^11.2.1
-        version: 11.2.1(@grpc/grpc-js@1.14.7)(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.2.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+        version: 11.2.1(@grpc/grpc-js@1.14.7)(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/core@11.2.1)(reflect-metadata@0.2.2)(rxjs@7.8.1)
       '@nestjs/platform-express':
         specifier: ^11.0.1
-        version: 11.2.1(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.2.1)
+        version: 11.2.1(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/core@11.2.1)
       '@rekog/mcp-nest':
         specifier: ^2.0.2
-        version: 2.0.2(@modelcontextprotocol/core@2.0.0)(@modelcontextprotocol/node@2.0.0(@modelcontextprotocol/server@2.0.0)(hono@4.13.3))(@modelcontextprotocol/server@2.0.0)(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.2.1(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/microservices@11.2.1)(@nestjs/platform-express@11.2.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/microservices@11.2.1(@grpc/grpc-js@1.14.7)(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.2.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(express@5.2.1)(reflect-metadata@0.2.2)(zod@4.6.5)
+        version: 2.0.2(@modelcontextprotocol/core@2.0.0)(@modelcontextprotocol/node@2.0.0(@modelcontextprotocol/server@2.0.0)(hono@4.13.3))(@modelcontextprotocol/server@2.0.0)(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/core@11.2.1(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/microservices@11.2.1)(@nestjs/platform-express@11.2.1)(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/microservices@11.2.1(@grpc/grpc-js@1.14.7)(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/core@11.2.1)(reflect-metadata@0.2.2)(rxjs@7.8.1))(express@5.2.1)(reflect-metadata@0.2.2)(zod@4.6.5)
+      '@trpc/client':
+        specifier: 11.24.0
+        version: 11.24.0(@trpc/server@11.24.0(@types/express@5.0.6)(typescript@5.9.3))(typescript@5.9.3)
+      '@trpc/server':
+        specifier: 11.24.0
+        version: 11.24.0(@types/express@5.0.6)(typescript@5.9.3)
       dotenv:
         specifier: ^17.4.2
         version: 17.4.2
-      drizzle-orm:
-        specifier: ^0.45.2
-        version: 0.45.2(@opentelemetry/api@1.10.0)(postgres@3.4.9)
       firebase-admin:
         specifier: ^14.5.0
         version: 14.5.0(@firebase/app-compat@0.5.20)(@firebase/app@0.16.4)
-      postgres:
-        specifier: ^3.4.9
-        version: 3.4.9
+      nestjs-trpc:
+        specifier: 2.14.0
+        version: 2.14.0(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/core@11.2.1(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/microservices@11.2.1)(@nestjs/platform-express@11.2.1)(reflect-metadata@0.2.2)(rxjs@7.8.1))(@trpc/server@11.24.0(@types/express@5.0.6)(typescript@5.9.3))(reflect-metadata@0.2.2)(rxjs@7.8.1)(zod@4.6.5)
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2
       rxjs:
-        specifier: ^7.8.1
-        version: 7.8.2
+        specifier: 7.8.1
+        version: 7.8.1
       zod:
         specifier: ^4.6.5
         version: 4.6.5
     devDependencies:
+      '@lazyfinance/rpc-api':
+        specifier: workspace:*
+        version: link:../../libs/rpc-api
       '@nestjs/cli':
         specifier: ^11.0.0
-        version: 11.0.24(@swc/core@1.16.1)(@types/node@24.13.3)(esbuild@0.28.2)(prettier@3.9.10)
+        version: 11.0.24(@swc/core@1.16.1)(@types/node@24.13.3)(esbuild@0.28.2)
       '@nestjs/schematics':
         specifier: ^11.0.0
-        version: 11.1.0(chokidar@4.0.3)(prettier@3.9.10)(typescript@5.9.3)
+        version: 11.1.0(chokidar@4.0.3)(typescript@5.9.3)
       '@nestjs/testing':
         specifier: ^11.0.1
-        version: 11.2.1(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.2.1(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/microservices@11.2.1)(@nestjs/platform-express@11.2.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/microservices@11.2.1(@grpc/grpc-js@1.14.7)(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.2.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@11.2.1(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.2.1))
+        version: 11.2.1(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/core@11.2.1(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/microservices@11.2.1)(@nestjs/platform-express@11.2.1)(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/microservices@11.2.1(@grpc/grpc-js@1.14.7)(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/core@11.2.1)(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/platform-express@11.2.1(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/core@11.2.1))
       '@swc/core':
         specifier: ^1.16.1
         version: 1.16.1
@@ -81,15 +93,18 @@ importers:
       '@types/node':
         specifier: ^24.0.0
         version: 24.13.3
+      '@types/pg':
+        specifier: ^8.15.6
+        version: 8.23.1
       '@types/supertest':
         specifier: ^7.0.0
         version: 7.2.1
-      drizzle-kit:
-        specifier: ^0.31.10
-        version: 0.31.10
       globals:
         specifier: ^17.0.0
         version: 17.11.0
+      pg:
+        specifier: 8.23.1
+        version: 8.23.1
       source-map-support:
         specifier: ^0.5.21
         version: 0.5.21
@@ -290,6 +305,22 @@ importers:
 
   libs/contracts:
     dependencies:
+      zod:
+        specifier: ^4
+        version: 4.6.5
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+
+  libs/rpc-api:
+    dependencies:
+      '@lazyfinance/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@trpc/server':
+        specifier: 11.24.0
+        version: 11.24.0(@types/express@5.0.6)(typescript@5.9.3)
       zod:
         specifier: ^4
         version: 4.6.5

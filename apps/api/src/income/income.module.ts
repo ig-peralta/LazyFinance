@@ -1,13 +1,13 @@
-import { Module } from '@nestjs/common';
-import { DrizzleModule } from '../drizzle/drizzle.module';
-import { IncomeHttpController } from './income.http';
-import { IncomeMcpController } from './income.mcp';
-import { IncomeService } from './income.service';
+import { Module } from "@nestjs/common";
+import { PersistenceModule } from "../persistence/persistence.module";
+import { IncomeMcpController } from "./income.mcp";
+import { IncomeRpc } from "./income.rpc";
+import { IncomeService } from "./income.service";
 
 @Module({
-  imports: [DrizzleModule],
-  controllers: [IncomeHttpController, IncomeMcpController],
-  providers: [IncomeService],
+  imports: [PersistenceModule],
+  controllers: [IncomeMcpController],
+  providers: [IncomeService, IncomeRpc],
   exports: [IncomeService],
 })
 export class IncomeModule {}

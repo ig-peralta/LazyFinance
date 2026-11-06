@@ -1,1 +1,0 @@
-ALTER TABLE "transaction" ADD COLUMN "is_internal_transfer" boolean DEFAULT false NOT NULL;
