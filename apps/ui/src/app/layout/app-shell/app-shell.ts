@@ -1,11 +1,16 @@
-import { Component, inject, signal } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { SessionService } from '../../services/session/session.service';
+import { Component, inject, signal } from "@angular/core";
+import {
+  Router,
+  RouterLink,
+  RouterLinkActive,
+  RouterOutlet,
+} from "@angular/router";
+import { SessionService } from "../../core/auth/session.service";
 
 @Component({
-  selector: 'app-shell',
+  selector: "app-shell",
   imports: [RouterLink, RouterLinkActive, RouterOutlet],
-  templateUrl: './app-shell.html',
+  templateUrl: "./app-shell.html",
 })
 export class AppShell {
   private readonly session = inject(SessionService);
@@ -14,12 +19,20 @@ export class AppShell {
   protected readonly menuOpen = signal(false);
   protected readonly logoutError = signal<string | null>(null);
   protected readonly links = [
-    { path: '/dashboard', label: 'Resumen', description: 'Ir al resumen de tus finanzas' },
-    { path: '/etiquetas', label: 'Etiquetas', description: 'Ir a la gestión de etiquetas' },
     {
-      path: '/presupuestos-y-metas',
-      label: 'Presupuestos y metas',
-      description: 'Ir a presupuestos y metas',
+      path: "/dashboard",
+      label: "Resumen",
+      description: "Ir al resumen de tus finanzas",
+    },
+    {
+      path: "/etiquetas",
+      label: "Etiquetas",
+      description: "Ir a la gestión de etiquetas",
+    },
+    {
+      path: "/presupuestos-y-metas",
+      label: "Presupuestos y metas",
+      description: "Ir a presupuestos y metas",
     },
   ] as const;
 
@@ -35,9 +48,11 @@ export class AppShell {
     this.logoutError.set(null);
     try {
       await this.session.logout();
-      await this.router.navigateByUrl('/');
+      await this.router.navigateByUrl("/");
     } catch {
-      this.logoutError.set('No se pudo cerrar la sesión completamente. Inténtalo de nuevo.');
+      this.logoutError.set(
+        "No se pudo cerrar la sesión completamente. Inténtalo de nuevo.",
+      );
     }
   }
 }

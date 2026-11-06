@@ -1,85 +1,55 @@
-import '@angular/compiler';
-import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
-import { of } from 'rxjs';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiService } from '../../services/api/api.service';
-import { SessionService } from '../../services/session/session.service';
-import { DashboardPage } from './dashboard.page';
+import { TransferState } from "@angular/core";
+import { TestBed } from "@angular/core/testing";
+import { afterEach, describe, expect, it } from "vitest";
+import { movement, setupRpc, tag } from "../../../testing/rpc";
+import { TaggingData } from "../../features/tagging/tagging.data";
+import { DashboardPage } from "./dashboard.page";
 
-describe('DashboardPage', () => {
+describe("DashboardPage data ownership", () => {
   afterEach(() => TestBed.resetTestingModule());
 
-  it('shows the dashboard overview sections', async () => {
-    const getAccounts = vi.fn(() => of([]));
-    const getRecentTransactions = vi.fn(() => of([]));
-    const getObjectives = vi.fn(() => of([]));
-    const getMonthlySummary = vi.fn(() =>
-      of({
-        month: '2026-09', receivedIncome: '0', spending: '0', tags: [],
-        expectedIncome: { amount: '0.00', estimatedAmount: '0.00', unknownAmountCount: 0, paymentCount: 0 },
-        unclassifiedCredits: { amount: '0.00', count: 0 },
-      }),
-    );
-    const getMonthlyComparison = vi.fn(() =>
-      of({
-        month: '2026-09',
-        previousMonth: '2026-08',
-        partial: false,
-        receivedIncome: { current: '0', previous: '0', change: '0.00' },
-        spending: { current: '0', previous: '0', change: '0.00' },
-      }),
-    );
-    const getSpendingProgress = vi.fn(() => of([]));
-    TestBed.configureTestingModule({
-      providers: [
-        provideRouter([]),
-        { provide: SessionService, useValue: { user: () => ({ name: 'Camila Rojas' }) } },
-        {
-          provide: ApiService,
-          useValue: {
-            getAccounts,
-            getRecentTransactions,
-            getObjectives,
-            getMonthlySummary,
-            getMonthlyComparison,
-            getSpendingProgress,
-          },
-        },
-      ],
-    });
+  it("loads each view once and refreshes only tag-dependent reads after a decision", async () => {
+    const { callsTo } = setupRpc({ "transactions.recent": () => [movement] });
     const fixture = TestBed.createComponent(DashboardPage);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
+    const text = fixture.nativeElement.textContent;
+    for (const value of [
+      "Hola, Camila Rojas",
+      "Cuentas",
+      "Tus últimos movimientos",
+      "Presupuestos y metas",
+      "Gastos por etiqueta",
+      "Comparación de gastos",
+      "Avance de presupuestos",
+    ])
+      expect(text).toContain(value);
+    expect(text).not.toContain("Ingresos");
+    for (const procedure of [
+      "accounts.list",
+      "transactions.recent",
+      "objectives.list",
+      "summaries.monthly",
+      "summaries.comparison",
+      "objectives.progress",
+    ])
+      expect(callsTo(procedure)).toHaveLength(1);
 
-    expect(fixture.nativeElement.textContent).toContain('Hola, Camila Rojas');
-    expect(fixture.nativeElement.textContent).toContain('Cuentas');
-    expect(fixture.nativeElement.textContent).toContain('Tus últimos movimientos');
-    expect(fixture.nativeElement.textContent).toContain('Presupuestos y metas');
-    expect(fixture.nativeElement.textContent).toContain('Gastos por etiqueta');
-    expect(fixture.nativeElement.textContent).toContain('Comparación de gastos');
-    expect(fixture.nativeElement.textContent).not.toContain('Ingresos');
-    expect(fixture.nativeElement.textContent).toContain('Avance de presupuestos');
-    expect(getAccounts).toHaveBeenCalledOnce();
-    expect(getRecentTransactions).toHaveBeenCalledOnce();
-    expect(getObjectives).toHaveBeenCalledOnce();
-    expect(getMonthlySummary).toHaveBeenCalledOnce();
-    expect(getMonthlyComparison).toHaveBeenCalledOnce();
-    expect(getSpendingProgress).toHaveBeenCalledOnce();
-    const headings = Array.from(
-      fixture.nativeElement.querySelectorAll('h2') as NodeListOf<HTMLElement>,
-      (heading) => heading.textContent?.trim(),
-    );
-    expect(headings.at(-1)).toBe('Tus últimos movimientos');
-
-    // Tag changes affect the tag breakdown and budgets, but not balances or comparisons.
-    expect(fixture.nativeElement.querySelector('dashboard-activity')).not.toBeNull();
-    (fixture.componentInstance as unknown as { refreshAfterTagDecision(): void }).refreshAfterTagDecision();
+    await fixture.debugElement.injector
+      .get(TaggingData)
+      .choose(movement, tag, false, new AbortController().signal);
     await fixture.whenStable();
-    expect(getMonthlySummary).toHaveBeenCalledTimes(2);
-    expect(getSpendingProgress).toHaveBeenCalledTimes(2);
-    expect(getAccounts).toHaveBeenCalledOnce();
-    expect(getMonthlyComparison).toHaveBeenCalledOnce();
+    fixture.detectChanges();
+    expect(callsTo("summaries.monthly")).toHaveLength(2);
+    expect(callsTo("objectives.progress")).toHaveLength(2);
+    for (const procedure of [
+      "accounts.list",
+      "transactions.recent",
+      "objectives.list",
+      "summaries.comparison",
+    ])
+      expect(callsTo(procedure)).toHaveLength(1);
+    expect(TestBed.inject(TransferState).toJson()).toBe("{}");
   });
 });

@@ -9,6 +9,7 @@
     "rpc:generate": "node scripts/rpc-generate.mjs",
     "rpc:check": "node scripts/rpc-generate.mjs --check",
     "rpc:keys": "node scripts/rpc-keys.mjs",
+    "check:architecture": "node scripts/check-architecture.mjs",
     "test:integration": "node scripts/test-integration.mjs",
     "resources": "docker compose -f docker/local/resources.yml",
     "resources:up": "docker compose -f docker/local/resources.yml up -d",

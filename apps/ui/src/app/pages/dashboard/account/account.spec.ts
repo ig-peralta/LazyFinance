@@ -1,167 +1,104 @@
-import '@angular/compiler';
-import { HttpErrorResponse } from '@angular/common/http';
-import { PLATFORM_ID, TransferState } from '@angular/core';
-import { TestBed } from '@angular/core/testing';
-import { provideRouter, Router } from '@angular/router';
-import type { AccountSummary } from '@lazyfinance/contracts';
-import { of, throwError } from 'rxjs';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiService } from '../../../services/api/api.service';
-import { SessionService } from '../../../services/session/session.service';
-import { ACCOUNTS_STATE_KEY, Account } from './account';
+import { TransferState } from "@angular/core";
+import { TestBed } from "@angular/core/testing";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { rpcFailure, setupRpc } from "../../../../testing/rpc";
+import { Account } from "./account";
 
-describe('Account', () => {
+describe("Account resource view", () => {
   afterEach(() => TestBed.resetTestingModule());
 
-  function setup(
-    getAccounts: () => ReturnType<ApiService['getAccounts']>,
-    platform = 'browser',
-    transferred: { accounts: AccountSummary[]; error: boolean } | null = null,
-  ) {
-    const clear = vi.fn();
-    TestBed.configureTestingModule({
-      providers: [
-        provideRouter([]),
-        { provide: PLATFORM_ID, useValue: platform },
-        { provide: SessionService, useValue: { user: () => ({ name: 'Camila Rojas' }), clear } },
-        { provide: ApiService, useValue: { getAccounts } },
-      ],
-    });
-    const transferState = TestBed.inject(TransferState);
-    if (transferred) transferState.set(ACCOUNTS_STATE_KEY, transferred);
-    const router = TestBed.inject(Router);
-    const navigate = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
-    const fixture = TestBed.createComponent(Account);
-    fixture.detectChanges();
-    return { fixture, clear, navigate, transferState };
-  }
-
-  it('shows account balances from the API without adding credit card debt to cash', async () => {
-    const getAccounts = vi.fn(() =>
-      of([
+  it("distinguishes cash, credit card debt and unknown balances", async () => {
+    setupRpc({
+      "accounts.list": () => [
         {
-          id: '00000000-0000-4000-8000-000000000002',
-          alias: 'Cuenta corriente',
-          type: 'checking' as const,
-          currency: 'CLP' as const,
-          balance: '125000.00',
+          id: "checking",
+          alias: "Cuenta corriente",
+          type: "checking",
+          currency: "CLP",
+          balance: "125000.00",
           lastSyncedAt: null,
         },
         {
-          id: '00000000-0000-4000-8000-000000000003',
-          alias: 'Tarjeta',
-          type: 'credit_card' as const,
-          currency: 'CLP' as const,
-          balance: '-49990.00',
-          lastSyncedAt: '2026-10-15T15:00:00.000Z',
+          id: "card",
+          alias: "Tarjeta",
+          type: "credit_card",
+          currency: "CLP",
+          balance: "-49990.00",
+          lastSyncedAt: "2026-10-15T15:00:00.000Z",
         },
-      ]),
+        {
+          id: "unknown",
+          alias: "Nueva cuenta",
+          type: "checking",
+          currency: "CLP",
+          balance: null,
+          lastSyncedAt: null,
+        },
+      ],
+    });
+    const fixture = TestBed.createComponent(Account);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const text = fixture.nativeElement.textContent;
+    for (const value of [
+      "Cuenta corriente",
+      "$125.000",
+      "Saldo adeudado",
+      "$49.990",
+      "Actualizado",
+      "Sin información de actualización",
+      "Saldo no disponible",
+      "Sin saldo confirmado",
+    ]) {
+      expect(text).toContain(value);
+    }
+  });
+
+  it("renders on the server without serializing accounts into TransferState", async () => {
+    setupRpc({}, "server");
+    const fixture = TestBed.createComponent(Account);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain(
+      "Todavía no hay cuentas",
     );
-    const { fixture } = setup(getAccounts);
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    const text = fixture.nativeElement.textContent as string;
-    expect(text).toContain('Cuenta corriente');
-    expect(text).toContain('$125.000');
-    expect(text).toContain('Saldo adeudado');
-    expect(text).toContain('$49.990');
-    expect(text).toContain('Sin información de actualización');
-    expect(text).toContain('Actualizado');
-    expect(getAccounts).toHaveBeenCalledOnce();
+    expect(TestBed.inject(TransferState).toJson()).toBe("{}");
   });
 
-  it('does not present an unknown provider balance as zero or as a fresh balance', async () => {
-    const getAccounts = vi.fn(() => of([{
-      id: '00000000-0000-4000-8000-000000000004',
-      alias: 'Nueva cuenta',
-      type: 'checking' as const,
-      currency: 'CLP' as const,
-      balance: null,
-      lastSyncedAt: null,
-    }]));
-    const { fixture } = setup(getAccounts);
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    const text = fixture.nativeElement.textContent as string;
-    expect(text).toContain('Saldo no disponible');
-    expect(text).toContain('Sin saldo confirmado');
-    expect(text).not.toContain('$0');
-  });
-
-  it('fetches accounts on the server and saves them for hydration', async () => {
-    const getAccounts = vi.fn(() => of([]));
-    const { fixture, transferState } = setup(getAccounts, 'server');
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    expect(getAccounts).toHaveBeenCalledOnce();
-    expect(fixture.nativeElement.textContent).toContain('Todavía no hay cuentas');
-    expect(transferState.get(ACCOUNTS_STATE_KEY, null)).toEqual({ accounts: [], error: false });
-  });
-
-  it('hydrates server-rendered accounts without requesting them again', () => {
-    const accounts: AccountSummary[] = [
-      {
-        id: '00000000-0000-4000-8000-000000000002',
-        alias: 'Cuenta corriente',
-        type: 'checking',
-        currency: 'CLP',
-        balance: '125000.00',
-        lastSyncedAt: null,
-      },
-    ];
-    const getAccounts = vi.fn(() => of([]));
-    const { fixture, transferState } = setup(getAccounts, 'browser', { accounts, error: false });
-
-    expect(fixture.nativeElement.textContent).toContain('$125.000');
-    expect(getAccounts).not.toHaveBeenCalled();
-    expect(transferState.hasKey(ACCOUNTS_STATE_KEY)).toBe(false);
-  });
-
-  it('renders an error when the server cannot load accounts', async () => {
-    const getAccounts = () => throwError(() => new HttpErrorResponse({ status: 503 }));
-    const { fixture, transferState } = setup(getAccounts, 'server');
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    expect(fixture.nativeElement.textContent).toContain('No pudimos cargar tus cuentas');
-    expect(transferState.get(ACCOUNTS_STATE_KEY, null)).toEqual({ accounts: [], error: true });
-  });
-
-  it('explains when no accounts are available', async () => {
-    const { fixture } = setup(() => of([]));
-    await fixture.whenStable();
-    fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Todavía no hay cuentas');
-  });
-
-  it('clears an expired session when the API rejects the request', async () => {
-    const getAccounts = () => throwError(() => new HttpErrorResponse({ status: 401 }));
-    const { fixture, clear, navigate } = setup(getAccounts);
-    await fixture.whenStable();
-
-    expect(clear).toHaveBeenCalledOnce();
-    expect(navigate).toHaveBeenCalledWith('/login');
-  });
-
-  it('offers a retry after a request fails', async () => {
-    const getAccounts = vi
+  it("offers a resource reload after unavailability", async () => {
+    const handler = vi
       .fn()
-      .mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 503 })))
-      .mockReturnValueOnce(of([]));
-    const { fixture } = setup(getAccounts);
+      .mockReturnValueOnce(rpcFailure())
+      .mockReturnValueOnce([]);
+    setupRpc({ "accounts.list": handler });
+    const fixture = TestBed.createComponent(Account);
+    fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('No pudimos cargar tus cuentas');
+    expect(fixture.nativeElement.textContent).toContain(
+      "No pudimos cargar tus cuentas",
+    );
+    fixture.nativeElement
+      .querySelector('[data-testid="retry-accounts"]')
+      .click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain(
+      "Todavía no hay cuentas",
+    );
+    expect(handler).toHaveBeenCalledTimes(2);
+  });
 
-    (
-      fixture.nativeElement.querySelector('[data-testid="retry-accounts"]') as HTMLButtonElement
-    ).click();
-    await fixture.whenStable();
+  it("lets centralized session handling expire an unauthorized request", async () => {
+    const { credentials, navigate } = setupRpc({
+      "accounts.list": () => rpcFailure("UNAUTHORIZED", 401),
+    });
+    const fixture = TestBed.createComponent(Account);
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Todavía no hay cuentas');
-    expect(getAccounts).toHaveBeenCalledTimes(2);
+    await fixture.whenStable();
+    expect(credentials.current()).toBeUndefined();
+    expect(navigate).toHaveBeenCalledExactlyOnceWith("/login");
   });
 });

@@ -2,15 +2,16 @@ import {
   ApplicationConfig,
   provideAppInitializer,
   provideBrowserGlobalErrorListeners,
-} from '@angular/core';
-import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
-import { provideRouter } from '@angular/router';
-import { routes } from './app.routes';
-import { provideClientHydration, withNoHttpTransferCache } from '@angular/platform-browser';
-import { providePrimeNG } from 'primeng/config';
-import { Emerald } from './themes';
-import { apiInterceptor } from './interceptors/api.interceptor';
-import { initializeServices } from './services/initializer';
+} from "@angular/core";
+import {
+  provideClientHydration,
+  withNoHttpTransferCache,
+} from "@angular/platform-browser";
+import { provideRouter } from "@angular/router";
+import { providePrimeNG } from "primeng/config";
+import { routes } from "./app.routes";
+import { initializeServices } from "./services/initializer";
+import { Emerald } from "./themes";
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -18,7 +19,6 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     // Never hydrate a different browser identity from another user's SSR API response.
     provideClientHydration(withNoHttpTransferCache()),
-    provideHttpClient(withFetch(), withInterceptors([apiInterceptor])),
     provideAppInitializer(initializeServices),
     providePrimeNG({
       theme: {

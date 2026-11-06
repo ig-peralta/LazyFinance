@@ -1,14 +1,13 @@
-import { isPlatformServer } from '@angular/common';
-import { PLATFORM_ID, inject } from '@angular/core';
-import type { AuthConfig } from '@lazyfinance/contracts';
-import { firstValueFrom } from 'rxjs';
-import { ApiService } from './api/api.service';
-import { FirebaseService } from './firebase/firebase.service';
-import { SessionService } from './session/session.service';
+import { isPlatformServer } from "@angular/common";
+import { inject, PLATFORM_ID } from "@angular/core";
+import type { AuthConfig } from "@lazyfinance/contracts";
+import { AuthApi } from "../core/auth/auth-api";
+import { SessionService } from "../core/auth/session.service";
+import { FirebaseService } from "./firebase/firebase.service";
 
 function initializableServices() {
   return {
-    api: inject(ApiService),
+    api: inject(AuthApi),
     firebase: inject(FirebaseService),
     session: inject(SessionService),
   };
@@ -16,9 +15,9 @@ function initializableServices() {
 
 type Services = ReturnType<typeof initializableServices>;
 
-async function authConfig(api: ApiService): Promise<AuthConfig | null> {
+async function authConfig(api: AuthApi): Promise<AuthConfig | null> {
   try {
-    return await firstValueFrom(api.getAuthConfig());
+    return await api.config();
   } catch {
     return null;
   }
@@ -38,9 +37,13 @@ async function initializeServer(services: Services): Promise<void> {
 
 async function initializeClient(services: Services): Promise<void> {
   const config = await authConfig(services.api);
-  if (config?.provider === 'firebase') {
+  if (config?.provider === "firebase") {
     // Session initialization fails closed if Firebase cannot start (e.g. placeholders).
-    try { await services.firebase.init(); } catch { /* The session clears its local state. */ }
+    try {
+      await services.firebase.init();
+    } catch {
+      /* The session clears its local state. */
+    }
   }
   await services.session.initClientSide(config);
 }

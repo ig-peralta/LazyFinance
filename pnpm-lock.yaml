@@ -241,9 +241,18 @@ importers:
       '@lazyfinance/contracts':
         specifier: workspace:*
         version: link:../../libs/contracts
+      '@lazyfinance/rpc-api':
+        specifier: workspace:*
+        version: link:../../libs/rpc-api
       '@primeng/themes':
         specifier: ^21.0.4
         version: 21.0.4
+      '@trpc/client':
+        specifier: 11.24.0
+        version: 11.24.0(@trpc/server@11.24.0(@types/express@5.0.6)(typescript@6.0.3))(typescript@6.0.3)
+      '@trpc/server':
+        specifier: 11.24.0
+        version: 11.24.0(@types/express@5.0.6)(typescript@6.0.3)
       express:
         specifier: ^5.1.0
         version: 5.2.1
