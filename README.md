@@ -16,9 +16,33 @@ The apps use TypeScript/Node.js, PostgreSQL 18, Firebase identity, Zod, Vitest a
 
 ## Architecture
 
-```text
-Browser/SSR → Angular → public tRPC API → private tRPC persistence → PostgreSQL
-MCP clients ─────────→ NestJS MCP ──────┘                           identity/finance + RLS
+```mermaid
+flowchart TB
+    subgraph interfaces["Interfaces"]
+        ui["Angular UI<br/>Browser · request-local SSR"]
+        mcp["MCP clients<br/>Authenticated · read-only"]
+    end
+
+    api["Public API · NestJS<br/>Identity verification<br/>Financial workflows"]
+
+    subgraph privateData["Private data boundary"]
+        persistence["Persistence · NestJS/Kysely<br/>Scoped transactions<br/>Atomic commands"]
+        postgres[("PostgreSQL 18<br/>identity + finance<br/>User-level RLS")]
+
+        persistence -->|SQL · restricted role| postgres
+    end
+
+    ui -->|Public tRPC · bearer token| api
+    mcp -->|MCP · Streamable HTTP| api
+    api -->|Signed private tRPC| persistence
+
+    classDef interface stroke:#3b82f6,stroke-width:2px
+    classDef service stroke:#16a34a,stroke-width:2px
+    classDef database stroke:#64748b,stroke-width:2px
+    class ui,mcp interface
+    class api,persistence service
+    class postgres database
+    style privateData fill:none,stroke:#64748b,stroke-dasharray:5 5
 ```
 
 The API verifies users and owns financial rules, scheduling, tag matching and provider orchestration. It has no database connection or credentials. Persistence verifies short-lived signed service assertions and enforces user RLS in a transaction per procedure. Only migration/seed tooling receives owner credentials. There is no tenancy layer or automatic old-database adoption. Local demo data supports validation without a bank adapter; external-client authorization, Fintoc and the conversational agent remain later work. See the [architecture](docs/technical/architecture.md), [RPC/RLS security](docs/technical/persistence-security.md) and [banking boundary](apps/api/src/banking/README.md).
