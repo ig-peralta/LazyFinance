@@ -4,6 +4,8 @@ The API is a NestJS/TypeScript service for LazyFinance. It exposes MCP (Model Co
 
 PostgreSQL access uses `postgres` (postgres.js) and Drizzle ORM. The app checks the database connection during startup; Drizzle Kit manages the schema and checked-in migrations separately. Runtime configuration is loaded with `dotenv` and validated with Zod, and tests use Vitest with SWC.
 
+Database code lives in `src/persistence` (the `PersistenceModule`, repositories, schema, seed, and migrations). Feature services call user-scoped repository operations; only persistence code uses Drizzle or owns database transactions. Banking ingestion and income writes keep their multi-step changes atomic inside repositories.
+
 ## Development
 
 From the [monorepo root](../../README.md), install dependencies and start the local database:
@@ -68,6 +70,8 @@ Run these from the monorepo root:
 | `pnpm --filter api drizzle <command>` | Run Drizzle Kit with this app's config. |
 
 Feature-module unit tests live alongside their `*.service.ts` implementations as `*.service.spec.ts` and exercise the service with mocked dependencies. Cross-layer HTTP and MCP behavior belongs in the PostgreSQL-backed `test/integration/**/*.integration.spec.ts` suites. Shared test data lives in `test/fixtures/`; integration helpers live in `test/integration/helpers/`. Avoid adapter-focused `*.http.spec.ts` or `*.mcp.spec.ts` unit tests.
+
+Integration tests using mock identities need `AUTH_PROVIDER=mock` if your local `apps/api/.env` selects Firebase; for example, `AUTH_PROVIDER=mock TEST_POSTGRES_URL=postgresql://user:password@localhost:5432/postgres pnpm --filter api test:integration`.
 
 The demo user is `demo@lazyfinance.cl` with the local password above; the mock identity provider issues fixture token `lazyfinance-demo-token` when those credentials are supplied. The seed creates CLP accounts, categories, objectives, and a dated transaction history from January 2024 through the present, including recurring income and expenses, transfers, credit-card payments, and seasonal spending in Chile. It also links the mock external identity to the demo user. It uses the API's `POSTGRES_URL` (including `apps/api/.env` when present); run migrations first. Rerunning it updates the same demo records without deleting other users' data. Rerun the seed on existing local databases to update the demo email and identity link. The credentials and dataset are for local development only.
 

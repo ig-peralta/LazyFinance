@@ -14,6 +14,8 @@ import type { BankingConnector } from '../../../src/banking/connector/banking-co
 import { ConnectorResultSchema } from '../../../src/banking/connector/normalized-banking.schema';
 import { DRIZZLE_PG_CLIENT } from '../../../src/persistence/drizzle.tokens';
 import * as schema from '../../../src/persistence/schema';
+import { TaggingRepository } from '../../../src/persistence/repositories/tagging.repository';
+import { BankingIngestionRepository } from '../../../src/persistence/repositories/banking-ingestion.repository';
 import { TaggingService } from '../../../src/transactions/tagging/tagging.service';
 import { correctionPage, initialPage } from '../../fixtures/normalized-pages';
 import { testMockAuth } from '../../fixtures/mock-auth-fixtures';
@@ -74,8 +76,9 @@ describe.skipIf(!process.env.TEST_POSTGRES_URL)('owned tag decisions and rules a
         { id: otherMovementId, accountId: otherAccountId, type: 'debit', amount: '-25.00',
           bookedAt: new Date('2026-10-12T16:00:00Z'), merchant: 'The Market', source: 'manual', isInternalMovement: false },
       ]);
-      const tagging = new TaggingService(tx as unknown as Database);
-      const ingestion = new BankingIngestionService(tx as unknown as Database, tagging);
+      const taggingRepository = new TaggingRepository(tx as unknown as Database);
+      const tagging = new TaggingService(taggingRepository);
+      const ingestion = new BankingIngestionService(new BankingIngestionRepository(tx as unknown as Database));
       await work({ tx, userId, otherUserId, token, otherToken, connectionId, accountId, movementId, otherMovementId,
         tagging, ingestion });
       throw rollback;

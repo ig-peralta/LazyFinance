@@ -6,9 +6,9 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { AccountRepository } from '../../../src/persistence/repositories/account.repository';
 import { IncomeRepository } from '../../../src/persistence/repositories/income.repository';
 import { TransactionRepository } from '../../../src/persistence/repositories/transaction.repository';
+import { BankingIngestionRepository } from '../../../src/persistence/repositories/banking-ingestion.repository';
 import * as schema from '../../../src/persistence/schema';
 import { IncomeService } from '../../../src/income/income.service';
-import { TaggingService } from '../../../src/transactions/tagging/tagging.service';
 import type { BankingConnector } from '../../../src/banking/connector/banking-connector';
 import {
   correctionPage, expiredFailure, initialPage, removalPage, retryableFailure, unknownBalancePage,
@@ -56,7 +56,7 @@ describe.skipIf(!process.env.TEST_POSTGRES_URL)('owned normalized banking ingest
         { id: connectionId, userId, providerId: provider.id, mode: 'test' },
         { id: otherConnectionId, userId: otherUserId, providerId: provider.id, mode: 'test' },
       ]);
-      const ingestion = new BankingIngestionService(tx as unknown as Database, new TaggingService(tx as unknown as Database));
+      const ingestion = new BankingIngestionService(new BankingIngestionRepository(tx as unknown as Database));
       await work({ tx, userId, otherUserId, connectionId, otherConnectionId, ingestion });
       throw rollback;
     }).catch((error) => { if (error !== rollback) throw error; });
