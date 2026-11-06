@@ -15,16 +15,13 @@ import {
   TagRuleRecordsSchema,
   TagRuleReplaceSchema,
 } from "@lazyfinance/contracts/internal";
-import { Inject } from "@nestjs/common";
 import { Input, Mutation, Query, Router } from "nestjs-trpc";
 import { wireValue } from "../query-period";
 import { TagRuleRepository } from "./tag-rule.repository";
 
 @Router({ alias: "tagRules" })
 export class TagRuleRpc {
-  constructor(
-    @Inject(TagRuleRepository) private readonly repository: TagRuleRepository,
-  ) {}
+  constructor(private readonly repository: TagRuleRepository) {}
 
   @Query({
     input: EmptyInputSchema,

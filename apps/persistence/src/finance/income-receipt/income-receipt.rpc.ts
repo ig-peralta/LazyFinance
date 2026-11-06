@@ -4,17 +4,13 @@ import {
   ReceiptFactSchema,
   VoidResultSchema,
 } from "@lazyfinance/contracts/internal";
-import { Inject } from "@nestjs/common";
 import { Input, Mutation, Router } from "nestjs-trpc";
 import { wireValue } from "../query-period";
 import { IncomeReceiptRepository } from "./income-receipt.repository";
 
 @Router({ alias: "incomeReceipts" })
 export class IncomeReceiptRpc {
-  constructor(
-    @Inject(IncomeReceiptRepository)
-    private readonly repository: IncomeReceiptRepository,
-  ) {}
+  constructor(private readonly repository: IncomeReceiptRepository) {}
 
   @Mutation({
     input: ReceiptConfirmSchema,

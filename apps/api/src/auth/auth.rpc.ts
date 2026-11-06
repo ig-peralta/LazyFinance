@@ -6,14 +6,13 @@ import {
   MockLoginResultSchema,
   RpcEmptySchema,
 } from "@lazyfinance/contracts";
-import { Inject } from "@nestjs/common";
 import { Ctx, Input, Mutation, Query, Router } from "nestjs-trpc";
 import type { ApiRequestContext } from "../rpc/api.context";
 import { AuthService } from "./auth.service";
 
 @Router({ alias: "auth" })
 export class AuthRpc {
-  constructor(@Inject(AuthService) private readonly auth: AuthService) {}
+  constructor(private readonly auth: AuthService) {}
 
   @Query({
     input: RpcEmptySchema,

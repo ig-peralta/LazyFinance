@@ -11,7 +11,6 @@ import {
   type PeriodInput,
   PeriodInputSchema,
 } from "@lazyfinance/contracts/internal";
-import { Inject } from "@nestjs/common";
 import { Input, Mutation, Query, Router } from "nestjs-trpc";
 import { wireValue } from "../query-period";
 import { TransactionRepository } from "../transaction/transaction.repository";
@@ -20,9 +19,7 @@ import { IncomeSourceRepository } from "./income-source.repository";
 @Router({ alias: "income" })
 export class IncomeSourceRpc {
   constructor(
-    @Inject(IncomeSourceRepository)
     private readonly repository: IncomeSourceRepository,
-    @Inject(TransactionRepository)
     private readonly transactions: TransactionRepository,
   ) {}
 

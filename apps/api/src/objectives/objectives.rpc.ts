@@ -4,7 +4,6 @@ import {
   RpcEmptySchema,
   RpcMonthSchema,
 } from "@lazyfinance/contracts";
-import { Inject } from "@nestjs/common";
 import { Ctx, Input, Query, Router } from "nestjs-trpc";
 import { checkedMonth } from "../_utils/month-query";
 import { santiagoMonth } from "../_utils/santiago-time";
@@ -14,9 +13,7 @@ import { ObjectivesService } from "./objectives.service";
 
 @Router({ alias: "objectives" })
 export class ObjectivesRpc {
-  constructor(
-    @Inject(ObjectivesService) private readonly service: ObjectivesService,
-  ) {}
+  constructor(private readonly service: ObjectivesService) {}
 
   @Query({
     input: RpcEmptySchema,

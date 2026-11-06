@@ -3,7 +3,6 @@ import {
   MonthlySummarySchema,
   RpcMonthSchema,
 } from "@lazyfinance/contracts";
-import { Inject } from "@nestjs/common";
 import { Ctx, Input, Query, Router } from "nestjs-trpc";
 import { checkedMonth } from "../_utils/month-query";
 import { santiagoMonth } from "../_utils/santiago-time";
@@ -13,9 +12,7 @@ import { SummariesService } from "./summaries.service";
 
 @Router({ alias: "summaries" })
 export class SummariesRpc {
-  constructor(
-    @Inject(SummariesService) private readonly service: SummariesService,
-  ) {}
+  constructor(private readonly service: SummariesService) {}
 
   @Query({
     input: RpcMonthSchema,

@@ -6,17 +6,13 @@ import {
   RecentTransactionRecordsSchema,
   TaggedDebitRecordsSchema,
 } from "@lazyfinance/contracts/internal";
-import { Inject } from "@nestjs/common";
 import { Input, Query, Router } from "nestjs-trpc";
 import { wireValue } from "../query-period";
 import { TransactionRepository } from "./transaction.repository";
 
 @Router({ alias: "transactions" })
 export class TransactionRpc {
-  constructor(
-    @Inject(TransactionRepository)
-    private readonly repository: TransactionRepository,
-  ) {}
+  constructor(private readonly repository: TransactionRepository) {}
 
   @Query({
     input: EmptyInputSchema,

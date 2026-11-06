@@ -4,17 +4,13 @@ import {
   ObjectiveRecordsSchema,
   ObjectiveTagRecordsSchema,
 } from "@lazyfinance/contracts/internal";
-import { Inject } from "@nestjs/common";
 import { Input, Query, Router } from "nestjs-trpc";
 import { wireValue } from "../query-period";
 import { ObjectiveRepository } from "./objective.repository";
 
 @Router({ alias: "objectives" })
 export class ObjectiveRpc {
-  constructor(
-    @Inject(ObjectiveRepository)
-    private readonly repository: ObjectiveRepository,
-  ) {}
+  constructor(private readonly repository: ObjectiveRepository) {}
 
   @Query({
     input: EmptyInputSchema,

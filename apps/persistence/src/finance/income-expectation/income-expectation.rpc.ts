@@ -7,16 +7,12 @@ import {
   IdInputSchema,
   VoidResultSchema,
 } from "@lazyfinance/contracts/internal";
-import { Inject } from "@nestjs/common";
 import { Input, Mutation, Query, Router } from "nestjs-trpc";
 import { IncomeExpectationRepository } from "./income-expectation.repository";
 
 @Router({ alias: "incomeExpectations" })
 export class IncomeExpectationRpc {
-  constructor(
-    @Inject(IncomeExpectationRepository)
-    private readonly repository: IncomeExpectationRepository,
-  ) {}
+  constructor(private readonly repository: IncomeExpectationRepository) {}
 
   @Query({
     input: IdInputSchema,

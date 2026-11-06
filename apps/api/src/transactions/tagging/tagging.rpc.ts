@@ -16,7 +16,6 @@ import {
   TagSummarySchema,
   TagsResultSchema,
 } from "@lazyfinance/contracts";
-import { Inject } from "@nestjs/common";
 import { Ctx, Input, Mutation, Query, Router } from "nestjs-trpc";
 import type { ApiRequestContext } from "../../rpc/api.context";
 import { rpcUser } from "../../rpc/api.middleware";
@@ -24,9 +23,7 @@ import { TaggingService } from "./tagging.service";
 
 @Router({ alias: "tags" })
 export class TagsRpc {
-  constructor(
-    @Inject(TaggingService) private readonly service: TaggingService,
-  ) {}
+  constructor(private readonly service: TaggingService) {}
 
   @Query({
     input: RpcEmptySchema,
@@ -83,9 +80,7 @@ export class TagsRpc {
 
 @Router({ alias: "tagRules" })
 export class TagRulesRpc {
-  constructor(
-    @Inject(TaggingService) private readonly service: TaggingService,
-  ) {}
+  constructor(private readonly service: TaggingService) {}
 
   @Query({
     input: RpcEmptySchema,

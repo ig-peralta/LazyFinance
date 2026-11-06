@@ -12,17 +12,13 @@ import {
   type RecordProviderFailure,
   RecordProviderFailureSchema,
 } from "@lazyfinance/contracts/internal";
-import { Inject } from "@nestjs/common";
 import { Input, Mutation, Query, Router } from "nestjs-trpc";
 import { wireValue } from "../query-period";
 import { ProviderConnectionRepository } from "./provider-connection.repository";
 
 @Router({ alias: "providerSync" })
 export class ProviderConnectionRpc {
-  constructor(
-    @Inject(ProviderConnectionRepository)
-    private readonly repository: ProviderConnectionRepository,
-  ) {}
+  constructor(private readonly repository: ProviderConnectionRepository) {}
 
   @Mutation({
     input: BeginProviderSyncSchema,

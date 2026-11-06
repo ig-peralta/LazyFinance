@@ -1,6 +1,5 @@
 import { AuthPrincipalSchema } from "@lazyfinance/contracts";
 import { IdentityResolutionInputSchema } from "@lazyfinance/contracts/internal";
-import { Inject } from "@nestjs/common";
 import { TRPCError } from "@trpc/server";
 import { Ctx, Input, Mutation, Router } from "nestjs-trpc";
 import type { PersistenceRequestContext } from "../../rpc/persistence.context";
@@ -8,10 +7,7 @@ import { ExternalIdentityRepository } from "./external-identity.repository";
 
 @Router({ alias: "identity" })
 export class ExternalIdentityRpc {
-  constructor(
-    @Inject(ExternalIdentityRepository)
-    private readonly repository: ExternalIdentityRepository,
-  ) {}
+  constructor(private readonly repository: ExternalIdentityRepository) {}
 
   @Mutation({
     input: IdentityResolutionInputSchema,

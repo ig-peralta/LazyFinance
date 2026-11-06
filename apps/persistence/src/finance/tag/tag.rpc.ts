@@ -5,15 +5,12 @@ import {
   TagRecordSchema,
   TagRecordsSchema,
 } from "@lazyfinance/contracts/internal";
-import { Inject } from "@nestjs/common";
 import { Input, Mutation, Query, Router } from "nestjs-trpc";
 import { TagRepository } from "./tag.repository";
 
 @Router({ alias: "tags" })
 export class TagRpc {
-  constructor(
-    @Inject(TagRepository) private readonly repository: TagRepository,
-  ) {}
+  constructor(private readonly repository: TagRepository) {}
 
   @Query({
     input: EmptyInputSchema,

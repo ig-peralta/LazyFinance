@@ -19,7 +19,6 @@ import {
   RpcMonthSchema,
   RpcVoidSchema,
 } from "@lazyfinance/contracts";
-import { Inject } from "@nestjs/common";
 import { Ctx, Input, Mutation, Query, Router } from "nestjs-trpc";
 import type { ApiRequestContext } from "../rpc/api.context";
 import { rpcUser } from "../rpc/api.middleware";
@@ -27,7 +26,7 @@ import { IncomeService } from "./income.service";
 
 @Router({ alias: "income" })
 export class IncomeRpc {
-  constructor(@Inject(IncomeService) private readonly service: IncomeService) {}
+  constructor(private readonly service: IncomeService) {}
 
   @Query({
     input: RpcEmptySchema,
