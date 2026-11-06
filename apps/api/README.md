@@ -73,7 +73,7 @@ The demo user is `demo@lazyfinance.cl` with the local password above; the mock i
 
 ### Drizzle Kit
 
-`pnpm --filter api migrate` is the shortcut for `drizzle-kit migrate --config ./src/drizzle/drizzle.config.ts`. For any Drizzle Kit command, `pnpm --filter api drizzle <command>` gives access to the **full Drizzle Kit CLI** with the same config; it is not limited to a fixed set of subcommands. For example:
+`pnpm --filter api migrate` is the shortcut for `drizzle-kit migrate --config ./src/persistence/drizzle.config.ts`. For any Drizzle Kit command, `pnpm --filter api drizzle <command>` gives access to the **full Drizzle Kit CLI** with the same config; it is not limited to a fixed set of subcommands. For example:
 
 ```bash
 pnpm --filter api drizzle generate --name=add_created_at_column  # generate a named migration
@@ -83,4 +83,4 @@ pnpm --filter api drizzle studio                                 # open Drizzle 
 
 Replace `add_created_at_column` with a descriptive name for your schema change; always pass `--name` when generating migrations.
 
-The config points to `src/drizzle/schema/index.ts` and writes migration files to `src/drizzle/migrations`. It uses `POSTGRES_URL` from the process environment when set, otherwise the same local PostgreSQL URL shown above. The API's `.env` is loaded by the NestJS app, not explicitly by the Drizzle config; set `POSTGRES_URL` in the shell when using Drizzle Kit against a different database. Migrations are not run automatically on API startup. See the [Drizzle Kit CLI reference](https://orm.drizzle.team/docs/kit-overview) for all available commands and options.
+The config points to `src/persistence/schema/index.ts` and writes migration files to `src/persistence/migrations`. It uses `POSTGRES_URL` from the process environment when set, otherwise the same local PostgreSQL URL shown above. The API's `.env` is loaded by the NestJS app, not explicitly by the Drizzle config; set `POSTGRES_URL` in the shell when using Drizzle Kit against a different database. Migrations are not run automatically on API startup. See the [Drizzle Kit CLI reference](https://orm.drizzle.team/docs/kit-overview) for all available commands and options.

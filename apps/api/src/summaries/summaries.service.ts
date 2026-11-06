@@ -2,9 +2,9 @@ import type { MonthlyComparison, MonthlySummary } from '@lazyfinance/contracts';
 import { Injectable } from '@nestjs/common';
 import { fromCents, toCents } from '../_utils/money';
 import { santiagoMonth, santiagoParts } from '../_utils/santiago-time';
-import { monthBounds, previousMonth } from '../drizzle/repositories/financial-filters';
-import { TagRepository } from '../drizzle/repositories/tag.repository';
-import { TransactionRepository } from '../drizzle/repositories/transaction.repository';
+import { monthBounds, previousMonth } from '../_utils/month';
+import { TagRepository } from '../persistence/repositories/tag.repository';
+import { TransactionRepository } from '../persistence/repositories/transaction.repository';
 import { IncomeService } from '../income/income.service';
 
 @Injectable()

@@ -2,10 +2,10 @@ import type { BudgetProgress, ObjectiveSummary } from '@lazyfinance/contracts';
 import { Injectable } from '@nestjs/common';
 import { fromCents, toCents } from '../_utils/money';
 import { santiagoMonth, santiagoTimestamp } from '../_utils/santiago-time';
-import { monthBounds } from '../drizzle/repositories/financial-filters';
-import { ObjectiveRepository } from '../drizzle/repositories/objective.repository';
-import { TagRepository } from '../drizzle/repositories/tag.repository';
-import { TransactionRepository } from '../drizzle/repositories/transaction.repository';
+import { monthBounds } from '../_utils/month';
+import { ObjectiveRepository } from '../persistence/repositories/objective.repository';
+import { TagRepository } from '../persistence/repositories/tag.repository';
+import { TransactionRepository } from '../persistence/repositories/transaction.repository';
 import { budgetPeriod } from './budget-period';
 
 @Injectable()

@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
-import { DrizzleModule } from '../drizzle/drizzle.module';
+import { PersistenceModule } from '../persistence/persistence.module';
 import { ObjectivesHttpController } from './objectives.http';
 import { ObjectivesMcpController } from './objectives.mcp';
 import { ObjectivesService } from './objectives.service';
 
 @Module({
-  imports: [DrizzleModule],
+  imports: [PersistenceModule],
   controllers: [ObjectivesHttpController, ObjectivesMcpController],
   providers: [ObjectivesService],
 })

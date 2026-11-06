@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
-import { DrizzleModule } from '../drizzle/drizzle.module';
+import { PersistenceModule } from '../persistence/persistence.module';
 import { AccountsHttpController } from './accounts.http';
 import { AccountsMcpController } from './accounts.mcp';
 import { AccountsService } from './accounts.service';
 
 @Module({
-  imports: [DrizzleModule],
+  imports: [PersistenceModule],
   controllers: [AccountsHttpController, AccountsMcpController],
   providers: [AccountsService],
 })

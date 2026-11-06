@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
-import type { IncomeRepository } from '../drizzle/repositories/income.repository';
-import type { TransactionRepository } from '../drizzle/repositories/transaction.repository';
+import type { IncomeRepository } from '../persistence/repositories/income.repository';
+import type { TransactionRepository } from '../persistence/repositories/transaction.repository';
 import { IncomeService } from './income.service';
 
 describe('IncomeService', () => {

@@ -1,5 +1,5 @@
-import type { TagRepository } from '../drizzle/repositories/tag.repository';
-import type { TransactionRepository } from '../drizzle/repositories/transaction.repository';
+import type { TagRepository } from '../persistence/repositories/tag.repository';
+import type { TransactionRepository } from '../persistence/repositories/transaction.repository';
 import { describe, expect, it, vi } from 'vitest';
 import { SummariesService } from './summaries.service';
 import type { IncomeService } from '../income/income.service';

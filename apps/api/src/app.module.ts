@@ -5,7 +5,7 @@ import { AccountsModule } from './accounts/accounts.module';
 import { HttpAuthGuard } from './_guards/http.guard';
 import { McpModule } from './mcp/mcp.module';
 import { EnvironmentModule } from './environment/environment.module';
-import { DrizzleModule } from './drizzle/drizzle.module';
+import { PersistenceModule } from './persistence/persistence.module';
 import { AuthModule } from './auth/auth.module';
 import { TransactionsModule } from './transactions/transactions.module';
 import { ObjectivesModule } from './objectives/objectives.module';
@@ -18,7 +18,7 @@ import { TaggingModule } from './transactions/tagging/tagging.module';
   imports: [
     EnvironmentModule,
     McpModule,
-    DrizzleModule,
+    PersistenceModule,
     AuthModule,
     AccountsModule,
     TransactionsModule,

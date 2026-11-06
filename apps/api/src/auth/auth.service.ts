@@ -1,7 +1,7 @@
 import { MockLoginInputSchema, type AuthConfig, type AuthPrincipal, type MockLoginResult } from '@lazyfinance/contracts';
 import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { EnvironmentService } from '../environment/environment.service';
-import { ExternalIdentityRepository } from '../drizzle/repositories/external-identity.repository';
+import { ExternalIdentityRepository } from '../persistence/repositories/external-identity.repository';
 import { FirebaseAuthService } from './firebase/firebase-auth.service';
 import { MockAuthService } from './mock/mock-auth.service';
 

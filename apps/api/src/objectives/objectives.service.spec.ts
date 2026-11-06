@@ -1,6 +1,6 @@
-import type { ObjectiveRepository } from '../drizzle/repositories/objective.repository';
-import type { TagRepository } from '../drizzle/repositories/tag.repository';
-import type { TransactionRepository } from '../drizzle/repositories/transaction.repository';
+import type { ObjectiveRepository } from '../persistence/repositories/objective.repository';
+import type { TagRepository } from '../persistence/repositories/tag.repository';
+import type { TransactionRepository } from '../persistence/repositories/transaction.repository';
 import { describe, expect, it, vi } from 'vitest';
 import { ObjectivesService } from './objectives.service';
 

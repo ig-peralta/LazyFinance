@@ -2,16 +2,16 @@ import { BadRequestException, Inject, Injectable, NotFoundException } from '@nes
 import { and, count, eq, isNull } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { toCents } from '../../_utils/money';
-import { DRIZZLE_PG_CLIENT } from '../../drizzle/drizzle.tokens';
-import * as schema from '../../drizzle/schema';
-import { account, type AccountRow } from '../../drizzle/schema/account.table';
-import { incomeReceipt } from '../../drizzle/schema/income-receipt.table';
-import { providerConnection } from '../../drizzle/schema/provider-connection.table';
-import { providerMovementConflict, providerMovementConflictReasonEnum } from '../../drizzle/schema/provider-movement-conflict.table';
-import { providerMovementRemoval } from '../../drizzle/schema/provider-movement-removal.table';
-import { providerSyncState } from '../../drizzle/schema/provider-sync-state.table';
-import { provider } from '../../drizzle/schema/provider.table';
-import { transaction } from '../../drizzle/schema/transaction.table';
+import { DRIZZLE_PG_CLIENT } from '../../persistence/drizzle.tokens';
+import * as schema from '../../persistence/schema';
+import { account, type AccountRow } from '../../persistence/schema/account.table';
+import { incomeReceipt } from '../../persistence/schema/income-receipt.table';
+import { providerConnection } from '../../persistence/schema/provider-connection.table';
+import { providerMovementConflict, providerMovementConflictReasonEnum } from '../../persistence/schema/provider-movement-conflict.table';
+import { providerMovementRemoval } from '../../persistence/schema/provider-movement-removal.table';
+import { providerSyncState } from '../../persistence/schema/provider-sync-state.table';
+import { provider } from '../../persistence/schema/provider.table';
+import { transaction } from '../../persistence/schema/transaction.table';
 import { TaggingService } from '../../transactions/tagging/tagging.service';
 import type { BankingConnector } from '../connector/banking-connector';
 import {

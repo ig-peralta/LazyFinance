@@ -1,7 +1,7 @@
 import type { ExpectedIncome, ExpectedIncomePayment, IncomeExpectation } from '@lazyfinance/contracts';
 import { fromCents, toCents } from '../_utils/money';
 import { santiagoTimestamp } from '../_utils/santiago-time';
-import type { IncomeSourceRow } from '../drizzle/schema/income-source.table';
+import type { IncomeSourceRow } from '../persistence/schema/income-source.table';
 
 export function expectedIncomeForMonth(
   month: string,

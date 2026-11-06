@@ -1,4 +1,4 @@
-import type { AccountRepository } from '../drizzle/repositories/account.repository';
+import type { AccountRepository } from '../persistence/repositories/account.repository';
 import { describe, expect, it, vi } from 'vitest';
 import { AccountsService } from './accounts.service';
 

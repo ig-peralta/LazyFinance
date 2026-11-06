@@ -8,9 +8,9 @@
     "test": "vitest run src",
     "test:integration": "vitest run test/integration",
     "typecheck": "tsc --noEmit",
-    "seed": "ts-node src/drizzle/seed/index.ts",
-    "migrate": "drizzle-kit migrate --config ./src/drizzle/drizzle.config.ts",
-    "drizzle": "drizzle-kit --config ./src/drizzle/drizzle.config.ts"
+    "seed": "ts-node src/persistence/seed/index.ts",
+    "migrate": "drizzle-kit migrate --config ./src/persistence/drizzle.config.ts",
+    "drizzle": "drizzle-kit --config ./src/persistence/drizzle.config.ts"
   },
   "dependencies": {
     "@lazyfinance/contracts": "workspace:*",

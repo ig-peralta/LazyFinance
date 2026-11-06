@@ -1,4 +1,4 @@
-import { monthBounds } from '../drizzle/repositories/financial-filters';
+import { monthBounds } from '../_utils/month';
 import { santiagoTimestamp } from '../_utils/santiago-time';
 
 export type BudgetPeriod = 'monthly' | 'yearly' | 'fixed';

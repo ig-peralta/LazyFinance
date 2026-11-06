@@ -1,6 +1,6 @@
 import { BadRequestException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
-import type { ExternalIdentityRepository } from '../drizzle/repositories/external-identity.repository';
+import type { ExternalIdentityRepository } from '../persistence/repositories/external-identity.repository';
 import type { EnvironmentService } from '../environment/environment.service';
 import type { FirebaseAuthService } from './firebase/firebase-auth.service';
 import type { MockAuthService } from './mock/mock-auth.service';

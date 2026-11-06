@@ -1,6 +1,6 @@
 import type { RecentTransaction } from '@lazyfinance/contracts';
 import { Injectable } from '@nestjs/common';
-import { TransactionRepository } from '../drizzle/repositories/transaction.repository';
+import { TransactionRepository } from '../persistence/repositories/transaction.repository';
 
 @Injectable()
 export class TransactionsService {

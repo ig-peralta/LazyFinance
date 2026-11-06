@@ -1,6 +1,6 @@
 import { IncomeSourceInputSchema } from '@lazyfinance/contracts';
 import { describe, expect, it } from 'vitest';
-import type { IncomeSourceRow } from '../drizzle/schema/income-source.table';
+import type { IncomeSourceRow } from '../persistence/schema/income-source.table';
 import { expectedIncomeForMonth } from './income-schedule';
 
 function source(update: Partial<IncomeSourceRow> = {}): IncomeSourceRow {

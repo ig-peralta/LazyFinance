@@ -6,13 +6,13 @@ import { BadRequestException, Inject, Injectable, NotFoundException } from '@nes
 import { and, asc, eq, getTableColumns, gt, isNull, or } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { z } from 'zod';
-import { DRIZZLE_PG_CLIENT } from '../../drizzle/drizzle.tokens';
-import * as schema from '../../drizzle/schema';
-import { account } from '../../drizzle/schema/account.table';
-import { tagDecisionEvent } from '../../drizzle/schema/tag-decision-event.table';
-import { tagRule, type TagRuleRow } from '../../drizzle/schema/tag-rule.table';
-import { tag } from '../../drizzle/schema/tag.table';
-import { transaction, type TransactionRow } from '../../drizzle/schema/transaction.table';
+import { DRIZZLE_PG_CLIENT } from '../../persistence/drizzle.tokens';
+import * as schema from '../../persistence/schema';
+import { account } from '../../persistence/schema/account.table';
+import { tagDecisionEvent } from '../../persistence/schema/tag-decision-event.table';
+import { tagRule, type TagRuleRow } from '../../persistence/schema/tag-rule.table';
+import { tag } from '../../persistence/schema/tag.table';
+import { transaction, type TransactionRow } from '../../persistence/schema/transaction.table';
 
 type Database = PostgresJsDatabase<typeof schema>;
 type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];

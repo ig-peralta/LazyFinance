@@ -1,6 +1,6 @@
 import type { AccountSummary } from '@lazyfinance/contracts';
 import { Injectable } from '@nestjs/common';
-import { AccountRepository } from '../drizzle/repositories/account.repository';
+import { AccountRepository } from '../persistence/repositories/account.repository';
 
 @Injectable()
 export class AccountsService {

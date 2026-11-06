@@ -13,8 +13,8 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { z } from 'zod';
 import { fromCents, toCents } from '../_utils/money';
 import { santiagoMonth } from '../_utils/santiago-time';
-import { IncomeRepository } from '../drizzle/repositories/income.repository';
-import type { IncomeSourceRow } from '../drizzle/schema/income-source.table';
+import { IncomeRepository } from '../persistence/repositories/income.repository';
+import type { IncomeSourceRow } from '../persistence/schema/income-source.table';
 import { expectedIncomeForMonth } from './income-schedule';
 
 function input<T>(schema: z.ZodType<T>, value: unknown): T {

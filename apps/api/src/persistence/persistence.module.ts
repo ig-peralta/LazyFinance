@@ -28,4 +28,4 @@ import { IncomeRepository } from './repositories/income.repository';
     IncomeRepository,
   ],
 })
-export class DrizzleModule {}
+export class PersistenceModule {}

@@ -3,10 +3,10 @@ import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { AccountRepository } from '../../../src/drizzle/repositories/account.repository';
-import { IncomeRepository } from '../../../src/drizzle/repositories/income.repository';
-import { TransactionRepository } from '../../../src/drizzle/repositories/transaction.repository';
-import * as schema from '../../../src/drizzle/schema';
+import { AccountRepository } from '../../../src/persistence/repositories/account.repository';
+import { IncomeRepository } from '../../../src/persistence/repositories/income.repository';
+import { TransactionRepository } from '../../../src/persistence/repositories/transaction.repository';
+import * as schema from '../../../src/persistence/schema';
 import { IncomeService } from '../../../src/income/income.service';
 import { migrateTestDatabase } from '../helpers/test-migrations';
 
