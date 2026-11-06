@@ -6,6 +6,7 @@
     "build": "turbo build",
     "test": "turbo test",
     "typecheck": "turbo typecheck",
+    "rpc:keys": "node scripts/rpc-keys.mjs",
     "resources": "docker compose -f docker/local/resources.yml",
     "resources:up": "docker compose -f docker/local/resources.yml up -d",
     "resources:down": "docker compose -f docker/local/resources.yml down",
@@ -18,6 +19,6 @@
   },
   "packageManager": "pnpm@9.0.0",
   "engines": {
-    "node": ">=18"
+    "node": ">=22.22.3"
   }
 }

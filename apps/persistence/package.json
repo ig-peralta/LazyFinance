@@ -1,0 +1,47 @@
+{
+  "name": "persistence",
+  "private": true,
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "nest start --watch",
+    "start": "node dist/main.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:migrate": "ts-node src/database/cli.ts migrate",
+    "db:seed": "ts-node src/database/cli.ts seed",
+    "db:provision-runtime": "ts-node src/database/cli.ts provision"
+  },
+  "dependencies": {
+    "@lazyfinance/contracts": "workspace:*",
+    "@lazyfinance/rpc-auth": "workspace:*",
+    "@nestjs/common": "^11.0.1",
+    "@nestjs/core": "^11.0.1",
+    "@nestjs/platform-express": "^11.0.1",
+    "@trpc/server": "11.24.0",
+    "dotenv": "^17.4.2",
+    "kysely": "0.29.8",
+    "nestjs-trpc": "2.14.0",
+    "pg": "8.23.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "7.8.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@lazyfinance/rpc-persistence": "workspace:*",
+    "@nestjs/cli": "^11.0.0",
+    "@nestjs/testing": "^11.0.1",
+    "@swc/core": "^1.16.1",
+    "@trpc/client": "11.24.0",
+    "@types/express": "^5.0.0",
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.15.0",
+    "ts-node": "^10.9.2",
+    "type-fest": "^4.41.0",
+    "typescript": "^5.7.3",
+    "unplugin-swc": "^1.5.11",
+    "vitest": "^4.1.11"
+  }
+}

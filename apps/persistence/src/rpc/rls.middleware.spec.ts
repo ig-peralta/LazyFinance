@@ -1,0 +1,58 @@
+import "reflect-metadata";
+import { randomUUID } from "node:crypto";
+import type { Kysely } from "kysely";
+import { describe, expect, it, vi } from "vitest";
+import { withRequestContext } from "../database/rls";
+import { RlsMiddleware } from "./rls.middleware";
+
+vi.mock("@lazyfinance/contracts/internal", () => ({
+  MAX_PERSISTENCE_RPC_BYTES: 128,
+}));
+vi.mock("../database/rls", () => ({
+  withRequestContext: vi.fn(async (_db, _ctx, operation) => operation({})),
+}));
+
+describe("private middleware denial and result budgets (scaled byte limit)", () => {
+  const middleware = new RlsMiddleware({} as Kysely<Record<string, never>>);
+  const options = (data: unknown) => ({
+    ctx: {
+      identity: {
+        kind: "user" as const,
+        userId: randomUUID(),
+        requestId: randomUUID(),
+      },
+    },
+    type: "query" as const,
+    path: "accounts.listActive",
+    meta: { context: "user" as const },
+    input: undefined,
+    getRawInput: async () => undefined,
+    signal: undefined,
+    next: vi.fn(async () => ({ ok: true as const, data })),
+  });
+  it("denies missing metadata and bootstrap context confusion before opening SQL", async () => {
+    const calls = vi.mocked(withRequestContext).mock.calls.length;
+    await expect(
+      middleware.use({ ...options(null), meta: undefined! }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    const invalid = {
+      ...options(null),
+      meta: { context: "identity-bootstrap" as const },
+    };
+    await expect(middleware.use(invalid)).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+    expect(vi.mocked(withRequestContext).mock.calls).toHaveLength(calls);
+  });
+  it("checks serialized bytes, including JSON quotes and multi-byte text, inside the transaction", async () => {
+    await expect(
+      middleware.use(options("a".repeat(126))),
+    ).resolves.toMatchObject({ ok: true });
+    await expect(
+      middleware.use(options("a".repeat(127))),
+    ).rejects.toMatchObject({ code: "PAYLOAD_TOO_LARGE" });
+    await expect(
+      middleware.use(options("界".repeat(43))),
+    ).rejects.toMatchObject({ code: "PAYLOAD_TOO_LARGE" });
+  });
+});
