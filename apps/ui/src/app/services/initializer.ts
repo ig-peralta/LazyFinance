@@ -37,6 +37,7 @@ async function initializeServer(services: Services): Promise<void> {
 
 async function initializeClient(services: Services): Promise<void> {
   const config = await authConfig(services.api);
+
   if (config?.provider === "firebase") {
     // Session initialization fails closed if Firebase cannot start (e.g. placeholders).
     try {
@@ -45,5 +46,6 @@ async function initializeClient(services: Services): Promise<void> {
       /* The session clears its local state. */
     }
   }
+
   await services.session.initClientSide(config);
 }

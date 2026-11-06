@@ -24,6 +24,7 @@ export class MockAuthService {
   verify(token: string): VerifiedExternalIdentity {
     if (token !== mockToken)
       throw new UnauthorizedException("Invalid mock identity");
+
     return mockIdentity;
   }
 }

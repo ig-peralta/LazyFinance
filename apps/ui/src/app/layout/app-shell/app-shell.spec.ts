@@ -20,6 +20,7 @@ describe("AppShell", () => {
     const clear = vi.fn();
     const logout = vi.fn(async () => {
       if (failLogout) throw new Error("Firebase sign-out failed");
+
       clear();
     });
     TestBed.configureTestingModule({
@@ -40,6 +41,7 @@ describe("AppShell", () => {
     });
     const harness = await RouterTestingHarness.create("/etiquetas");
     const root = harness.fixture.nativeElement as HTMLElement;
+
     return { harness, clear, logout, root };
   }
 

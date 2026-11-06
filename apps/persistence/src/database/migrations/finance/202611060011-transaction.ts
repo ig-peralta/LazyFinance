@@ -52,6 +52,7 @@ export async function up(db: MigrationDatabase) {
     AND (tag_rule_id IS NULL OR ${ownedRule('"transaction".tag_rule_id')})`,
   );
 }
+
 export async function down(db: MigrationDatabase) {
   await sql`DROP TABLE finance."transaction"; DROP TYPE finance.transaction_type, finance.booked_precision,
     finance.provider_internal_assessment, finance.movement_relation, finance.movement_removal_reason,

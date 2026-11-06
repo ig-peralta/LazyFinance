@@ -37,4 +37,5 @@ export interface TransactionTable {
   removalReason: "removed" | "reversed" | null;
   createdAt: Generated<Date>;
 }
+
 export type TransactionTables = { "finance.transaction": TransactionTable };

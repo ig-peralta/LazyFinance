@@ -13,9 +13,11 @@ export type ApiRequestContext = {
 @Injectable()
 export class ApiContext implements TRPCContext {
   constructor(private readonly auth: AuthService) {}
+
   create({ req }: ContextOptions): ApiRequestContext {
     let principal: Promise<AuthPrincipal> | undefined;
     const authorization = req.headers.authorization;
+
     return {
       requestId: randomUUID(),
       authenticate: () => {

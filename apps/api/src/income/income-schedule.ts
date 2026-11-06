@@ -35,6 +35,7 @@ export function expectedIncomeForMonth(
       (!archiveDate || date <= archiveDate);
     const add = (date: string) => {
       if (!eligibleDate(date)) return;
+
       payments.push({
         sourceId: source.id,
         sourceName: source.name,
@@ -57,6 +58,7 @@ export function expectedIncomeForMonth(
           !eligibleDate(expectation.date)
         )
           continue;
+
         payments.push({
           sourceId: source.id,
           sourceName: source.name,
@@ -66,11 +68,14 @@ export function expectedIncomeForMonth(
           amountType: expectation.isEstimate ? "estimated" : "exact",
         });
       }
+
       continue;
     }
 
     const schedule = source.schedule;
+
     if (!schedule) continue;
+
     if (
       schedule.frequency === "weekly" ||
       schedule.frequency === "every_two_weeks"
@@ -83,6 +88,7 @@ export function expectedIncomeForMonth(
       );
       const first =
         anchor + Math.max(0, Math.ceil((start - anchor) / step)) * step;
+
       for (let date = first; date < monthEnd; date += step)
         add(new Date(date).toISOString().slice(0, 10));
     } else if (
@@ -91,6 +97,7 @@ export function expectedIncomeForMonth(
     ) {
       const days =
         schedule.frequency === "monthly" ? [schedule.day] : schedule.days;
+
       for (const day of days) {
         const actualDay = day === "last" ? lastDay : Math.min(day, lastDay);
         add(`${month}-${String(actualDay).padStart(2, "0")}`);
@@ -107,15 +114,18 @@ export function expectedIncomeForMonth(
   let amount = 0n;
   let estimated = 0n;
   let unknownAmountCount = 0;
+
   for (const payment of payments) {
     if (payment.amount === null) {
       unknownAmountCount++;
     } else {
       amount += toCents(payment.amount);
+
       if (payment.amountType === "estimated")
         estimated += toCents(payment.amount);
     }
   }
+
   return {
     month,
     currency: "CLP",

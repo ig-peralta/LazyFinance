@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { PersistenceContext } from "./persistence.context";
 
 afterEach(() => vi.unstubAllEnvs());
+
 describe("persistence verification-key readiness", () => {
   it("rejects malformed keys through awaited initialization", async () => {
     vi.stubEnv("PERSISTENCE_RPC_PUBLIC_KEY", "not an SPKI key");

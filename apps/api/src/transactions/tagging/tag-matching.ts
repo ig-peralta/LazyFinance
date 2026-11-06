@@ -57,6 +57,7 @@ export function automaticDecision(
 ) {
   if (movement.tagDecisionOrigin === "manual" || movement.removedAt !== null)
     return undefined;
+
   const matches = matchingRules(movement, rules);
   const best = matches[0];
   const ambiguous =
@@ -84,5 +85,6 @@ export function automaticDecision(
   )
     return undefined;
   if (!eligible && movement.tagDecisionOrigin !== "rule") return undefined;
+
   return { tagId: eligible?.tagId ?? null, ruleId: eligible?.id ?? null };
 }

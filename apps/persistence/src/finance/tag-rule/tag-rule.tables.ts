@@ -15,4 +15,5 @@ export interface TagRuleTable {
   createdAt: Generated<Date>;
   updatedAt: Generated<Date>;
 }
+
 export type TagRuleTables = { "finance.tag_rule": TagRuleTable };

@@ -16,6 +16,7 @@ export function budgetPeriod(
 ): { start: string; end: string; period: BudgetPeriod } | null {
   if (objective.intent !== "spending" || objective.kind !== "time_based")
     return null;
+
   const { start: monthStart, end: monthEnd } = monthBounds(month);
   let start: string;
   let end = monthEnd;
@@ -43,11 +44,13 @@ export function budgetPeriod(
       start > santiagoTimestamp(objective.startDate)
         ? start
         : santiagoTimestamp(objective.startDate);
+
   if (objective.endDate)
     end =
       end < santiagoTimestamp(objective.endDate)
         ? end
         : santiagoTimestamp(objective.endDate);
+
   if (
     start >= end ||
     start >= monthEnd ||

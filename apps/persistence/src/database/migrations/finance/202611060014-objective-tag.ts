@@ -17,6 +17,7 @@ export async function up(db: MigrationDatabase) {
     `EXISTS (SELECT 1 FROM finance.objective o WHERE o.id = objective_tag.objective_id AND o.user_id = ${currentUser}) AND ${ownedTag("objective_tag.tag_id")}`,
   );
 }
+
 export async function down(db: MigrationDatabase) {
   await db.schema.dropTable("finance.objective_tag").execute();
 }

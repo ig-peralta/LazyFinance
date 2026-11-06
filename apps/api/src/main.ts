@@ -27,4 +27,5 @@ async function bootstrap() {
   const logger = new Logger("Bootstrap");
   logger.log(`Starting application at ${await app.getUrl()}`);
 }
+
 bootstrap();

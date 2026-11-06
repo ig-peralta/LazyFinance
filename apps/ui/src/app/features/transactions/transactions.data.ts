@@ -14,6 +14,7 @@ export class TransactionsData {
       const items = await scope.client.transactions.recent.query(undefined, {
         signal: abortSignal,
       });
+
       return { items, decisionVersion };
     },
   });
@@ -22,8 +23,10 @@ export class TransactionsData {
   // by writing into its resource or lose decisions on other transactions.
   readonly items = computed(() => {
     if (!this.recent.hasValue()) return [];
+
     const selections = this.tagging.changed()?.selections;
     const { items, decisionVersion } = this.recent.value();
+
     return items.map((item) => {
       const confirmed = selections?.get(item.id);
       return confirmed && confirmed.version > decisionVersion

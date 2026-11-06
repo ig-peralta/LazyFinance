@@ -156,6 +156,7 @@ describe("Dashboard MCP tools", () => {
           const token = authorization?.replace("Bearer ", "");
           if (token !== "alice" && token !== "bob")
             throw new UnauthorizedException();
+
           return { userId: token, name: token, email: `${token}@example.com` };
         },
       })
@@ -215,6 +216,7 @@ describe("Dashboard MCP tools", () => {
       "consultar_resumen_gastos_mensuales",
       "consultar_saldos_cuentas",
     ]);
+
     for (const tool of tools) {
       expect(tool.description.length).toBeGreaterThan(90);
       expect(tool.annotations).toMatchObject({
@@ -225,6 +227,7 @@ describe("Dashboard MCP tools", () => {
       expect(tool.outputSchema, JSON.stringify(tool)).toBeDefined();
       expect(tool.outputSchema.type).toMatch(/object|array/);
     }
+
     expect(
       tools.find(({ name }) => name === "consultar_resumen_gastos_mensuales")
         ?.inputSchema.properties?.month?.description,
@@ -233,6 +236,7 @@ describe("Dashboard MCP tools", () => {
       tools.find(({ name }) => name === "consultar_saldos_cuentas")
         ?.outputSchema.type,
     ).toBe("object");
+
     for (const name of [
       "consultar_resumen_gastos_mensuales",
       "comparar_gastos_mensuales",
@@ -259,21 +263,25 @@ describe("Dashboard MCP tools", () => {
       ["comparar_gastos_mensuales", "bob", { month: "2026-09" }],
       ["consultar_ingresos", "alice", { month: "2026-09" }],
     ];
+
     for (const [name, token, args] of calls) {
       const response = await call(token, name, args).expect(200);
       expect(response.body.result, JSON.stringify(response.body)).toBeDefined();
       expect(response.body.result.isError).not.toBe(true);
       expect(response.body.result.structuredContent).toBeDefined();
+
       if (name === "consultar_saldos_cuentas") {
         expect(response.body.result.structuredContent.accounts[0].alias).toBe(
           token,
         );
       }
+
       if (name === "consultar_movimientos_recientes") {
         expect(response.body.result.structuredContent.transactions).toEqual(
           recent,
         );
       }
+
       if (name === "consultar_ingresos") {
         expect(
           response.body.result.structuredContent.expectedIncome.amount,
@@ -285,6 +293,7 @@ describe("Dashboard MCP tools", () => {
           response.body.result.structuredContent.unclassifiedCredits.count,
         ).toBe(1);
       }
+
       if (
         name === "consultar_resumen_gastos_mensuales" ||
         name === "comparar_gastos_mensuales"
@@ -298,6 +307,7 @@ describe("Dashboard MCP tools", () => {
         expect(response.body.result.structuredContent.spending).toBeDefined();
       }
     }
+
     expect(accounts.getActiveForUser).toHaveBeenCalledWith("bob");
     expect(transactions.getRecentForUser).toHaveBeenCalledWith("alice");
     expect(income.getSummaryForUser).toHaveBeenCalledWith("alice", "2026-09");

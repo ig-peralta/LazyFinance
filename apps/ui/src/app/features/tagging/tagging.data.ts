@@ -24,6 +24,7 @@ export class TaggingData {
   private readonly requested = signal(false);
   private readonly catalogRevision = signal(0);
   private version = 0;
+
   private readonly decision = signal<
     | {
         scope: RpcScope;
@@ -56,6 +57,7 @@ export class TaggingData {
 
   requestTags(): void {
     this.requested.set(true);
+
     if (this.tags.error()) this.tags.reload();
   }
 
@@ -84,6 +86,7 @@ export class TaggingData {
     const tag = await scope.client.tags.create.mutate({ name }, { signal });
     this.assertActive(scope, signal);
     this.catalogRevision.update((revision) => revision + 1);
+
     return this.save(scope, transaction, tag, autoApply, signal);
   }
 
@@ -102,6 +105,7 @@ export class TaggingData {
       tag: null,
       origin: decision.origin,
     });
+
     return { warning: null };
   }
 
@@ -145,6 +149,7 @@ export class TaggingData {
           signal.aborted
         )
           throw error;
+
         // The decision is already committed. Do not replay it or pretend it rolled back.
         return {
           warning:
@@ -152,7 +157,9 @@ export class TaggingData {
         };
       }
     }
+
     this.assertActive(scope, signal);
+
     return { warning: null };
   }
 

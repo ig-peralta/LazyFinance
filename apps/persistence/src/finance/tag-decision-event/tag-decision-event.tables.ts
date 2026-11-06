@@ -15,6 +15,7 @@ export interface TagDecisionEventTable {
     | "rule_revalidated";
   createdAt: Generated<Date>;
 }
+
 export type TagDecisionEventTables = {
   "finance.tag_decision_event": TagDecisionEventTable;
 };

@@ -28,14 +28,17 @@ function input<T>(schema: z.ZodType<T>, value: unknown): T {
       message: "Invalid income input",
       issues: result.error.issues,
     });
+
   return result.data;
 }
+
 function sourceResponse({
   userId: _,
   ...source
 }: IncomeSourceRecord): IncomeSource {
   return source;
 }
+
 function receiptResponse(
   receipt: IncomeFacts["receipts"][number],
 ): IncomeReceipt {
@@ -43,6 +46,7 @@ function receiptResponse(
     receipt;
   return { transactionId, sourceId, sourceName, bookedAt, amount, confirmedAt };
 }
+
 function activeReceipts(facts: IncomeFacts) {
   return facts.receipts.filter(
     (row) =>
@@ -56,16 +60,19 @@ function activeReceipts(facts: IncomeFacts) {
 @Injectable()
 export class IncomeService {
   constructor(private readonly persistence: PersistenceClient) {}
+
   async listSourcesForUser(userId: string): Promise<IncomeSource[]> {
     return (await this.persistence.user(userId).income.sources.query()).map(
       sourceResponse,
     );
   }
+
   async getSourceForUser(userId: string, id: string): Promise<IncomeSource> {
     return sourceResponse(
       await this.persistence.user(userId).income.source.query({ id }),
     );
   }
+
   async createSourceForUser(
     userId: string,
     value: unknown,
@@ -75,10 +82,12 @@ export class IncomeService {
       source.expectedAmount === null
         ? null
         : fromCents(toCents(source.expectedAmount));
+
     return sourceResponse(
       await this.persistence.user(userId).income.createSource.mutate(source),
     );
   }
+
   async updateSourceForUser(
     userId: string,
     id: string,
@@ -89,12 +98,14 @@ export class IncomeService {
       source.expectedAmount === null
         ? null
         : fromCents(toCents(source.expectedAmount));
+
     return sourceResponse(
       await this.persistence
         .user(userId)
         .income.updateSource.mutate({ id, source }),
     );
   }
+
   async archiveSourceForUser(
     userId: string,
     id: string,
@@ -106,12 +117,14 @@ export class IncomeService {
         .income.archiveSource.mutate({ id, at: now.toISOString() }),
     );
   }
+
   listExpectationsForUser(
     userId: string,
     id: string,
   ): Promise<IncomeExpectation[]> {
     return this.persistence.user(userId).incomeExpectations.list.query({ id });
   }
+
   async createExpectationForUser(
     userId: string,
     sourceId: string,
@@ -119,10 +132,12 @@ export class IncomeService {
   ): Promise<IncomeExpectation> {
     const expectation = input(IncomeExpectationInputSchema, value);
     expectation.amount = fromCents(toCents(expectation.amount));
+
     return this.persistence
       .user(userId)
       .incomeExpectations.create.mutate({ sourceId, expectation });
   }
+
   async updateExpectationForUser(
     userId: string,
     id: string,
@@ -130,25 +145,30 @@ export class IncomeService {
   ): Promise<IncomeExpectation> {
     const expectation = input(IncomeExpectationInputSchema, value);
     expectation.amount = fromCents(toCents(expectation.amount));
+
     return this.persistence
       .user(userId)
       .incomeExpectations.update.mutate({ id, expectation });
   }
+
   deleteExpectationForUser(userId: string, id: string): Promise<void> {
     return this.persistence
       .user(userId)
       .incomeExpectations.remove.mutate({ id });
   }
+
   private facts(userId: string, month: string, asOf?: Date) {
     input(MonthSchema, month);
     return this.persistence
       .user(userId)
       .income.facts.query({ ...monthBounds(month), asOf: asOf?.toISOString() });
   }
+
   async getExpectedForUser(userId: string, month = santiagoMonth(new Date())) {
     const facts = await this.facts(userId, month);
     return expectedIncomeForMonth(month, facts.sources, facts.expectations);
   }
+
   async confirmReceiptForUser(
     userId: string,
     transactionId: string,
@@ -164,9 +184,11 @@ export class IncomeService {
       }),
     );
   }
+
   clearReceiptForUser(userId: string, id: string): Promise<void> {
     return this.persistence.user(userId).incomeReceipts.clear.mutate({ id });
   }
+
   async listReceiptsForUser(
     userId: string,
     month = santiagoMonth(new Date()),
@@ -176,6 +198,7 @@ export class IncomeService {
       receiptResponse,
     );
   }
+
   async getSummaryForUser(
     userId: string,
     month = santiagoMonth(new Date()),
@@ -188,6 +211,7 @@ export class IncomeService {
       facts.expectations,
     );
     const received = movementTotals(facts.aggregates);
+
     return {
       month,
       currency: "CLP",

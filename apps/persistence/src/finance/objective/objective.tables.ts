@@ -14,4 +14,5 @@ export interface ObjectiveTable {
   createdAt: Generated<Date>;
   updatedAt: Generated<Date>;
 }
+
 export type ObjectiveTables = { "finance.objective": ObjectiveTable };

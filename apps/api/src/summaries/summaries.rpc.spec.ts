@@ -69,12 +69,14 @@ describe("public summaries RPC", () => {
     await request(app.getHttpServer())
       .get(rpcPath("summaries.monthly", { month: "2026-09" }))
       .expect(401);
+
     for (const month of ["2026-13", "2026-9", "2026-00", "x"]) {
       await request(app.getHttpServer())
         .get(rpcPath("summaries.monthly", { month }))
         .set("Authorization", "Bearer demo-token")
         .expect(400);
     }
+
     await request(app.getHttpServer())
       .get("/trpc/summaries.monthly")
       .set("Authorization", "Bearer demo-token")

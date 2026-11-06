@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const check = process.argv.includes("--check");
+
 const targets = [
   { app: "persistence", library: "rpc-persistence", pattern: "**/*.rpc.ts" },
   { app: "api", library: "rpc-api", pattern: "**/*.rpc.ts" },
@@ -17,6 +18,7 @@ for (const target of targets) {
     ? mkdtempSync(path.join(tmpdir(), "lazyfinance-rpc-"))
     : undefined;
   const output = temporary ?? committed;
+
   try {
     mkdirSync(output, { recursive: true });
     execFileSync(

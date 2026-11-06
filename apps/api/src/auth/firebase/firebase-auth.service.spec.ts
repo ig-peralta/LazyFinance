@@ -7,6 +7,7 @@ import { FirebaseAuthService } from "./firebase-auth.service";
 const admin = vi.hoisted(() => {
   const apps: { name: string; options: { projectId: string } }[] = [];
   const verifyIdToken = vi.fn();
+
   return {
     apps,
     cert: vi.fn(
@@ -21,6 +22,7 @@ const admin = vi.hoisted(() => {
       (options: { projectId: string; credential?: unknown }, name: string) => {
         const app = { name, options };
         apps.push(app);
+
         return app;
       },
     ),
@@ -33,11 +35,13 @@ vi.mock("firebase-admin/app", () => ({
   getApps: () => admin.apps,
   initializeApp: admin.initializeApp,
 }));
+
 vi.mock("firebase-admin/auth", () => ({
   getAuth: admin.getAuth,
 }));
 
 const projectId = "lazyfinance-dev";
+
 const decoded = {
   uid: "firebase-user-1",
   aud: projectId,
@@ -72,6 +76,7 @@ function service(
   } as unknown as EnvironmentService;
   const firebase = new FirebaseAuthService(environment);
   firebase.onModuleInit();
+
   return firebase;
 }
 

@@ -21,7 +21,9 @@ import { RLS_DB, RUNTIME_DB } from "./tokens";
           throw new Error(
             "Migration credentials must not be present in the persistence runtime",
           );
+
         const db = createDatabase(url);
+
         try {
           await assertRuntimeRole(db);
           return db;
@@ -40,6 +42,7 @@ export class DatabaseModule implements OnModuleDestroy {
     @Inject(RUNTIME_DB)
     private readonly database: Kysely<Record<string, never>>,
   ) {}
+
   async onModuleDestroy() {
     await this.database.destroy();
   }

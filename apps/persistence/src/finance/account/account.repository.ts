@@ -6,6 +6,7 @@ import type { AccountTables } from "./account.tables";
 @Injectable()
 export class AccountRepository {
   constructor(@Inject(RLS_DB) private readonly db: Kysely<AccountTables>) {}
+
   listActive() {
     // Deliberately no user WHERE: the database independently enforces ownership.
     return this.db

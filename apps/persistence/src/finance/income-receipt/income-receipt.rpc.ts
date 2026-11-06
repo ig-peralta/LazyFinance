@@ -15,6 +15,7 @@ export class IncomeReceiptRpc {
     @Inject(IncomeReceiptRepository)
     private readonly repository: IncomeReceiptRepository,
   ) {}
+
   @Mutation({
     input: ReceiptConfirmSchema,
     output: ReceiptFactSchema,
@@ -31,6 +32,7 @@ export class IncomeReceiptRpc {
       ),
     );
   }
+
   @Mutation({
     input: IdInputSchema,
     output: VoidResultSchema,

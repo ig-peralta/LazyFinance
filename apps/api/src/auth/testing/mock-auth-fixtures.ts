@@ -9,6 +9,7 @@ export function testMockAuth(principals: Record<string, AuthPrincipal>) {
   const verify = (token: string): VerifiedExternalIdentity => {
     const principal = principals[token];
     if (!principal) throw new UnauthorizedException("Invalid mock identity");
+
     return {
       ...mockIdentity,
       providerSubject: token,
@@ -28,6 +29,7 @@ export function testMockAuth(principals: Record<string, AuthPrincipal>) {
     ) {
       throw new UnauthorizedException("External identity is not linked");
     }
+
     return principal;
   };
 

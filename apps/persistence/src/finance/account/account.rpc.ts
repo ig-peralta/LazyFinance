@@ -11,6 +11,7 @@ export class AccountRpc {
   constructor(
     @Inject(AccountService) private readonly service: AccountService,
   ) {}
+
   @Query({
     input: EmptyInputSchema,
     output: AccountRecordsSchema,

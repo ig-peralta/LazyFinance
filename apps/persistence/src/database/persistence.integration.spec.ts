@@ -38,6 +38,7 @@ class FailureRouter {
   constructor(
     @Inject(RLS_DB) private readonly db: Kysely<Record<string, never>>,
   ) {}
+
   @Mutation({
     input: z.object({ name: z.string() }),
     output: z.boolean(),
@@ -48,6 +49,7 @@ class FailureRouter {
     @Ctx() ctx: PersistenceRequestContext,
   ) {
     if (ctx.identity.kind !== "user") throw new Error("Wrong context");
+
     await sql`insert into finance.tag(user_id, name) values (${ctx.identity.userId}, ${value.name})`.execute(
       this.db,
     );
@@ -56,6 +58,7 @@ class FailureRouter {
       message: "Intentional failure",
     });
   }
+
   @Mutation({
     input: z.object({ name: z.string() }),
     output: z.boolean(),
@@ -66,14 +69,17 @@ class FailureRouter {
     @Ctx() ctx: PersistenceRequestContext,
   ) {
     if (ctx.identity.kind !== "user") throw new Error("Wrong context");
+
     await sql`insert into finance.tag(user_id, name) values (${ctx.identity.userId}, ${value.name})`.execute(
       this.db,
     );
+
     return "not a boolean";
   }
 }
 
 const ownerUrl = process.env.TEST_POSTGRES_OWNER_URL;
+
 const migrationProvider = () =>
   new MultiMigrationProvider((file) => import(file));
 
@@ -113,6 +119,7 @@ describe.skipIf(!ownerUrl)(
         throw new Error(
           "Integration tests require a disposable database ending in _test",
         );
+
       owner = createDatabase(ownerUrl!, false);
       await migrate(owner, migrationProvider());
       await provisionRuntime(
@@ -174,6 +181,7 @@ describe.skipIf(!ownerUrl)(
       (${objectiveA},${a},'A',1,'amount_based','spending'), (${objectiveB},${b},'B',1,'amount_based','spending')`.execute(
         owner,
       );
+
       for (const [user, connection, movement, source, tag, rule, objective] of [
         [a, connectionA, movementA, sourceA, tagA, ruleA, objectiveA],
         [b, connectionB, movementB, sourceB, tagB, ruleB, objectiveB],
@@ -202,6 +210,7 @@ describe.skipIf(!ownerUrl)(
           owner,
         );
       }
+
       // Retain a verifier check for a valid signed context, independent of HTTP.
       expect(
         await (await createContextVerifier(publicPem))(
@@ -236,11 +245,14 @@ describe.skipIf(!ownerUrl)(
       );
       const expected: string[] = [];
       let group = "";
+
       for (const line of generated.split("\n")) {
         group = /^ {2}(\w+): t\.router/.exec(line)?.[1] ?? group;
         const method = /^ {4}(\w+): publicProcedure/.exec(line)?.[1];
+
         if (method) expected.push(`${group}.${method}`);
       }
+
       const procedures = app.get(AppRouterHost).appRouter._def.procedures;
       expect(
         Object.keys(procedures)
@@ -248,6 +260,7 @@ describe.skipIf(!ownerUrl)(
           .sort(),
       ).toEqual(expected.sort());
       expect(expected).toHaveLength(35);
+
       for (const name of expected)
         expect(procedures[name]._def.meta).toMatchObject({
           context: name === "identity.resolve" ? "identity-bootstrap" : "user",
@@ -342,6 +355,7 @@ describe.skipIf(!ownerUrl)(
         }>`select id from identity."user"`.execute(tx);
         expect(rows.map((row) => row.id)).toEqual([a]);
       });
+
       for (const work of [
         (db: Kysely<any>) =>
           sql`select * from identity.external_identity`.execute(db),
@@ -774,6 +788,7 @@ describe.skipIf(!ownerUrl)(
           }),
         ],
       });
+
       for (const method of ["writeThenThrow", "invalidOutput"]) {
         const name = randomUUID();
         await expect(

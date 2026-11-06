@@ -11,5 +11,6 @@ export function checkedMonth(month: string): string {
       "month must be YYYY-MM and cannot be in the future",
     );
   }
+
   return month;
 }

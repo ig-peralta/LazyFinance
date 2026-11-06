@@ -7,4 +7,5 @@ export interface UserTable {
   createdAt: Generated<Date>;
   updatedAt: Generated<Date>;
 }
+
 export type UserTables = { "identity.user": UserTable };

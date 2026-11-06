@@ -21,4 +21,5 @@ export interface AccountTable {
   createdAt: Generated<Date>;
   updatedAt: Generated<Date>;
 }
+
 export type AccountTables = { "finance.account": AccountTable };

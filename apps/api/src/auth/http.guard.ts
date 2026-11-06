@@ -29,6 +29,7 @@ export class HttpAuthGuard implements CanActivate {
     // @rekog/mcp-nest reads req.user for per-tool authorization.
     (request as AuthenticatedRequest & { user: AuthPrincipal }).user =
       principal;
+
     return true;
   }
 }

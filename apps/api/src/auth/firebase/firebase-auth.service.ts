@@ -62,11 +62,13 @@ export class FirebaseAuthService implements OnModuleInit {
       throw new Error("Firebase Auth is not initialized");
 
     let decoded: DecodedIdToken;
+
     try {
       decoded = await this.auth.verifyIdToken(idToken);
     } catch (error) {
       if (isInvalidToken(error))
         throw new UnauthorizedException("Invalid Firebase ID token");
+
       throw error;
     }
 
@@ -90,6 +92,7 @@ export class FirebaseAuthService implements OnModuleInit {
     });
     if (!identity.success)
       throw new UnauthorizedException("Invalid Firebase identity claims");
+
     return identity.data;
   }
 }

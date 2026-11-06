@@ -4,6 +4,7 @@ import { PersistenceClient } from "./persistence.client";
 @Injectable()
 export class ObjectiveClient {
   constructor(private readonly persistence: PersistenceClient) {}
+
   async listForUser(userId: string) {
     return (await this.persistence.user(userId).objectives.list.query()).map(
       (row) => ({

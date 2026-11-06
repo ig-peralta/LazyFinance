@@ -5,5 +5,6 @@ const clp = new Intl.NumberFormat("es-CL", {
 
 export function formatClp(amount: number): string {
   if (!Number.isFinite(amount)) return "—";
+
   return amount < 0 ? `-${clp.format(-amount)}` : clp.format(amount);
 }

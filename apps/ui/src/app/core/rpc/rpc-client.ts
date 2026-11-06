@@ -40,6 +40,7 @@ export class RpcClient {
   private readonly lifetime = new AbortController();
 
   readonly anonymous = this.createClient();
+
   readonly authenticatedScope = computed<RpcScope | undefined>(() => {
     const credentials = this.credentials.current();
     return (
@@ -62,6 +63,7 @@ export class RpcClient {
   requireScope(): RpcScope {
     const scope = this.authenticatedScope();
     if (!scope) throw new DOMException("No active session", "AbortError");
+
     return scope;
   }
 
@@ -108,12 +110,15 @@ export class RpcClient {
             },
             error: (error) => {
               if (signal.aborted) return;
+
               observer.error(error);
+
               if (credentials && isUnauthorized(error))
                 this.credentials.expire(credentials);
             },
             complete: () => observer.complete(),
           });
+
           return () => {
             signal.removeEventListener("abort", cancel);
             subscription.unsubscribe();

@@ -3,6 +3,7 @@ import type { AccountTable } from "../../finance/account/account.tables";
 import type { UserTable } from "../../identity/user/user.tables";
 
 type NewAccountRow = Insertable<AccountTable>;
+
 type NewUserRow = Insertable<UserTable>;
 
 import { seedId } from "./helpers";

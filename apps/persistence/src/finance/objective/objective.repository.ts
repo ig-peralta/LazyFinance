@@ -13,6 +13,7 @@ export class ObjectiveRepository {
       ObjectiveTables & ObjectiveTagTables & TagTables
     >,
   ) {}
+
   list() {
     return this.db
       .selectFrom("finance.objective")
@@ -32,8 +33,10 @@ export class ObjectiveRepository {
       .limit(10001)
       .execute();
   }
+
   async tags(ids: string[]) {
     if (!ids.length) return [];
+
     return this.db
       .selectFrom("finance.objective_tag as l")
       .innerJoin("finance.tag as t", "t.id", "l.tagId")

@@ -9,4 +9,5 @@ export interface TagTable {
   createdAt: Generated<Date>;
   updatedAt: Generated<Date>;
 }
+
 export type TagTables = { "finance.tag": TagTable };

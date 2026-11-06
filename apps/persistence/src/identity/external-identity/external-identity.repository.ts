@@ -8,6 +8,7 @@ export class ExternalIdentityRepository {
   constructor(
     @Inject(RLS_DB) private readonly db: Kysely<Record<string, never>>,
   ) {}
+
   async resolve(identity: VerifiedExternalIdentity, provision: boolean) {
     const result = await sql<{
       userId: string;

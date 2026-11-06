@@ -22,15 +22,18 @@ export async function identityApi(
           process.env.TEST_FIREBASE_PROJECT_ID ?? "lazyfinance-dev",
       }),
     );
+
   if (identities)
     builder.overrideProvider(FirebaseAuthService).useValue({
       verify: async (token: string) => {
         const identity = identities.get(token);
         if (!identity)
           throw new UnauthorizedException("Invalid Firebase ID token");
+
         return identity;
       },
     });
+
   const module = await builder.compile(),
     app = module.createNestApplication({ logger: false });
   await app.listen(0, "127.0.0.1");
@@ -44,6 +47,7 @@ export async function identityApi(
         }),
       ],
     });
+
   return {
     db,
     app,

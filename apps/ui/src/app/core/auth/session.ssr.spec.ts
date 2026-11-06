@@ -73,6 +73,7 @@ describe("Firebase protected SSR", () => {
         },
       ],
     });
+
     return renderApplication(
       (context) =>
         bootstrapApplication(
@@ -165,6 +166,7 @@ describe("Firebase protected SSR", () => {
           email: "second@example.com",
           name: "Second",
         };
+
       throw new Error("Invalid token");
     });
     const [first, second] = await Promise.all([

@@ -14,6 +14,7 @@ import { AuthService } from "./auth.service";
 @Router({ alias: "auth" })
 export class AuthRpc {
   constructor(@Inject(AuthService) private readonly auth: AuthService) {}
+
   @Query({
     input: RpcEmptySchema,
     output: AuthConfigSchema,
@@ -22,6 +23,7 @@ export class AuthRpc {
   config() {
     return this.auth.config();
   }
+
   @Mutation({
     input: MockLoginInputSchema,
     output: MockLoginResultSchema,
@@ -30,6 +32,7 @@ export class AuthRpc {
   loginMock(@Input() input: MockLoginInput) {
     return this.auth.loginMock(input);
   }
+
   @Query({
     input: RpcEmptySchema,
     output: AuthPrincipalSchema,

@@ -18,6 +18,7 @@ export const principal = {
   email: "demo@lazyfinance.cl",
   name: "Camila Rojas",
 };
+
 export const emptySummary = {
   month: "2026-09",
   receivedIncome: "0.00",
@@ -32,6 +33,7 @@ export const emptySummary = {
   },
   unclassifiedCredits: { amount: "0.00", count: 0 },
 };
+
 export const emptyComparison = {
   month: "2026-09",
   previousMonth: "2026-08",
@@ -40,11 +42,13 @@ export const emptyComparison = {
   spending: { current: "0.00", previous: "0.00", change: "0.00" },
   unresolvedMovementCount: { current: 0, previous: 0 },
 };
+
 export const tag = {
   id: "00000000-0000-4000-8000-000000000031",
   name: "Comida",
   color: "#22AA77",
 };
+
 export const movement = {
   id: "00000000-0000-4000-8000-000000000012",
   bookedAt: "2026-10-14T15:00:00.000Z",
@@ -70,16 +74,19 @@ export interface RpcCall {
   authorization: string | null;
   options?: RequestInit;
 }
+
 export type RpcHandler = (
   input: unknown,
   call: RpcCall,
 ) => unknown | Promise<unknown>;
+
 export type RpcHandlers = Record<string, RpcHandler>;
 
 export const rpcResponse = (data: unknown) =>
   new Response(JSON.stringify({ result: { data } }), {
     headers: { "content-type": "application/json" },
   });
+
 export function rpcFailure(
   code = "SERVICE_UNAVAILABLE",
   status = 503,
@@ -145,9 +152,12 @@ export function createRpcFetch(overrides: RpcHandlers = {}) {
     calls.push(call);
     const handler = handlers[procedure];
     if (!handler) throw new Error(`Unexpected test RPC: ${procedure}`);
+
     const value = await handler(input, call);
+
     return value instanceof Response ? value : rpcResponse(value);
   });
+
   return {
     fetch,
     handlers,
@@ -177,11 +187,14 @@ export function setupRpc(
     ],
   });
   const credentials = TestBed.inject(AuthCredentials);
+
   if (authenticated) credentials.accept(principal, "alice");
+
   const navigate = vi
     .spyOn(TestBed.inject(Router), "navigateByUrl")
     .mockResolvedValue(true);
   const session = TestBed.inject(SessionService);
+
   return {
     ...mock,
     credentials,
@@ -198,5 +211,6 @@ export function deferred<T>() {
     resolve = yes;
     reject = no;
   });
+
   return { promise, resolve, reject };
 }

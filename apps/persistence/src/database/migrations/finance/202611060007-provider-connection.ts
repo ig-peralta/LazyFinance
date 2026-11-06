@@ -22,6 +22,7 @@ export async function up(db: MigrationDatabase) {
   `.execute(db);
   await protectTable(db, "provider_connection", `user_id = ${currentUser}`);
 }
+
 export async function down(db: MigrationDatabase) {
   await sql`DROP TABLE finance.provider_connection; DROP TYPE finance.connection_status; DROP TYPE finance.connection_mode`.execute(
     db,

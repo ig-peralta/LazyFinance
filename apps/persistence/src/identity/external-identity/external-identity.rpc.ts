@@ -12,6 +12,7 @@ export class ExternalIdentityRpc {
     @Inject(ExternalIdentityRepository)
     private readonly repository: ExternalIdentityRepository,
   ) {}
+
   @Mutation({
     input: IdentityResolutionInputSchema,
     output: AuthPrincipalSchema,
@@ -23,6 +24,7 @@ export class ExternalIdentityRpc {
   ) {
     if (ctx.identity.kind !== "identity-bootstrap")
       throw new TRPCError({ code: "FORBIDDEN" });
+
     return this.repository.resolve(
       ctx.identity.identity,
       input.mode === "provision",

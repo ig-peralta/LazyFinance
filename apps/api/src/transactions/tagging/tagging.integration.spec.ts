@@ -27,6 +27,7 @@ async function withUsers(
   const f = await fixture(true),
     movementId = randomUUID(),
     otherMovementId = randomUUID();
+
   try {
     for (const [id, accountId] of [
       [movementId, f.accountId],
@@ -42,6 +43,7 @@ async function withUsers(
         description: "Groceries",
         isInternalMovement: false,
       });
+
     await work({
       ...f,
       movementId,
@@ -60,6 +62,7 @@ describe.skipIf(!integration)(
     it("supports manual/no-tag/reset decisions via public tRPC, rejects foreign ownership and audits once", async () => {
       await withUsers(async (f) => {
         const { app, client } = await startApi(f);
+
         try {
           const own = client(),
             other = client(f.otherToken);

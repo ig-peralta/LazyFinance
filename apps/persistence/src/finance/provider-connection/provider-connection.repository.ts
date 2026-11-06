@@ -17,9 +17,11 @@ import { TagRuleRepository } from "../tag-rule/tag-rule.repository";
 
 const keyOf = (account: string, movement: string) =>
   JSON.stringify([account, movement]);
+
 function invalid(message: string): never {
   throw new TRPCError({ code: "BAD_REQUEST", message });
 }
+
 const date = (value: string | null) =>
   value === null ? null : new Date(value);
 
@@ -42,8 +44,10 @@ export class ProviderConnectionRepository {
         code: "NOT_FOUND",
         message: "Banking connection not found",
       });
+
     return row;
   }
+
   private async state(id: string) {
     return this.db
       .selectFrom("finance.provider_sync_state")
@@ -51,12 +55,16 @@ export class ProviderConnectionRepository {
       .where("providerConnectionId", "=", id)
       .executeTakeFirstOrThrow();
   }
+
   async begin(connectionId: string, provider: string) {
     const connection = await this.connection(connectionId);
+
     if (connection.identifier !== provider)
       invalid("Connector does not match this connection");
+
     if (connection.status !== "active")
       invalid("Banking connection needs relinking");
+
     return this.db
       .insertInto("finance.provider_sync_state")
       .values({
@@ -71,12 +79,14 @@ export class ProviderConnectionRepository {
       .returningAll()
       .executeTakeFirstOrThrow();
   }
+
   async facts(scope: ProviderSyncScope) {
     const connection = await this.connection(scope.connectionId);
     const state = await this.state(scope.connectionId);
     if (state.revision !== scope.revision || connection.status !== "active") {
       throw new TRPCError({ code: "CONFLICT", message: "Sync was superseded" });
     }
+
     const keys = JSON.stringify(scope.keys);
     const accounts = await this.db
       .selectFrom("finance.account")
@@ -128,25 +138,30 @@ export class ProviderConnectionRepository {
         rules,
       }),
     );
+
     return { ...facts, fingerprint: fingerprint(facts) };
   }
+
   async commit(input: CommitProviderSync) {
     const { scope } = input;
     const connection = await this.connection(scope.connectionId);
     const state = await this.state(scope.connectionId);
     if (connection.status !== "active" || state.revision !== scope.revision)
       return { status: "superseded" as const };
+
     const facts = await this.facts(scope);
     if (facts.fingerprint !== input.expectedFingerprint)
       throw new TRPCError({
         code: "CONFLICT",
         message: "Sync inputs changed; prepare again",
       });
+
     if (
       state.lastProviderObservedAt &&
       new Date(input.observedAt) < state.lastProviderObservedAt
     )
       invalid("Provider returned an older snapshot");
+
     const accounts = new Map(
       facts.accounts
         .filter((row) => row.externalId !== null)
@@ -175,15 +190,19 @@ export class ProviderConnectionRepository {
       input.removals.map((row) => keyOf(row.accountExternalId, row.externalId)),
     );
     const rules = await this.tagging.matchingRules();
+
     for (const prepared of input.accounts) {
       const existing = accounts.get(prepared.externalId);
+
       if (existing && existing.id !== prepared.id)
         invalid("Account identity changed");
+
       if (
         existing &&
         (existing.type === "credit_card") !== (prepared.type === "credit_card")
       )
         invalid("Account balance meaning changed");
+
       if (
         new Date(prepared.providerObservedAt) > new Date(input.observedAt) ||
         (existing?.providerObservedAt &&
@@ -191,18 +210,21 @@ export class ProviderConnectionRepository {
             new Date(existing.providerObservedAt))
       )
         invalid("Stale account snapshot");
+
       if (
         existing?.lastSyncedAt &&
         prepared.lastSyncedAt &&
         new Date(prepared.lastSyncedAt) < new Date(existing.lastSyncedAt)
       )
         invalid("Stale reported balance");
+
       if (
         existing &&
         prepared.historyCompleteness === "unknown" &&
         existing.historyCompleteness !== "unknown"
       )
         invalid("Known account history cannot be discarded");
+
       const { id, externalId, providerObservedAt, lastSyncedAt, ...rest } =
         prepared;
       const fields = {
@@ -234,19 +256,28 @@ export class ProviderConnectionRepository {
         ProviderAccountRecordSchema.parse(wireValue(saved)),
       );
     }
+
     for (const prepared of input.movements) {
       const key = keyOf(prepared.accountExternalId, prepared.externalId);
+
       if (!keys.has(key)) invalid("Movement is outside the prepared scope");
+
       if (removed.has(key) || tombstones.has(key)) continue; // No implicit resurrection.
+
       const owner = accounts.get(prepared.accountExternalId);
+
       if (!owner) invalid("Movement references an unknown account");
+
       const previous = movements.get(key);
+
       if (
         previous &&
         (previous.id !== prepared.id || previous.source !== "provider")
       )
         invalid("Provider identity collides with an existing movement");
+
       if (previous?.removedAt) continue;
+
       if (
         new Date(prepared.providerObservedAt) > new Date(input.observedAt) ||
         (previous?.providerObservedAt &&
@@ -258,23 +289,27 @@ export class ProviderConnectionRepository {
             new Date(previous.providerUpdatedAt))
       )
         invalid("Stale movement snapshot");
+
       const effective =
         previous?.userInternalOverride ??
         (prepared.providerInternalAssessment === "unknown"
           ? null
           : prepared.providerInternalAssessment === "internal");
       const reasons: ProviderMovementConflictTable["reason"][] = [];
+
       if (
         previous?.userInternalOverride === false &&
         prepared.providerInternalAssessment === "internal"
       )
         reasons.push("internal_override_disagrees");
+
       if (
         previous &&
         receipts.has(previous.id) &&
         (prepared.type !== "credit" || effective !== false)
       )
         reasons.push("receipt_incompatible");
+
       const {
         accountExternalId: _,
         decision,
@@ -311,6 +346,7 @@ export class ProviderConnectionRepository {
             })
             .returningAll()
             .executeTakeFirstOrThrow();
+
       for (const reason of reasons)
         await this.conflict(
           id,
@@ -331,15 +367,19 @@ export class ProviderConnectionRepository {
           },
           prepared.providerObservedAt,
         );
+
       if (decision) await this.tagging.applyPrepared(saved, decision, rules);
     }
+
     for (const removal of input.removals) {
       const key = keyOf(removal.accountExternalId, removal.externalId);
+
       if (
         !keys.has(key) ||
         new Date(removal.observedAt) > new Date(input.observedAt)
       )
         invalid("Removal is outside the prepared scope");
+
       const tombstone = tombstones.get(key);
       await this.db
         .insertInto("finance.provider_movement_removal")
@@ -362,9 +402,12 @@ export class ProviderConnectionRepository {
         )
         .execute();
       const previous = movements.get(key);
+
       if (!previous || previous.removedAt) continue;
+
       if (previous.source !== "provider")
         invalid("Provider removal targets a manual movement");
+
       await this.db
         .updateTable("finance.transaction")
         .set({
@@ -376,6 +419,7 @@ export class ProviderConnectionRepository {
         })
         .where("id", "=", previous.id)
         .execute();
+
       if (receipts.has(previous.id))
         await this.conflict(
           previous.id,
@@ -385,6 +429,7 @@ export class ProviderConnectionRepository {
           removal.observedAt,
         );
     }
+
     const count = await this.db
       .selectFrom("finance.provider_movement_conflict as c")
       .innerJoin("finance.transaction as m", "m.id", "c.transactionId")
@@ -410,13 +455,16 @@ export class ProviderConnectionRepository {
       })
       .where("providerConnectionId", "=", scope.connectionId)
       .execute();
+
     return { status, conflictCount: count.count, checkpoint: input.checkpoint };
   }
+
   async failure(input: RecordProviderFailure) {
     const connection = await this.connection(input.connectionId);
     const state = await this.state(input.connectionId);
     if (connection.status !== "active" || state.revision !== input.revision)
       return { status: "superseded" as const };
+
     await this.db
       .updateTable("finance.provider_sync_state")
       .set({
@@ -426,18 +474,21 @@ export class ProviderConnectionRepository {
       })
       .where("providerConnectionId", "=", input.connectionId)
       .execute();
+
     if (input.reason === "revoked" || input.reason === "expired")
       await this.db
         .updateTable("finance.provider_connection")
         .set({ status: input.reason, updatedAt: sql<Date>`now()` })
         .where("id", "=", input.connectionId)
         .execute();
+
     return {
       status: "failed" as const,
       reason: input.reason,
       retryAfter: input.retryAfter,
     };
   }
+
   review() {
     return this.db
       .selectFrom("finance.provider_movement_conflict as c")
@@ -463,6 +514,7 @@ export class ProviderConnectionRepository {
       .limit(50001)
       .execute();
   }
+
   private conflict(
     transactionId: string,
     reason: ProviderMovementConflictTable["reason"],

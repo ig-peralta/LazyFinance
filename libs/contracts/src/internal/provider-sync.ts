@@ -10,24 +10,29 @@ const externalId = z
   .min(1)
   .max(512)
   .refine((value) => value.trim().length > 0);
+
 const money = z
   .string()
   .regex(/^-?(0|[1-9]\d{0,12})\.\d{2}$/)
   .refine((value) => value !== "-0.00");
+
 const instant = z.iso.datetime();
 // Compound resource bounds: a run is atomic, never silently split into commits.
 export const MAX_SYNC_RECORDS = 50000;
 export const MAX_NORMALIZED_SYNC_BYTES = 32 * 1024 * 1024;
 export const MAX_PERSISTENCE_RPC_BYTES = 64 * 1024 * 1024;
+
 export const ProviderMovementKeySchema = z.strictObject({
   accountExternalId: externalId,
   externalId,
 });
+
 export const ProviderConflictReasonSchema = z.enum([
   "receipt_incompatible",
   "internal_override_disagrees",
   "removed_confirmed_income",
 ]);
+
 export const ProviderAccountRecordSchema = z.object({
   id: z.uuid(),
   userId: z.uuid(),
@@ -49,6 +54,7 @@ export const ProviderAccountRecordSchema = z.object({
   createdAt: instant,
   updatedAt: instant,
 });
+
 export const ProviderSyncStateSchema = z.object({
   providerConnectionId: z.uuid(),
   checkpoint: externalId.nullable(),
@@ -64,10 +70,12 @@ export const ProviderSyncStateSchema = z.object({
     .nullable(),
   retryAfter: instant.nullable(),
 });
+
 export const BeginProviderSyncSchema = z.strictObject({
   connectionId: z.uuid(),
   provider: z.string().min(1).max(64),
 });
+
 export const ProviderSyncScopeSchema = z
   .strictObject({
     connectionId: z.uuid(),
@@ -83,6 +91,7 @@ export const ProviderSyncScopeSchema = z
       ).size === value.keys.length,
     "Duplicate movement keys",
   );
+
 export const ProviderRemovalRecordSchema = z.object({
   providerConnectionId: z.uuid(),
   accountExternalId: externalId,
@@ -91,6 +100,7 @@ export const ProviderRemovalRecordSchema = z.object({
   observedAt: instant,
   providerUpdatedAt: instant.nullable(),
 });
+
 export const ProviderSyncFactsSchema = z.object({
   state: ProviderSyncStateSchema,
   accounts: z.array(ProviderAccountRecordSchema).max(50000),
@@ -100,6 +110,7 @@ export const ProviderSyncFactsSchema = z.object({
   rules: z.array(MatchingRuleSchema).max(10000),
   fingerprint: z.string().regex(/^[a-f0-9]{64}$/),
 });
+
 export const PreparedProviderAccountSchema = z.strictObject({
   id: z.uuid(),
   externalId,
@@ -114,6 +125,7 @@ export const PreparedProviderAccountSchema = z.strictObject({
   balance: money.nullable(),
   lastSyncedAt: instant.nullable(),
 });
+
 export const PreparedProviderMovementSchema = z
   .strictObject({
     id: z.uuid(),
@@ -156,11 +168,13 @@ export const PreparedProviderMovementSchema = z
     (value) => (value.type === "debit") === value.amount.startsWith("-"),
     "Direction disagrees with amount",
   );
+
 export const PreparedProviderRemovalSchema = ProviderMovementKeySchema.extend({
   reason: z.enum(["removed", "reversed"]),
   observedAt: instant,
   providerUpdatedAt: instant.nullable(),
 });
+
 export const CommitProviderSyncSchema = z
   .strictObject({
     scope: ProviderSyncScopeSchema,
@@ -177,6 +191,7 @@ export const CommitProviderSyncSchema = z
       50000
     )
       ctx.addIssue({ code: "custom", message: "Sync exceeds record limit" });
+
     for (const [name, keys] of [
       ["accounts", value.accounts.map((row) => row.externalId)],
       [
@@ -200,6 +215,7 @@ export const CommitProviderSyncSchema = z
         });
     }
   });
+
 export const RecordProviderFailureSchema = z
   .strictObject({
     connectionId: z.uuid(),
@@ -209,6 +225,7 @@ export const RecordProviderFailureSchema = z
     retryAfter: instant.nullable(),
   })
   .refine((value) => value.reason === "retryable" || value.retryAfter === null);
+
 export const ProviderSyncOutcomeSchema = z.discriminatedUnion("status", [
   z.object({ status: z.literal("superseded") }),
   z.object({
@@ -222,6 +239,7 @@ export const ProviderSyncOutcomeSchema = z.discriminatedUnion("status", [
     checkpoint: externalId.nullable(),
   }),
 ]);
+
 export const ProviderReviewRecordsSchema = z
   .array(
     z.object({
@@ -240,14 +258,21 @@ export const ProviderReviewRecordsSchema = z
   .max(50000);
 
 export type ProviderAccountRecord = z.infer<typeof ProviderAccountRecordSchema>;
+
 export type ProviderSyncScope = z.infer<typeof ProviderSyncScopeSchema>;
+
 export type ProviderSyncFacts = z.infer<typeof ProviderSyncFactsSchema>;
+
 export type PreparedProviderAccount = z.infer<
   typeof PreparedProviderAccountSchema
 >;
+
 export type PreparedProviderMovement = z.infer<
   typeof PreparedProviderMovementSchema
 >;
+
 export type CommitProviderSync = z.infer<typeof CommitProviderSyncSchema>;
+
 export type RecordProviderFailure = z.infer<typeof RecordProviderFailureSchema>;
+
 export type ProviderSyncOutcome = z.infer<typeof ProviderSyncOutcomeSchema>;

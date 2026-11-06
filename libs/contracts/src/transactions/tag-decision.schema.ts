@@ -4,6 +4,7 @@ import { z } from "zod";
 export const ManualTagDecisionInputSchema = z
   .object({ tagId: z.uuid().nullable() })
   .strict();
+
 export type ManualTagDecisionInput = z.infer<
   typeof ManualTagDecisionInputSchema
 >;
@@ -15,4 +16,5 @@ export const TagDecisionSchema = z.object({
   ruleId: z.uuid().nullable(),
   decidedAt: z.iso.datetime().nullable(),
 });
+
 export type TagDecision = z.infer<typeof TagDecisionSchema>;

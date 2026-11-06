@@ -25,6 +25,7 @@ const account = (name: string) => ({
   balance: "10.00",
   lastSyncedAt: null,
 });
+
 const stable = () => TestBed.inject(ApplicationRef).whenStable();
 
 describe("feature resource and command lifetimes", () => {

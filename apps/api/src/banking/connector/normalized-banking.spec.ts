@@ -26,6 +26,7 @@ describe("provider-neutral banking connector contract", () => {
       ["savings-1", toCents("100.00")],
       ["card-1", toCents("0.00")],
     ]);
+
     for (const movement of page.movements) {
       startingBalances.set(
         movement.accountExternalId,
@@ -146,6 +147,7 @@ describe("provider-neutral banking connector contract", () => {
         if (pageCursor === "retry") return retryableFailure;
         if (pageCursor === "expired") return expiredFailure;
         if (pageCursor === "revoked") return revokedFailure;
+
         return pageCursor === null
           ? {
               ...initialPage,
@@ -170,6 +172,7 @@ describe("provider-neutral banking connector contract", () => {
     );
     expect(first.kind).toBe("page");
     if (first.kind !== "page") return;
+
     expect(first.complete).toBe(false);
     expect(first.checkpoint).toBeNull();
     const second = ConnectorResultSchema.parse(
@@ -177,6 +180,7 @@ describe("provider-neutral banking connector contract", () => {
     );
     expect(second.kind).toBe("page");
     if (second.kind !== "page") return;
+
     expect(second.complete).toBe(true);
     expect(second.checkpoint).toBe("through-2026-10-15");
     expect(first.movements.length + second.movements.length).toBe(
@@ -216,6 +220,7 @@ describe("provider-neutral banking connector contract", () => {
         NormalizedMovementSchema.safeParse({ ...purchase, amount }).success,
       ).toBe(false);
     }
+
     for (const booked of [
       {
         precision: "calendar_day",
@@ -308,6 +313,7 @@ describe("provider-neutral banking connector contract", () => {
     const page = ConnectorResultSchema.parse(unknownBalancePage);
     expect(page.kind).toBe("page");
     if (page.kind !== "page") return;
+
     expect(page.accounts[0].reportedBalance).toBeNull();
     expect(page.accounts[0].historyCoverage.completeness).toBe("unknown");
     expect(ConnectorResultSchema.parse(retryableFailure)).toEqual(

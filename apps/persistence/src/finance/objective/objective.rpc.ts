@@ -15,6 +15,7 @@ export class ObjectiveRpc {
     @Inject(ObjectiveRepository)
     private readonly repository: ObjectiveRepository,
   ) {}
+
   @Query({
     input: EmptyInputSchema,
     output: ObjectiveRecordsSchema,
@@ -23,6 +24,7 @@ export class ObjectiveRpc {
   async list() {
     return wireValue(await this.repository.list());
   }
+
   @Query({
     input: ObjectiveIdsInputSchema,
     output: ObjectiveTagRecordsSchema,

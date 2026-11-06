@@ -41,6 +41,7 @@ describe("Account resource view", () => {
     await fixture.whenStable();
     fixture.detectChanges();
     const text = fixture.nativeElement.textContent;
+
     for (const value of [
       "Cuenta corriente",
       "$125.000",

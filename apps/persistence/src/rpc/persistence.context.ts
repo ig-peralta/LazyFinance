@@ -11,19 +11,24 @@ export class PersistenceContext implements TRPCContext, OnModuleInit {
   private verifier?: ReturnType<typeof createContextVerifier>;
   private readonly publicKey: string;
   private readonly keyId: string;
+
   constructor() {
     const key = process.env.PERSISTENCE_RPC_PUBLIC_KEY;
     if (!key) throw new Error("PERSISTENCE_RPC_PUBLIC_KEY is required");
+
     this.publicKey = key;
     this.keyId = process.env.PERSISTENCE_RPC_KEY_ID ?? "primary";
   }
+
   private getVerifier() {
     this.verifier ??= createContextVerifier(this.publicKey, this.keyId);
     return this.verifier;
   }
+
   async onModuleInit() {
     await this.getVerifier();
   }
+
   async create({ req }: ContextOptions): Promise<PersistenceRequestContext> {
     try {
       return {

@@ -25,6 +25,7 @@ export class IncomeSourceRpc {
     @Inject(TransactionRepository)
     private readonly transactions: TransactionRepository,
   ) {}
+
   @Query({
     input: EmptyInputSchema,
     output: IncomeSourceRecordsSchema,
@@ -33,6 +34,7 @@ export class IncomeSourceRpc {
   async sources() {
     return wireValue(await this.repository.sources());
   }
+
   @Query({
     input: IdInputSchema,
     output: IncomeSourceRecordSchema,
@@ -41,6 +43,7 @@ export class IncomeSourceRpc {
   async source(@Input() input: { id: string }) {
     return wireValue(await this.repository.source(input.id));
   }
+
   @Mutation({
     input: IncomeSourceCreateSchema,
     output: IncomeSourceRecordSchema,
@@ -49,6 +52,7 @@ export class IncomeSourceRpc {
   async createSource(@Input() input: IncomeSourceInput) {
     return wireValue(await this.repository.create(input));
   }
+
   @Mutation({
     input: IncomeSourceUpdateSchema,
     output: IncomeSourceRecordSchema,
@@ -59,6 +63,7 @@ export class IncomeSourceRpc {
   ) {
     return wireValue(await this.repository.update(input.id, input.source));
   }
+
   @Mutation({
     input: AtIdInputSchema,
     output: IncomeSourceRecordSchema,
@@ -67,6 +72,7 @@ export class IncomeSourceRpc {
   async archiveSource(@Input() input: { id: string; at: string }) {
     return wireValue(await this.repository.archive(input.id, input.at));
   }
+
   @Query({
     input: PeriodInputSchema,
     output: IncomeFactsSchema,

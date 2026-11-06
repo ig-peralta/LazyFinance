@@ -44,6 +44,7 @@ export function createTagDecision(transaction: Signal<RecentTransaction>) {
     params: () => {
       const scope = rpc.authenticatedScope();
       const movement = transaction();
+
       return browser &&
         scope &&
         !movement.tag &&
@@ -60,8 +61,10 @@ export function createTagDecision(transaction: Signal<RecentTransaction>) {
     operation: (movement: RecentTransaction) => Promise<TagDecisionOutcome>,
   ): Promise<boolean> {
     if (current()?.pending) return false;
+
     const scope = rpc.authenticatedScope();
     if (!scope) return false;
+
     const movement = transaction();
     const state = {
       scope,
@@ -71,6 +74,7 @@ export function createTagDecision(transaction: Signal<RecentTransaction>) {
     };
     command.set(state);
     const finished = pendingTasks.add();
+
     try {
       const result = await operation(movement);
       if (
@@ -80,10 +84,13 @@ export function createTagDecision(transaction: Signal<RecentTransaction>) {
         movement.id !== transaction().id
       )
         return false;
+
       command.set({ ...state, pending: false, error: result.warning });
+
       return true;
     } catch (error) {
       if (command() !== state) return false;
+
       if (
         !isCancelled(error) &&
         !isUnauthorized(error) &&
@@ -98,6 +105,7 @@ export function createTagDecision(transaction: Signal<RecentTransaction>) {
       } else if (command() === state) {
         command.set(undefined);
       }
+
       return false;
     } finally {
       finished();

@@ -22,6 +22,7 @@ class PolicyProbe {
   missingMeta() {
     throw new Error("must not run");
   }
+
   @Query({
     input: RpcEmptySchema,
     output: RpcVoidSchema,
@@ -33,6 +34,7 @@ class PolicyProbe {
 }
 
 let app: INestApplication;
+
 beforeAll(async () => {
   const module = await Test.createTestingModule({
     imports: [AppModule],
@@ -59,6 +61,7 @@ beforeAll(async () => {
   app = module.createNestApplication({ logger: false });
   await app.init();
 });
+
 afterAll(async () => app?.close());
 
 it("denies absent metadata and unapproved anonymous procedures", async () => {
@@ -67,6 +70,7 @@ it("denies absent metadata and unapproved anonymous procedures", async () => {
       .get(`/trpc/policyProbe.${method}`)
       .expect(403);
 });
+
 it("rejects owner injection, hides private procedures and returns sanitized unavailability without a stack", async () => {
   await request(app.getHttpServer())
     .get("/trpc/accounts.list")
@@ -84,6 +88,7 @@ it("rejects owner injection, hides private procedures and returns sanitized unav
     /postgres|select |private key/i,
   );
 });
+
 it("matches the committed public generated procedure surface at runtime", () => {
   const generated = readFileSync(
     path.join(
@@ -94,11 +99,14 @@ it("matches the committed public generated procedure surface at runtime", () => 
   );
   let group = "";
   const expected: string[] = [];
+
   for (const line of generated.split("\n")) {
     group = /^ {2}(\w+): t\.router/.exec(line)?.[1] ?? group;
     const procedure = /^ {4}(\w+): publicProcedure/.exec(line)?.[1];
+
     if (procedure) expected.push(`${group}.${procedure}`);
   }
+
   const procedures = app.get(AppRouterHost).appRouter._def.procedures;
   expect(
     Object.keys(procedures)
@@ -107,6 +115,7 @@ it("matches the committed public generated procedure surface at runtime", () => 
   ).toEqual(expected.sort());
   expect(expected).toHaveLength(33);
 });
+
 it("exports precise types and rejects owner input/nonexistent procedures at compile time", () => {
   type Input = inferRouterInputs<ApiRouter>;
   type Output = inferRouterOutputs<ApiRouter>;

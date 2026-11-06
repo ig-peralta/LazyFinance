@@ -25,6 +25,7 @@ export class ObjectivesService {
       rows.map(({ id }) => id),
     );
     const tagsByObjective = new Map<string, ObjectiveSummary["tags"]>();
+
     for (const { objectiveId, ...tag } of links) {
       const items = tagsByObjective.get(objectiveId) ?? [];
       items.push(tag);
@@ -46,6 +47,7 @@ export class ObjectivesService {
   ): Promise<BudgetProgress[]> {
     const objectives = await this.objectives.listForUser(userId);
     if (objectives.length === 0) return [];
+
     const links = await this.tags.listForObjectives(
       userId,
       objectives.map(({ id }) => id),
@@ -57,6 +59,7 @@ export class ObjectivesService {
           .filter((link) => link.objectiveId === objective.id)
           .map(({ id }) => id),
       );
+
       return window && tagIds.size ? [{ objective, window, tagIds }] : [];
     });
     if (candidates.length === 0) return [];
@@ -74,17 +77,22 @@ export class ObjectivesService {
 
     return candidates.map(({ objective, window, tagIds }) => {
       let spent = 0n;
+
       for (const transaction of transactions) {
         const date = santiagoTimestamp(transaction.bookedAt);
+
         if (
           !tagIds.has(transaction.tagId) ||
           date < window.start ||
           date >= window.end
         )
           continue;
+
         spent -= toCents(transaction.amount);
       }
+
       const limit = toCents(objective.amount);
+
       return {
         id: objective.id,
         name: objective.name,

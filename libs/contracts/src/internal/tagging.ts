@@ -6,10 +6,12 @@ import {
 
 export const TagCreateSchema = TagCreateInputSchema;
 export const TagRuleCreateSchema = TagRuleInputSchema;
+
 export const TagRuleReplaceSchema = z.strictObject({
   id: z.uuid(),
   rule: TagRuleInputSchema,
 });
+
 export const TagRuleRecordSchema = z.object({
   id: z.uuid(),
   userId: z.uuid(),
@@ -25,10 +27,13 @@ export const TagRuleRecordSchema = z.object({
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });
+
 export const TagRuleRecordsSchema = z.array(TagRuleRecordSchema).max(10000);
+
 export const MatchingRuleSchema = TagRuleRecordSchema.extend({
   tagName: z.string(),
 });
+
 export const TransactionRecordSchema = z.object({
   id: z.uuid(),
   accountId: z.uuid(),
@@ -66,29 +71,35 @@ export const TransactionRecordSchema = z.object({
   removalReason: z.enum(["removed", "reversed"]).nullable(),
   createdAt: z.iso.datetime(),
 });
+
 export const TaggingFactsSchema = z.object({
   movement: TransactionRecordSchema,
   rules: z.array(MatchingRuleSchema).max(10000),
 });
+
 export const ManualTagCommandSchema = z.strictObject({
   transactionId: z.uuid(),
   tagId: z.uuid().nullable(),
 });
+
 export const RuleCandidatesInputSchema = z.strictObject({
   ruleId: z.uuid(),
   after: z.uuid().optional(),
 });
+
 export const RuleCandidatesSchema = z.object({
   rule: TagRuleRecordSchema,
   rules: z.array(MatchingRuleSchema).max(10000),
   movements: z.array(TransactionRecordSchema).max(1001),
   fingerprint: z.string().regex(/^[a-f0-9]{64}$/),
 });
+
 export const PreparedTagDecisionSchema = z.strictObject({
   transactionId: z.uuid(),
   tagId: z.uuid().nullable(),
   ruleId: z.uuid().nullable(),
 });
+
 export const CommitRuleDecisionsSchema = z
   .strictObject({
     ruleId: z.uuid(),
@@ -102,11 +113,17 @@ export const CommitRuleDecisionsSchema = z
       value.decisions.length,
     "Duplicate movement decisions",
   );
+
 export const ChangedCountSchema = z.object({
   changed: z.number().int().nonnegative(),
 });
+
 export type TagRuleRecord = z.infer<typeof TagRuleRecordSchema>;
+
 export type MatchingRule = z.infer<typeof MatchingRuleSchema>;
+
 export type TransactionRecord = z.infer<typeof TransactionRecordSchema>;
+
 export type RuleCandidatesInput = z.infer<typeof RuleCandidatesInputSchema>;
+
 export type CommitRuleDecisions = z.infer<typeof CommitRuleDecisionsSchema>;

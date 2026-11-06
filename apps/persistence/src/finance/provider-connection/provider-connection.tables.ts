@@ -10,6 +10,7 @@ export interface ProviderConnectionTable {
   createdAt: Generated<Date>;
   updatedAt: Generated<Date>;
 }
+
 export type ProviderConnectionTables = {
   "finance.provider_connection": ProviderConnectionTable;
 };

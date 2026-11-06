@@ -43,6 +43,7 @@ describe("Objective resource view", () => {
     await fixture.whenStable();
     fixture.detectChanges();
     const text = fixture.nativeElement.textContent;
+
     for (const value of [
       "Presupuestos de gasto",
       "Supermercado",
@@ -55,6 +56,7 @@ describe("Objective resource view", () => {
       "$6.500.000",
     ])
       expect(text).toContain(value);
+
     expect(text).not.toContain("%");
     expect(TestBed.inject(TransferState).toJson()).toBe("{}");
   });

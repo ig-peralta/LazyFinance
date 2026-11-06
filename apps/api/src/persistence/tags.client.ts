@@ -6,9 +6,11 @@ import { PersistenceClient } from "./persistence.client";
 @Injectable()
 export class TagClient {
   constructor(private readonly persistence: PersistenceClient) {}
+
   listForObjectives(userId: string, ids: string[]) {
     return this.persistence.user(userId).objectives.tags.query({ ids });
   }
+
   async sumDebitsByTagForMonth(userId: string, month: string, asOf?: Date) {
     const client = this.persistence.user(userId);
     const [tags, groups] = await Promise.all([
@@ -19,6 +21,7 @@ export class TagClient {
       }),
     ]);
     const amounts = new Map<string, { cents: bigint; count: number }>();
+
     for (const row of groups)
       if (
         row.tagId &&
@@ -31,6 +34,7 @@ export class TagClient {
         total.count += row.count;
         amounts.set(row.tagId, total);
       }
+
     return tags
       .flatMap(({ isArchived: _, ...tag }) => {
         const amount = amounts.get(tag.id);

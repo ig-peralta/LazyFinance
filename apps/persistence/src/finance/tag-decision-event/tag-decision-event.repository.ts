@@ -13,6 +13,7 @@ export class TagDecisionEventRepository {
   constructor(
     @Inject(RLS_DB) private readonly db: Kysely<TagDecisionEventTables>,
   ) {}
+
   record(
     previous: Selectable<TransactionTable>,
     tagId: string | null,

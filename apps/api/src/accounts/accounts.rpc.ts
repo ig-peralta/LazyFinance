@@ -10,6 +10,7 @@ export class AccountsRpc {
   constructor(
     @Inject(AccountsService) private readonly service: AccountsService,
   ) {}
+
   @Query({
     input: RpcEmptySchema,
     output: AccountsResultSchema,

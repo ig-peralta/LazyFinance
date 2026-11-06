@@ -10,6 +10,7 @@ export async function up(db: MigrationDatabase) {
   GRANT SELECT ON finance.provider TO lazyfinance_runtime;
   `.execute(db);
 }
+
 export async function down(db: MigrationDatabase) {
   await db.schema.dropTable("finance.provider").execute();
 }

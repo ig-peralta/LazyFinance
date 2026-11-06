@@ -20,6 +20,7 @@ describe("app-wide service initialization", () => {
     const getAuthConfig = vi.fn(async (): Promise<AuthConfig> => {
       order.push("config");
       if (failConfig) throw new Error("API unavailable");
+
       return { provider };
     });
     const init = vi.fn(async () => {
@@ -42,6 +43,7 @@ describe("app-wide service initialization", () => {
         },
       ],
     });
+
     return {
       order,
       getAuthConfig,

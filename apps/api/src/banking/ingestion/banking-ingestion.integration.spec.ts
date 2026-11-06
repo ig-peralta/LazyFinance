@@ -22,6 +22,7 @@ const connector = (result: ConnectorResult): BankingConnector => ({
   provider: "fixture-bank",
   fetchPage: vi.fn(async () => result),
 });
+
 async function withConnection(
   work: (
     f: Fixture & {
@@ -31,6 +32,7 @@ async function withConnection(
   ) => Promise<void>,
 ) {
   const f = await fixture();
+
   try {
     await work({
       ...f,
@@ -41,6 +43,7 @@ async function withConnection(
     await f.db.close();
   }
 }
+
 async function account(f: Fixture, external = "checking-1") {
   return (
     await f.db.rows("account", {
@@ -49,6 +52,7 @@ async function account(f: Fixture, external = "checking-1") {
     })
   )[0];
 }
+
 async function movement(
   f: Fixture,
   external: string,
@@ -61,6 +65,7 @@ async function movement(
     })
   )[0];
 }
+
 async function confirmSalary(f: Fixture) {
   const salary = await movement(f, "salary-1");
   await f.db.update("transaction", salary.id, {
@@ -77,6 +82,7 @@ async function confirmSalary(f: Fixture) {
   await income.confirmReceiptForUser(f.userId, salary.id, {
     sourceId: source.id,
   });
+
   return { salary, source, income };
 }
 

@@ -9,12 +9,15 @@ function files(directory) {
 }
 
 const errors = [];
+
 const databasePackages =
   /^(?:drizzle-orm|drizzle-kit|postgres|pg|kysely)(?:\/|$)/;
+
 for (const file of files("apps/api/src").filter(
   (name) => name.endsWith(".ts") && !name.endsWith(".spec.ts"),
 )) {
   const text = readFileSync(file, "utf8");
+
   for (const [, name] of text.matchAll(/from\s+['"]([^'"]+)['"]/g)) {
     if (
       databasePackages.test(name) ||
@@ -23,26 +26,33 @@ for (const file of files("apps/api/src").filter(
     )
       errors.push(`${file}: API database/cross-application dependency`);
   }
+
   if (/process\.env\.(?:PGHOST|PGUSER|PGPASSWORD|DATABASE_URL)/.test(text))
     errors.push(`${file}: API database environment`);
 }
+
 for (const file of files("apps/persistence/src").filter((name) =>
   name.endsWith(".ts"),
 )) {
   const text = readFileSync(file, "utf8");
+
   if (
     /from\s+['"](?:drizzle-orm|postgres(?:\/|['"])|[^'"]*apps\/api)/.test(text)
   )
     errors.push(`${file}: old persistence/application dependency`);
+
   const databaseInfrastructure =
     file.includes("/database/") || file.endsWith("/rpc/rls.middleware.ts");
+
   if (
     !databaseInfrastructure &&
     /RUNTIME_DB|createDatabase|from ['"]pg['"]/.test(text)
   )
     errors.push(`${file}: raw pool outside database infrastructure`);
+
   if (!file.includes("/database/") && /sql\.raw\(/.test(text))
     errors.push(`${file}: runtime dynamic SQL`);
+
   if (
     !file.endsWith(".spec.ts") &&
     /(?:selectFrom|insertInto|updateTable|deleteFrom)\(['"](?!identity\.|finance\.)/.test(
@@ -51,21 +61,25 @@ for (const file of files("apps/persistence/src").filter((name) =>
   )
     errors.push(`${file}: unqualified application table`);
 }
+
 for (const file of files("apps/ui/src").filter((name) =>
   name.endsWith(".ts"),
 )) {
   const text = readFileSync(file, "utf8");
+
   if (
     /@lazyfinance\/(?:rpc-persistence|rpc-auth|contracts\/internal)|from ['"](?:@nestjs\/|pg['"]|kysely['"]|firebase-admin)/.test(
       text,
     )
   )
     errors.push(`${file}: UI imports a private/server package`);
+
   if (!file.endsWith(".spec.ts")) {
     if (/HttpErrorResponse|firstValueFrom/.test(text))
       errors.push(
         `${file}: obsolete HTTP/Observable compatibility in UI data access`,
       );
+
     if (
       (file.includes("/features/") || file.includes("/pages/dashboard/")) &&
       /TransferState|makeStateKey/.test(text)
@@ -75,6 +89,7 @@ for (const file of files("apps/ui/src").filter((name) =>
       );
   }
 }
+
 for (const file of files("libs/contracts/src").filter((name) =>
   name.endsWith(".ts"),
 )) {
@@ -87,6 +102,7 @@ for (const file of files("libs/contracts/src").filter((name) =>
       `${file}: contract depends on transport/database implementation`,
     );
 }
+
 for (const app of ["api", "persistence"]) {
   for (const file of files(`apps/${app}/src`).filter((name) =>
     name.endsWith(".rpc.ts"),
@@ -106,13 +122,16 @@ for (const app of ["api", "persistence"]) {
         errors.push(`${file}: missing explicit schema/context metadata`);
     }
   }
+
   const pkg = JSON.parse(readFileSync(`apps/${app}/package.json`, "utf8"));
+
   for (const name of Object.keys({
     ...pkg.dependencies,
     ...pkg.devDependencies,
   })) {
     if (["drizzle-orm", "drizzle-kit", "postgres"].includes(name))
       errors.push(`${app}: obsolete database dependency ${name}`);
+
     if (
       app === "api" &&
       name in pkg.dependencies &&
@@ -121,7 +140,9 @@ for (const app of ["api", "persistence"]) {
       errors.push(`api: database runtime dependency ${name}`);
   }
 }
+
 if (errors.length) throw new Error(errors.join("\n"));
+
 console.log(
   "API, persistence, contract, generated-schema and browser boundaries OK.",
 );

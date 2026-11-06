@@ -13,6 +13,7 @@ export function santiagoParts(date: Date) {
   const parts = formatter.formatToParts(date);
   const part = (kind: string) =>
     parts.find((item) => item.type === kind)!.value;
+
   return {
     year: part("year"),
     month: part("month"),

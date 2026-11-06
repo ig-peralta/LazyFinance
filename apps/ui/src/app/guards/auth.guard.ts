@@ -14,6 +14,7 @@ export const authGuard: CanActivateFn = (_route, state) => {
           queryParams: { redirect: state.url },
         });
   if (!session.isResolving()) return check();
+
   return toObservable(session.isResolving).pipe(
     filter((resolving) => !resolving),
     take(1),

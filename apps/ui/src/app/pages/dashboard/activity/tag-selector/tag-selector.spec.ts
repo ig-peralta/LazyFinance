@@ -28,6 +28,7 @@ function setup(
   const fixture = TestBed.createComponent(TransactionTagSelector);
   fixture.componentRef.setInput("transaction", transaction);
   fixture.detectChanges();
+
   return { ...rpc, fixture, tagging: TestBed.inject(TaggingData) };
 }
 

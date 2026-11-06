@@ -40,6 +40,7 @@ export async function up(db: MigrationDatabase) {
   GRANT EXECUTE ON FUNCTION identity.resolve_external_identity(text,text,text,text,text,boolean) TO lazyfinance_runtime;
   `.execute(db);
 }
+
 export async function down(db: MigrationDatabase) {
   await sql`DROP FUNCTION identity.resolve_external_identity(text,text,text,text,text,boolean)`.execute(
     db,

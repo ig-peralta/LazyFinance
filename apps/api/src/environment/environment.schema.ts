@@ -38,6 +38,7 @@ export const ENV_SCHEMA = z
         path: ["AUTH_PROVIDER"],
       });
     }
+
     if (values.AUTH_PROVIDER === "firebase" && !values.FIREBASE_PROJECT_ID) {
       context.addIssue({
         code: "custom",
@@ -45,8 +46,10 @@ export const ENV_SCHEMA = z
         path: ["FIREBASE_PROJECT_ID"],
       });
     }
+
     const hasEmail = values.FIREBASE_CLIENT_EMAIL !== undefined;
     const hasKey = values.FIREBASE_PRIVATE_KEY !== undefined;
+
     if (hasEmail !== hasKey) {
       context.addIssue({
         code: "custom",
@@ -55,6 +58,7 @@ export const ENV_SCHEMA = z
         path: ["FIREBASE_PRIVATE_KEY"],
       });
     }
+
     if ((hasEmail || hasKey) && !values.FIREBASE_PROJECT_ID) {
       context.addIssue({
         code: "custom",

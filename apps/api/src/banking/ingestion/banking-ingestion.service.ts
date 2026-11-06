@@ -23,6 +23,7 @@ const MAX_PAGES = 100;
 @Injectable()
 export class BankingIngestionService {
   constructor(private readonly persistence: PersistenceClient) {}
+
   /** Provider calls and every financial/tagging calculation run outside SQL transactions. */
   async syncForUser(
     userId: string,
@@ -48,9 +49,12 @@ export class BankingIngestionService {
         retryAfter: value.retryAfter,
       });
     if ("failure" in fetched) return failure(fetched.failure);
+
     const scope = syncScope(connectionId, state.revision, fetched.pages);
+
     for (let attempt = 0; ; attempt++) {
       let facts: ProviderSyncFacts;
+
       try {
         facts = await client.providerSync.facts.query(scope);
       } catch (error) {
@@ -58,8 +62,10 @@ export class BankingIngestionService {
           return { status: "superseded" };
         if (persistenceException(error)?.getStatus() === 413)
           return failure(this.invalidData());
+
         throw error;
       }
+
       try {
         const prepared = prepareSync(scope, facts, fetched.pages);
         if (
@@ -67,6 +73,7 @@ export class BankingIngestionService {
           MAX_PERSISTENCE_RPC_BYTES
         )
           throw new InvalidBatchError("Prepared sync exceeds transport budget");
+
         return await client.providerSync.commit.mutate(prepared);
       } catch (error) {
         if (
@@ -79,9 +86,11 @@ export class BankingIngestionService {
       }
     }
   }
+
   listPendingReviewForUser(userId: string) {
     return this.persistence.user(userId).providerSync.review.query();
   }
+
   private invalidData(): ConnectorFailure {
     return {
       kind: "failure",
@@ -90,6 +99,7 @@ export class BankingIngestionService {
       retryAfter: null,
     };
   }
+
   private async fetchPages(
     connector: BankingConnector,
     connectionId: string,
@@ -100,6 +110,7 @@ export class BankingIngestionService {
     let pageCursor: string | null = null,
       records = 0,
       bytes = 0;
+
     for (let i = 0; i < MAX_PAGES; i++) {
       try {
         const parsed = ConnectorResultSchema.safeParse(
@@ -107,12 +118,14 @@ export class BankingIngestionService {
         );
         if (!parsed.success) return { failure: this.invalidData() };
         if (parsed.data.kind === "failure") return { failure: parsed.data };
+
         const page = parsed.data;
         if (
           pages.length &&
           new Date(page.observedAt) < new Date(pages.at(-1)!.observedAt)
         )
           return { failure: this.invalidData() };
+
         records +=
           page.accounts.length +
           page.movements.length +
@@ -120,10 +133,12 @@ export class BankingIngestionService {
         bytes += Buffer.byteLength(JSON.stringify(page));
         if (records > MAX_SYNC_RECORDS || bytes > MAX_NORMALIZED_SYNC_BYTES)
           return { failure: this.invalidData() };
+
         pages.push(page);
         if (page.complete) return { pages };
         if (page.nextCursor === null || seen.has(page.nextCursor))
           return { failure: this.invalidData() };
+
         seen.add(page.nextCursor);
         pageCursor = page.nextCursor;
       } catch {
@@ -137,6 +152,7 @@ export class BankingIngestionService {
         };
       }
     }
+
     return { failure: this.invalidData() };
   }
 }

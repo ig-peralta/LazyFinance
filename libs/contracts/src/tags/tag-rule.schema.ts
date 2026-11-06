@@ -33,6 +33,7 @@ export const TagRuleInputSchema = z
   });
 
 export type TagCreateInput = z.infer<typeof TagCreateInputSchema>;
+
 export type TagRuleInput = z.infer<typeof TagRuleInputSchema>;
 
 export const TagSuggestionSchema = z.object({
@@ -43,4 +44,5 @@ export const TagSuggestionSchema = z.object({
   reason: z.enum(["merchant_exact", "description_exact"]),
   autoApply: z.boolean(),
 });
+
 export type TagSuggestion = z.infer<typeof TagSuggestionSchema>;

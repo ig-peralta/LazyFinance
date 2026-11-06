@@ -17,6 +17,7 @@ export class ObjectivesRpc {
   constructor(
     @Inject(ObjectivesService) private readonly service: ObjectivesService,
   ) {}
+
   @Query({
     input: RpcEmptySchema,
     output: ObjectivesResultSchema,
@@ -25,6 +26,7 @@ export class ObjectivesRpc {
   list(@Ctx() ctx: ApiRequestContext) {
     return this.service.getForUser(rpcUser(ctx));
   }
+
   @Query({
     input: RpcMonthSchema,
     output: BudgetProgressResultSchema,

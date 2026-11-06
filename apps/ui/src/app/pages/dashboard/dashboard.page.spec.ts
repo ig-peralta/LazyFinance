@@ -15,6 +15,7 @@ describe("DashboardPage data ownership", () => {
     await fixture.whenStable();
     fixture.detectChanges();
     const text = fixture.nativeElement.textContent;
+
     for (const value of [
       "Hola, Camila Rojas",
       "Cuentas",
@@ -25,7 +26,9 @@ describe("DashboardPage data ownership", () => {
       "Avance de presupuestos",
     ])
       expect(text).toContain(value);
+
     expect(text).not.toContain("Ingresos");
+
     for (const procedure of [
       "accounts.list",
       "transactions.recent",
@@ -43,6 +46,7 @@ describe("DashboardPage data ownership", () => {
     fixture.detectChanges();
     expect(callsTo("summaries.monthly")).toHaveLength(2);
     expect(callsTo("objectives.progress")).toHaveLength(2);
+
     for (const procedure of [
       "accounts.list",
       "transactions.recent",
@@ -50,6 +54,7 @@ describe("DashboardPage data ownership", () => {
       "summaries.comparison",
     ])
       expect(callsTo(procedure)).toHaveLength(1);
+
     expect(TestBed.inject(TransferState).toJson()).toBe("{}");
   });
 });

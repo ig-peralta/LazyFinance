@@ -36,6 +36,7 @@ export async function provisionRuntime(
   }
   if (password.length < 16)
     throw new Error("Runtime password must contain at least 16 characters");
+
   return database.transaction().execute(async (tx) => {
     await sql`select pg_advisory_xact_lock(hashtextextended('lazyfinance:provision-runtime', 0))`.execute(
       tx,
@@ -58,12 +59,15 @@ export async function provisionRuntime(
     if (existing) {
       if (!existing.managed || !existing.safe)
         throw new Error("Refusing to alter an existing unmanaged/unsafe login");
+
       return { created: false };
     }
+
     await sql`create role ${sql.id(login)} login inherit nosuperuser nobypassrls nocreatedb nocreaterole noreplication password ${sql.lit(password)}`.execute(
       tx,
     );
     await sql`grant lazyfinance_runtime to ${sql.id(login)}`.execute(tx);
+
     return { created: true };
   });
 }

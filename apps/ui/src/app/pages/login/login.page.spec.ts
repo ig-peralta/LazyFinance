@@ -31,6 +31,7 @@ function setup(
   const loginWithToken = vi.fn(async () => {
     user.set(principal);
     active.set(true);
+
     return principal;
   });
   const clear = vi.fn(() => {
@@ -41,10 +42,12 @@ function setup(
   const loginWithGoogle = vi.fn(async () => {
     user.set(principal);
     active.set(true);
+
     return principal;
   });
   const getAuthConfig = vi.fn(async () => {
     if (failConfig) throw new Error("offline");
+
     return { provider };
   });
   const loginMock = vi.fn(async () => ({ token: "mock-session-token" }));
@@ -78,6 +81,7 @@ function setup(
     .mockResolvedValue(true);
   const fixture = TestBed.createComponent(LoginPage);
   fixture.detectChanges();
+
   return {
     fixture,
     active,

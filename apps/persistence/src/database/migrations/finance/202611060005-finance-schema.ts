@@ -8,6 +8,7 @@ export async function up(db: MigrationDatabase) {
     REVOKE CREATE ON SCHEMA public FROM PUBLIC;
   `.execute(db);
 }
+
 export async function down(): Promise<never> {
   throw new Error("Finance schema requires explicit recovery");
 }

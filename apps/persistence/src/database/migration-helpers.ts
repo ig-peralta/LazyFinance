@@ -29,6 +29,7 @@ export async function protectTable(
       `CREATE POLICY user_insert ON finance."${table}" FOR INSERT TO lazyfinance_runtime WITH CHECK (${writable})`,
     )
     .execute(db);
+
   if (!appendOnly) {
     await sql
       .raw(
@@ -41,6 +42,7 @@ export async function protectTable(
       )
       .execute(db);
   }
+
   const actions = appendOnly
     ? "SELECT, INSERT"
     : "SELECT, INSERT, UPDATE, DELETE";
@@ -51,13 +53,18 @@ export async function protectTable(
 
 export const ownedAccount = (expression: string) =>
   `EXISTS (SELECT 1 FROM finance.account a WHERE a.id = ${expression} AND a.user_id = ${currentUser})`;
+
 export const ownedTag = (expression: string) =>
   `EXISTS (SELECT 1 FROM finance.tag t WHERE t.id = ${expression} AND t.user_id = ${currentUser})`;
+
 export const ownedRule = (expression: string) =>
   `EXISTS (SELECT 1 FROM finance.tag_rule r WHERE r.id = ${expression} AND r.user_id = ${currentUser})`;
+
 export const ownedMovement = (expression: string) =>
   `EXISTS (SELECT 1 FROM finance."transaction" m WHERE m.id = ${expression} AND ${ownedAccount("m.account_id")})`;
+
 export const ownedConnection = (expression: string) =>
   `EXISTS (SELECT 1 FROM finance.provider_connection c WHERE c.id = ${expression} AND c.user_id = ${currentUser})`;
+
 export const ownedSource = (expression: string) =>
   `EXISTS (SELECT 1 FROM finance.income_source s WHERE s.id = ${expression} AND s.user_id = ${currentUser})`;

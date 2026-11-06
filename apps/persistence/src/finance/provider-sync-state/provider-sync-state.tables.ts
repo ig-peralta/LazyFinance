@@ -18,6 +18,7 @@ export interface ProviderSyncStateTable {
     | null;
   retryAfter: Date | null;
 }
+
 export type ProviderSyncStateTables = {
   "finance.provider_sync_state": ProviderSyncStateTable;
 };

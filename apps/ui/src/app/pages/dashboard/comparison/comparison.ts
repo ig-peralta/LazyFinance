@@ -21,6 +21,7 @@ export class Comparison {
   protected change(amount: string, noun: string): string {
     const value = Number(amount);
     if (value === 0) return `${noun} sin cambios`;
+
     return `${formatClp(Math.abs(value))} ${value > 0 ? "más" : "menos"}`;
   }
 }

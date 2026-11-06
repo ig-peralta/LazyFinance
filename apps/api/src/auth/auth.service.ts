@@ -30,10 +30,13 @@ export class AuthService {
 
   async loginMock(body: unknown): Promise<MockLoginResult> {
     if (this.config().provider !== "mock") throw new NotFoundException();
+
     const parsed = MockLoginInputSchema.safeParse(body);
     if (!parsed.success) throw new BadRequestException("Invalid login request");
+
     const result = await this.mock.login(parsed.data);
     await this.identities.resolveExisting(this.mock.verify(result.token));
+
     return result;
   }
 

@@ -8,6 +8,7 @@ export class Summary {
   private readonly data = inject(SummariesData);
   protected readonly summary = this.data.monthly;
   protected readonly period = computed(() => monthLabel(this.data.month()));
+
   protected readonly tagBars = computed(() => {
     const tags = this.summary.hasValue() ? [...this.summary.value().tags] : [];
     tags.sort(
@@ -16,6 +17,7 @@ export class Summary {
         left.name.localeCompare(right.name),
     );
     const maximum = Number(tags[0]?.amount ?? 0);
+
     return tags.map((tag) => ({
       ...tag,
       width:

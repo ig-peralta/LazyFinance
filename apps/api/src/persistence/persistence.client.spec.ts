@@ -15,6 +15,7 @@ function client(key: string) {
 }
 
 afterEach(() => vi.unstubAllEnvs());
+
 describe("persistence signing-key readiness", () => {
   it("rejects malformed keys through awaited initialization, not an unobserved constructor promise", async () => {
     const service = client("not a PKCS8 key");

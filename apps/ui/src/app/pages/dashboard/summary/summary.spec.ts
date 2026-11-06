@@ -23,6 +23,7 @@ describe("Summary resource view", () => {
     await fixture.whenStable();
     fixture.detectChanges();
     const text = fixture.nativeElement.textContent;
+
     for (const value of [
       "Gastos ·",
       "$20.000",
@@ -32,6 +33,7 @@ describe("Summary resource view", () => {
       "compras sin etiqueta",
     ])
       expect(text).toContain(value);
+
     expect(text).not.toContain("Ingresos");
     const items = fixture.nativeElement.querySelectorAll("figure ol li");
     expect(items[0].textContent).toContain("Ocio");

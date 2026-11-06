@@ -16,6 +16,7 @@ const limits = vi.hoisted(() => ({
   normalized: 32 * 1024 * 1024,
   prepared: 64 * 1024 * 1024,
 }));
+
 vi.mock("@lazyfinance/contracts/internal", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@lazyfinance/contracts/internal")>()),
   get MAX_NORMALIZED_SYNC_BYTES() {
@@ -25,6 +26,7 @@ vi.mock("@lazyfinance/contracts/internal", async (importOriginal) => ({
     return limits.prepared;
   },
 }));
+
 afterEach(() => {
   limits.normalized = 32 * 1024 * 1024;
   limits.prepared = 64 * 1024 * 1024;
@@ -36,7 +38,9 @@ const page = (): ConnectorPage => ({
   movements: [initialPage.movements[1]],
   removedMovements: [],
 });
+
 const bytes = (value: unknown) => Buffer.byteLength(JSON.stringify(value));
+
 function setup(pages = [page()]) {
   const connectionId = randomUUID();
   const facts: ProviderSyncFacts = {
@@ -82,6 +86,7 @@ function setup(pages = [page()]) {
   const service = new BankingIngestionService({
     user: () => ({ providerSync: rpc }),
   } as unknown as PersistenceClient);
+
   return {
     rpc,
     fetchPage,
@@ -94,6 +99,7 @@ function setup(pages = [page()]) {
       }),
   };
 }
+
 function pagination(count: number): ConnectorPage[] {
   return Array.from({ length: count }, (_, index) => ({
     ...page(),

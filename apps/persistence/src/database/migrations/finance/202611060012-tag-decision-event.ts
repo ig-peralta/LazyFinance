@@ -31,6 +31,7 @@ export async function up(db: MigrationDatabase) {
     true,
   );
 }
+
 export async function down(db: MigrationDatabase) {
   await sql`DROP TABLE finance.tag_decision_event; DROP TYPE finance.tag_decision_event_kind`.execute(
     db,

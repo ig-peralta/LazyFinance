@@ -10,15 +10,18 @@ async function main() {
   const url = process.env.POSTGRES_MIGRATION_URL;
   if (!url)
     throw new Error("POSTGRES_MIGRATION_URL is required by the owner-only CLI");
+
   const db = createDatabase<FinanceTables & IdentityTables>(
     url,
     process.argv[2] === "seed",
   );
+
   try {
     switch (process.argv[2]) {
       case "migrate":
         for (const result of (await migrate(db)) ?? [])
           console.log(`${result.status}: ${result.migrationName}`);
+
         break;
       case "provision": {
         const login = process.env.PERSISTENCE_DATABASE_USER;
@@ -27,6 +30,7 @@ async function main() {
           throw new Error(
             "PERSISTENCE_DATABASE_USER and PERSISTENCE_DATABASE_PASSWORD are required",
           );
+
         const result = await provisionRuntime(db, login, password);
         console.log(
           result.created
@@ -45,6 +49,7 @@ async function main() {
     await db.destroy();
   }
 }
+
 void main().catch((error) => {
   console.error(error instanceof Error ? error.message : "Database CLI failed");
   process.exitCode = 1;

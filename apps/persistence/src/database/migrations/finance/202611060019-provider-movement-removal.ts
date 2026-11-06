@@ -18,6 +18,7 @@ export async function up(db: MigrationDatabase) {
     ownedConnection("provider_movement_removal.provider_connection_id"),
   );
 }
+
 export async function down(db: MigrationDatabase) {
   await db.schema.dropTable("finance.provider_movement_removal").execute();
 }

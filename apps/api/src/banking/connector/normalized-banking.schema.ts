@@ -56,6 +56,7 @@ export const HistoryCoverageSchema = z
         message: "History ends before it starts",
       });
     }
+
     if (
       coverage.completeness === "complete" &&
       (coverage.from === null || coverage.through === null)
@@ -66,6 +67,7 @@ export const HistoryCoverageSchema = z
         message: "Completeness requires a bounded window",
       });
     }
+
     if (
       coverage.completeness === "unknown" &&
       (coverage.from !== null || coverage.through !== null)
@@ -183,6 +185,7 @@ export const ConnectorPageSchema = z
         message: "A complete page must end the cursor chain",
       });
     }
+
     if (!page.complete && page.checkpoint !== null) {
       ctx.addIssue({
         code: "custom",
@@ -192,6 +195,7 @@ export const ConnectorPageSchema = z
     }
 
     const accounts = new Set<string>();
+
     for (const [index, account] of page.accounts.entries()) {
       if (accounts.has(account.externalId)) {
         ctx.addIssue({
@@ -200,15 +204,18 @@ export const ConnectorPageSchema = z
           message: "Duplicate account in page",
         });
       }
+
       accounts.add(account.externalId);
     }
 
     const movements = new Set<string>();
+
     for (const [index, movement] of page.movements.entries()) {
       const key = JSON.stringify([
         movement.accountExternalId,
         movement.externalId,
       ]);
+
       if (movements.has(key)) {
         ctx.addIssue({
           code: "custom",
@@ -216,13 +223,16 @@ export const ConnectorPageSchema = z
           message: "Duplicate movement in account",
         });
       }
+
       movements.add(key);
     }
+
     for (const [index, removal] of page.removedMovements.entries()) {
       const key = JSON.stringify([
         removal.accountExternalId,
         removal.externalId,
       ]);
+
       if (movements.has(key)) {
         ctx.addIssue({
           code: "custom",
@@ -230,6 +240,7 @@ export const ConnectorPageSchema = z
           message: "Conflicting movement changes in page",
         });
       }
+
       movements.add(key);
     }
   });
@@ -260,8 +271,13 @@ export const ConnectorResultSchema = z.discriminatedUnion("kind", [
 export type NormalizedAccountSnapshot = z.infer<
   typeof NormalizedAccountSnapshotSchema
 >;
+
 export type NormalizedMovement = z.infer<typeof NormalizedMovementSchema>;
+
 export type MovementRemoval = z.infer<typeof MovementRemovalSchema>;
+
 export type ConnectorPage = z.infer<typeof ConnectorPageSchema>;
+
 export type ConnectorFailure = z.infer<typeof ConnectorFailureSchema>;
+
 export type ConnectorResult = z.infer<typeof ConnectorResultSchema>;

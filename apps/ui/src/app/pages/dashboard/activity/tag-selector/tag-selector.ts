@@ -25,8 +25,10 @@ export class TransactionTagSelector {
   readonly transaction = input.required<RecentTransaction>();
 
   private readonly host = inject(ElementRef<HTMLElement>);
+
   private readonly trigger =
     viewChild<ElementRef<HTMLButtonElement>>("trigger");
+
   private readonly panel = viewChild<ElementRef<HTMLDivElement>>("panel");
   private readonly tagging = inject(TaggingData);
   private readonly decision = createTagDecision(this.transaction);
@@ -37,6 +39,7 @@ export class TransactionTagSelector {
   protected readonly saving = this.decision.saving;
   protected readonly suggestion = this.decision.suggestion;
   protected readonly loadingTags = this.tagging.tags.isLoading;
+
   protected readonly error = computed(
     () =>
       this.decision.error() ??
@@ -44,15 +47,18 @@ export class TransactionTagSelector {
         ? "No pudimos cargar las etiquetas. Inténtalo nuevamente."
         : null),
   );
+
   private readonly availableTags = computed(() =>
     this.tagging.tags.hasValue() ? this.tagging.tags.value() : [],
   );
+
   protected readonly matchingTags = computed(() => {
     const search = this.searchTerm().trim().toLocaleLowerCase("es-CL");
     return this.availableTags().filter((tag) =>
       tag.name.toLocaleLowerCase("es-CL").includes(search),
     );
   });
+
   protected readonly canCreateTag = computed(() => {
     const name = this.searchTerm().trim();
     return (
@@ -78,6 +84,7 @@ export class TransactionTagSelector {
   @HostListener("document:keydown.escape")
   protected onEscape(): void {
     if (!this.opened()) return;
+
     this.close();
     this.trigger()?.nativeElement.focus();
   }
@@ -87,6 +94,7 @@ export class TransactionTagSelector {
       this.close();
       return;
     }
+
     this.opened.set(true);
     this.searchTerm.set("");
     this.autoForMerchant.set(false);
@@ -106,6 +114,7 @@ export class TransactionTagSelector {
   protected async applySuggestion(): Promise<void> {
     const suggestion = this.suggestion();
     if (!suggestion) return;
+
     const tag = this.availableTags().find(
       (item) => item.id === suggestion.tagId,
     ) ?? {
@@ -122,6 +131,7 @@ export class TransactionTagSelector {
 
   protected async createAndTag(): Promise<void> {
     if (!this.canCreateTag()) return;
+
     this.finish(
       await this.decision.createAndChoose(
         this.searchTerm().trim(),
@@ -140,7 +150,9 @@ export class TransactionTagSelector {
 
   private revealBelow(): void {
     if (!this.opened()) return;
+
     const bottom = this.panel()?.nativeElement.getBoundingClientRect().bottom;
+
     if (bottom && bottom > window.innerHeight - 12) {
       window.scrollBy({
         top: bottom - window.innerHeight + 12,

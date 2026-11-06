@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const IncomeDateSchema = z.iso.date().regex(/^[1-9]\d{3}-/);
+
 export const PositiveIncomeAmountSchema = z
   .string()
   .regex(/^(0|[1-9]\d{0,12})(\.\d{1,2})?$/)
@@ -60,6 +61,7 @@ export const IncomeSourceInputSchema = z
         message: "A fixed amount is required",
       });
     }
+
     if ((source.regularity === "regular") !== (source.schedule !== null)) {
       ctx.addIssue({
         code: "custom",
@@ -67,6 +69,7 @@ export const IncomeSourceInputSchema = z
         message: "Only regular income requires a schedule",
       });
     }
+
     if (source.endDate !== null && source.endDate < source.startDate) {
       ctx.addIssue({
         code: "custom",
@@ -84,5 +87,7 @@ export const IncomeSourceSchema = IncomeSourceInputSchema.safeExtend({
 });
 
 export type IncomeSchedule = z.infer<typeof IncomeScheduleSchema>;
+
 export type IncomeSourceInput = z.infer<typeof IncomeSourceInputSchema>;
+
 export type IncomeSource = z.infer<typeof IncomeSourceSchema>;

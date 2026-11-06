@@ -25,6 +25,7 @@ export class TagRuleRepository {
     @Inject(RLS_DB) private readonly db: Kysely<Tables>,
     private readonly events: TagDecisionEventRepository,
   ) {}
+
   list() {
     return this.db
       .selectFrom("finance.tag_rule")
@@ -34,6 +35,7 @@ export class TagRuleRepository {
       .limit(10001)
       .execute();
   }
+
   matchingRules() {
     return this.db
       .selectFrom("finance.tag_rule as r")
@@ -47,6 +49,7 @@ export class TagRuleRepository {
       .limit(10001)
       .execute();
   }
+
   async owned(id: string) {
     const rule = await this.db
       .selectFrom("finance.tag_rule")
@@ -55,8 +58,10 @@ export class TagRuleRepository {
       .executeTakeFirst();
     if (!rule)
       throw new TRPCError({ code: "NOT_FOUND", message: "Tag rule not found" });
+
     return rule;
   }
+
   async create(input: TagRuleInput) {
     await this.targets(input);
     const existing = await this.db
@@ -86,9 +91,12 @@ export class TagRuleRepository {
           .returningAll()
           .executeTakeFirstOrThrow();
       }
+
       return existing;
     }
+
     const { autoApply, ...fields } = input;
+
     return this.db
       .insertInto("finance.tag_rule")
       .values({
@@ -100,10 +108,12 @@ export class TagRuleRepository {
       .returningAll()
       .executeTakeFirstOrThrow();
   }
+
   async replace(id: string, input: TagRuleInput) {
     await this.owned(id);
     await this.targets(input);
     const { autoApply, ...fields } = input;
+
     return this.db
       .updateTable("finance.tag_rule")
       .set({
@@ -116,6 +126,7 @@ export class TagRuleRepository {
       .returningAll()
       .executeTakeFirstOrThrow();
   }
+
   async archive(id: string) {
     await this.owned(id);
     return this.db
@@ -125,12 +136,14 @@ export class TagRuleRepository {
       .returningAll()
       .executeTakeFirstOrThrow();
   }
+
   async facts(id: string) {
     return {
       movement: await this.movement(id),
       rules: await this.matchingRules(),
     };
   }
+
   async movement(id: string) {
     const movement = await this.db
       .selectFrom("finance.transaction")
@@ -142,13 +155,18 @@ export class TagRuleRepository {
         code: "NOT_FOUND",
         message: "Transaction not found",
       });
+
     return movement;
   }
+
   async manual(transactionId: string, tagId: string | null) {
     const previous = await this.movement(transactionId);
+
     if (tagId !== null) await this.tag(tagId);
+
     if (previous.tagDecisionOrigin === "manual" && previous.tagId === tagId)
       return this.decision(previous);
+
     const row = await this.db
       .updateTable("finance.transaction")
       .set({
@@ -165,12 +183,15 @@ export class TagRuleRepository {
       tagId,
       tagId === null ? "manual_no_tag" : "manual_tag",
     );
+
     return this.decision(row);
   }
+
   async reset(transactionId: string) {
     const previous = await this.movement(transactionId);
     if (previous.tagDecisionOrigin === "unreviewed")
       return this.decision(previous);
+
     const row = await this.db
       .updateTable("finance.transaction")
       .set({
@@ -183,8 +204,10 @@ export class TagRuleRepository {
       .returningAll()
       .executeTakeFirstOrThrow();
     await this.events.record(previous, null, "reset");
+
     return this.decision(row);
   }
+
   async candidates(input: RuleCandidatesInput) {
     const rule = await this.owned(input.ruleId);
     if (!rule.active || rule.mode !== "auto" || rule.approvedAt === null) {
@@ -193,6 +216,7 @@ export class TagRuleRepository {
         message: "Approve an active automatic rule before applying it",
       });
     }
+
     let query = this.db
       .selectFrom("finance.transaction")
       .selectAll()
@@ -205,11 +229,15 @@ export class TagRuleRepository {
           eb("tagRuleId", "=", rule.id),
         ]),
       );
+
     if (input.after) query = query.where("id", ">", input.after);
+
     const movements = await query.orderBy("id").limit(1001).execute();
     const facts = { rule, rules: await this.matchingRules(), movements };
+
     return { ...facts, fingerprint: fingerprint(facts) };
   }
+
   async commit(input: CommitRuleDecisions) {
     const facts = await this.candidates(input);
     if (facts.fingerprint !== input.expectedFingerprint)
@@ -217,10 +245,12 @@ export class TagRuleRepository {
         code: "CONFLICT",
         message: "Tagging inputs changed; read a new candidate batch",
       });
+
     const candidates = new Map(
       facts.movements.slice(0, 1000).map((row) => [row.id, row]),
     );
     let changed = 0;
+
     for (const decision of input.decisions) {
       const previous = candidates.get(decision.transactionId);
       if (!previous || previous.tagDecisionOrigin === "manual")
@@ -228,10 +258,13 @@ export class TagRuleRepository {
           code: "BAD_REQUEST",
           message: "Movement is not an automatic-tag candidate",
         });
+
       if (await this.applyPrepared(previous, decision, facts.rules)) changed++;
     }
+
     return { changed };
   }
+
   /** Called only inside the user write lock, including atomic sync commits. */
   async applyPrepared(
     previous: Selectable<TransactionTable>,
@@ -248,6 +281,7 @@ export class TagRuleRepository {
         message: "Invalid prepared automatic decision",
       });
     }
+
     if (decision.ruleId) {
       const rule = rules.find((row) => row.id === decision.ruleId);
       if (
@@ -267,6 +301,7 @@ export class TagRuleRepository {
         });
       }
     }
+
     const origin = decision.ruleId ? "rule" : "unreviewed";
     if (
       previous.tagId === decision.tagId &&
@@ -274,6 +309,7 @@ export class TagRuleRepository {
       previous.tagDecisionOrigin === origin
     )
       return false;
+
     await this.db
       .updateTable("finance.transaction")
       .set({
@@ -292,8 +328,10 @@ export class TagRuleRepository {
         : "rule_applied",
       decision.ruleId ?? previous.tagRuleId,
     );
+
     return true;
   }
+
   private async tag(id: string) {
     const row = await this.db
       .selectFrom("finance.tag")
@@ -304,6 +342,7 @@ export class TagRuleRepository {
     if (!row)
       throw new TRPCError({ code: "NOT_FOUND", message: "Tag not found" });
   }
+
   private async targets(input: TagRuleInput) {
     await this.tag(input.tagId);
     if (
@@ -317,6 +356,7 @@ export class TagRuleRepository {
       throw new TRPCError({ code: "NOT_FOUND", message: "Account not found" });
     }
   }
+
   private decision(row: Selectable<TransactionTable>) {
     return {
       transactionId: row.id,

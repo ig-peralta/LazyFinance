@@ -42,6 +42,7 @@ export function buildLedger(asOf = new Date()): LedgerEntry[] {
       ): boolean {
         const bookedAt = bookedDate(year, month, day);
         if (bookedAt > asOf) return false;
+
         const id = seedId(`transaction:${period}:${account}:${key}`);
         entries.push({
           id,
@@ -56,6 +57,7 @@ export function buildLedger(asOf = new Date()): LedgerEntry[] {
           isInternalMovement,
           tagId: tag ? seedId(`tag:${tag}`) : null,
         });
+
         return true;
       }
 
@@ -172,6 +174,7 @@ export function buildLedger(asOf = new Date()): LedgerEntry[] {
       );
 
       const groceryStores = ["Líder", "Feria libre Ñuñoa", "Unimarc", "Jumbo"];
+
       for (let week = 0; week < 4; week++) {
         add(
           "checking",
@@ -233,6 +236,7 @@ export function buildLedger(asOf = new Date()): LedgerEntry[] {
         "Transferencia familiar",
         "family",
       );
+
       if (month % 3 === 0) {
         add(
           "checking",
@@ -267,6 +271,7 @@ export function buildLedger(asOf = new Date()): LedgerEntry[] {
           "vacation",
         );
       }
+
       if (month === 3 && year > 2024) {
         add(
           "checking",
@@ -278,6 +283,7 @@ export function buildLedger(asOf = new Date()): LedgerEntry[] {
           "Devolución Operación Renta",
         );
       }
+
       if (month === 8) {
         add(
           "checking",
@@ -288,6 +294,7 @@ export function buildLedger(asOf = new Date()): LedgerEntry[] {
           "vacation",
         );
       }
+
       if (month === 11) {
         add(
           "checking",
@@ -307,6 +314,7 @@ export function buildLedger(asOf = new Date()): LedgerEntry[] {
           "family",
         );
       }
+
       if (year === 2024 && month === 6) {
         add(
           "checking",
@@ -318,9 +326,11 @@ export function buildLedger(asOf = new Date()): LedgerEntry[] {
           "Ingreso ocasional",
         );
       }
+
       if (year === 2025 && month === 5) {
         add("checking", "dentist", 16, -238_000, "Clínica dental", "health");
       }
+
       if (year === 2025 && month === 10) {
         cardCharge(
           "duplicate-streaming",
@@ -330,6 +340,7 @@ export function buildLedger(asOf = new Date()): LedgerEntry[] {
           "subscriptions",
         );
       }
+
       if (year === 2026 && month === 2) {
         cardCharge(
           "laptop-repair",

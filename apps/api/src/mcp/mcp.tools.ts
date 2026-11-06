@@ -26,6 +26,7 @@ export function mcpUserId(ctx: McpContext): string {
     throw new RpcException(
       "Se requiere una sesión autenticada para consultar datos financieros.",
     );
+
   return userId;
 }
 
@@ -34,6 +35,7 @@ export function mcpMonth(month?: string): string {
     return checkedMonth(month ?? santiagoMonth(new Date()));
   } catch (error) {
     if (!(error instanceof BadRequestException)) throw error;
+
     throw new RpcException(
       "El mes debe tener formato YYYY-MM y no puede ser futuro (zona America/Santiago).",
     );

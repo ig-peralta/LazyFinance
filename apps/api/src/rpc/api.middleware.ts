@@ -8,6 +8,7 @@ import { withApiRequest } from "./request-context";
 export function rpcError(error: unknown): TRPCError {
   let cause: unknown = error;
   let known: { code: TRPCError["code"]; message: string } | undefined;
+
   for (
     let depth = 0;
     depth < 8 && cause && typeof cause === "object";
@@ -37,6 +38,7 @@ export function rpcError(error: unknown): TRPCError {
             : "Operation failed",
       };
     }
+
     const exception =
       cause instanceof HttpException ? cause : persistenceException(cause);
     if (exception) {
@@ -52,6 +54,7 @@ export function rpcError(error: unknown): TRPCError {
         503: "SERVICE_UNAVAILABLE",
       };
       const code = codes[status];
+
       return new TRPCError({
         code: code ?? "INTERNAL_SERVER_ERROR",
         message:
@@ -60,11 +63,14 @@ export function rpcError(error: unknown): TRPCError {
             : "Operation failed",
       });
     }
+
     cause = "cause" in cause ? cause.cause : undefined;
   }
+
   if (known) return new TRPCError(known);
   if (error instanceof TRPCError && error.code !== "INTERNAL_SERVER_ERROR")
     return error;
+
   return new TRPCError({
     code: "INTERNAL_SERVER_ERROR",
     message: "Operation failed",
@@ -85,14 +91,17 @@ export class ApiMiddleware
     return withApiRequest(options.ctx.requestId, async () => {
       try {
         const auth = options.meta?.auth;
+
         if (auth === "public") {
           if (!["auth.config", "auth.loginMock"].includes(options.path))
             throw new TRPCError({ code: "FORBIDDEN" });
         } else if (auth === "user")
           options.ctx.principal = await options.ctx.authenticate();
         else throw new TRPCError({ code: "FORBIDDEN" });
+
         const result = await options.next();
         if (!result.ok) throw result.error;
+
         return result;
       } catch (error) {
         throw rpcError(error);
@@ -103,5 +112,6 @@ export class ApiMiddleware
 
 export function rpcUser(ctx: ApiRequestContext): string {
   if (!ctx.principal) throw new TRPCError({ code: "UNAUTHORIZED" });
+
   return ctx.principal.userId;
 }

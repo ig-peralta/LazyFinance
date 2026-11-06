@@ -28,6 +28,7 @@ export async function createContextVerifier(pem: string, keyId = "primary") {
   ): Promise<PersistenceContext> => {
     const match = /^Bearer ([A-Za-z0-9._-]+)$/i.exec(authorization ?? "");
     if (!match) throw new Error("A service assertion is required");
+
     const { payload, protectedHeader } = await jwtVerify(match[1], key, {
       issuer,
       audience,
@@ -44,6 +45,7 @@ export async function createContextVerifier(pem: string, keyId = "primary") {
     ) {
       throw new Error("Invalid service assertion");
     }
+
     return PersistenceContextSchema.parse(payload.ctx);
   };
 }

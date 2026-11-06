@@ -148,6 +148,7 @@ describe("scoped native tRPC transport", () => {
     const parent = TestBed.inject(EnvironmentInjector);
     const a = createEnvironmentInjector([RpcClient, AuthCredentials], parent);
     const b = createEnvironmentInjector([RpcClient, AuthCredentials], parent);
+
     try {
       a.get(AuthCredentials).accept(principal, "alice");
       b.get(AuthCredentials).accept({ ...principal, userId: "owner-b" }, "bob");
@@ -167,6 +168,7 @@ describe("scoped native tRPC transport", () => {
       await rejected;
     } finally {
       if (!a.destroyed) a.destroy();
+
       b.destroy();
     }
   });

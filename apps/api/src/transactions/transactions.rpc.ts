@@ -13,6 +13,7 @@ export class TransactionsRpc {
   constructor(
     @Inject(TransactionsService) private readonly service: TransactionsService,
   ) {}
+
   @Query({
     input: RpcEmptySchema,
     output: RecentTransactionsResultSchema,

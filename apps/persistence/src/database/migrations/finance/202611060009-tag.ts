@@ -14,6 +14,7 @@ export async function up(db: MigrationDatabase) {
   ); CREATE INDEX tag_user_id_idx ON finance.tag(user_id)`.execute(db);
   await protectTable(db, "tag", `user_id = ${currentUser}`);
 }
+
 export async function down(db: MigrationDatabase) {
   await db.schema.dropTable("finance.tag").execute();
 }

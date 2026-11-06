@@ -20,6 +20,7 @@ export async function up(db: MigrationDatabase) {
     `${ownedMovement("income_receipt.transaction_id")} AND ${ownedSource("income_receipt.source_id")}`,
   );
 }
+
 export async function down(db: MigrationDatabase) {
   await db.schema.dropTable("finance.income_receipt").execute();
 }

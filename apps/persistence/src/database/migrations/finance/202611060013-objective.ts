@@ -24,6 +24,7 @@ export async function up(db: MigrationDatabase) {
   );
   await protectTable(db, "objective", `user_id = ${currentUser}`);
 }
+
 export async function down(db: MigrationDatabase) {
   await sql`DROP TABLE finance.objective; DROP TYPE finance.objective_kind, finance.objective_intent, finance.objective_period`.execute(
     db,

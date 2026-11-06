@@ -16,6 +16,7 @@ export class IncomeReceiptRepository {
     >,
     private readonly sources: IncomeSourceRepository,
   ) {}
+
   async confirm(transactionId: string, sourceId: string, at: string) {
     await this.sources.source(sourceId, true);
     const movement = await this.movement(transactionId);
@@ -32,11 +33,13 @@ export class IncomeReceiptRepository {
           "Received income requires a booked, non-internal credit transaction",
       });
     }
+
     const existing = await this.db
       .selectFrom("finance.income_receipt")
       .select("sourceId")
       .where("transactionId", "=", transactionId)
       .executeTakeFirst();
+
     if (existing?.sourceId !== sourceId) {
       await this.db
         .insertInto("finance.income_receipt")
@@ -48,6 +51,7 @@ export class IncomeReceiptRepository {
         )
         .execute();
     }
+
     return this.db
       .selectFrom("finance.income_receipt as r")
       .innerJoin("finance.income_source as s", "s.id", "r.sourceId")
@@ -67,6 +71,7 @@ export class IncomeReceiptRepository {
       .where("r.transactionId", "=", transactionId)
       .executeTakeFirstOrThrow();
   }
+
   async clear(transactionId: string) {
     await this.movement(transactionId);
     await this.db
@@ -74,6 +79,7 @@ export class IncomeReceiptRepository {
       .where("transactionId", "=", transactionId)
       .execute();
   }
+
   private async movement(id: string) {
     const row = await this.db
       .selectFrom("finance.transaction")
@@ -86,6 +92,7 @@ export class IncomeReceiptRepository {
         code: "NOT_FOUND",
         message: "Transaction not found",
       });
+
     return row;
   }
 }

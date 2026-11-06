@@ -21,6 +21,7 @@ export class Activity {
   private readonly data = inject(TransactionsData);
   protected readonly transactions = this.data.recent;
   protected readonly items = this.data.items;
+
   protected readonly needsTagCount = computed(
     () =>
       this.items().filter(

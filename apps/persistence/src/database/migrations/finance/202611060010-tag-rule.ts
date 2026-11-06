@@ -32,6 +32,7 @@ export async function up(db: MigrationDatabase) {
     `user_id = ${currentUser} AND ${ownedTag("tag_rule.tag_id")} AND (account_id IS NULL OR ${ownedAccount("tag_rule.account_id")})`,
   );
 }
+
 export async function down(db: MigrationDatabase) {
   await sql`DROP TABLE finance.tag_rule; DROP TYPE finance.tag_rule_direction; DROP TYPE finance.tag_rule_field; DROP TYPE finance.tag_rule_mode`.execute(
     db,

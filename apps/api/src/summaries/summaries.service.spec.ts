@@ -10,9 +10,11 @@ const expectedIncome = {
   unknownAmountCount: 1,
   paymentCount: 3,
 };
+
 const income = {
   getExpectedForUser: vi.fn(async () => ({ totals: expectedIncome })),
 } as unknown as IncomeService;
+
 const totals = (receivedIncome: string, spending: string) => ({
   receivedIncome,
   spending,

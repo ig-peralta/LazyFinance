@@ -25,6 +25,7 @@ export class FirebaseService {
     if (this.isServer)
       throw new Error("Firebase Auth is only available in the browser");
     if (this.authInstance) return this.authInstance;
+
     const config = environment.firebaseConfig;
     if (
       Object.values(config).some(
@@ -40,6 +41,7 @@ export class FirebaseService {
     const auth = getAuth(app);
     await setPersistence(auth, browserLocalPersistence);
     this.authInstance = auth;
+
     return auth;
   }
 
@@ -47,6 +49,7 @@ export class FirebaseService {
     const auth = await this.init();
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: "select_account" });
+
     return (await signInWithPopup(auth, provider)).user;
   }
 

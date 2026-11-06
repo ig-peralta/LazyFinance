@@ -9,6 +9,7 @@ export interface ProviderMovementConflictTable {
   observedAt: Date;
   resolvedAt: Date | null;
 }
+
 export type ProviderMovementConflictTables = {
   "finance.provider_movement_conflict": ProviderMovementConflictTable;
 };

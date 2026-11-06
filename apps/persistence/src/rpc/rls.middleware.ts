@@ -38,6 +38,7 @@ export class RlsMiddleware implements TRPCMiddleware<ProcedureMeta> {
         message: "Procedure context is not permitted",
       });
     }
+
     try {
       return await withRequestContext(
         this.database,
@@ -53,6 +54,7 @@ export class RlsMiddleware implements TRPCMiddleware<ProcedureMeta> {
               tx,
             );
           }
+
           const result = await options.next();
           // tRPC resolves failures instead of throwing: do not accidentally COMMIT.
           if (!result.ok) throw result.error;
@@ -65,6 +67,7 @@ export class RlsMiddleware implements TRPCMiddleware<ProcedureMeta> {
               message: "Persistence result exceeds transport budget",
             });
           }
+
           return result;
         },
         options.meta.snapshot ? "repeatable read" : "read committed",
@@ -73,6 +76,7 @@ export class RlsMiddleware implements TRPCMiddleware<ProcedureMeta> {
       // Kysely and tRPC may both wrap the pg error; inspect only its SQLSTATE.
       let cause: unknown = error;
       let code: unknown;
+
       for (
         let depth = 0;
         depth < 8 && cause && typeof cause === "object";
@@ -86,8 +90,10 @@ export class RlsMiddleware implements TRPCMiddleware<ProcedureMeta> {
           code = cause.code;
           break;
         }
+
         cause = "cause" in cause ? cause.cause : undefined;
       }
+
       if (code === "23505" || code === "40001" || code === "40P01")
         throw new TRPCError({
           code: "CONFLICT",
@@ -120,6 +126,7 @@ export class RlsMiddleware implements TRPCMiddleware<ProcedureMeta> {
         });
       if (error instanceof TRPCError && error.code !== "INTERNAL_SERVER_ERROR")
         throw error;
+
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
         message: "Persistence operation failed",

@@ -7,6 +7,7 @@ export interface IncomeExpectationTable {
   amount: string;
   isEstimate: Generated<boolean>;
 }
+
 export type IncomeExpectationTables = {
   "finance.income_expectation": IncomeExpectationTable;
 };

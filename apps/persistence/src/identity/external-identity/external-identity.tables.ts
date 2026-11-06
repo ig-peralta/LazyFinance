@@ -7,6 +7,7 @@ export interface ExternalIdentityTable {
   userId: string;
   createdAt: Generated<Date>;
 }
+
 export type ExternalIdentityTables = {
   "identity.external_identity": ExternalIdentityTable;
 };

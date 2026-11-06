@@ -8,6 +8,7 @@ import { mockIdentity } from "../auth/mock/mock-auth.constants";
 import { PersistenceClient as ExternalIdentityRepository } from "../persistence/persistence.client";
 
 const demoToken = "lazyfinance-demo-token";
+
 const initialization = {
   jsonrpc: "2.0",
   id: 1,
@@ -29,6 +30,7 @@ describe("MCP HTTP authentication", () => {
         resolveExisting: async (identity: typeof mockIdentity) => {
           if (identity.providerSubject !== mockIdentity.providerSubject)
             throw new UnauthorizedException();
+
           return {
             userId: "00000000-0000-4000-8000-000000000001",
             email: "demo@lazyfinance.cl",

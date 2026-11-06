@@ -23,6 +23,7 @@ export class ProviderConnectionRpc {
     @Inject(ProviderConnectionRepository)
     private readonly repository: ProviderConnectionRepository,
   ) {}
+
   @Mutation({
     input: BeginProviderSyncSchema,
     output: ProviderSyncStateSchema,
@@ -33,6 +34,7 @@ export class ProviderConnectionRpc {
       await this.repository.begin(input.connectionId, input.provider),
     );
   }
+
   @Query({
     input: ProviderSyncScopeSchema,
     output: ProviderSyncFactsSchema,
@@ -41,6 +43,7 @@ export class ProviderConnectionRpc {
   facts(@Input() input: ProviderSyncScope) {
     return this.repository.facts(input);
   }
+
   @Mutation({
     input: CommitProviderSyncSchema,
     output: ProviderSyncOutcomeSchema,
@@ -49,6 +52,7 @@ export class ProviderConnectionRpc {
   commit(@Input() input: CommitProviderSync) {
     return this.repository.commit(input);
   }
+
   @Mutation({
     input: RecordProviderFailureSchema,
     output: ProviderSyncOutcomeSchema,
@@ -57,6 +61,7 @@ export class ProviderConnectionRpc {
   failure(@Input() input: RecordProviderFailure) {
     return this.repository.failure(input);
   }
+
   @Query({
     input: EmptyInputSchema,
     output: ProviderReviewRecordsSchema,

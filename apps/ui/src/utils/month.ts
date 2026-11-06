@@ -3,6 +3,7 @@ const partsFormatter = new Intl.DateTimeFormat("en-US", {
   year: "numeric",
   month: "2-digit",
 });
+
 const labelFormatter = new Intl.DateTimeFormat("es-CL", {
   timeZone: "UTC",
   year: "numeric",
@@ -13,6 +14,7 @@ export function currentMonth(now = new Date()): string {
   const parts = partsFormatter.formatToParts(now);
   const year = Number(parts.find((part) => part.type === "year")?.value);
   const month = Number(parts.find((part) => part.type === "month")?.value);
+
   return `${year}-${String(month).padStart(2, "0")}`;
 }
 

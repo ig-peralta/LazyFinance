@@ -215,6 +215,7 @@ describe("income calendar", () => {
       updatedAt: _____,
       ...valid
     } = source();
+
     for (const invalid of [
       { ...valid, expectedAmount: "0.00" },
       { ...valid, expectedAmount: "-1.00" },
@@ -237,6 +238,7 @@ describe("income calendar", () => {
         JSON.stringify(invalid),
       ).toBe(false);
     }
+
     expect(
       IncomeSourceInputSchema.safeParse({
         ...valid,

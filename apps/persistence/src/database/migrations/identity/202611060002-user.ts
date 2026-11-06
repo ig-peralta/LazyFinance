@@ -21,6 +21,7 @@ export async function up(db: MigrationDatabase) {
   GRANT SELECT, INSERT ON identity."user" TO lazyfinance_identity_bootstrap;
   `.execute(db);
 }
+
 export async function down(): Promise<never> {
   throw new Error("User data requires an explicit recovery plan");
 }

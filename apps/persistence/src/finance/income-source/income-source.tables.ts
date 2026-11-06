@@ -16,4 +16,5 @@ export interface IncomeSourceTable {
   createdAt: Generated<Date>;
   updatedAt: Generated<Date>;
 }
+
 export type IncomeSourceTables = { "finance.income_source": IncomeSourceTable };

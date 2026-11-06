@@ -11,15 +11,19 @@ import { AuthApi } from "./auth-api";
 import { SessionService } from "./session.service";
 
 const cookieName = "lazyfinance-session";
+
 const principal = {
   userId: "demo-user",
   email: "demo@lazyfinance.cl",
   name: "Camila Rojas",
 };
+
 const getPrincipal = vi.fn(async (_token: string) => principal);
+
 const getAuthConfig = vi.fn(
   async (): Promise<AuthConfig> => ({ provider: "mock" }),
 );
+
 const initialize = () => TestBed.runInInjectionContext(initializeServices);
 
 beforeEach(() => {

@@ -5,4 +5,5 @@ export interface ProviderTable {
   identifier: string;
   createdAt: Generated<Date>;
 }
+
 export type ProviderTables = { "finance.provider": ProviderTable };

@@ -18,4 +18,5 @@ async function bootstrap() {
   );
   process.send?.({ url: await app.getUrl() });
 }
+
 void bootstrap();

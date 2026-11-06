@@ -16,6 +16,7 @@ export class SummariesRpc {
   constructor(
     @Inject(SummariesService) private readonly service: SummariesService,
   ) {}
+
   @Query({
     input: RpcMonthSchema,
     output: MonthlySummarySchema,
@@ -27,6 +28,7 @@ export class SummariesRpc {
       checkedMonth(input.month ?? santiagoMonth(new Date())),
     );
   }
+
   @Query({
     input: RpcMonthSchema,
     output: MonthlyComparisonSchema,

@@ -10,6 +10,7 @@ const invalidTokenCodes = new Set([
 
 export function isInvalidToken(error: unknown): boolean {
   if (!error || typeof error !== "object" || !("code" in error)) return false;
+
   return typeof error.code === "string" && invalidTokenCodes.has(error.code);
 }
 

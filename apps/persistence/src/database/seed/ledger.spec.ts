@@ -64,6 +64,7 @@ describe("Chilean demo ledger", () => {
 
     expect(savingsDeposits.length).toBeGreaterThanOrEqual(33);
     expect(savingsDeposits.length).toBe(savingsWithdrawals.length);
+
     for (const deposit of savingsDeposits) {
       expect(
         savingsWithdrawals.some(
@@ -85,6 +86,7 @@ describe("Chilean demo ledger", () => {
         description === "Pago de tarjeta de crédito",
     );
     expect(cardPayments.length).toBe(checkingPayments.length);
+
     for (const payment of cardPayments) {
       expect(
         checkingPayments.some(

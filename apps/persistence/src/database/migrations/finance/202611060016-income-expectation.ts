@@ -18,6 +18,7 @@ export async function up(db: MigrationDatabase) {
     ownedSource("income_expectation.source_id"),
   );
 }
+
 export async function down(db: MigrationDatabase) {
   await db.schema.dropTable("finance.income_expectation").execute();
 }

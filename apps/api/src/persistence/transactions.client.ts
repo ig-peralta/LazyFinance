@@ -11,14 +11,17 @@ export function movementTotals(groups: MovementAggregate[]) {
     spending = 0n,
     unclassifiedCount = 0,
     unresolved = 0;
+
   for (const group of groups) {
     if (
       group.isInternalMovement === null ||
       group.reviewStatus === "needs_review"
     )
       unresolved += group.count;
+
     if (group.isInternalMovement !== false || group.reviewStatus !== "clear")
       continue;
+
     if (group.type === "debit") spending -= toCents(group.amount);
     else if (group.hasReceipt) received += toCents(group.amount);
     else {
@@ -26,6 +29,7 @@ export function movementTotals(groups: MovementAggregate[]) {
       unclassifiedCount += group.count;
     }
   }
+
   return {
     receivedIncome: fromCents(received),
     unclassifiedCreditAmount: fromCents(unclassified),
@@ -38,15 +42,18 @@ export function movementTotals(groups: MovementAggregate[]) {
 @Injectable()
 export class TransactionClient {
   constructor(private readonly persistence: PersistenceClient) {}
+
   async listRecentForUser(userId: string) {
     return (
       await this.persistence.user(userId).transactions.recent.query()
     ).map((row) => ({ ...row, bookedAt: new Date(row.bookedAt) }));
   }
+
   sumByMonthForUser(userId: string, month: string, asOf?: Date) {
     const { start, end } = monthBounds(month);
     return this.sumForPeriod(userId, start, end, asOf);
   }
+
   async sumForPeriod(userId: string, start: string, end: string, asOf?: Date) {
     return movementTotals(
       await this.persistence.user(userId).transactions.aggregates.query({
@@ -56,6 +63,7 @@ export class TransactionClient {
       }),
     );
   }
+
   async listTaggedDebitsForPeriod(
     userId: string,
     start: string,

@@ -7,6 +7,7 @@ import type { TagTables } from "./tag.tables";
 @Injectable()
 export class TagRepository {
   constructor(@Inject(RLS_DB) private readonly db: Kysely<TagTables>) {}
+
   list() {
     return this.db
       .selectFrom("finance.tag")
@@ -16,6 +17,7 @@ export class TagRepository {
       .limit(10001)
       .execute();
   }
+
   async create(input: TagCreateInput) {
     const created = await this.db
       .insertInto("finance.tag")
@@ -24,6 +26,7 @@ export class TagRepository {
       .returning(["id", "name", "color", "isArchived"])
       .executeTakeFirst();
     if (created) return created;
+
     return this.db
       .selectFrom("finance.tag")
       .select(["id", "name", "color", "isArchived"])

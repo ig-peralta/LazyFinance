@@ -17,6 +17,7 @@ export class IncomeExpectationRpc {
     @Inject(IncomeExpectationRepository)
     private readonly repository: IncomeExpectationRepository,
   ) {}
+
   @Query({
     input: IdInputSchema,
     output: ExpectationRecordsSchema,
@@ -25,6 +26,7 @@ export class IncomeExpectationRpc {
   list(@Input() input: { id: string }) {
     return this.repository.list(input.id);
   }
+
   @Mutation({
     input: ExpectationCreateSchema,
     output: ExpectationRecordSchema,
@@ -35,6 +37,7 @@ export class IncomeExpectationRpc {
   ) {
     return this.repository.create(input.sourceId, input.expectation);
   }
+
   @Mutation({
     input: ExpectationUpdateSchema,
     output: ExpectationRecordSchema,
@@ -43,6 +46,7 @@ export class IncomeExpectationRpc {
   update(@Input() input: { id: string; expectation: IncomeExpectationInput }) {
     return this.repository.update(input.id, input.expectation);
   }
+
   @Mutation({
     input: IdInputSchema,
     output: VoidResultSchema,

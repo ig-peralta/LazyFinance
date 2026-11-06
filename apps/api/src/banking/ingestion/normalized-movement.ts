@@ -31,6 +31,7 @@ export function bookingDate(booked: NormalizedMovement["booked"]): {
   ) {
     throw new Error("Unable to represent the Santiago booking date");
   }
+
   return { bookedAt, bookedOn: booked.on };
 }
 

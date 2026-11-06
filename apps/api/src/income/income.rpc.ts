@@ -28,6 +28,7 @@ import { IncomeService } from "./income.service";
 @Router({ alias: "income" })
 export class IncomeRpc {
   constructor(@Inject(IncomeService) private readonly service: IncomeService) {}
+
   @Query({
     input: RpcEmptySchema,
     output: IncomeSourcesResultSchema,
@@ -36,6 +37,7 @@ export class IncomeRpc {
   sources(@Ctx() ctx: ApiRequestContext) {
     return this.service.listSourcesForUser(rpcUser(ctx));
   }
+
   @Query({
     input: RpcIdSchema,
     output: IncomeSourceSchema,
@@ -44,6 +46,7 @@ export class IncomeRpc {
   source(@Ctx() ctx: ApiRequestContext, @Input() input: { id: string }) {
     return this.service.getSourceForUser(rpcUser(ctx), input.id);
   }
+
   @Mutation({
     input: IncomeSourceInputSchema,
     output: IncomeSourceSchema,
@@ -55,6 +58,7 @@ export class IncomeRpc {
   ) {
     return this.service.createSourceForUser(rpcUser(ctx), input);
   }
+
   @Mutation({
     input: ReplaceIncomeSourceSchema,
     output: IncomeSourceSchema,
@@ -70,6 +74,7 @@ export class IncomeRpc {
       input.source,
     );
   }
+
   @Mutation({
     input: RpcIdSchema,
     output: IncomeSourceSchema,
@@ -78,6 +83,7 @@ export class IncomeRpc {
   archiveSource(@Ctx() ctx: ApiRequestContext, @Input() input: { id: string }) {
     return this.service.archiveSourceForUser(rpcUser(ctx), input.id);
   }
+
   @Query({
     input: RpcIdSchema,
     output: IncomeExpectationsResultSchema,
@@ -86,6 +92,7 @@ export class IncomeRpc {
   expectations(@Ctx() ctx: ApiRequestContext, @Input() input: { id: string }) {
     return this.service.listExpectationsForUser(rpcUser(ctx), input.id);
   }
+
   @Mutation({
     input: CreateIncomeExpectationSchema,
     output: IncomeExpectationSchema,
@@ -101,6 +108,7 @@ export class IncomeRpc {
       input.expectation,
     );
   }
+
   @Mutation({
     input: ReplaceIncomeExpectationSchema,
     output: IncomeExpectationSchema,
@@ -116,6 +124,7 @@ export class IncomeRpc {
       input.expectation,
     );
   }
+
   @Mutation({
     input: RpcIdSchema,
     output: RpcVoidSchema,
@@ -127,6 +136,7 @@ export class IncomeRpc {
   ) {
     return this.service.deleteExpectationForUser(rpcUser(ctx), input.id);
   }
+
   @Query({
     input: RpcMonthSchema,
     output: ExpectedIncomeSchema,
@@ -135,6 +145,7 @@ export class IncomeRpc {
   expected(@Ctx() ctx: ApiRequestContext, @Input() input: { month?: string }) {
     return this.service.getExpectedForUser(rpcUser(ctx), input.month);
   }
+
   @Query({
     input: RpcMonthSchema,
     output: IncomeReceiptsResultSchema,
@@ -143,6 +154,7 @@ export class IncomeRpc {
   receipts(@Ctx() ctx: ApiRequestContext, @Input() input: { month?: string }) {
     return this.service.listReceiptsForUser(rpcUser(ctx), input.month);
   }
+
   @Mutation({
     input: ConfirmIncomeReceiptSchema,
     output: IncomeReceiptSchema,
@@ -158,6 +170,7 @@ export class IncomeRpc {
       { sourceId: input.sourceId },
     );
   }
+
   @Mutation({
     input: RpcIdSchema,
     output: RpcVoidSchema,
@@ -166,6 +179,7 @@ export class IncomeRpc {
   clear(@Ctx() ctx: ApiRequestContext, @Input() input: { id: string }) {
     return this.service.clearReceiptForUser(rpcUser(ctx), input.id);
   }
+
   @Query({
     input: RpcMonthSchema,
     output: IncomeSummarySchema,

@@ -23,6 +23,7 @@ describe.skipIf(!integration)(
     function principalFor(identity: VerifiedExternalIdentity) {
       const token = randomUUID();
       identities.set(token, identity);
+
       return api.client(token).auth.principal.query();
     }
     beforeAll(async () => {

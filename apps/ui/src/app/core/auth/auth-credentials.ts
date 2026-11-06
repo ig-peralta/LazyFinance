@@ -13,9 +13,11 @@ export class AuthCredentials implements OnDestroy {
   private readonly accepted = signal<VerifiedCredentials | undefined>(
     undefined,
   );
+
   private readonly rejected = signal<VerifiedCredentials | undefined>(
     undefined,
   );
+
   private lifetime?: AbortController;
 
   readonly current = this.accepted.asReadonly();
@@ -28,6 +30,7 @@ export class AuthCredentials implements OnDestroy {
       previous.principal.userId === principal.userId
     )
       return;
+
     this.clear();
     this.lifetime = new AbortController();
     this.accepted.set(
@@ -49,6 +52,7 @@ export class AuthCredentials implements OnDestroy {
   expire(expected: VerifiedCredentials): void {
     // An old request must never expire a newer login or refreshed token.
     if (this.current() !== expected) return;
+
     this.clear();
     this.rejected.set(expected);
   }

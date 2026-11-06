@@ -16,6 +16,7 @@ const principal = {
   email: "demo@lazyfinance.cl",
   name: "Camila Rojas",
 };
+
 const identity = {
   provider: "firebase",
   issuer: "https://securetoken.google.com/lazyfinance-dev",
@@ -28,6 +29,7 @@ function createService(provider: "firebase" | "mock" = "mock") {
   const mockVerify = vi.fn((token: string) => {
     if (token !== "lazyfinance-demo-token")
       throw new UnauthorizedException("Invalid mock identity");
+
     return mockIdentity;
   });
   const login = vi.fn(async () => ({ token: "lazyfinance-demo-token" }));
@@ -35,6 +37,7 @@ function createService(provider: "firebase" | "mock" = "mock") {
   const verify = vi.fn(async (token: string) => {
     if (token === "lazyfinance-demo-token")
       throw new UnauthorizedException("Invalid Firebase ID token");
+
     return identity;
   });
   const resolveOrCreate = vi.fn(async () => principal);
@@ -49,6 +52,7 @@ function createService(provider: "firebase" | "mock" = "mock") {
       resolveExisting,
     } as unknown as ExternalIdentityRepository,
   );
+
   return {
     service,
     mockVerify,

@@ -26,6 +26,7 @@ describe("Comparison resource view", () => {
     await fixture.whenStable();
     fixture.detectChanges();
     const text = fixture.nativeElement.textContent;
+
     for (const value of [
       "septiembre de 2026",
       "agosto de 2026",
@@ -35,6 +36,7 @@ describe("Comparison resource view", () => {
       "$600.000",
     ])
       expect(text).toContain(value);
+
     expect(text).not.toContain("Ingresos");
     expect(TestBed.inject(TransferState).toJson()).toBe("{}");
   });

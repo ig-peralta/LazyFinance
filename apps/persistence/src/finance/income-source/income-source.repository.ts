@@ -18,6 +18,7 @@ type Tables = IncomeSourceTables &
 @Injectable()
 export class IncomeSourceRepository {
   constructor(@Inject(RLS_DB) private readonly db: Kysely<Tables>) {}
+
   sources() {
     return this.db
       .selectFrom("finance.income_source")
@@ -27,6 +28,7 @@ export class IncomeSourceRepository {
       .limit(10001)
       .execute();
   }
+
   async source(id: string, lock = false) {
     const query = this.db
       .selectFrom("finance.income_source")
@@ -38,8 +40,10 @@ export class IncomeSourceRepository {
         code: "NOT_FOUND",
         message: "Income source not found",
       });
+
     return row;
   }
+
   create(input: IncomeSourceInput) {
     return this.db
       .insertInto("finance.income_source")
@@ -47,6 +51,7 @@ export class IncomeSourceRepository {
       .returningAll()
       .executeTakeFirstOrThrow();
   }
+
   async update(id: string, input: IncomeSourceInput) {
     const row = await this.source(id, true);
     if (row.archivedAt)
@@ -54,6 +59,7 @@ export class IncomeSourceRepository {
         code: "BAD_REQUEST",
         message: "Archived income sources cannot be changed",
       });
+
     if (row.regularity === "irregular" && input.regularity === "regular") {
       const expectation = await this.db
         .selectFrom("finance.income_expectation")
@@ -68,6 +74,7 @@ export class IncomeSourceRepository {
             "Remove one-off expectations before changing to regular income",
         });
     }
+
     return this.db
       .updateTable("finance.income_source")
       .set({ ...input, updatedAt: sql<Date>`now()` })
@@ -75,9 +82,11 @@ export class IncomeSourceRepository {
       .returningAll()
       .executeTakeFirstOrThrow();
   }
+
   async archive(id: string, at: string) {
     const row = await this.source(id, true);
     if (row.archivedAt) return row;
+
     return this.db
       .updateTable("finance.income_source")
       .set({ archivedAt: new Date(at), updatedAt: sql<Date>`now()` })
@@ -85,6 +94,7 @@ export class IncomeSourceRepository {
       .returningAll()
       .executeTakeFirstOrThrow();
   }
+
   expectations(period: PeriodInput) {
     return this.db
       .selectFrom("finance.income_expectation")
@@ -96,6 +106,7 @@ export class IncomeSourceRepository {
       .limit(50001)
       .execute();
   }
+
   receipts(period: PeriodInput) {
     return this.db
       .selectFrom("finance.income_receipt as r")

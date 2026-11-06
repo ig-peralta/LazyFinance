@@ -21,6 +21,7 @@ export async function up(db: MigrationDatabase) {
     ownedConnection("provider_sync_state.provider_connection_id"),
   );
 }
+
 export async function down(db: MigrationDatabase) {
   await sql`DROP TABLE finance.provider_sync_state; DROP TYPE finance.provider_sync_failure, finance.provider_sync_result`.execute(
     db,

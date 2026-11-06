@@ -18,6 +18,7 @@ export async function up(db: MigrationDatabase) {
   GRANT SELECT, INSERT ON identity.external_identity TO lazyfinance_identity_bootstrap;
   `.execute(db);
 }
+
 export async function down(): Promise<never> {
   throw new Error("External identity mappings cannot be dropped automatically");
 }

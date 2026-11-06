@@ -26,6 +26,7 @@ function sourceInput(
     ...changes,
   };
 }
+
 async function withApi(
   work: (
     f: Fixture &
@@ -45,6 +46,7 @@ async function withApi(
     debitId = randomUUID(),
     futureId = randomUUID(),
     otherTransactionId = randomUUID();
+
   for (const [id, amount, date, internal, account] of [
     [salaryId, "1480000.00", "2026-09-26", false, f.accountId],
     [randomUUID(), "20000.00", "2026-09-27", false, f.accountId],
@@ -61,7 +63,9 @@ async function withApi(
       bookedAt: new Date(`${date}T15:00:00Z`),
       isInternalMovement: internal,
     });
+
   const api = await startApi(f, mcp);
+
   try {
     await work({
       ...f,
@@ -240,10 +244,12 @@ describe.skipIf(!integration)(
             sourceId: source.id,
           }),
         ).toEqual(first);
+
         for (const transactionId of [f.internalId, f.debitId, f.futureId])
           await expect(
             api.income.confirm.mutate({ transactionId, sourceId: source.id }),
           ).rejects.toMatchObject({ data: { code: "BAD_REQUEST" } });
+
         const summary = await api.income.summary.query({ month: "2026-09" });
         expect(summary).toMatchObject({
           receivedIncome: "1480000.00",
@@ -308,6 +314,7 @@ describe.skipIf(!integration)(
         expect((await own.income.sources.query()).map((row) => row.id)).toEqual(
           [source.id],
         );
+
         for (const operation of [
           () => own.income.source.query({ id: foreign.id }),
           () => own.income.archiveSource.mutate({ id: foreign.id }),
@@ -343,14 +350,17 @@ describe.skipIf(!integration)(
           await expect(operation()).rejects.toMatchObject({
             data: { code: "NOT_FOUND" },
           });
+
         await f.db.insert("income_receipt", {
           transactionId: f.salaryId,
           sourceId: foreign.id,
         });
+
         for (const api of [own, other])
           expect(
             await api.income.summary.query({ month: "2026-09" }),
           ).toMatchObject({ receivedIncome: "0.00", receipts: [] });
+
         // Only owner fixture tooling can create this corrupt row; runtime RLS cannot overwrite it.
         await expect(
           own.income.confirm.mutate({
@@ -366,6 +376,7 @@ describe.skipIf(!integration)(
           .client()
           .income.createSource.mutate(sourceInput());
         const income = f.app.get(IncomeService);
+
         for (const [amount, date] of [
           ["400.00", "2026-09-10"],
           ["500.00", "2026-10-10"],
@@ -385,6 +396,7 @@ describe.skipIf(!integration)(
             new Date("2026-10-21T15:00:00Z"),
           );
         }
+
         await income.confirmReceiptForUser(f.userId, f.salaryId, {
           sourceId: source.id,
         });

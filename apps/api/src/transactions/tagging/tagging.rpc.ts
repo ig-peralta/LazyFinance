@@ -27,6 +27,7 @@ export class TagsRpc {
   constructor(
     @Inject(TaggingService) private readonly service: TaggingService,
   ) {}
+
   @Query({
     input: RpcEmptySchema,
     output: TagsResultSchema,
@@ -35,6 +36,7 @@ export class TagsRpc {
   list(@Ctx() ctx: ApiRequestContext) {
     return this.service.listTagsForUser(rpcUser(ctx));
   }
+
   @Mutation({
     input: TagCreateInputSchema,
     output: TagSummarySchema,
@@ -43,6 +45,7 @@ export class TagsRpc {
   create(@Ctx() ctx: ApiRequestContext, @Input() input: TagCreateInput) {
     return this.service.createTagForUser(rpcUser(ctx), input);
   }
+
   @Query({
     input: RpcIdSchema,
     output: SuggestionsResultSchema,
@@ -51,6 +54,7 @@ export class TagsRpc {
   suggestions(@Ctx() ctx: ApiRequestContext, @Input() input: { id: string }) {
     return this.service.suggestionsForUser(rpcUser(ctx), input.id);
   }
+
   @Mutation({
     input: SetTagSchema,
     output: TagDecisionSchema,
@@ -66,6 +70,7 @@ export class TagsRpc {
       { tagId: input.tagId },
     );
   }
+
   @Mutation({
     input: RpcIdSchema,
     output: TagDecisionSchema,
@@ -81,6 +86,7 @@ export class TagRulesRpc {
   constructor(
     @Inject(TaggingService) private readonly service: TaggingService,
   ) {}
+
   @Query({
     input: RpcEmptySchema,
     output: TagRulesResultSchema,
@@ -89,6 +95,7 @@ export class TagRulesRpc {
   list(@Ctx() ctx: ApiRequestContext) {
     return this.service.listRulesForUser(rpcUser(ctx));
   }
+
   @Mutation({
     input: TagRuleInputSchema,
     output: TagRuleResultSchema,
@@ -97,6 +104,7 @@ export class TagRulesRpc {
   create(@Ctx() ctx: ApiRequestContext, @Input() input: TagRuleInput) {
     return this.service.createRuleForUser(rpcUser(ctx), input);
   }
+
   @Mutation({
     input: ReplaceTagRuleSchema,
     output: TagRuleResultSchema,
@@ -108,6 +116,7 @@ export class TagRulesRpc {
   ) {
     return this.service.replaceRuleForUser(rpcUser(ctx), input.id, input.rule);
   }
+
   @Mutation({
     input: RpcIdSchema,
     output: TagRuleResultSchema,
@@ -116,6 +125,7 @@ export class TagRulesRpc {
   archive(@Ctx() ctx: ApiRequestContext, @Input() input: { id: string }) {
     return this.service.archiveRuleForUser(rpcUser(ctx), input.id);
   }
+
   @Mutation({
     input: ApplyTagRuleSchema,
     output: AppliedTagRuleSchema,

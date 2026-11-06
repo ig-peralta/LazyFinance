@@ -14,6 +14,7 @@ export class TagRpc {
   constructor(
     @Inject(TagRepository) private readonly repository: TagRepository,
   ) {}
+
   @Query({
     input: EmptyInputSchema,
     output: TagRecordsSchema,
@@ -22,6 +23,7 @@ export class TagRpc {
   list() {
     return this.repository.list();
   }
+
   @Mutation({
     input: TagCreateSchema,
     output: TagRecordSchema,

@@ -33,6 +33,7 @@ function tokenOnlyCookie(value: unknown): string | null {
     "user" in value
   )
     return null;
+
   return typeof value.token === "string" && value.token.trim()
     ? value.token.trim()
     : null;
@@ -68,6 +69,7 @@ export class SessionService {
     });
     effect(() => {
       if (!this.credentials.expired()) return;
+
       untracked(() => {
         ++this.revision;
         this.clearLocalState();
@@ -78,14 +80,19 @@ export class SessionService {
 
   async initServerSide(config: AuthConfig | null): Promise<void> {
     if (!this.isServer) return;
+
     const revision = ++this.revision;
+
     try {
       if (!config) return;
+
       this.providerState.set(config.provider);
       const token = this.readTokenCookie();
       if (!token) return;
+
       // Only the API's verified principal may establish SSR identity.
       const user = await this.api.verifyPrincipal(token);
+
       if (revision === this.revision) this.credentials.accept(user, token);
     } catch {
       if (revision === this.revision) this.clearLocalState();
@@ -96,24 +103,31 @@ export class SessionService {
 
   async initClientSide(config: AuthConfig | null): Promise<void> {
     if (this.isServer) return;
+
     const revision = ++this.revision;
+
     try {
       if (!config) {
         this.clearLocalState();
         return;
       }
+
       this.providerState.set(config.provider);
       if (config.provider === "mock") {
         const token = this.readTokenCookie();
+
         if (token) {
           const user = await this.api.verifyPrincipal(token);
+
           if (revision === this.revision) this.credentials.accept(user, token);
         }
+
         return;
       }
 
       const auth = this.firebase.auth();
       if (!auth) throw new Error("Firebase Auth could not be initialized");
+
       await auth.authStateReady();
       await new Promise<void>((resolve) => {
         let initial = true;
@@ -122,7 +136,9 @@ export class SessionService {
           (firebaseUser) => {
             const revision = ++this.revision;
             this.resolving.set(true);
+
             if (this.firebaseUid !== firebaseUser?.uid) this.clearLocalState();
+
             this.pendingResolution = this.resolveFirebaseUser(
               firebaseUser,
               revision,
@@ -132,7 +148,9 @@ export class SessionService {
               })
               .finally(() => {
                 if (revision !== this.revision) return;
+
                 this.resolving.set(false);
+
                 if (initial) {
                   initial = false;
                   resolve();
@@ -143,6 +161,7 @@ export class SessionService {
             ++this.revision;
             this.clearLocalState();
             this.resolving.set(false);
+
             if (initial) {
               initial = false;
               resolve();
@@ -160,29 +179,38 @@ export class SessionService {
   async loginWithToken(token: string): Promise<AuthPrincipal> {
     if (this.providerState() !== "mock")
       throw new Error("Mock login is not available");
+
     const trimmed = token.trim();
     if (!trimmed) throw new Error("A token is required");
+
     const revision = ++this.revision;
     this.clearLocalState();
     const user = await this.api.verifyPrincipal(trimmed);
     if (revision !== this.revision)
       throw new Error("Session changed during login");
+
     this.credentials.accept(user, trimmed);
     this.writeCookie(JSON.stringify({ token: trimmed }));
+
     return user;
   }
 
   async loginWithGoogle(): Promise<AuthPrincipal> {
     if (this.isServer || this.providerState() !== "firebase")
       throw new Error("Firebase login is not available");
+
     const firebaseUser = await this.firebase.signInWithGoogle();
     const revision = ++this.revision;
     this.resolving.set(true);
+
     try {
       await this.resolveFirebaseUser(firebaseUser, revision);
+
       if (revision !== this.revision) await this.pendingResolution;
+
       const user = this.user();
       if (!user) throw new Error("Could not establish a Firebase session");
+
       return user;
     } finally {
       if (revision === this.revision) this.resolving.set(false);
@@ -192,6 +220,7 @@ export class SessionService {
   async logout(): Promise<void> {
     ++this.revision;
     this.clearLocalState();
+
     if (!this.isServer && this.providerState() === "firebase")
       await this.firebase.signOut();
   }
@@ -202,8 +231,10 @@ export class SessionService {
   ): Promise<void> {
     if (!firebaseUser) {
       if (revision === this.revision) this.clearLocalState();
+
       return;
     }
+
     const token = await firebaseUser.getIdToken();
     const user = await this.api.verifyPrincipal(token);
     if (
@@ -237,6 +268,7 @@ export class SessionService {
   private readTokenCookie(): string | null {
     const raw = this.cookies.get(SESSION_COOKIE);
     if (!raw) return null;
+
     try {
       const parsed: unknown = JSON.parse(raw);
       const token = tokenOnlyCookie(parsed);
@@ -244,7 +276,9 @@ export class SessionService {
     } catch {
       /* Discard malformed token cookie. */
     }
+
     this.cookies.delete(SESSION_COOKIE, "/");
+
     return null;
   }
 }

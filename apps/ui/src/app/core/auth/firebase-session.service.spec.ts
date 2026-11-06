@@ -11,16 +11,19 @@ import { AuthApi } from "./auth-api";
 import { SessionService } from "./session.service";
 
 const cookieName = "lazyfinance-session";
+
 const first = {
   userId: "user-a",
   email: "first@example.com",
   name: "First user",
 };
+
 const second = {
   userId: "user-b",
   email: "second@example.com",
   name: "Second user",
 };
+
 const initialize = () => TestBed.runInInjectionContext(initializeServices);
 
 function firebaseUser(uid: string, token: string) {
@@ -50,6 +53,7 @@ function setup() {
         onTokenChanged = listener;
         onTokenError = onError;
         queueMicrotask(() => listener(auth.currentUser));
+
         return () => {};
       },
     ),
@@ -83,6 +87,7 @@ function setup() {
     ],
   });
   const session = TestBed.inject(SessionService);
+
   return {
     session,
     firstUser,
@@ -208,6 +213,7 @@ describe("Firebase browser session", () => {
     firebase.signInWithGoogle.mockImplementation(async () => {
       auth.currentUser = secondUser.user;
       onTokenChanged(secondUser.user);
+
       return secondUser.user;
     });
 

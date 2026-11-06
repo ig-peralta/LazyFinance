@@ -25,6 +25,7 @@ export class TagRuleRpc {
   constructor(
     @Inject(TagRuleRepository) private readonly repository: TagRuleRepository,
   ) {}
+
   @Query({
     input: EmptyInputSchema,
     output: TagRuleRecordsSchema,
@@ -33,6 +34,7 @@ export class TagRuleRpc {
   async list() {
     return wireValue(await this.repository.list());
   }
+
   @Mutation({
     input: TagRuleCreateSchema,
     output: TagRuleRecordSchema,
@@ -41,6 +43,7 @@ export class TagRuleRpc {
   async create(@Input() input: TagRuleInput) {
     return wireValue(await this.repository.create(input));
   }
+
   @Mutation({
     input: TagRuleReplaceSchema,
     output: TagRuleRecordSchema,
@@ -49,6 +52,7 @@ export class TagRuleRpc {
   async replace(@Input() input: { id: string; rule: TagRuleInput }) {
     return wireValue(await this.repository.replace(input.id, input.rule));
   }
+
   @Mutation({
     input: IdInputSchema,
     output: TagRuleRecordSchema,
@@ -57,6 +61,7 @@ export class TagRuleRpc {
   async archive(@Input() input: { id: string }) {
     return wireValue(await this.repository.archive(input.id));
   }
+
   @Query({
     input: IdInputSchema,
     output: TaggingFactsSchema,
@@ -65,6 +70,7 @@ export class TagRuleRpc {
   async facts(@Input() input: { id: string }) {
     return wireValue(await this.repository.facts(input.id));
   }
+
   @Mutation({
     input: ManualTagCommandSchema,
     output: TagDecisionSchema,
@@ -73,6 +79,7 @@ export class TagRuleRpc {
   manual(@Input() input: { transactionId: string; tagId: string | null }) {
     return this.repository.manual(input.transactionId, input.tagId);
   }
+
   @Mutation({
     input: IdInputSchema,
     output: TagDecisionSchema,
@@ -81,6 +88,7 @@ export class TagRuleRpc {
   reset(@Input() input: { id: string }) {
     return this.repository.reset(input.id);
   }
+
   @Query({
     input: RuleCandidatesInputSchema,
     output: RuleCandidatesSchema,
@@ -89,6 +97,7 @@ export class TagRuleRpc {
   async candidates(@Input() input: RuleCandidatesInput) {
     return wireValue(await this.repository.candidates(input));
   }
+
   @Mutation({
     input: CommitRuleDecisionsSchema,
     output: ChangedCountSchema,

@@ -9,6 +9,7 @@ describe.skipIf(!integration)(
   () => {
     it("preserves unknown balances/decisions but excludes unresolved and removed financial facts", async () => {
       const f = await fixture(true);
+
       try {
         await f.db.update("account", f.accountId, {
           balance: null,

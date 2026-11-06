@@ -18,6 +18,7 @@ export async function up(db: MigrationDatabase) {
     ownedMovement("provider_movement_conflict.transaction_id"),
   );
 }
+
 export async function down(db: MigrationDatabase) {
   await sql`DROP TABLE finance.provider_movement_conflict; DROP TYPE finance.provider_movement_conflict_reason`.execute(
     db,

@@ -28,12 +28,14 @@ export function syncScope(
     string,
     { accountExternalId: string; externalId: string }
   >();
+
   for (const page of pages)
     for (const row of [...page.movements, ...page.removedMovements]) {
       keys.set(movementKey(row.accountExternalId, row.externalId), {
         accountExternalId: row.accountExternalId,
         externalId: row.externalId,
       });
+
       if ("relatedMovement" in row && row.relatedMovement) {
         const related = row.relatedMovement;
         keys.set(
@@ -45,6 +47,7 @@ export function syncScope(
         );
       }
     }
+
   return {
     connectionId,
     revision,
@@ -68,6 +71,7 @@ export function prepareSync(
     new Date(last.observedAt) < new Date(facts.state.lastProviderObservedAt)
   )
     throw new InvalidBatchError("Provider returned an older snapshot");
+
   const accounts = new Map<string, PreparedProviderAccount>(
     facts.accounts
       .filter((row) => row.externalId !== null)
@@ -91,19 +95,23 @@ export function prepareSync(
       ]),
   );
   const changedAccounts = new Set<string>();
+
   for (const page of pages)
     for (const snapshot of page.accounts) {
       const existing = accounts.get(snapshot.externalId);
+
       if (
         existing &&
         new Date(page.observedAt) < new Date(existing.providerObservedAt)
       )
         continue;
+
       if (
         existing &&
         (existing.type === "credit_card") !== (snapshot.type === "credit_card")
       )
         throw new InvalidBatchError("Account balance meaning changed");
+
       const olderBalance =
         existing?.lastSyncedAt &&
         snapshot.reportedBalance?.asOf &&
@@ -140,24 +148,29 @@ export function prepareSync(
       });
       changedAccounts.add(snapshot.externalId);
     }
+
   const movements = new Map<string, NormalizedMovement>();
   const observed = new Map<string, string>();
   const removed = new Map<string, CommitProviderSync["removals"][number]>();
+
   for (const page of pages) {
     for (const movement of page.movements) {
       const key = movementKey(movement.accountExternalId, movement.externalId);
       const earlier = movements.get(key);
       if (earlier && JSON.stringify(earlier) !== JSON.stringify(movement))
         throw new InvalidBatchError("Conflicting versions in one sync run");
+
       movements.set(key, movement);
       observed.set(key, page.observedAt);
     }
+
     for (const removal of page.removedMovements)
       removed.set(movementKey(removal.accountExternalId, removal.externalId), {
         ...removal,
         observedAt: page.observedAt,
       });
   }
+
   const accountKeys = new Map(
     facts.accounts.map((row) => [row.id, row.externalId]),
   );
@@ -174,15 +187,20 @@ export function prepareSync(
   );
   const receipts = new Set(facts.receiptTransactionIds);
   const prepared: CommitProviderSync["movements"] = [];
+
   for (const [key, movement] of movements) {
     if (removed.has(key) || tombstones.has(key)) continue;
+
     const owner = accounts.get(movement.accountExternalId);
     if (!owner)
       throw new InvalidBatchError("Movement references an unknown account");
+
     const existing = existingMovements.get(key);
     if (existing && existing.source !== "provider")
       throw new InvalidBatchError("Provider ID collides with manual movement");
+
     const observedAt = observed.get(key)!;
+
     if (
       existing?.removedAt ||
       (existing?.providerObservedAt &&
@@ -193,6 +211,7 @@ export function prepareSync(
           new Date(existing.providerUpdatedAt))
     )
       continue;
+
     const relation = movement.relatedMovement;
     const priorPair =
       existing?.providerInternalAssessment === "internal" &&
@@ -282,6 +301,7 @@ export function prepareSync(
       ...(decision ? { decision } : {}),
     });
   }
+
   return {
     scope,
     expectedFingerprint: facts.fingerprint,
@@ -338,6 +358,7 @@ function assess(
       )
     )
       return "internal";
+
     return "unknown";
   }
   if (["transfer", "card_payment", "unknown"].includes(movement.providerKind))
@@ -355,5 +376,6 @@ function assess(
       movementDirection(movement.amount) === "debit")
   )
     return "external";
+
   return "unknown";
 }

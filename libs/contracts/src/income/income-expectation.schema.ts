@@ -48,7 +48,11 @@ export const ExpectedIncomeSchema = z.object({
 export type IncomeExpectationInput = z.infer<
   typeof IncomeExpectationInputSchema
 >;
+
 export type IncomeExpectation = z.infer<typeof IncomeExpectationSchema>;
+
 export type ExpectedIncomeTotals = z.infer<typeof ExpectedIncomeTotalsSchema>;
+
 export type ExpectedIncomePayment = z.infer<typeof ExpectedIncomePaymentSchema>;
+
 export type ExpectedIncome = z.infer<typeof ExpectedIncomeSchema>;

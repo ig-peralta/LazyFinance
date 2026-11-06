@@ -35,6 +35,7 @@ export async function up(db: MigrationDatabase) {
     `user_id = ${currentUser} AND ${ownedConnection("account.provider_connection_id")}`,
   );
 }
+
 export async function down(db: MigrationDatabase) {
   await sql`DROP TABLE finance.account; DROP TYPE finance.account_type; DROP TYPE finance.currency; DROP TYPE finance.history_completeness`.execute(
     db,

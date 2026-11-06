@@ -24,6 +24,7 @@ async function ownedFlow(
     movements: { id: string }[] = [],
     objectives: { id: string }[] = [],
     connections: { id: string }[] = [];
+
   for (const principal of [a, b]) {
     const connection = await api.db.insert("provider_connection", {
       userId: principal.userId,
@@ -55,6 +56,7 @@ async function ownedFlow(
     objectives.push(objective);
     connections.push(connection);
   }
+
   const fetchPage = vi.fn();
   await expect(
     api.app
@@ -108,6 +110,7 @@ async function ownedFlow(
     transactionId: movements[1].id,
     sourceId: other.id,
   });
+
   for (const operation of [
     () => second.income.source.query({ id: source.id }),
     () => second.income.removeExpectation.mutate({ id: expectation.id }),
@@ -126,6 +129,7 @@ async function ownedFlow(
     await expect(operation()).rejects.toMatchObject({
       data: { code: "NOT_FOUND" },
     });
+
   expect(
     (await first.income.receipts.query({ month: "2026-10" })).map(
       (row) => row.transactionId,
@@ -161,6 +165,7 @@ describe.skipIf(!integration)(
         ]),
       );
       const api = await identityApi(identities);
+
       try {
         await ownedFlow(api, first, second);
       } finally {
@@ -169,6 +174,7 @@ describe.skipIf(!integration)(
     });
     it("keeps demo login linked only to its seeded identity in mock mode", async () => {
       const api = await identityApi(undefined, "mock");
+
       try {
         await api.db.pool.query(
           `INSERT INTO identity."user"(email,name) VALUES ($1,'Demo') ON CONFLICT DO NOTHING`,
@@ -211,6 +217,7 @@ describe.skipIf(!integration)(
       "verifies two live Firebase tokens before applying the same ownership checks",
       async () => {
         const api = await identityApi();
+
         try {
           const a = process.env.TEST_FIREBASE_ID_TOKEN_A!,
             b = process.env.TEST_FIREBASE_ID_TOKEN_B!;
@@ -223,6 +230,7 @@ describe.skipIf(!integration)(
               .auth.principal.query(),
           ).rejects.toMatchObject({ data: { code: "UNAUTHORIZED" } });
           await ownedFlow(api, a, b);
+
           if (process.env.TEST_FIREBASE_EXPIRED_ID_TOKEN)
             await expect(
               api

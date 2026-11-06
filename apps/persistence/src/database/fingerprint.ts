@@ -12,6 +12,7 @@ export function fingerprint(value: unknown): string {
               .map(([key, value]) => [key, sort(value)]),
           )
         : item;
+
   return createHash("sha256")
     .update(JSON.stringify(sort(json)))
     .digest("hex");

@@ -51,6 +51,7 @@ describe("HTTP authentication", () => {
           ) {
             throw new UnauthorizedException("External identity is not linked");
           }
+
           return {
             userId: users[0].id,
             email: users[0].email,

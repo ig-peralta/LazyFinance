@@ -66,7 +66,9 @@ export async function seedDemo(
       .executeTakeFirstOrThrow();
     if (link.userId !== demoUser.id)
       throw new Error("Mock identity is linked to another financial user");
+
     let manualProviderId = "";
+
     for (const identifier of ["manual", "fintoc"]) {
       const row = await tx
         .insertInto("finance.provider")
@@ -74,8 +76,10 @@ export async function seedDemo(
         .onConflict((oc) => oc.column("identifier").doUpdateSet({ identifier }))
         .returning("id")
         .executeTakeFirstOrThrow();
+
       if (identifier === "manual") manualProviderId = row.id;
     }
+
     await tx
       .insertInto("finance.provider_connection")
       .values({
@@ -96,6 +100,7 @@ export async function seedDemo(
         }),
       )
       .execute();
+
     for (const key of Object.keys(accounts) as AccountKey[]) {
       const details = accounts[key];
       await tx
@@ -111,6 +116,7 @@ export async function seedDemo(
         )
         .execute();
     }
+
     for (const item of tags)
       await tx
         .insertInto("finance.tag")
@@ -129,6 +135,7 @@ export async function seedDemo(
           }),
         )
         .execute();
+
     for (const item of objectives) {
       const value = {
         ...item.value,
@@ -157,6 +164,7 @@ export async function seedDemo(
         .onConflict((oc) => oc.columns(["objectiveId", "tagId"]).doNothing())
         .execute();
     }
+
     for (const source of incomeSources)
       await tx
         .insertInto("finance.income_source")
@@ -170,6 +178,7 @@ export async function seedDemo(
           }),
         )
         .execute();
+
     for (const expectation of incomeExpectations)
       await tx
         .insertInto("finance.income_expectation")
@@ -182,6 +191,7 @@ export async function seedDemo(
           }),
         )
         .execute();
+
     for (const group of batches(entries))
       await tx
         .insertInto("finance.transaction")
@@ -208,6 +218,7 @@ export async function seedDemo(
           })),
         )
         .execute();
+
     for (const group of batches(buildIncomeReceipts(entries)))
       await tx
         .insertInto("finance.income_receipt")
@@ -219,6 +230,7 @@ export async function seedDemo(
           })),
         )
         .execute();
+
     const totals = await tx
       .selectFrom("finance.transaction")
       .select([
@@ -235,6 +247,7 @@ export async function seedDemo(
     const totalByAccount = new Map(
       totals.map((row) => [row.accountId, Number(row.total)]),
     );
+
     for (const key of Object.keys(accounts) as AccountKey[])
       await tx
         .updateTable("finance.account")
@@ -247,6 +260,7 @@ export async function seedDemo(
         .where("id", "=", accounts[key].id)
         .execute();
   });
+
   return {
     email: demoUser.email,
     transactions: entries.length,

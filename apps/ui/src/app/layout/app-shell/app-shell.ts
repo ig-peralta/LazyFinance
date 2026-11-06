@@ -18,6 +18,7 @@ export class AppShell {
 
   protected readonly menuOpen = signal(false);
   protected readonly logoutError = signal<string | null>(null);
+
   protected readonly links = [
     {
       path: "/dashboard",
@@ -46,6 +47,7 @@ export class AppShell {
 
   protected async logout(): Promise<void> {
     this.logoutError.set(null);
+
     try {
       await this.session.logout();
       await this.router.navigateByUrl("/");

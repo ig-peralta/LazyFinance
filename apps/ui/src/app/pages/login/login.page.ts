@@ -20,15 +20,19 @@ export class LoginPage {
   private readonly api = inject(AuthApi);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+
   readonly config = resource({
     loader: ({ abortSignal }) => this.api.config(abortSignal),
   });
+
   readonly provider = computed(() =>
     this.config.hasValue() ? this.config.value().provider : null,
   );
+
   readonly loadingConfig = this.config.isLoading;
   readonly loading = signal(false);
   private readonly commandError = signal<string | null>(null);
+
   readonly error = computed(
     () =>
       this.commandError() ??
@@ -54,6 +58,7 @@ export class LoginPage {
 
     this.loading.set(true);
     this.commandError.set(null);
+
     try {
       const { token } = await this.api.loginMock(email, password);
       await this.session.loginWithToken(token);
@@ -69,8 +74,10 @@ export class LoginPage {
 
   async loginWithGoogle(): Promise<void> {
     if (this.loading() || this.provider() !== "firebase") return;
+
     this.loading.set(true);
     this.commandError.set(null);
+
     try {
       await this.session.loginWithGoogle();
       await this.router.navigateByUrl(this.destination());

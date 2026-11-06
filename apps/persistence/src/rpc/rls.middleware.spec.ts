@@ -8,6 +8,7 @@ import { RlsMiddleware } from "./rls.middleware";
 vi.mock("@lazyfinance/contracts/internal", () => ({
   MAX_PERSISTENCE_RPC_BYTES: 128,
 }));
+
 vi.mock("../database/rls", () => ({
   withRequestContext: vi.fn(async (_db, _ctx, operation) => operation({})),
 }));

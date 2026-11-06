@@ -37,4 +37,5 @@ export const IncomeSummarySchema = z.object({
 });
 
 export type IncomeReceipt = z.infer<typeof IncomeReceiptSchema>;
+
 export type IncomeSummary = z.infer<typeof IncomeSummarySchema>;

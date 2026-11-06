@@ -22,6 +22,7 @@ export async function withRequestContext<T, Result>(
   const ctx = PersistenceContextSchema.parse(context);
   if (transactions.getStore())
     throw new Error("Nested request scopes are not allowed");
+
   return database
     .transaction()
     .setIsolationLevel(isolation)
@@ -55,6 +56,7 @@ export function createRlsDbProxy<T>(): Kysely<T> {
       // Nest/tRPC inspects every provider's constructor during discovery.
       if (property === "constructor") return Object;
       if (lifecycle.has(String(property))) return undefined;
+
       const tx = transactions.getStore();
       if (!tx) throw new OutsideRlsSessionError();
       if (
@@ -64,7 +66,9 @@ export function createRlsDbProxy<T>(): Kysely<T> {
       ) {
         throw new Error("Repositories must reuse the scoped transaction");
       }
+
       const value = Reflect.get(tx, property, tx);
+
       return typeof value === "function" ? value.bind(tx) : value;
     },
   });
