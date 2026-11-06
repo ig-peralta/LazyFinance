@@ -1,6 +1,6 @@
 # Conceptual UML diagrams
 
-These selected PNGs are **unchanged visual sketches of possible LazyFinance interactions and structure**, not diagrams of the currently shipped implementation or a verified database model. They can help discuss the product direction described in the [product vision](../product/product-vision.md); the [current architecture](../technical/architecture.md) and [Drizzle schema](../../apps/api/src/drizzle/schema) describe what actually exists.
+These selected PNGs are **unchanged visual sketches of possible LazyFinance interactions and structure**, not diagrams of the currently shipped implementation or a verified database model. They can help discuss the product direction described in the [product vision](../product/product-vision.md); the [current architecture](../technical/architecture.md) and [persistence schemas](../../apps/persistence/src) describe what actually exists.
 
 | Diagram                                               | What it illustrates                                                                                        |
 | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |

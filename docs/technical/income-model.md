@@ -56,23 +56,23 @@ One `income_receipt` row links a transaction to a source, with the transaction I
 
 Receipts attach to sources, not individual expected occurrences. Stage A does not automatically match deposits to paydays or mark expectations paid, overdue, or partially fulfilled. The period totals and explicit transaction links provide the initial reconciliation evidence.
 
-## Backend endpoints
+## Public tRPC procedures
 
 All operations require the authenticated principal. Financial reads use `Cache-Control: private, no-store`.
 
-| Method       | Path                               | Purpose                                                              |
-| ------------ | ---------------------------------- | -------------------------------------------------------------------- |
-| GET / POST   | `/income/sources`                  | List / create owned sources                                          |
-| GET / PUT    | `/income/sources/:id`              | Read / fully replace an owned declaration                            |
-| POST         | `/income/sources/:id/archive`      | Archive a source idempotently                                        |
-| GET / POST   | `/income/sources/:id/expectations` | List / create dated irregular expectations                           |
-| PUT / DELETE | `/income/expectations/:id`         | Replace / remove an owned expectation                                |
-| GET          | `/income/expected?month=YYYY-MM`   | Expected payments and totals                                         |
-| GET          | `/income/receipts?month=YYYY-MM`   | Confirmed receipts with source and transaction references            |
-| PUT / DELETE | `/income/receipts/:transactionId`  | Confirm/reassign / clear an owned receipt                            |
-| GET          | `/income/summary?month=YYYY-MM`    | Full-month expectations, observed receipts, and unclassified credits |
+| Kind | Procedure | Purpose |
+| --- | --- | --- |
+| Query / mutation | `income.sources` / `income.createSource` | List / create owned sources |
+| Query / mutation | `income.source` / `income.updateSource` | Read / fully replace an owned declaration |
+| Mutation | `income.archiveSource` | Archive a source idempotently |
+| Query / mutation | `income.expectations` / `income.createExpectation` | List / create dated irregular expectations |
+| Mutation | `income.updateExpectation` / `income.removeExpectation` | Replace / remove an owned expectation |
+| Query | `income.expected` | Expected payments and totals |
+| Query | `income.receipts` | Confirmed receipts with source and transaction references |
+| Mutation | `income.confirm` / `income.clear` | Confirm/reassign / clear an owned receipt |
+| Query | `income.summary` | Full-month expectations, observed receipts and unclassified credits |
 
-Income read endpoints default to the current Santiago month and allow future months. Writes use the shared Zod input contracts; receipt and source mutations are transactional. Expected-payment and income-summary reads use a repeatable-read snapshot so their component queries describe the same database state. The read-only MCP tool `consultar_ingresos` returns the same income summary service result.
+Procedures live under `/trpc`; the old REST paths are retired. Month queries accept `{ month?: "YYYY-MM" }`, default to the current Santiago month and allow future months. Writes use shared Zod contracts. The API owns calendar/money calculations; private persistence commands enforce owned source/expectation/receipt invariants atomically under the user write lock. Expected-payment and summary calculations consume a repeatable-read factual snapshot so their component facts describe the same state. The read-only MCP tool `consultar_ingresos` returns the same summary service result.
 
 Example source input:
 
@@ -93,11 +93,11 @@ Example source input:
 
 The repeatable seed declares a monthly salary, estimated month-end commissions, irregular freelance work, and bonuses. It explicitly confirms the fabricated salary, freelance, and bonus movements; tax-refund credits remain unclassified. No receipt is inferred from the credit sign or a user-editable tag.
 
-Calendar and contract cases run in the normal API test suite. PostgreSQL integration cases use an explicitly supplied development/test database, apply checked-in migrations, and roll back their fixtures:
+Calendar and contract cases run in the normal API test suite. PostgreSQL cases require a disposable database ending in `_test`. The root runner applies fresh migrations, provisions a restricted runtime login, starts compiled persistence with ephemeral signing keys, and exercises both real RPC boundaries:
 
 ```bash
-TEST_POSTGRES_URL=postgresql://user:password@localhost:5432/lazyfinance_laz25_test \
-  pnpm --filter api exec vitest run src/income/income.integration.spec.ts
+TEST_POSTGRES_OWNER_URL=postgresql://owner:password@localhost:5432/lazyfinance_test \
+  pnpm test:integration
 ```
 
-These cases verify mutations, ownership, idempotent receipts, unclassified refunds, transfers, late/different-amount receipts, archived history, equivalent-period comparisons, balance preservation, and HTTP/MCP agreement.
+These cases verify mutations, ownership, idempotent receipts, unclassified refunds, transfers, late/different-amount receipts, archived history, equivalent-period comparisons, balance preservation, and tRPC/MCP agreement. Owner-only fixture SQL is confined to test tooling; the API runtime has no database driver or credentials.

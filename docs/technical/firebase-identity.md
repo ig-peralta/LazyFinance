@@ -58,14 +58,14 @@ be treated as a Firebase ID token or substitute its own subject for `userId`.
 local credentials. Its token verifier returns `VerifiedExternalIdentity` with
 `provider: 'mock'`, issuer `https://mock.lazyfinance.cl`, and subject `demo`.
 The demo seed links that identity to the existing demo financial user. Mock
-sessions resolve that link through the same identity repository as Firebase,
+sessions resolve that link through the same private identity RPC as Firebase,
 but never provision another demo user if the link is missing. The fixture token
 is not stored on the `user` table and is unavailable in Firebase mode.
-The public `GET /auth/config` exposes only `{ provider: 'mock' | 'firebase' }`
-so the UI can select the appropriate login inputs. `POST /auth/mock/login`
+The public `auth.config` tRPC query exposes only `{ provider: 'mock' | 'firebase' }`
+so the UI can select the appropriate login inputs. The `auth.loginMock` mutation
 is available only in mock mode and returns the seeded bearer token for valid
 credentials; the demo token is rejected in Firebase mode. Mock mode is refused
-when `NODE_ENV=production`. Firebase-mode protected HTTP and MCP requests now
+when `NODE_ENV=production`. Firebase-mode protected tRPC and MCP requests now
 use the verified identity mapping to obtain the same internal principal; the
 external-client MCP authorization scheme remains a separate workstream.
 
@@ -78,12 +78,16 @@ To hand the current token to SSR, the browser writes a secure (on HTTPS),
 SameSite=Lax cookie containing **only the ID token**, never an application
 principal. The cookie is readable by same-origin JavaScript; it is a transport,
 not a trusted session record. SSR reads the token but must call the API's
-`/auth/principal` to verify and resolve the internal user before rendering any
+`auth.principal` query to verify and resolve the internal user before rendering any
 protected route.
 An invalid, expired, or forged cookie is discarded; the browser can recover
 from Firebase persistence after hydration. Authentication guards wait for
-session restoration, and protected HTTP responses are excluded from Angular's
-transfer cache so a different browser identity cannot inherit private data.
+session restoration. Vanilla tRPC uses no-store fetches, request-local SSR clients
+and no authenticated transfer cache so another browser identity cannot inherit
+private data. Verified credential scopes cancel old-user calls on changes; late
+errors cannot expire a newer session. Dashboard resources do not use transfer
+cache IDs or manual `TransferState` payloads. Components consume resource state
+and explicit native-Promise commands rather than HTTP/Observable adapters.
 Sign-out clears both Firebase local persistence and the SSR handoff cookie.
 Mock mode uses the same token-only cookie handoff and API revalidation, without
 ever treating the cookie as a trusted user record.
@@ -113,23 +117,27 @@ audience or issuer, absent subject, malformed and expired token errors,
 configuration failure, and reuse of the Admin app. Run them with:
 
 ```bash
-pnpm --filter @lazyfinance/contracts build
+pnpm exec turbo build --filter=api...
 pnpm --filter api exec vitest run src/auth/firebase/firebase-auth.service.spec.ts src/auth/firebase/firebase-auth.utils.spec.ts src/environment/environment.schema.spec.ts
 pnpm --filter api exec vitest run src/auth/mock/mock-auth.service.spec.ts src/auth/http.guard.spec.ts
-TEST_POSTGRES_URL=postgresql://user:password@localhost:5432/postgres pnpm --filter api exec vitest run src/auth/external-identity.integration.spec.ts
+TEST_POSTGRES_OWNER_URL=postgresql://owner:password@localhost:5432/lazyfinance_test pnpm test:integration
 ```
 
 These verifier tests substitute the Admin SDK's verification call; they do not
 represent an end-to-end sign-in against a live Firebase project. The LAZ-44
 PostgreSQL integration tests inject verified identity fixtures to exercise
 first and concurrent provisioning, email collisions, and cross-user financial
-operations without a Firebase emulator. Run them with `TEST_POSTGRES_URL` set.
+operations without a Firebase emulator. The root integration runner migrates and
+provisions a disposable `_test` database, starts compiled persistence with an
+ephemeral service key pair and restricted runtime login, and runs the API suite
+through signed private RPC. Owner SQL is limited to test fixtures, not API code.
 
 ## Integrated identity verification (LAZ-45)
 
 The UI's development and production environment files currently use the public
-Web app identifiers for `lazyfinance-dev`. For a local Firebase run, migrate a
-development PostgreSQL database and start the API with `AUTH_PROVIDER=firebase`
+Web app identifiers for `lazyfinance-dev`. For a local Firebase run, initialize a
+fresh development database and start private persistence as described in its
+[guide](../../apps/persistence/README.md). Start the API with `AUTH_PROVIDER=firebase`
 and `FIREBASE_PROJECT_ID=lazyfinance-dev` (in ignored `apps/api/.env` or the
 runtime environment), then start the UI with `pnpm --filter ui dev`. Enable the
 Google provider in the Firebase project and authorize `localhost` as a sign-in
@@ -137,9 +145,9 @@ domain. Production deployments must use matching UI and API project settings.
 Neither a service-account key nor a Firebase Auth emulator is required to
 verify ID tokens; a service-account key, if used, belongs only in the API runtime.
 
-The PostgreSQL identity-flow test runs against the actual API controllers,
-principal resolver, financial services, and a transaction that rolls back its
-fixtures. Its default path injects two verified external identities for
+The PostgreSQL identity-flow test runs against actual public/private tRPC routers,
+the principal resolver and financial services using isolated test fixtures. Its
+default path injects two verified external identities for
 deterministic first/repeat provisioning, rejection of missing/demo tokens,
 connection ownership, and two-user account, transaction, tag, objective, income
 source, expectation, and receipt isolation. A separate mock-mode test exercises
@@ -147,8 +155,8 @@ the real demo login and confirms it cannot access a Firebase user's account.
 Run them with:
 
 ```bash
-TEST_POSTGRES_URL=postgresql://user:password@localhost:5432/postgres \
-  pnpm --filter api exec vitest run src/auth/identity-flow.integration.spec.ts
+TEST_POSTGRES_OWNER_URL=postgresql://owner:password@localhost:5432/lazyfinance_test \
+  pnpm test:integration
 pnpm --filter ui exec ng test --watch=false
 ```
 
@@ -159,13 +167,13 @@ local mock auth, while this integration spec selects its provider explicitly.
 For the live path, use **two separate verified-email Google test identities**
 with distinct emails (neither is the demo email). Sign each into the local UI,
 and obtain that person's current Firebase **ID token** from their own
-`/auth/principal` request's bearer header in the browser network panel. Set
+`/trpc/auth.principal` request's bearer header in the browser network panel. Set
 `TEST_FIREBASE_ID_TOKEN_A` and `TEST_FIREBASE_ID_TOKEN_B` in your local shell,
 not in source or a shared log, and run the same API test command with
-`TEST_POSTGRES_URL`. The live test is skipped unless both tokens are set. It
+`TEST_POSTGRES_OWNER_URL`. The live test is skipped unless both tokens are set. It
 uses the real Admin verifier, checks distinct stable application users and the
 same two-user financial isolation, rejects the demo and a tampered token, and
-rolls back any fixture data. Optionally set `TEST_FIREBASE_EXPIRED_ID_TOKEN`
+uses only the disposable test database. Optionally set `TEST_FIREBASE_EXPIRED_ID_TOKEN`
 to a previously valid token kept past its expiry (usually about an hour) to
 verify live expiry rejection. Refresh the two active tokens before rerunning;
 Firebase rotates them automatically in the browser. Do not use Google OAuth
@@ -177,9 +185,9 @@ reload, and confirm neither user's accounts or income appear in the other's
 profile. On logout, direct navigation to a protected route must require login;
 an expired or forged `lazyfinance-session` cookie must not render protected SSR
 content. The browser may re-establish a session from Firebase persistence
-after an expired cookie; only a valid ID token accepted by `/auth/principal`
+after an expired cookie; only a valid ID token accepted by `auth.principal`
 restores access. In mock mode (`AUTH_PROVIDER=mock`, nonproduction), seed the
-demo user and verify `/auth/mock/login` works; Firebase mode rejects that
-endpoint and the demo token. Logout clears local access, but an already-issued
+demo user and verify `auth.loginMock` works; Firebase mode rejects that
+mutation and the demo token. Logout clears local access, but an already-issued
 ID token remains valid on the API until it expires (see the revocation policy
 above).

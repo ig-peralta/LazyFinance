@@ -2,7 +2,8 @@
 
 This directory documents **the current architecture and operational path alongside product quality goals**. It complements the [product vision](../product/product-vision.md), [product requirements](../product/product-requirements.md) and [dated planning snapshot](../planning/snapshots/backlog-2026-11-02.md), without treating a planned issue as delivered code.
 
-- [Architecture](architecture.md): Angular/SSR, NestJS HTTP/MCP, identity, financial services, Drizzle and the neutral ingestion boundary.
+- [Architecture](architecture.md): Angular/SSR, public/private NestJS tRPC, MCP, Kysely, identity/finance schemas and user RLS.
+- [Persistence/tRPC/RLS implementation record](../planning/persistence-rpc-user-rls-plan.md): implemented boundaries, small fresh migrations, authoritative atomic commands, generated libraries, validation and remaining operational work.
 - [Conceptual UML diagrams](../diagrams/README.md): selected use-case, component and agent-sequence sketches with their scope and accuracy limits.
 - [Non-functional requirements](../product/non-functional-requirements.md): product quality targets for ownership, privacy, financial correctness, ingestion, graceful degradation, performance, usability and reproducibility.
 - [Environment examples](../../.env.example) and [API environment example](../../apps/api/.env.example): demo-only defaults and commented Firebase placeholders.
