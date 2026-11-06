@@ -1,39 +1,113 @@
 # Architecture
 
-LazyFinance is a pnpm/Turborepo monorepo with an Angular web application, a NestJS backend, shared contracts and PostgreSQL. The backend owns authentication, financial meaning and persistence. The UI, HTTP endpoints and MCP tools present or consume those capabilities; none should independently redefine how a balance, expense, budget or income amount is calculated. This document describes the implemented boundaries first and identifies planned product work separately.
+Start here for the current system map. Detailed references:
+[private RPC/RLS](persistence-security.md), [database model/ERD](database-model.md),
+[contracts/code generation](rpc-contracts.md), [UI lifetimes](ui-data-lifecycle.md),
+[provider-neutral identity](identity.md) and
+[developer verification](development-workflow.md).
 
 ## Repository and runtime boundaries
 
-`apps/ui` contains the Angular browser application and its Node/Express server-side rendering (SSR) process. `apps/api` is a NestJS process serving the HTTP API and the MCP Streamable HTTP endpoint. `libs/contracts` contains shared TypeScript/Zod shapes used where the UI and API exchange product data. PostgreSQL 18 stores the financial model; Drizzle defines its schema and repositories, while checked-in SQL migrations advance the database explicitly. The workspace scripts in the root `package.json` use pnpm and Turborepo to build and run these packages together.
+`apps/ui` is Angular with a Node/Express SSR server. It calls the NestJS public
+tRPC API in `apps/api`; authenticated MCP tools enter that same workflow layer.
+`apps/persistence` alone uses Kysely/pg to access PostgreSQL 18. Its `identity` and
+`finance` schemas enforce user RLS with a restricted runtime login. All three apps
+build independently using committed generated type libraries; no runtime client
+imports another application's source.
 
-The currently available web routes are a public landing page, login, and an authenticated application shell with **Resumen** (dashboard), **Etiquetas**, and **Presupuestos y metas** destinations. The dashboard presents financial information. The tags and objectives management destinations are clearly labelled placeholders, not completed creation/editing screens. The browser normally calls the configured browser-facing API URL; during local development that is `http://localhost:3000`. The SSR process can use `API_INTERNAL_URL` to reach the API over a container network while the browser continues to use its own configured URL.
+```text
+Browser / request-local SSR ─tRPC→ API workflows ─signed tRPC→ Persistence ─SQL→ DB
+Authenticated MCP ────────────────┘                                      user RLS
+```
+
+`libs/contracts` owns public and separately exported internal schemas.
+`libs/rpc-api` / `libs/rpc-persistence` expose generated router types through
+type-only facades. `libs/rpc-auth` is Node-only signing/verification code. Browser
+code cannot import private schemas, signing code, Nest or database implementations.
+
+| Layer | Owns | Does not own |
+| --- | --- | --- |
+| Angular browser/request-local SSR | Presentation, verified session handoff, page resources and explicit commands | SQL, private service assertions, authoritative financial calculations |
+| Public API / MCP adapters | Bearer verification, internal principal, financial/calendar rules, response composition and provider orchestration | Database pools/credentials, migrations or generic SQL |
+| Private persistence | Authenticated scoped transactions, bounded facts/aggregates, ownership checks and named atomic commands | Provider network calls, UI summaries or user-selected execution scopes |
+| PostgreSQL | Exact stored facts, constraints/keys, related-owner RLS and transaction atomicity | Firebase verification, product authorization for external MCP clients |
+
+Public/private tRPC are separate surfaces, not two routes to the same router.
+The public generated library contains 33 procedures; the private library contains
+35, including bootstrap-only `identity.resolve`. `/mcp` exposes seven authenticated
+read-only tools through the API's domain services, not direct persistence queries.
+Ordinary HTTP remains only for API `GET /`, persistence `GET /health` and MCP
+transport. Inventories and schema-change rules live in the
+[RPC reference](rpc-contracts.md).
 
 ## Authentication, sessions and ownership
 
-The API exposes `GET /auth/config` publicly so the UI can select the configured provider. In local mock mode, `POST /auth/mock/login` issues a development bearer token for the seeded demo user. Mock authentication is rejected when the API is configured for production. Firebase mode uses Google sign-in in the browser: Firebase Auth provides an ID token, and the UI sends it as a bearer token on requests to the API origin. Firebase Web configuration is public browser configuration; Firebase Admin credentials, when supplied, belong only on the server.
+Only `auth.config` and `auth.loginMock` are anonymous public procedures. The API
+verifies Firebase/mock bearers and resolves the stable provider/issuer/subject to
+an internal UUID. First Firebase provisioning requires verified email and never
+links different subjects by email. Mock is existing-only and rejected in production.
 
-NestJS applies a global HTTP guard to protected routes. In Firebase mode, the API verifies the ID token through Firebase Admin and explicitly checks its project audience, issuer, expiry and nonempty subject. It resolves the verified `(provider, issuer, subject)` through `external_identity` to the application's own `user.id`, provisioning a new application user only when the identity has an eligible verified email. An existing email is not automatically treated as proof that a different Firebase subject owns that user's finances. The guard attaches the resulting application principal to the request; financial services use its internal user ID, not a user ID accepted from a client argument. Mock mode resolves the seeded mock identity through the same internal-principal boundary. Immediate Firebase token revocation is not checked by the current verifier; a token can remain usable until expiry unless that policy is extended.
+The API signs a short-lived assertion with the user/request UUID, or a restricted
+identity-bootstrap purpose. Persistence verifies it before starting a scoped SQL
+transaction. Bootstrap can only call the narrow identity resolver function; its
+NOLOGIN owner has no finance access. Normal user identity is set transaction-locally;
+pool reuse cannot retain it. Related write policies independently reject foreign
+owners even where a foreign key alone would permit the relationship.
 
-SSR receives a **token-only** cookie, not a trusted user record. On every protected server-rendered request, the UI asks `GET /auth/principal` to revalidate the token with the API before it uses financial data. The browser SDK restores and refreshes Firebase tokens on the client; signing out clears its local session and the SSR handoff cookie. Authenticated responses are private/non-cacheable, and protected API data is not transferred to a different browser identity during hydration. The HTTP guard also provides the authenticated principal to MCP requests, but a separate final authorization flow for third-party MCP clients has **not** been delivered. These boundaries are complementary: database foreign keys relate rows, while service/repository owner checks determine what a particular principal may read or change.
+Assertions authenticate context, not encrypted or one-time/body-bound requests.
+The API is trusted to assert users, and the persistence service is trusted to own
+SQL execution. RLS does not defend against compromise of those trusted processes
+or privileged database operators. Use protected/TLS private transport; the
+[security reference](persistence-security.md) describes these limits and roles.
 
-## HTTP, MCP and domain services
+SSR receives only a token cookie and verifies `auth.principal` before rendering.
+Vanilla tRPC clients/auth snapshots are request-local, with no shared queue/cache.
+`AuthCredentials` holds accepted identity independently of the RPC client and
+session coordinator. Its immutable scopes cancel old-user work on token changes
+and logout; late 401s cannot expire a newer session. Page-owned feature services
+use Angular resources for reads and native Promise commands for writes. Widgets
+render resource state, not an Observable compatibility facade or HTTP-shaped
+errors. Protected resources have no transfer-cache IDs and components do not
+write financial `TransferState`; browser hydration revalidates and refetches.
+Protected fetches and SSR HTML are no-store. Firebase Web identifiers are public;
+Admin and service signing keys are server-only.
 
-`apps/api/src/app.module.ts` assembles auth, database, accounts, transactions, summaries, objectives, income, tagging, banking ingestion and MCP modules. HTTP controllers expose active-account and recent-transaction reads; monthly spending, period comparison, objective and spending-budget reads; income-source/expectation/receipt operations; and existing tag decisions and rule operations. Protected requests flow through the guard to a domain service and then through a Drizzle repository/query to PostgreSQL. `GET /` is a public listening response, not a full end-to-end readiness check for every integration.
+## Financial and atomicity boundaries
 
-The NestJS MCP route is mounted at `/mcp` on the API server and exposes **seven authenticated, read-only tools** for the existing financial reads. Those tools use the same application principal and underlying financial services as the HTTP API; MCP is an integration surface, not LazyFinance's own conversational agent. A future first-party text agent should call the shared backend capabilities without duplicating financial arithmetic or obtaining financial records for another user. That agent, its chat UI, voice interaction and final external MCP-client authorization are planned product work rather than implemented interfaces here.
+The API owns scheduling, money/calendar arithmetic, summaries/comparisons, budget
+progress, tag normalization/matching/ranking and provider orchestration.
+Persistence exposes bounded stored facts/aggregates and named authoritative
+commands, not public screen computations or arbitrary SQL scripts.
 
-The current financial core treats a checking/savings balance as cash and a credit-card balance as a liability with its own freshness context. Internal transfers and card payments affect accounts but do not count as new spending or earned income. A transaction has at most one optional tag; untagged spending remains in the overall total, while a budget can select several tags without counting the same movement twice. Income-source declarations and expected payment dates are separate from explicitly confirmed received credits and from actual account balances. A savings target is not presented as measured contributions until a contribution rule is agreed and implemented. These definitions follow the [product requirements](../product/product-requirements.md), shared contracts, financial services and checked-in Drizzle schema.
+Income receipts are confirmed only against locked eligible owned transactions and
+sources. Tag decisions and audit events commit together. Provider fetching and
+preparation are outside SQL; commit rechecks revision/fingerprint and atomically
+persists accounts, movements, removals, conflicts, decisions/events and checkpoint.
+All user writes share a short advisory transaction lock so rule additions/removals
+also invalidate stale work. Failed resolvers/output validation roll back. Network
+ambiguity never triggers an automatic mutation replay.
 
-## Persistence and provider-neutral ingestion
+Money remains exact decimal strings; calendar dates remain strings. Checking/savings
+cash and credit-card liabilities retain their existing meanings. Confirmed internal
+transfers/card payments do not count as spending/income. Unknown/review/removed
+movements cannot be silently treated as confirmed external. A single optional tag
+belongs to each transaction; expectations, receipts and balances remain distinct.
 
-The schema in `apps/api/src/drizzle/schema` defines users, external identities, providers and their owned connections, accounts, transactions, tags and rules, objectives, income sources/expectations/receipts, and provider synchronization, removal and conflict records. The account's provider-reported balance and its history coverage are distinct from a calculated sum over an incomplete set of imported transactions. Source identifiers are scoped to a provider connection and its accounts rather than assumed globally unique. All migrations are versioned under `apps/api/src/drizzle/migrations`; the API does not run them automatically at startup.
+The UI has a working dashboard; tags/objective management destinations remain
+labelled placeholders. Provider linking/Fintoc mapping, conversational agents,
+external MCP authorization and unagreed savings/refund policies are not delivered
+by this infrastructure refactor.
 
-`apps/api/src/banking/connector` defines a backend-only `BankingConnector` interface and validated normalized page formats. The internal `BankingIngestionService.syncForUser` checks that the connection belongs to the requesting application user and matches the connector, then fetches and validates bounded pages using the last committed checkpoint. A complete run locks the connection and applies account snapshots, movements and removals in a database transaction. Connection-scoped external identifiers make repeated pages idempotent; the checkpoint advances only with committed facts. A failed or incomplete run records failure without replacing the last confirmed success. Removed movements and incompatible provider corrections retain evidence for later review instead of silently overwriting a user's classification or confirmed income.
+## Operations
 
-Normalized fixtures exercise that boundary, but **there is no Fintoc adapter, live connection-linking flow, public synchronization endpoint, or scheduled refresh UI** in this baseline. Provider-specific linking and mapping will sit outside the shared financial calculations; the [banking connector boundary](../../apps/api/src/banking/README.md) records the detailed normalized-data and reconciliation semantics.
+Fresh migrations only: table/types/constraints/indexes/grants/RLS apply together.
+There is no legacy migration adoption or automatic database reset. Owner credentials
+belong only to CLI/init/seed jobs; API rejects PostgreSQL credentials and persistence
+rejects owner/BYPASSRLS runtime roles. Demo seeding is explicit.
 
-## Local deployment and extension limits
-
-The resource stack in `docker/local/resources.yml` publishes PostgreSQL for locally running API/UI processes. `docker/local/apps.yml` builds the two applications on the resource network. `docker/local/deploy.yml` builds a separate local PostgreSQL/API/SSR stack with a named database volume; its database is not published to the host. Both application images use non-root Node runtimes. Example settings are in the root and API `.env.example` files, with the different scopes explained in the [technical manual](technical-manual.md).
-
-The full-stack Compose setup does **not** apply Drizzle migrations or seed data automatically, so building its containers alone does not produce a ready financial demo. The supported local development path starts the resource database, applies migrations and seeds demo data before starting the applications. The [non-functional requirements](../product/non-functional-requirements.md) define the quality goals that later provider, agent and operational work must preserve; this architecture description does not present those later capabilities as already delivered.
+Compose supports private persistence, separate runtime environments and an owner-only
+init job. Its full stack separates data/service/edge networks; database/persistence
+ports are not published. This is local deployment evidence, not production TLS,
+secret storage, backup recovery or load profiling. See the
+[technical manual](technical-manual.md) and
+[development workflow](development-workflow.md).

@@ -1,61 +1,158 @@
 # Technical manual — installation, operation and boundaries
 
-This manual covers the **current Angular/NestJS/PostgreSQL application**. It is sufficient to reproduce the local demo and inspect its HTTP/MCP behavior. It does not claim that Fintoc linking, external MCP-client authorization, a first-party chat agent, voice or all financial-management screens are shipped. The [architecture](architecture.md), checked-in `apps/api/src/drizzle/schema` and [non-functional requirements](../product/non-functional-requirements.md) provide additional context.
+Current implementation: [three-application architecture](architecture.md),
+[persistence/RLS security](persistence-security.md),
+[database model](database-model.md), [RPC contracts](rpc-contracts.md).
+For code changes, Biome and test tiers use the
+[development guide](development-workflow.md).
 
-## Requirements and repository layout
+## Requirements and setup
 
-- Node.js **22.22.3+** or **24.15.0+**, pnpm 9 (the Angular tooling determines the Node minimum), Git and Docker Engine with Compose.
-- `apps/ui`: Angular SSR/browser app; `apps/api`: NestJS API and MCP transport; `libs/contracts`: shared request/response contracts; `docker/local`: local Compose stacks; `apps/api/src/drizzle/schema` and `migrations`: database definition.
-- Use **controlled demo data** and the supplied mock login for local verification. Real-user Firebase mode requires a configured Firebase project and Google sign-in enabled. Do not use the example passwords in a public deployment.
+Node 22.22.3+ or 24.15.0+, pnpm 9, Docker/Compose and PostgreSQL 18. Install
+from the monorepo root with `pnpm install`. Follow [root setup](../../README.md#run-locally)
+and the [persistence guide](../../apps/persistence/README.md) to initialize a
+**fresh empty** database, provision a separate runtime login, explicitly seed if
+desired, and generate a fresh service key pair.
 
-## Supported local development path
+There is no old-Drizzle history/data adoption and no automatic reset. An existing
+resources container may still have only the old `postgres` database: create a
+separate `lazyfinance` database explicitly instead of migrating the old one.
+Never delete an existing volume to fix a migration error without a chosen recovery
+plan. Migration files create their table/types/constraints/indexes/grants/RLS
+together transactionally; use only the Kysely runner.
 
-From the repository root:
+The setup order is deliberate:
 
-```bash
-pnpm install
-pnpm resources:up
-pnpm --filter api migrate
-pnpm --filter api seed
-pnpm dev
-```
+1. Install/build shared dependencies and choose the new database.
+2. Run owner-only `db:migrate`, then `db:provision-runtime` with a distinct login
+   and 16+-character runtime password. Existing managed passwords are not rotated.
+3. Optionally run owner-only `db:seed` for demo data, not real financial data.
+4. Generate a service key pair and configure the two separate app-local runtime
+   environments. Remove owner credentials from the runtime shell/environment.
+5. Start persistence, API and UI (or let the Compose init/dependency chain do so).
 
-The first Compose command starts PostgreSQL 18 on `localhost:5432`; the Drizzle CLI applies versioned migrations explicitly, the seed creates the demo financial history, and `pnpm dev` starts API at `http://localhost:3000` and UI at `http://localhost:4200`. Check `GET http://localhost:3000/` for the `listening` response and open the dashboard after signing in. `pnpm resources:down` stops the DB resource stack. `docker/local/resources.yml` has **no named database volume**, so stopping/recreating its container can remove the data; rerun migrate and seed if needed.
+The persistence CLI scripts run TypeScript; its image also includes compiled
+`node dist/database/cli.js migrate|provision|seed`. Migration/provision/seed jobs
+are not service startup side effects. Runtime role checks are not bypassed by
+using a database owner when setup fails.
 
-The API can be run alone with `pnpm --filter api dev` after the database is available; UI alone uses `pnpm --filter ui dev`. Shared contracts are installed through the workspace. `pnpm typecheck` and `pnpm build` run the workspace's type and build commands.
+## Environments
 
-### Environment configuration
+| Process | Configuration boundary |
+| --- | --- |
+| Owner CLI/init/seed | `POSTGRES_MIGRATION_URL`; `PERSISTENCE_DATABASE_USER` / `PERSISTENCE_DATABASE_PASSWORD` only for provisioning |
+| Persistence | `POSTGRES_RUNTIME_URL`, `PERSISTENCE_RPC_PUBLIC_KEY`, matching key ID; `HOST` / `PORT` default to `127.0.0.1` / `3001` |
+| API | `PERSISTENCE_RPC_URL`, `PERSISTENCE_RPC_PRIVATE_KEY`, matching key ID; auth/CORS settings; `PORT` default `3000` |
+| UI SSR | `API_INTERNAL_URL`, optional `PORT` (built server default `4000`); no database or service-signing credentials |
+| Browser build | `apps/ui/src/environments/environment*.ts`: public API URL and public Firebase Web identifiers, never Admin/signing keys |
 
-The API reads `apps/api/.env` **only when run directly** from its app workspace. Copy [`apps/api/.env.example`](../../apps/api/.env.example) there when changing defaults; `POSTGRES_URL`, `AUTH_PROVIDER`, `PORT`, `CORS_ORIGINS` and optional Firebase values are validated by `environment.schema.ts`. `AUTH_PROVIDER=mock` is the local default and is rejected with `NODE_ENV=production`. For Firebase mode, `FIREBASE_PROJECT_ID` is required; the Admin client email and private key are optional but must be supplied together. Never put real credentials in a committed example. The UI's public Firebase Web identifiers live in its Angular environment files and must match the API's project ID.
+App-local dotenv files are independent of root Compose `.env`. See
+[`apps/api/.env.example`](../../apps/api/.env.example),
+[`apps/persistence/.env.example`](../../apps/persistence/.env.example), and
+[root Compose example](../../.env.example). Do not export owner credentials while
+running `pnpm dev`: API and persistence reject inappropriate database credentials.
+`pnpm rpc:keys` prints a fresh pair; private key only to API, public key only to
+persistence. Do not commit the output.
 
-The Drizzle Kit CLI reads `POSTGRES_URL` from the **shell**, not automatically from `apps/api/.env`. Set the shell variable explicitly when migrating a non-default database. Local Compose uses a separate root [`.env.example`](../../.env.example) for `docker/local/deploy.yml` ports/database variables; copying it to `.env` does not replace `apps/api/.env` for direct runs. The [API README](../../apps/api/README.md#development) documents every validated variable and the [architecture](architecture.md#authentication-sessions-and-ownership) explains token trust and SSR restoration.
+The `PERSISTENCE_RPC_URL` is the service base URL (the client appends `/trpc`).
+PEMs in the example dotenv files use escaped newlines; replace placeholders with
+the generated matching pair. These are service keys, not Firebase Admin keys or
+user ID tokens. `AUTH_PROVIDER=mock` works only outside production and needs the
+seeded existing identity; Firebase mode requires `FIREBASE_PROJECT_ID`. Optional
+Admin email/private key must be supplied together. See
+[identity configuration](identity.md#configuration-boundaries).
 
-### Demo login and endpoints
+Dotenv loads relative to the process working directory. Prefer workspace commands
+such as `pnpm --filter persistence dev` rather than invoking an app entrypoint
+from a directory containing another process's `.env`. Root `.env` is for Compose
+substitution; it is not a shared runtime secret bundle.
 
-With `AUTH_PROVIDER=mock` after seeding, `POST /auth/mock/login` accepts the local fixture email `demo@lazyfinance.cl` and password `password`, returning a bearer token. The demo is **development only**. `GET /auth/config` selects mock or Firebase in the UI; `GET /auth/principal` revalidates the signed-in user. Other protected reads include `GET /accounts`, `GET /transactions/recent`, `GET /summaries/monthly?month=YYYY-MM`, `GET /summaries/comparison?month=YYYY-MM`, `GET /objectives`, `GET /objectives/spending-progress?month=YYYY-MM`, and the `/income/...` routes. `apps/api/src/transactions/tagging/tagging.http.ts` defines existing tag decision and rule APIs. `POST /mcp` uses the same authenticated principal and exposes read-only financial tools; external-client token issuance/revocation is future work.
+## Run and inspect
 
-Example mock-mode request after the seed (substitute the bearer token returned by login):
+`pnpm dev` starts UI `localhost:4200`, API `localhost:3000`, and private persistence
+`127.0.0.1:3001`. Build shared dependencies first if running a workspace command
+directly. `GET /` on API and `GET /health` on persistence are liveness endpoints,
+not proof of every provider integration's readiness.
 
-```bash
-curl -H 'Content-Type: application/json' -d '{"email":"demo@lazyfinance.cl","password":"password"}' http://localhost:3000/auth/mock/login
-curl -H 'Authorization: Bearer <local-demo-token>' http://localhost:3000/accounts
-```
+Business calls use tRPC under `/trpc`: `auth.config`, `auth.loginMock`,
+`auth.principal`, accounts, transactions, objectives/progress, summaries, income,
+tags and rules. The checked-in [public generated router](../../libs/rpc-api/src/generated/server.ts)
+is the procedure inventory. Business REST routes were retired. `POST /mcp` retains
+the same verified principal and read-only tools; external-client OAuth is not
+implemented. Mock login uses `demo@lazyfinance.cl` / `password` only in development
+after seeding. Production mode requires real Firebase configuration.
 
-The tags and objectives **management pages** are labelled placeholders in this baseline; the dashboard and some backend tag/income operations exist. A provider-neutral ingestion service is tested through fixtures but has no Fintoc link/import UI. The text agent and voice interface do not exist yet. See the [product backlog snapshot](../planning/snapshots/backlog-2026-11-02.md) for the planned slices and the [architecture](architecture.md) for what is implemented.
+The liveness routes confirm a listening application, not an end-to-end provider,
+Firebase, database query or backup-recovery readiness check. Private procedures
+require service assertions even on loopback. A browser's token-only SSR cookie
+must be reverified through the API; do not pass it directly as trusted identity.
 
-## Containerized modes and deployment limitation
+## Compose
 
-- **DB resources only:** `pnpm resources:up` is the recommended local development/test path; it publishes PostgreSQL on host port 5432 for explicit migrations and seed.
-- **Apps with existing resources:** after starting resources, run `docker compose -f docker/local/apps.yml up --build -d`. It uses the external `lazyfinance` network and publishes API/UI on host ports 3000/4200. Stop the apps before `pnpm resources:down`.
-- **Full local stack:** `pnpm deploy:local:up` builds Postgres/API/UI with a named DB volume, but the DB is not published to the host and **migrations/seed do not run automatically**. The runtime API image also omits Drizzle Kit tooling. Treat schema initialization for this stack as a separate deployment task; do not present an empty full-stack DB as a ready demo.
+- `resources.yml`: local PostgreSQL on loopback port 5432; no named durable volume.
+- `apps.yml`: apps plus owner-only init job using the external `lazyfinance`
+  resources network. Start resources first; only persistence/init/seed join that
+  database network, with API/UI on separate service/edge networks.
+- `deploy.yml`: separate data/service/edge networks, named PostgreSQL volume,
+  owner-only init job, private persistence, API and SSR. No database/persistence
+  published ports. Copy root `.env.example`, set keys/runtime password, then run
+  `pnpm deploy:local:up`.
+- Demo data is opt-in: `pnpm deploy:local --profile tools run --rm seed`.
+  Migrations/provisioning are init-job work, never runtime startup side effects.
 
-Both images use non-root Node runners. The full stack accepts root `.env` overrides for `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `API_PORT`, `UI_PORT`, `CORS_ORIGINS` and `AUTH_PROVIDER`. It is a **local demonstration stack** with development defaults, not a secure production configuration. Firebase Admin credentials must come from the runtime environment when used, not the repository. Browser-facing API URLs are built into the UI environment; the SSR server can use `API_INTERNAL_URL=http://api:3000` inside the containers.
+The local deployment uses development defaults. Production TLS, secret management,
+key rotation, backups and independent client authorization remain operator work.
+Browser API URLs are build-time UI configuration; `API_INTERNAL_URL` changes only
+SSR transport. Change `CORS_ORIGINS` for a different browser origin.
 
-## Schema change and troubleshooting
+### Browser versus SSR destination
 
-- Model edits start in `apps/api/src/drizzle/schema`. Generate a named migration with `pnpm --filter api drizzle generate --name=describe_change`, review the SQL, and apply it with `pnpm --filter api migrate` against the intended DB. A migration does not run on API boot.
-- If the API fails at startup, verify PostgreSQL health, `POSTGRES_URL`, migration state, and the validated environment settings. If the UI cannot call the API, verify both ports and `CORS_ORIGINS`; if SSR cannot reach the browser-facing API hostname, set `API_INTERNAL_URL` for the UI server.
-- If Firebase sign-in fails, verify the UI Web project ID, API `FIREBASE_PROJECT_ID`, enabled Google provider, authorized domain and token audience. Do not treat a browser cookie as proof of authentication; inspect `/auth/principal` behavior.
-- If a dashboard summary disagrees with individual movements, check account type, Santiago period boundaries, internal-movement flags, untagged coverage, and whether credits are confirmed income rather than raw inflows. The [Sprint A retrospective](../planning/stage-a-retrospective.md) contains example reconciliations; the financial services and schema define the current calculation paths.
+The production UI build, including the Docker image, currently embeds
+`https://api.lazyfinance.cl`; development embeds `http://localhost:3000`.
+Compose sets SSR to `http://api:3000` but **does not rewrite the browser bundle**.
+For a completely local browser rehearsal, choose the intended browser URL in the
+UI build configuration and rebuild, or explicitly route its configured public
+API hostname to the intended service with suitable TLS. Otherwise SSR can read
+local data while hydrated browser requests go elsewhere. Changing `API_PORT`,
+`API_INTERNAL_URL` or CORS alone does not change the embedded browser URL.
 
-Known incomplete product areas are described in the [product DoD](../planning/product-definition-of-done.md) and the [dated backlog](../planning/snapshots/backlog-2026-11-02.md). Update this manual when the implementation changes rather than documenting planned features as running commands.
+UI Firebase Web project identifiers and API `FIREBASE_PROJECT_ID` must also match.
+For a nonlocal SSR hostname, review Angular's configured `security.allowedHosts`;
+the checked-in build currently allows `localhost` and `127.0.0.1`. These local
+settings and published API/UI ports are not a public-production deployment recipe.
+
+Stopping a Compose stack is not a recovery plan. Preserve existing volumes and
+databases; do not use `down --volumes` or remove a database to fix authentication,
+unsafe-role, migration or key errors. Backups/restore rehearsal and role/key
+rotation require explicit operator procedures not supplied by this local stack.
+
+## Verification and troubleshooting
+
+Use `pnpm rpc:generate` after router changes, `pnpm rpc:check` for drift,
+`pnpm check:architecture`, `pnpm build` and `pnpm typecheck`. Tests have different
+side effects: explicit unit/DI and UI in-memory tests can run serverlessly, but
+HTTP/router/MCP tests may open ephemeral listeners even without external services.
+Do not run `pnpm test` or the integration runner as a serverless-only check.
+
+`TEST_POSTGRES_OWNER_URL=... pnpm test:integration` requires an already available
+disposable database ending in `_test`. It builds/migrates/provisions, starts
+compiled persistence with a restricted runtime login and ephemeral keys, runs
+the API suite through public/private RPC, then stops that child service. It does
+not create PostgreSQL or reset/drop the database. Without integration variables
+the individual DB specs skip; the runner itself requires its owner URL. Use the
+[verification matrix](development-workflow.md#verification-tiers) for commands,
+fixture safety and live-Firebase distinctions. No real user database is a fixture.
+
+- API unavailable: inspect persistence URL/reachability, service key pair/key ID,
+  then runtime-role safety and migration state. Do not supply owner credentials
+  to bypass RLS or restore direct API SQL.
+- Empty demo: check that seeding was requested and the mock identity points to
+  the seeded user. A token is not stored as a database user API key.
+- Browser/SSR mismatch: check browser API URL, `API_INTERNAL_URL`, CORS, token-only
+  cookie and `auth.principal`. SSR revalidates cookies; forged users are discarded.
+- Firebase failures: verify Web/Admin project IDs, Google provider/domain setup,
+  token audience/issuer and paired optional Admin credentials.
+- Oversized provider run: limits are 100 pages/50,000 records plus 32 MiB normalized
+  and 64 MiB private JSON. It fails atomically, not as partial financial writes.
+- A failed/ambiguous mutation is not automatically retried. Only an explicit
+  stale-input rejection can be read/prepared again safely.

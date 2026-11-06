@@ -7,12 +7,12 @@
     Avance de presupuestos
   </h2>
   <p class="mt-2 text-sm text-muted-color">
-    Gastos registrados hasta hoy en {{ label }}. Las metas de ahorro no se incluyen en este cálculo.
+    Gastos registrados hasta hoy en {{ label() }}. Las metas de ahorro no se incluyen en este cálculo.
   </p>
 
-  @if (loading()) {
+  @if (budgets.isLoading()) {
     <p role="status" class="mt-6 text-sm text-muted-color">Calculando tus presupuestos…</p>
-  } @else if (error()) {
+  } @else if (budgets.error()) {
     <div
       role="alert"
       class="mt-6 rounded-3xl border border-surface bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-900"
@@ -22,18 +22,18 @@
         type="button"
         data-testid="retry-progress"
         class="mt-4 text-sm font-semibold text-primary"
-        (click)="loadProgress()"
+        (click)="budgets.reload()"
       >
         Reintentar
       </button>
     </div>
-  } @else if (budgets().length === 0) {
+  } @else if (budgets.value().length === 0) {
     <p class="mt-6 text-sm text-muted-color">
       No hay presupuestos con etiquetas y períodos calculables para este mes.
     </p>
   } @else {
     <div class="mt-6 grid gap-4 md:grid-cols-2">
-      @for (budget of budgets(); track budget.id) {
+      @for (budget of budgets.value(); track budget.id) {
         <article
           class="rounded-3xl border border-surface bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-900"
         >

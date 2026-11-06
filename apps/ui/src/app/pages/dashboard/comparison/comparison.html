@@ -6,9 +6,9 @@
   >
     Comparación de gastos
   </h2>
-  @if (loading()) {
+  @if (comparison.isLoading()) {
     <p role="status" class="mt-6 text-sm text-muted-color">Comparando meses…</p>
-  } @else if (error()) {
+  } @else if (comparison.error()) {
     <div
       role="alert"
       class="mt-6 rounded-3xl border border-surface bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-900"
@@ -18,12 +18,12 @@
         type="button"
         data-testid="retry-comparison"
         class="mt-4 text-sm font-semibold text-primary"
-        (click)="loadComparison()"
+        (click)="comparison.reload()"
       >
         Reintentar
       </button>
     </div>
-  } @else if (comparison(); as data) {
+  } @else if (comparison.value(); as data) {
     <p class="mt-2 text-sm text-muted-color">
       @if (data.partial) {
         {{ label(data.month) }} hasta hoy frente a {{ label(data.previousMonth) }} hasta la fecha

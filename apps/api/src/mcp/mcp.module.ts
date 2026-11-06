@@ -1,7 +1,7 @@
-import { Global, Module } from '@nestjs/common';
-import { MCP_STRATEGY } from '@rekog/mcp-nest';
-import { McpHttpController } from './mcp.http';
-import { mcpStrategy } from './mcp.strategy';
+import { Global, Module } from "@nestjs/common";
+import { MCP_STRATEGY } from "@rekog/mcp-nest";
+import { McpHttpController } from "./mcp.http";
+import { mcpStrategy } from "./mcp.strategy";
 
 @Global()
 @Module({

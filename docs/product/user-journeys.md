@@ -54,7 +54,7 @@ Each journey describes a user's situation, the experience they need, and an obse
 
 **Observable outcome:** Regular timing and amount variability are independent. Every-two-weeks and twice-monthly schedules use their actual calendar dates. Estimated and unknown amounts are explicit. A late or different-amount receipt retains its booked facts. Refunds and internal transfers are not silently treated as earnings, and declarations never change account balances.
 
-**Stage A check:** Demonstrate the source, expectation, receipt, ownership, and period scenarios from LAZ-25 in the [Stage A closure record](../planning/snapshots/stage-a-closure.md) and the [income model](../technical/income-model.md) through the backend API and read-only MCP tool.
+**Stage A check:** Demonstrate the source, expectation, receipt, ownership, and period scenarios from LAZ-25 in the [Stage A closure record](../planning/snapshots/stage-a-closure.md) through the backend API and read-only MCP tool.
 
 ## Later journeys - Detail shortly before implementation
 

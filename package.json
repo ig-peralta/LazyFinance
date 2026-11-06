@@ -6,6 +6,15 @@
     "build": "turbo build",
     "test": "turbo test",
     "typecheck": "turbo typecheck",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "rpc:generate": "node scripts/rpc-generate.mjs",
+    "rpc:check": "node scripts/rpc-generate.mjs --check",
+    "rpc:keys": "node scripts/rpc-keys.mjs",
+    "check:architecture": "node scripts/check-architecture.mjs",
+    "test:integration": "node scripts/test-integration.mjs",
     "resources": "docker compose -f docker/local/resources.yml",
     "resources:up": "docker compose -f docker/local/resources.yml up -d",
     "resources:down": "docker compose -f docker/local/resources.yml down",
@@ -14,10 +23,11 @@
     "deploy:local:down": "docker compose -f docker/local/deploy.yml down"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.3.11",
     "turbo": "^2.10.11"
   },
   "packageManager": "pnpm@9.0.0",
   "engines": {
-    "node": ">=18"
+    "node": ">=22.22.3"
   }
 }

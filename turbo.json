@@ -5,12 +5,26 @@
     "dev": {
       "cache": false,
       "persistent": true,
+      "passThroughEnv": [
+        "PORT",
+        "HOST",
+        "NODE_ENV",
+        "AUTH_*",
+        "FIREBASE_*",
+        "CORS_ORIGINS",
+        "PERSISTENCE_*",
+        "POSTGRES_*",
+        "API_INTERNAL_URL"
+      ],
       "dependsOn": ["^build"]
     },
     "build": {
-      "dependsOn": ["^build", "^typecheck"]
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
     },
     "test": {
+      "cache": false,
+      "passThroughEnv": ["TEST_*"],
       "dependsOn": ["^build"]
     },
     "typecheck": {

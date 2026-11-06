@@ -1,7 +1,10 @@
-import { Module } from '@nestjs/common';
-import { DrizzleModule } from '../../drizzle/drizzle.module';
-import { TaggingModule } from '../../transactions/tagging/tagging.module';
-import { BankingIngestionService } from './banking-ingestion.service';
+import { Module } from "@nestjs/common";
+import { PersistenceModule } from "../../persistence/persistence.module";
+import { BankingIngestionService } from "./banking-ingestion.service";
 
-@Module({ imports: [DrizzleModule, TaggingModule], providers: [BankingIngestionService], exports: [BankingIngestionService] })
+@Module({
+  imports: [PersistenceModule],
+  providers: [BankingIngestionService],
+  exports: [BankingIngestionService],
+})
 export class BankingIngestionModule {}

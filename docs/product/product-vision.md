@@ -1,6 +1,6 @@
 # LazyFinance — Product Vision and Direction
 
-> **Purpose:** describe the product we aim to build and the direction in which it could grow. The [product requirements](product-requirements.md) specify expected behavior and stage boundaries.
+> **Purpose:** describe the product we aim to build and the direction in which it could grow. The [product requirements](product-requirements.md) specify expected behavior and stage boundaries; [innovation and interoperability](innovation.md) explains the differentiation and hypotheses to validate.
 
 ## Product vision
 
@@ -10,16 +10,10 @@ Personal finance analysis is the starting point, not the limit of the product. W
 
 Questions that motivate the initial experience include “How much have I spent this month, and on what?”, “Am I spending more than last month?”, “How am I doing against my grocery budget?”, “Will I have enough money to reach the end of the month?”, “Is this charge unusual or duplicated?”, and “What could I change to reach my savings goal?” The initial agent reads, explains and recommends. Any future ability to prepare a financial action for user approval needs its own requirements, permissions and validation; executing transactions is not part of the initial experience.
 
-## Innovation and interoperability across ecosystems
-
-The innovation we aim for is **reusable financial understanding rather than one more place to display banking data**. Financial rules and user ownership belong in a shared backend, independent of any particular bank, user interface or model. This makes two forms of integration complementary:
-
-1. **More sources:** bank-provider adapters can map accounts, balances and movements to a common financial model, preserving provenance and reconciliation instead of embedding one provider's meanings in the core. Fintoc is the intended first adapter; other financial sources can follow.
-2. **More destinations:** LazyFinance's dashboard and own agent can use the same capabilities that authorized external assistants access through MCP. A person should be able to use permitted financial context in an assistant and workflow they already know, while LazyFinance remains responsible for what its figures mean. MCP lets agents combine capabilities; it does not give LazyFinance every capability of a connected agent.
-
-For example, someone could ask an agent they already use: “I need a laptop; what options fit this month's budget?” With the person's authorization, the agent could consult LazyFinance for financial context, use its **own** web search to research products, and recommend options consistent with the user's budget. The person decides whether to buy. Another future workflow could prepare an action for explicit user approval. The point is to let financial understanding travel into useful contexts, not to make every agent or purchase workflow part of LazyFinance itself.
-
-The same foundation could grow from financial status assistance to richer analysis, recommendations and other financial workflows without every interface reimplementing the calculations. It could eventually serve families, organizations or advisers as well as individuals, provided shared ownership and permissions are designed for those contexts. This is an open direction for the product, not a fixed list of future features.
+The separate [innovation reference](innovation.md) explains the reusable financial
+capability layer, complementary source/destination integrations, example workflows
+and evidence needed to validate their value. This vision keeps the product
+direction and stage decisions separate from that innovation argument.
 
 ## Foundational approach
 

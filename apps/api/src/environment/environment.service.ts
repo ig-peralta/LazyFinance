@@ -1,6 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { EnvironmentVariables } from "./environment.schema";
 import { loadEnvironmentVariables } from "./environment.loader";
+import { EnvironmentVariables } from "./environment.schema";
 
 @Injectable()
 export class EnvironmentService {
@@ -10,14 +10,12 @@ export class EnvironmentService {
 
   private _load(): void {
     this._variables = loadEnvironmentVariables();
-    this.logger.log('Environment variables loaded successfully');
+    this.logger.log("Environment variables loaded successfully");
   }
 
   get<K extends keyof EnvironmentVariables>(key: K): EnvironmentVariables[K] {
-    if (!this._variables)
-      this._load();
+    if (!this._variables) this._load();
 
     return this._variables[key];
   }
 }
-

@@ -1,10 +1,10 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 export const AccountSummarySchema = z.object({
   id: z.uuid(),
   alias: z.string().nullable(),
-  type: z.enum(['checking', 'savings', 'credit_card']),
-  currency: z.literal('CLP'),
+  type: z.enum(["checking", "savings", "credit_card"]),
+  currency: z.literal("CLP"),
   balance: z.string().nullable(),
   lastSyncedAt: z.iso.datetime().nullable(),
 });

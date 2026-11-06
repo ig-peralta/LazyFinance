@@ -1,84 +1,86 @@
 # LazyFinance API
 
-The API is a NestJS/TypeScript service for LazyFinance. It exposes MCP (Model Context Protocol) over Streamable HTTP using `@rekog/mcp-nest`, alongside NestJS's HTTP server. MCP clients connect through `/mcp`.
+NestJS financial workflow service exposing public tRPC at `/trpc` and read-only
+MCP at `/mcp`. The only ordinary HTTP route is the public `GET /` listening check.
+Business REST controllers have been retired; Angular uses vanilla tRPC clients.
 
-PostgreSQL access uses `postgres` (postgres.js) and Drizzle ORM. The app checks the database connection during startup; Drizzle Kit manages the schema and checked-in migrations separately. Runtime configuration is loaded with `dotenv` and validated with Zod, and tests use Vitest with SWC.
+Technical references: [architecture](../../docs/technical/architecture.md),
+[provider-neutral identity](../../docs/technical/identity.md),
+[RPC contracts/code generation](../../docs/technical/rpc-contracts.md),
+[private RPC/RLS](../../docs/technical/persistence-security.md) and
+[development/verification](../../docs/technical/development-workflow.md).
+
+## Boundaries
+
+- Firebase Admin/mock verification resolves an external identity through private
+  `identity.resolve` and returns an internal application UUID.
+- Domain services own money/calendar calculations, income schedules, summaries,
+  budget progress, tag matching/ranking and provider orchestration.
+- Typed clients call `@lazyfinance/rpc-persistence` with a 30-second Ed25519 JWT.
+  Context is immutable per client, and public tRPC request IDs propagate privately.
+- **No SQL, ORM, pool or PostgreSQL credentials in the API runtime.** Owner-only
+  migration/seed commands belong to [persistence](../persistence/README.md).
+- Provider calls and preparation stay outside SQL transactions. A prepared sync
+  commits facts, conflicts, decisions/events and checkpoint atomically. Known
+  stale-input rejections may be recomputed; ambiguous network failures are not retried.
 
 ## Development
 
-From the [monorepo root](../../README.md), install dependencies and start the local database:
+Follow the [root setup](../../README.md#run-locally), copy `.env.example` into the
+ignored `apps/api/.env`, and configure:
 
-```bash
-pnpm install
-pnpm resources:up
+| Variable | Purpose |
+| --- | --- |
+| `PERSISTENCE_RPC_URL` | Private service base URL; default `http://127.0.0.1:3001`. |
+| `PERSISTENCE_RPC_PRIVATE_KEY` | API-only Ed25519 PKCS8 PEM; generate with `pnpm rpc:keys`. |
+| `PERSISTENCE_RPC_KEY_ID` | Matching key identifier; default `primary`. |
+| `AUTH_PROVIDER` | `mock` locally, or `firebase`. |
+| `NODE_ENV` | Mock authentication is rejected in `production`. |
+| `PORT` | Default `3000`. |
+| `CORS_ORIGINS` | Allowed browser origins; default local Angular origins. |
+| `FIREBASE_PROJECT_ID` | Required in Firebase mode. |
+| `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` | Optional paired Admin credentials. |
+
+`POSTGRES_URL`, `POSTGRES_RUNTIME_URL`, and `POSTGRES_MIGRATION_URL` must not be
+present. App-local dotenv files are not the root Compose `.env`.
+
+`pnpm --filter api dev` starts watch mode. `build`, `typecheck` and `test` are also
+available. Public auth procedures are `auth.config` and `auth.loginMock`; all
+others require a verified bearer. Mock login uses `demo@lazyfinance.cl` /
+`password` only after an explicit persistence demo seed. The SSR cookie is not
+accepted directly as API authentication.
+
+## Contracts and checks
+
+`libs/rpc-api` contains committed generated router types with public schemas from
+`libs/contracts`. Run `pnpm rpc:generate` after changing routers and `pnpm rpc:check`
+to detect drift. Normal application builds need neither generation nor another
+application's source. The browser must never import private contracts/signing code.
+
+Public bodies are limited to 1 MiB and batches to 10 procedures. Private provider
+runs are bounded by 100 pages, 50,000 records, 32 MiB normalized JSON and 64 MiB
+prepared JSON/results. Oversized runs fail without partial writes/checkpoint
+advancement; they are never silently split into independent commits. The private
+`providerSync.facts` query uses POST method override for large key scopes;
+ordinary empty queries remain GET. The private client deadline is 120 seconds.
+
+Unit/DI tests can use mocked dependencies without listeners. HTTP/router/MCP tests
+can run without real persistence, but Supertest can open ephemeral HTTP listeners;
+the full API suite is **not serverless-only**. DB/workflow cases skip without the
+owner fixture URL and a matching private test service environment. Choose the
+[verification tier](../../docs/technical/development-workflow.md#verification-tiers)
+appropriate to the session.
+
+For service-starting integration checks, first provide a disposable PostgreSQL 18
+database ending in `_test`. From the root (placeholder URL):
+
+```sh
+TEST_POSTGRES_OWNER_URL=postgresql://owner:password@localhost:5432/lazyfinance_test pnpm test:integration
 ```
 
-Once PostgreSQL is healthy, apply migrations, seed the demo dataset, and start the API in watch mode:
-
-```bash
-pnpm --filter api migrate
-pnpm --filter api seed
-pnpm --filter api dev
-```
-
-The API listens on <http://localhost:3000> by default; MCP clients can connect to <http://localhost:3000/mcp>. The app must be able to connect to PostgreSQL when it starts.
-
-The API loads `apps/api/.env` when present (the file is gitignored). Copy the checked-in [`.env.example`](.env.example) there to override the local defaults without committing credentials. Its validated settings are:
-
-| Variable                | Default                                              | Purpose                                                                                                                         |
-| ----------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `NODE_ENV`              | `development`                                        | Runtime mode. Mock auth is rejected when set to `production`.                                                                   |
-| `AUTH_PROVIDER`         | `mock`                                               | Authentication provider: `mock` for local demo access or `firebase` for the Firebase identity track.                            |
-| `PORT`                  | `3000`                                               | HTTP and MCP listening port.                                                                                                    |
-| `POSTGRES_URL`          | `postgresql://user:password@localhost:5432/postgres` | PostgreSQL connection string; matches the local resource stack.                                                                 |
-| `CORS_ORIGINS`          | `http://localhost:4200,http://127.0.0.1:4200`        | Comma-separated allowed browser origins for direct API requests. Set this to your UI's origin if it uses another host or port.  |
-| `FIREBASE_PROJECT_ID`   | Unset                                                | Required for `AUTH_PROVIDER=firebase`. Verified ID tokens resolve to internal application users on protected requests.          |
-| `FIREBASE_CLIENT_EMAIL` | Unset                                                | Optional Firebase Admin service-account email. Set together with `FIREBASE_PRIVATE_KEY` and `FIREBASE_PROJECT_ID`.              |
-| `FIREBASE_PRIVATE_KEY`  | Unset                                                | Optional Firebase Admin service-account PEM key. Accepts real or escaped newlines; set together with the service-account email. |
-
-See [Firebase identity boundary](../../docs/technical/firebase-identity.md) for accepted tokens,
-the Admin configuration, and the planned application-user and SSR handoffs.
-See the [technical evidence index](../../docs/technical/README.md) for architecture, non-functional requirements and the technical manual.
-For local Compose, supply the Firebase variables in the shell or the Compose
-project's root `.env`; `apps/api/.env` applies only when running the API directly.
-
-`GET /auth/config` is public and returns only `{ "provider": "mock" | "firebase" }`
-for the login UI. In local `mock` mode, `POST /auth/mock/login` accepts
-`{ "email": "demo@lazyfinance.cl", "password": "password" }`
-after the demo seed is applied and returns a bearer token. Invalid credentials
-return 401; the endpoint is unavailable in Firebase mode, which also rejects
-demo tokens. The mock verifier produces an external identity linked by the seed
-to the demo financial user; no user API token is stored in PostgreSQL.
-Firebase ID tokens on protected routes are verified and resolved
-to the corresponding internal user; the UI handles Google sign-in and SSR
-restoration when its public Firebase Web configuration is provided.
-
-## Commands
-
-Run these from the monorepo root:
-
-| Command                               | Purpose                                                      |
-| ------------------------------------- | ------------------------------------------------------------ |
-| `pnpm --filter api dev`               | Start NestJS with file watching.                             |
-| `pnpm --filter api build`             | Compile the API into `apps/api/dist`.                        |
-| `pnpm --filter api test`              | Run Vitest tests.                                            |
-| `pnpm --filter api typecheck`         | Type-check without emitting files.                           |
-| `pnpm --filter api seed`              | Populate the demo dataset; safe to run more than once.       |
-| `pnpm --filter api migrate`           | Apply pending migrations using the API's Drizzle Kit config. |
-| `pnpm --filter api drizzle <command>` | Run Drizzle Kit with this app's config.                      |
-
-The demo user is `demo@lazyfinance.cl` with the local password above; the mock identity provider issues fixture token `lazyfinance-demo-token` when those credentials are supplied. The seed creates CLP accounts, categories, objectives, and a dated transaction history from January 2024 through the present, including recurring income and expenses, transfers, credit-card payments, and seasonal spending in Chile. It also links the mock external identity to the demo user. It uses the API's `POSTGRES_URL` (including `apps/api/.env` when present); run migrations first. Rerunning it updates the same demo records without deleting other users' data. Rerun the seed on existing local databases to update the demo email and identity link. The credentials and dataset are for local development only.
-
-### Drizzle Kit
-
-`pnpm --filter api migrate` is the shortcut for `drizzle-kit migrate --config ./src/drizzle/drizzle.config.ts`. For any Drizzle Kit command, `pnpm --filter api drizzle <command>` gives access to the **full Drizzle Kit CLI** with the same config; it is not limited to a fixed set of subcommands. For example:
-
-```bash
-pnpm --filter api drizzle generate --name=add_created_at_column  # generate a named migration
-pnpm --filter api migrate                                        # apply migrations to PostgreSQL
-pnpm --filter api drizzle studio                                 # open Drizzle Studio
-```
-
-Replace `add_created_at_column` with a descriptive name for your schema change; always pass `--name` when generating migrations.
-
-The config points to `src/drizzle/schema/index.ts` and writes migration files to `src/drizzle/migrations`. It uses `POSTGRES_URL` from the process environment when set, otherwise the same local PostgreSQL URL shown above. The API's `.env` is loaded by the NestJS app, not explicitly by the Drizzle config; set `POSTGRES_URL` in the shell when using Drizzle Kit against a different database. Migrations are not run automatically on API startup. See the [Drizzle Kit CLI reference](https://orm.drizzle.team/docs/kit-overview) for all available commands and options.
+The runner builds dependencies, migrates/provisions, starts compiled persistence
+with restricted runtime credentials and ephemeral keys, runs API tests through
+both real HTTP boundaries, then stops that service. Owner SQL is confined to
+`apps/api/test` fixture tooling. It is not available to the API application/image.
+Live Firebase verification additionally requires `TEST_FIREBASE_ID_TOKEN_A/B` and
+optionally `TEST_FIREBASE_PROJECT_ID` / `TEST_FIREBASE_EXPIRED_ID_TOKEN`.

@@ -4,17 +4,17 @@
     id="summary-heading"
     class="mt-2 text-2xl font-semibold tracking-[-0.04em] text-color-emphasis"
   >
-    Gastos · {{ period }}
+    Gastos · {{ period() }}
   </h2>
 
-  @if (loading()) {
+  @if (summary.isLoading()) {
     <div
       role="status"
       class="mt-6 rounded-3xl border border-surface bg-surface-0 p-8 text-sm text-muted-color dark:border-surface-700 dark:bg-surface-900"
     >
       Calculando el resumen…
     </div>
-  } @else if (error()) {
+  } @else if (summary.error()) {
     <div
       role="alert"
       class="mt-6 rounded-3xl border border-surface bg-surface-0 p-8 dark:border-surface-700 dark:bg-surface-900"
@@ -24,12 +24,12 @@
         type="button"
         data-testid="retry-summary"
         class="mt-5 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-contrast"
-        (click)="loadSummary()"
+        (click)="summary.reload()"
       >
         Reintentar
       </button>
     </div>
-  } @else if (summary(); as data) {
+  } @else if (summary.value(); as data) {
     <article
       class="mt-6 rounded-3xl border border-surface bg-surface-0 p-6 sm:max-w-lg dark:border-surface-700 dark:bg-surface-900"
     >

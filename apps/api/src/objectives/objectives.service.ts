@@ -1,27 +1,31 @@
-import type { BudgetProgress, ObjectiveSummary } from '@lazyfinance/contracts';
-import { Injectable } from '@nestjs/common';
-import { fromCents, toCents } from '../_utils/money';
-import { santiagoMonth, santiagoTimestamp } from '../_utils/santiago-time';
-import { monthBounds } from '../drizzle/repositories/financial-filters';
-import { ObjectiveRepository } from '../drizzle/repositories/objective.repository';
-import { TagRepository } from '../drizzle/repositories/tag.repository';
-import { TransactionRepository } from '../drizzle/repositories/transaction.repository';
-import { budgetPeriod } from './budget-period';
+import type { BudgetProgress, ObjectiveSummary } from "@lazyfinance/contracts";
+import { Injectable } from "@nestjs/common";
+import { fromCents, toCents } from "../_utils/money";
+import { monthBounds } from "../_utils/period";
+import { santiagoMonth, santiagoTimestamp } from "../_utils/santiago-time";
+import { ObjectiveClient } from "../persistence/objectives.client";
+import { TagClient } from "../persistence/tags.client";
+import { TransactionClient } from "../persistence/transactions.client";
+import { budgetPeriod } from "./budget-period";
 
 @Injectable()
 export class ObjectivesService {
   constructor(
-    private readonly objectives: ObjectiveRepository,
-    private readonly tags: TagRepository,
-    private readonly transactions: TransactionRepository,
+    private readonly objectives: ObjectiveClient,
+    private readonly tags: TagClient,
+    private readonly transactions: TransactionClient,
   ) {}
 
   async getForUser(userId: string): Promise<ObjectiveSummary[]> {
     const rows = await this.objectives.listForUser(userId);
     if (rows.length === 0) return [];
 
-    const links = await this.tags.listForObjectives(userId, rows.map(({ id }) => id));
-    const tagsByObjective = new Map<string, ObjectiveSummary['tags']>();
+    const links = await this.tags.listForObjectives(
+      userId,
+      rows.map(({ id }) => id),
+    );
+    const tagsByObjective = new Map<string, ObjectiveSummary["tags"]>();
+
     for (const { objectiveId, ...tag } of links) {
       const items = tagsByObjective.get(objectiveId) ?? [];
       items.push(tag);
@@ -36,18 +40,35 @@ export class ObjectivesService {
     }));
   }
 
-  async getSpendingProgressForUser(userId: string, month: string, now = new Date()): Promise<BudgetProgress[]> {
+  async getSpendingProgressForUser(
+    userId: string,
+    month: string,
+    now = new Date(),
+  ): Promise<BudgetProgress[]> {
     const objectives = await this.objectives.listForUser(userId);
     if (objectives.length === 0) return [];
-    const links = await this.tags.listForObjectives(userId, objectives.map(({ id }) => id));
+
+    const links = await this.tags.listForObjectives(
+      userId,
+      objectives.map(({ id }) => id),
+    );
     const candidates = objectives.flatMap((objective) => {
       const window = budgetPeriod(objective, month);
-      const tagIds = new Set(links.filter((link) => link.objectiveId === objective.id).map(({ id }) => id));
+      const tagIds = new Set(
+        links
+          .filter((link) => link.objectiveId === objective.id)
+          .map(({ id }) => id),
+      );
+
       return window && tagIds.size ? [{ objective, window, tagIds }] : [];
     });
     if (candidates.length === 0) return [];
 
-    const start = candidates.reduce((earliest, item) => item.window.start < earliest ? item.window.start : earliest, candidates[0].window.start);
+    const start = candidates.reduce(
+      (earliest, item) =>
+        item.window.start < earliest ? item.window.start : earliest,
+      candidates[0].window.start,
+    );
     const asOf = month === santiagoMonth(now) ? now : undefined;
     const end = monthBounds(month).end;
     const transactions = await (asOf
@@ -56,12 +77,22 @@ export class ObjectivesService {
 
     return candidates.map(({ objective, window, tagIds }) => {
       let spent = 0n;
+
       for (const transaction of transactions) {
         const date = santiagoTimestamp(transaction.bookedAt);
-        if (!tagIds.has(transaction.tagId) || date < window.start || date >= window.end) continue;
+
+        if (
+          !tagIds.has(transaction.tagId) ||
+          date < window.start ||
+          date >= window.end
+        )
+          continue;
+
         spent -= toCents(transaction.amount);
       }
+
       const limit = toCents(objective.amount);
+
       return {
         id: objective.id,
         name: objective.name,
@@ -70,7 +101,7 @@ export class ObjectivesService {
         limit: fromCents(limit),
         spent: fromCents(spent),
         remaining: fromCents(limit - spent),
-        percentage: Number(spent * 100n / limit),
+        percentage: Number((spent * 100n) / limit),
       };
     });
   }

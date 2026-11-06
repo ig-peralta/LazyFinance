@@ -12,14 +12,14 @@
     <span class="text-xs font-medium text-muted-color">Saldos en pesos chilenos</span>
   </div>
 
-  @if (loading()) {
+  @if (accounts.isLoading()) {
     <div
       role="status"
       class="mt-6 rounded-3xl border border-surface bg-surface-0 p-8 text-sm text-muted-color dark:border-surface-700 dark:bg-surface-900"
     >
       Cargando tus cuentas…
     </div>
-  } @else if (error()) {
+  } @else if (accounts.error()) {
     <div
       role="alert"
       class="mt-6 rounded-3xl border border-surface bg-surface-0 p-8 dark:border-surface-700 dark:bg-surface-900"
@@ -30,12 +30,12 @@
         data-testid="retry-accounts"
         type="button"
         class="mt-5 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-contrast"
-        (click)="loadAccounts()"
+        (click)="accounts.reload()"
       >
         Reintentar
       </button>
     </div>
-  } @else if (accounts().length === 0) {
+  } @else if (accounts.value().length === 0) {
     <div
       class="mt-6 rounded-3xl border border-surface bg-surface-0 p-8 dark:border-surface-700 dark:bg-surface-900"
     >
@@ -44,7 +44,7 @@
     </div>
   } @else {
     <div class="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      @for (account of accounts(); track account.id) {
+      @for (account of accounts.value(); track account.id) {
         <p-card
           styleClass="h-full rounded-3xl border border-surface bg-surface-0 shadow-sm dark:border-surface-700 dark:bg-surface-900"
         >

@@ -1,426 +1,651 @@
-import { randomUUID } from 'node:crypto';
-import { and, eq } from 'drizzle-orm';
-import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { AccountRepository } from '../../drizzle/repositories/account.repository';
-import { IncomeRepository } from '../../drizzle/repositories/income.repository';
-import { TransactionRepository } from '../../drizzle/repositories/transaction.repository';
-import * as schema from '../../drizzle/schema';
-import { migrateTestDatabase } from '../../drizzle/test-migrations';
-import { IncomeService } from '../../income/income.service';
-import { TaggingService } from '../../transactions/tagging/tagging.service';
-import type { BankingConnector } from '../connector/banking-connector';
+import { describe, expect, it, vi } from "vitest";
+import { type Fixture, fixture, integration } from "../../../test/persistence";
+import { IncomeService } from "../../income/income.service";
+import { AccountClient } from "../../persistence/accounts.client";
+import { TransactionClient } from "../../persistence/transactions.client";
+import type { BankingConnector } from "../connector/banking-connector";
 import {
-  correctionPage, expiredFailure, initialPage, removalPage, retryableFailure, unknownBalancePage,
-} from '../connector/fixtures/normalized-pages';
-import type { ConnectorPage, ConnectorResult } from '../connector/normalized-banking.schema';
-import { BankingIngestionService } from './banking-ingestion.service';
-
-type Database = PostgresJsDatabase<typeof schema>;
-type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
+  correctionPage,
+  expiredFailure,
+  initialPage,
+  removalPage,
+  retryableFailure,
+  unknownBalancePage,
+} from "../connector/fixtures/normalized-pages";
+import type {
+  ConnectorPage,
+  ConnectorResult,
+} from "../connector/normalized-banking.schema";
+import { BankingIngestionService } from "./banking-ingestion.service";
 
 const connector = (result: ConnectorResult): BankingConnector => ({
-  provider: 'fixture-bank', fetchPage: vi.fn(async () => result),
+  provider: "fixture-bank",
+  fetchPage: vi.fn(async () => result),
 });
 
-describe.skipIf(!process.env.TEST_POSTGRES_URL)('owned normalized banking ingestion against PostgreSQL', () => {
-  let client: ReturnType<typeof postgres>;
-  let db: Database;
+async function withConnection(
+  work: (
+    f: Fixture & {
+      ingestion: BankingIngestionService;
+      totals: TransactionClient;
+    },
+  ) => Promise<void>,
+) {
+  const f = await fixture();
 
-  beforeAll(async () => {
-    client = postgres(process.env.TEST_POSTGRES_URL!, { max: 4 });
-    db = drizzle(client, { schema });
-    await migrateTestDatabase(db, process.env.TEST_POSTGRES_URL!);
-  });
-  afterAll(async () => client?.end());
-
-  async function withConnection(work: (context: {
-    tx: Tx; userId: string; otherUserId: string; connectionId: string; otherConnectionId: string;
-    ingestion: BankingIngestionService;
-  }) => Promise<void>) {
-    const rollback = new Error('Rollback fixture');
-    await db.transaction(async (tx) => {
-      const userId = randomUUID();
-      const otherUserId = randomUUID();
-      await tx.insert(schema.user).values([
-        { id: userId, name: 'Owner', email: `${userId}@test.local` },
-        { id: otherUserId, name: 'Other', email: `${otherUserId}@test.local` },
-      ]);
-      await tx.insert(schema.provider).values({ identifier: 'fixture-bank' }).onConflictDoNothing();
-      const [provider] = await tx.select().from(schema.provider)
-        .where(eq(schema.provider.identifier, 'fixture-bank'));
-      const connectionId = randomUUID();
-      const otherConnectionId = randomUUID();
-      await tx.insert(schema.providerConnection).values([
-        { id: connectionId, userId, providerId: provider.id, mode: 'test' },
-        { id: otherConnectionId, userId: otherUserId, providerId: provider.id, mode: 'test' },
-      ]);
-      const ingestion = new BankingIngestionService(tx as unknown as Database, new TaggingService(tx as unknown as Database));
-      await work({ tx, userId, otherUserId, connectionId, otherConnectionId, ingestion });
-      throw rollback;
-    }).catch((error) => { if (error !== rollback) throw error; });
+  try {
+    await work({
+      ...f,
+      ingestion: new BankingIngestionService(f.persistence),
+      totals: new TransactionClient(f.persistence),
+    });
+  } finally {
+    await f.db.close();
   }
+}
 
-  it('imports and replays owned facts, preserves decisions, and corrects only provider-owned fields', async () => {
-    await withConnection(async ({ tx, userId, connectionId, ingestion }) => {
-      const first = await ingestion.syncForUser(userId, connectionId, connector(initialPage));
-      expect(first).toEqual({ status: 'complete', conflictCount: 0, checkpoint: 'through-2026-10-15' });
-      const accounts = await new AccountRepository(tx).listActiveForUser(userId);
-      expect(accounts).toHaveLength(3);
-      expect(new Map(accounts.map((row) => [row.type, row.balance]))).toEqual(new Map([
-        ['checking', '1160.00'], ['savings', '300.00'], ['credit_card', '-40.00'],
-      ]));
-      const checking = (await tx.select().from(schema.account).where(and(
-        eq(schema.account.providerConnectionId, connectionId), eq(schema.account.externalId, 'checking-1'),
-      )))[0];
-      expect(checking).toMatchObject({ historyCompleteness: 'partial', historyFrom: '2026-10-01' });
+async function account(f: Fixture, external = "checking-1") {
+  return (
+    await f.db.rows("account", {
+      providerConnectionId: f.connectionId,
+      externalId: external,
+    })
+  )[0];
+}
 
-      const grocery = (await tx.select().from(schema.transaction).where(and(
-        eq(schema.transaction.accountId, checking.id), eq(schema.transaction.externalId, 'grocery-1'),
-      )))[0];
-      const salary = (await tx.select().from(schema.transaction).where(and(
-        eq(schema.transaction.accountId, checking.id), eq(schema.transaction.externalId, 'salary-1'),
-      )))[0];
-      expect(salary.bookedOn).toBe('2026-10-10');
-      expect(salary.bookedAt.toISOString()).toBe('2026-10-10T15:00:00.000Z');
-      expect(salary.isInternalMovement).toBeNull();
-      const totals = new TransactionRepository(tx);
-      expect(await totals.sumByMonthForUser(userId, '2026-10')).toMatchObject({
-        spending: '200.00', receivedIncome: '0.00', unclassifiedCreditAmount: '20.00', unresolvedMovementCount: 1,
+async function movement(
+  f: Fixture,
+  external: string,
+  accountExternal = "checking-1",
+) {
+  return (
+    await f.db.rows("transaction", {
+      accountId: (await account(f, accountExternal)).id,
+      externalId: external,
+    })
+  )[0];
+}
+
+async function confirmSalary(f: Fixture) {
+  const salary = await movement(f, "salary-1");
+  await f.db.update("transaction", salary.id, {
+    isInternalMovement: false,
+    userInternalOverride: false,
+  });
+  const income = new IncomeService(f.persistence);
+  const source = await income.createSourceForUser(f.userId, {
+    name: "Salary",
+    regularity: "irregular",
+    amountKind: "variable",
+    startDate: "2026-01-01",
+  });
+  await income.confirmReceiptForUser(f.userId, salary.id, {
+    sourceId: source.id,
+  });
+
+  return { salary, source, income };
+}
+
+describe.skipIf(!integration)(
+  "API provider orchestration → real signed persistence RPC → PostgreSQL",
+  () => {
+    it("imports/replays facts, preserves manual choices and account aliases, and rejects older snapshots", async () => {
+      await withConnection(async (f) => {
+        expect(
+          await f.ingestion.syncForUser(
+            f.userId,
+            f.connectionId,
+            connector(initialPage),
+          ),
+        ).toEqual({
+          status: "complete",
+          conflictCount: 0,
+          checkpoint: "through-2026-10-15",
+        });
+        const accounts = await new AccountClient(
+          f.persistence,
+        ).listActiveForUser(f.userId);
+        expect(new Map(accounts.map((row) => [row.type, row.balance]))).toEqual(
+          new Map([
+            ["checking", "1160.00"],
+            ["savings", "300.00"],
+            ["credit_card", "-40.00"],
+          ]),
+        );
+        expect(await account(f)).toMatchObject({
+          history_completeness: "partial",
+          history_from: "2026-10-01",
+        });
+        const grocery = await movement(f, "grocery-1");
+        expect(await movement(f, "salary-1")).toMatchObject({
+          booked_on: "2026-10-10",
+          booked_at: new Date("2026-10-10T15:00:00Z"),
+          is_internal_movement: null,
+        });
+        expect(
+          await f.totals.sumByMonthForUser(f.userId, "2026-10"),
+        ).toMatchObject({
+          spending: "200.00",
+          receivedIncome: "0.00",
+          unclassifiedCreditAmount: "20.00",
+          unresolvedMovementCount: 1,
+        });
+        const tag = await f.persistence
+          .user(f.userId)
+          .tags.create.mutate({ name: "Personal" });
+        await f.persistence
+          .user(f.userId)
+          .tagRules.manual.mutate({ transactionId: grocery.id, tagId: tag.id });
+        await f.db.update("account", (await account(f)).id, {
+          alias: "Mi cuenta",
+        });
+        await confirmSalary(f);
+        expect(
+          (
+            await f.ingestion.syncForUser(
+              f.userId,
+              f.connectionId,
+              connector(initialPage),
+            )
+          ).status,
+        ).toBe("complete");
+        expect(
+          (
+            await f.ingestion.syncForUser(
+              f.userId,
+              f.connectionId,
+              connector(correctionPage),
+            )
+          ).status,
+        ).toBe("complete");
+        expect(await movement(f, "grocery-1")).toMatchObject({
+          amount: "-120.00",
+          description: "Corrected groceries",
+          tag_id: tag.id,
+        });
+        expect(await account(f)).toMatchObject({
+          alias: "Mi cuenta",
+          balance: "1140.00",
+        });
+        expect(
+          await f.db.rows("transaction", {
+            accountId: grocery.account_id,
+            externalId: "grocery-1",
+          }),
+        ).toHaveLength(1);
+        expect(
+          await f.totals.sumByMonthForUser(f.userId, "2026-10"),
+        ).toMatchObject({
+          spending: "220.00",
+          receivedIncome: "500.00",
+          unresolvedMovementCount: 0,
+        });
+        expect(
+          await f.ingestion.syncForUser(
+            f.userId,
+            f.connectionId,
+            connector(initialPage),
+          ),
+        ).toMatchObject({ status: "failed", reason: "invalid_data" });
+        expect(await movement(f, "grocery-1")).toMatchObject({
+          amount: "-120.00",
+        });
+        const before = (
+          await f.db.rows("provider_sync_state", {
+            providerConnectionId: f.connectionId,
+          })
+        )[0];
+        expect(
+          await f.ingestion.syncForUser(
+            f.userId,
+            f.connectionId,
+            connector(retryableFailure),
+          ),
+        ).toMatchObject({ status: "failed", reason: "retryable" });
+        expect(
+          (
+            await f.db.rows("provider_sync_state", {
+              providerConnectionId: f.connectionId,
+            })
+          )[0],
+        ).toMatchObject({
+          checkpoint: before.checkpoint,
+          last_success_at: before.last_success_at,
+        });
       });
-
-      const tagId = randomUUID();
-      await tx.insert(schema.tag).values({ id: tagId, userId, name: 'Personal' });
-      await tx.update(schema.account).set({ alias: 'Mi cuenta' }).where(eq(schema.account.id, checking.id));
-      await tx.update(schema.transaction).set({ tagId, tagDecisionOrigin: 'manual' }).where(eq(schema.transaction.id, grocery.id));
-      await tx.update(schema.transaction).set({ userInternalOverride: false, isInternalMovement: false })
-        .where(eq(schema.transaction.id, salary.id));
-      const [source] = await tx.insert(schema.incomeSource).values({
-        userId, name: 'Salary', currency: 'CLP', regularity: 'irregular', amountKind: 'variable',
-        schedule: null, startDate: '2026-01-01',
-      }).returning();
-      await new IncomeService(new IncomeRepository(tx)).confirmReceiptForUser(userId, salary.id, { sourceId: source.id });
-
-      expect((await ingestion.syncForUser(userId, connectionId, connector(initialPage))).status).toBe('complete');
-      expect((await ingestion.syncForUser(userId, connectionId, connector(correctionPage))).status).toBe('complete');
-      const [after] = await tx.select().from(schema.transaction).where(eq(schema.transaction.id, grocery.id));
-      expect(after).toMatchObject({ amount: '-120.00', description: 'Corrected groceries', tagId });
-      expect((await tx.select().from(schema.account).where(eq(schema.account.id, checking.id)))[0])
-        .toMatchObject({ alias: 'Mi cuenta', balance: '1140.00' });
-      expect((await tx.select().from(schema.transaction).where(eq(schema.transaction.accountId, checking.id)))
-        .filter((row) => row.externalId === 'grocery-1')).toHaveLength(1);
-      expect(await totals.sumByMonthForUser(userId, '2026-10')).toMatchObject({
-        spending: '220.00', receivedIncome: '500.00', unresolvedMovementCount: 0,
+    });
+    it("applies conflicting corrections, preserves receipts/manual tags and suspends financial interpretation", async () => {
+      await withConnection(async (f) => {
+        await f.ingestion.syncForUser(
+          f.userId,
+          f.connectionId,
+          connector(initialPage),
+        );
+        const { salary, source, income } = await confirmSalary(f);
+        const tag = await f.persistence
+          .user(f.userId)
+          .tags.create.mutate({ name: "Income" });
+        await f.persistence
+          .user(f.userId)
+          .tagRules.manual.mutate({ transactionId: salary.id, tagId: tag.id });
+        const flip: ConnectorPage = {
+          ...initialPage,
+          observedAt: "2026-10-18T18:00:00.000Z",
+          checkpoint: "sign-flip",
+          accounts: [],
+          movements: [{ ...initialPage.movements[0], amount: "-500.00" }],
+        };
+        expect(
+          await f.ingestion.syncForUser(
+            f.userId,
+            f.connectionId,
+            connector(flip),
+          ),
+        ).toEqual({
+          status: "needs_review",
+          conflictCount: 1,
+          checkpoint: "sign-flip",
+        });
+        expect(await movement(f, "salary-1")).toMatchObject({
+          amount: "-500.00",
+          type: "debit",
+          tag_id: tag.id,
+          review_status: "needs_review",
+        });
+        expect(
+          await f.totals.sumByMonthForUser(f.userId, "2026-10"),
+        ).toMatchObject({
+          receivedIncome: "0.00",
+          spending: "200.00",
+          unresolvedMovementCount: 1,
+        });
+        expect(await income.listReceiptsForUser(f.userId, "2026-10")).toEqual(
+          [],
+        );
+        expect(
+          await f.db.rows("income_receipt", { transactionId: salary.id }),
+        ).toHaveLength(1);
+        expect(
+          await f.ingestion.listPendingReviewForUser(f.otherUserId),
+        ).toEqual([]);
+        expect(
+          await f.ingestion.listPendingReviewForUser(f.userId),
+        ).toMatchObject([
+          {
+            transactionId: salary.id,
+            tagId: tag.id,
+            incomeSourceId: source.id,
+            reason: "receipt_incompatible",
+          },
+        ]);
+        expect(
+          await f.ingestion.syncForUser(
+            f.userId,
+            f.connectionId,
+            connector(flip),
+          ),
+        ).toMatchObject({ conflictCount: 1 });
       });
-      expect(await ingestion.syncForUser(userId, connectionId, connector(initialPage)))
-        .toMatchObject({ status: 'failed', reason: 'invalid_data' });
-      expect((await tx.select().from(schema.transaction).where(eq(schema.transaction.id, grocery.id)))[0].amount)
-        .toBe('-120.00');
-      expect((await tx.select().from(schema.providerSyncState)
-        .where(eq(schema.providerSyncState.providerConnectionId, connectionId)))[0].checkpoint)
-        .toBe('through-2026-10-17');
-      const [beforeFailure] = await tx.select().from(schema.providerSyncState)
-        .where(eq(schema.providerSyncState.providerConnectionId, connectionId));
-      expect(await ingestion.syncForUser(userId, connectionId, connector(retryableFailure)))
-        .toMatchObject({ status: 'failed', reason: 'retryable' });
-      const [afterFailure] = await tx.select().from(schema.providerSyncState)
-        .where(eq(schema.providerSyncState.providerConnectionId, connectionId));
-      expect(afterFailure.checkpoint).toBe(beforeFailure.checkpoint);
-      expect(afterFailure.lastSuccessAt).toEqual(beforeFailure.lastSuccessAt);
-      expect((await tx.select().from(schema.account).where(eq(schema.account.id, checking.id)))[0].balance)
-        .toBe('1140.00');
-      expect(await tx.select().from(schema.incomeReceipt).where(eq(schema.incomeReceipt.transactionId, salary.id)))
-        .toHaveLength(1);
     });
-  });
-
-  it('applies a conflicting correction while suspending the interpretation and preserving a review trail', async () => {
-    await withConnection(async ({ tx, userId, otherUserId, connectionId, ingestion }) => {
-      await ingestion.syncForUser(userId, connectionId, connector(initialPage));
-      const [checking] = await tx.select().from(schema.account).where(eq(schema.account.externalId, 'checking-1'));
-      const [salary] = await tx.select().from(schema.transaction).where(and(
-        eq(schema.transaction.accountId, checking.id), eq(schema.transaction.externalId, 'salary-1'),
-      ));
-      const tagId = randomUUID();
-      await tx.insert(schema.tag).values({ id: tagId, userId, name: 'Income tag' });
-      await tx.update(schema.transaction).set({ userInternalOverride: false, isInternalMovement: false,
-        tagId, tagDecisionOrigin: 'manual' })
-        .where(eq(schema.transaction.id, salary.id));
-      const [source] = await tx.insert(schema.incomeSource).values({
-        userId, name: 'Salary', currency: 'CLP', regularity: 'irregular', amountKind: 'variable',
-        schedule: null, startDate: '2026-01-01',
-      }).returning();
-      await new IncomeService(new IncomeRepository(tx)).confirmReceiptForUser(userId, salary.id, { sourceId: source.id });
-      const signFlip = {
-        ...initialPage, observedAt: '2026-10-18T18:00:00.000Z', checkpoint: 'through-sign-flip',
-        accounts: [{ ...initialPage.accounts[0], reportedBalance: {
-          ...initialPage.accounts[0].reportedBalance, amount: '160.00', asOf: '2026-10-18T17:00:00.000Z',
-        } }],
-        movements: [{ ...initialPage.movements[0], amount: '-500.00' }],
-      } satisfies ConnectorPage;
-      const result = await ingestion.syncForUser(userId, connectionId, connector(signFlip));
-      expect(result).toEqual({ status: 'needs_review', conflictCount: 1, checkpoint: 'through-sign-flip' });
-      const [corrected] = await tx.select().from(schema.transaction).where(eq(schema.transaction.id, salary.id));
-      expect(corrected).toMatchObject({ amount: '-500.00', type: 'debit', tagId, reviewStatus: 'needs_review' });
-      expect(await new TransactionRepository(tx).sumByMonthForUser(userId, '2026-10')).toMatchObject({
-        receivedIncome: '0.00', spending: '200.00', unresolvedMovementCount: 1,
+    it("retains confirmed income on compatible amount/date corrections", async () => {
+      await withConnection(async (f) => {
+        await f.ingestion.syncForUser(
+          f.userId,
+          f.connectionId,
+          connector(initialPage),
+        );
+        const { salary, source } = await confirmSalary(f);
+        const correction: ConnectorPage = {
+          ...initialPage,
+          observedAt: "2026-10-17T18:00:00.000Z",
+          checkpoint: "salary-corrected",
+          accounts: [],
+          movements: [
+            {
+              ...initialPage.movements[0],
+              amount: "480.00",
+              booked: {
+                precision: "calendar_day",
+                on: "2026-10-11",
+                timeZone: "America/Santiago",
+              },
+            },
+          ],
+        };
+        expect(
+          await f.ingestion.syncForUser(
+            f.userId,
+            f.connectionId,
+            connector(correction),
+          ),
+        ).toMatchObject({ status: "complete", conflictCount: 0 });
+        expect(await movement(f, "salary-1")).toMatchObject({
+          amount: "480.00",
+          booked_on: "2026-10-11",
+          review_status: "clear",
+        });
+        expect(
+          await f.totals.sumByMonthForUser(f.userId, "2026-10"),
+        ).toMatchObject({ receivedIncome: "480.00" });
+        expect(
+          (await f.db.rows("income_receipt", { transactionId: salary.id }))[0]
+            .source_id,
+        ).toBe(source.id);
       });
-      expect((await new AccountRepository(tx).listActiveForUser(userId)).find((row) => row.id === checking.id)?.balance)
-        .toBe('160.00');
-      expect(await new IncomeRepository(tx).listReceiptsForMonth(userId, '2026-10', new Date('2026-10-20T18:00:00Z')))
-        .toEqual([]);
-      expect(await tx.select().from(schema.incomeReceipt).where(eq(schema.incomeReceipt.transactionId, salary.id)))
-        .toHaveLength(1);
-      expect(await ingestion.listPendingReviewForUser(otherUserId)).toEqual([]);
-      expect(await ingestion.listPendingReviewForUser(userId)).toMatchObject([{
-        transactionId: salary.id, tagId, incomeSourceId: source.id, reason: 'receipt_incompatible',
-      }]);
-      expect((await tx.select().from(schema.providerSyncState)
-        .where(eq(schema.providerSyncState.providerConnectionId, connectionId)))[0])
-        .toMatchObject({ checkpoint: 'through-sign-flip', lastResult: 'needs_review', unresolvedConflictCount: 1 });
-      expect(await ingestion.syncForUser(userId, connectionId, connector(signFlip)))
-        .toMatchObject({ status: 'needs_review', conflictCount: 1 });
-      expect(await ingestion.listPendingReviewForUser(userId)).toHaveLength(1);
     });
-  });
-
-  it('retains a confirmed income link on a same-direction bank correction', async () => {
-    await withConnection(async ({ tx, userId, connectionId, ingestion }) => {
-      await ingestion.syncForUser(userId, connectionId, connector(initialPage));
-      const [checking] = await tx.select().from(schema.account).where(eq(schema.account.externalId, 'checking-1'));
-      const [salary] = await tx.select().from(schema.transaction).where(and(
-        eq(schema.transaction.accountId, checking.id), eq(schema.transaction.externalId, 'salary-1'),
-      ));
-      await tx.update(schema.transaction).set({ userInternalOverride: false, isInternalMovement: false })
-        .where(eq(schema.transaction.id, salary.id));
-      const [source] = await tx.insert(schema.incomeSource).values({
-        userId, name: 'Salary', currency: 'CLP', regularity: 'irregular', amountKind: 'variable',
-        schedule: null, startDate: '2026-01-01',
-      }).returning();
-      await new IncomeService(new IncomeRepository(tx)).confirmReceiptForUser(userId, salary.id, { sourceId: source.id });
-      const correction = {
-        ...initialPage, observedAt: '2026-10-17T18:00:00.000Z', checkpoint: 'salary-corrected',
-        accounts: [], movements: [{ ...initialPage.movements[0], amount: '480.00',
-          booked: { precision: 'calendar_day' as const, on: '2026-10-11', timeZone: 'America/Santiago' as const } }],
-      };
-      expect(await ingestion.syncForUser(userId, connectionId, connector(correction)))
-        .toMatchObject({ status: 'complete', conflictCount: 0 });
-      expect((await tx.select().from(schema.transaction).where(eq(schema.transaction.id, salary.id)))[0])
-        .toMatchObject({ amount: '480.00', bookedOn: '2026-10-11', reviewStatus: 'clear' });
-      expect(await new TransactionRepository(tx).sumByMonthForUser(userId, '2026-10'))
-        .toMatchObject({ receivedIncome: '480.00' });
-      expect((await tx.select().from(schema.incomeReceipt)
-        .where(eq(schema.incomeReceipt.transactionId, salary.id)))[0].sourceId).toBe(source.id);
+    it("retains tombstones through replay and through removals that precede first account import", async () => {
+      await withConnection(async (f) => {
+        await f.ingestion.syncForUser(
+          f.userId,
+          f.connectionId,
+          connector(initialPage),
+        );
+        await f.ingestion.syncForUser(
+          f.userId,
+          f.connectionId,
+          connector(removalPage),
+        );
+        await f.ingestion.syncForUser(
+          f.userId,
+          f.connectionId,
+          connector({ ...initialPage, observedAt: "2026-10-20T18:00:00.000Z" }),
+        );
+        expect(await movement(f, "grocery-1")).toMatchObject({
+          removal_reason: "reversed",
+          amount: "-100.00",
+        });
+        expect(
+          await f.totals.sumByMonthForUser(f.userId, "2026-10"),
+        ).toMatchObject({ spending: "100.00" });
+        await f.ingestion.syncForUser(
+          f.userId,
+          f.connectionId,
+          connector({
+            ...initialPage,
+            observedAt: "2026-10-21T18:00:00.000Z",
+            accounts: [],
+            movements: [],
+            removedMovements: [
+              {
+                accountExternalId: "later",
+                externalId: "withdrawn",
+                reason: "removed",
+                providerUpdatedAt: null,
+              },
+            ],
+          }),
+        );
+        await f.ingestion.syncForUser(
+          f.userId,
+          f.connectionId,
+          connector({
+            ...initialPage,
+            observedAt: "2026-10-22T18:00:00.000Z",
+            accounts: [{ ...initialPage.accounts[0], externalId: "later" }],
+            movements: [
+              {
+                ...initialPage.movements[1],
+                accountExternalId: "later",
+                externalId: "withdrawn",
+              },
+            ],
+          }),
+        );
+        expect(
+          await f.db.rows("transaction", {
+            accountId: (await account(f, "later")).id,
+          }),
+        ).toEqual([]);
+      });
     });
-  });
-
-  it('keeps a provider removal across replays and before the corresponding account is imported', async () => {
-    await withConnection(async ({ tx, userId, connectionId, ingestion }) => {
-      await ingestion.syncForUser(userId, connectionId, connector(initialPage));
-      expect((await ingestion.syncForUser(userId, connectionId, connector(removalPage))).status).toBe('complete');
-      expect((await ingestion.syncForUser(userId, connectionId, connector({
-        ...initialPage, observedAt: '2026-10-20T18:00:00.000Z', checkpoint: 'after-removal-replay',
-      }))).status).toBe('complete');
-      const [checking] = await tx.select().from(schema.account).where(eq(schema.account.externalId, 'checking-1'));
-      const [grocery] = await tx.select().from(schema.transaction).where(and(
-        eq(schema.transaction.accountId, checking.id), eq(schema.transaction.externalId, 'grocery-1'),
-      ));
-      expect(grocery).toMatchObject({ removalReason: 'reversed', amount: '-100.00' });
-      expect(await new TransactionRepository(tx).sumByMonthForUser(userId, '2026-10'))
-        .toMatchObject({ spending: '100.00' });
-
-      const beforeAccount = {
-        ...initialPage, observedAt: '2026-10-21T18:00:00.000Z',
-        accounts: [], movements: [], checkpoint: 'removal-before-account',
-        removedMovements: [{ accountExternalId: 'later-account', externalId: 'withdrawn',
-          reason: 'removed' as const, providerUpdatedAt: null }],
-      };
-      await ingestion.syncForUser(userId, connectionId, connector(beforeAccount));
-      const afterAccount = {
-        ...initialPage, observedAt: '2026-10-22T18:00:00.000Z',
-        accounts: [{ ...initialPage.accounts[0], externalId: 'later-account' }],
-        movements: [{ ...initialPage.movements[1], accountExternalId: 'later-account', externalId: 'withdrawn' }],
-        checkpoint: 'later-account-import',
-      };
-      await ingestion.syncForUser(userId, connectionId, connector(afterAccount));
-      const [later] = await tx.select().from(schema.account).where(eq(schema.account.externalId, 'later-account'));
-      expect(await tx.select().from(schema.transaction).where(and(
-        eq(schema.transaction.accountId, later.id), eq(schema.transaction.externalId, 'withdrawn'),
-      ))).toEqual([]);
-      expect(await tx.select().from(schema.providerMovementRemoval).where(and(
-        eq(schema.providerMovementRemoval.providerConnectionId, connectionId),
-        eq(schema.providerMovementRemoval.movementExternalId, 'withdrawn'),
-      ))).toHaveLength(1);
+    it("does not apply partial pages, authorizes before fetching, and records expiry without changing last-good facts", async () => {
+      await withConnection(async (f) => {
+        const fetchPage = vi.fn(async ({ pageCursor }) =>
+          pageCursor === null
+            ? {
+                ...initialPage,
+                complete: false,
+                nextCursor: "page-2",
+                checkpoint: null,
+              }
+            : retryableFailure,
+        );
+        expect(
+          await f.ingestion.syncForUser(f.userId, f.connectionId, {
+            provider: "fixture-bank",
+            fetchPage,
+          }),
+        ).toMatchObject({ status: "failed", reason: "retryable" });
+        expect(fetchPage).toHaveBeenCalledTimes(2);
+        expect(
+          await f.db.rows("account", { providerConnectionId: f.connectionId }),
+        ).toEqual([]);
+        const unauthorized = vi.fn(async () => initialPage);
+        await expect(
+          f.ingestion.syncForUser(f.otherUserId, f.connectionId, {
+            provider: "fixture-bank",
+            fetchPage: unauthorized,
+          }),
+        ).rejects.toThrow("Banking connection not found");
+        expect(unauthorized).not.toHaveBeenCalled();
+        await f.ingestion.syncForUser(
+          f.userId,
+          f.connectionId,
+          connector(unknownBalancePage),
+        );
+        expect(await account(f)).toMatchObject({
+          balance: null,
+          history_completeness: "unknown",
+        });
+        expect(
+          await f.ingestion.syncForUser(
+            f.userId,
+            f.connectionId,
+            connector(expiredFailure),
+          ),
+        ).toMatchObject({ status: "failed", reason: "expired" });
+        expect(
+          (await f.db.rows("provider_connection", { id: f.connectionId }))[0]
+            .status,
+        ).toBe("expired");
+      });
     });
-  });
-
-  it('does not apply partial pages or advance a checkpoint on provider failure', async () => {
-    await withConnection(async ({ tx, userId, otherUserId, connectionId, otherConnectionId, ingestion }) => {
-      const calls = vi.fn(async ({ pageCursor }: { pageCursor: string | null }) => pageCursor === null
-        ? { ...initialPage, complete: false, nextCursor: 'page-2', checkpoint: null }
-        : retryableFailure);
-      const paged: BankingConnector = { provider: 'fixture-bank', fetchPage: calls };
-      expect(await ingestion.syncForUser(userId, connectionId, paged))
-        .toMatchObject({ status: 'failed', reason: 'retryable' });
-      expect(calls).toHaveBeenCalledTimes(2);
-      expect(await tx.select().from(schema.account).where(eq(schema.account.providerConnectionId, connectionId)))
-        .toEqual([]);
-      const [state] = await tx.select().from(schema.providerSyncState)
-        .where(eq(schema.providerSyncState.providerConnectionId, connectionId));
-      expect(state).toMatchObject({ checkpoint: null, lastFailureReason: 'retryable', lastSuccessAt: null });
-      const wrongUser = vi.fn(async () => initialPage);
-      await expect(ingestion.syncForUser(otherUserId, connectionId, {
-        provider: 'fixture-bank', fetchPage: wrongUser,
-      })).rejects.toThrow('Banking connection not found');
-      expect(wrongUser).not.toHaveBeenCalled();
-      await expect(ingestion.syncForUser(userId, otherConnectionId, connector(initialPage)))
-        .rejects.toThrow('Banking connection not found');
-      expect((await ingestion.syncForUser(userId, connectionId, connector(unknownBalancePage))).status)
-        .toBe('complete');
-      expect((await tx.select().from(schema.account).where(eq(schema.account.externalId, 'checking-1')))[0])
-        .toMatchObject({ balance: null, historyCompleteness: 'unknown' });
-      expect(await ingestion.syncForUser(userId, connectionId, connector(expiredFailure)))
-        .toMatchObject({ status: 'failed', reason: 'expired' });
-      expect((await tx.select().from(schema.providerConnection)
-        .where(eq(schema.providerConnection.id, connectionId)))[0].status).toBe('expired');
-    });
-  });
-
-  it('verifies every page before writing and scopes reused external IDs to their connection', async () => {
-    await withConnection(async ({ tx, userId, otherUserId, connectionId, otherConnectionId, ingestion }) => {
-      const paged: BankingConnector = {
-        provider: 'fixture-bank',
-        fetchPage: vi.fn(async ({ checkpoint, pageCursor }) => {
+    it("verifies all pages and scopes reused external IDs independently to connections/users", async () => {
+      await withConnection(async (f) => {
+        const fetchPage = vi.fn(async ({ checkpoint, pageCursor }) => {
           expect(checkpoint).toBeNull();
           return pageCursor === null
-            ? { ...initialPage, complete: false, nextCursor: 'second-page', checkpoint: null,
-              accounts: initialPage.accounts.slice(0, 1), movements: initialPage.movements.slice(0, 3) }
-            : { ...initialPage, accounts: initialPage.accounts.slice(1), movements: initialPage.movements.slice(3) };
-        }),
-      };
-      expect((await ingestion.syncForUser(userId, connectionId, paged)).status).toBe('complete');
-      const movementsFor = (ownerId: string) => tx.select({ id: schema.transaction.id }).from(schema.transaction)
-        .innerJoin(schema.account, eq(schema.account.id, schema.transaction.accountId))
-        .where(eq(schema.account.userId, ownerId));
-      expect(await movementsFor(userId)).toHaveLength(initialPage.movements.length);
-      expect((await ingestion.syncForUser(otherUserId, otherConnectionId, connector(initialPage))).status).toBe('complete');
-      expect(await movementsFor(otherUserId)).toHaveLength(initialPage.movements.length);
-      expect(await new AccountRepository(tx).listActiveForUser(userId)).toHaveLength(3);
-      expect(await new AccountRepository(tx).listActiveForUser(otherUserId)).toHaveLength(3);
-
-      const firstAccounts = await tx.select().from(schema.account)
-        .where(eq(schema.account.providerConnectionId, connectionId));
-      const otherAccounts = await tx.select().from(schema.account)
-        .where(eq(schema.account.providerConnectionId, otherConnectionId));
-      expect(firstAccounts.find((row) => row.externalId === 'checking-1')?.id)
-        .not.toBe(otherAccounts.find((row) => row.externalId === 'checking-1')?.id);
+            ? {
+                ...initialPage,
+                complete: false,
+                nextCursor: "second",
+                checkpoint: null,
+                accounts: initialPage.accounts.slice(0, 1),
+                movements: initialPage.movements.slice(0, 3),
+              }
+            : {
+                ...initialPage,
+                accounts: initialPage.accounts.slice(1),
+                movements: initialPage.movements.slice(3),
+              };
+        });
+        expect(
+          (
+            await f.ingestion.syncForUser(f.userId, f.connectionId, {
+              provider: "fixture-bank",
+              fetchPage,
+            })
+          ).status,
+        ).toBe("complete");
+        expect(
+          (
+            await f.ingestion.syncForUser(
+              f.otherUserId,
+              f.otherConnectionId,
+              connector(initialPage),
+            )
+          ).status,
+        ).toBe("complete");
+        expect(
+          await new AccountClient(f.persistence).listActiveForUser(f.userId),
+        ).toHaveLength(3);
+        expect(
+          await new AccountClient(f.persistence).listActiveForUser(
+            f.otherUserId,
+          ),
+        ).toHaveLength(3);
+      });
     });
-  });
-
-  it('marks contradicted user decisions for review without treating a merchant hint as hard evidence', async () => {
-    await withConnection(async ({ tx, userId, connectionId, ingestion }) => {
-      await ingestion.syncForUser(userId, connectionId, connector(initialPage));
-      const [checking] = await tx.select().from(schema.account).where(eq(schema.account.externalId, 'checking-1'));
-      const [transfer] = await tx.select().from(schema.transaction).where(and(
-        eq(schema.transaction.accountId, checking.id), eq(schema.transaction.externalId, 'transfer-leg'),
-      ));
-      const [grocery] = await tx.select().from(schema.transaction).where(and(
-        eq(schema.transaction.accountId, checking.id), eq(schema.transaction.externalId, 'grocery-1'),
-      ));
-      await tx.update(schema.transaction).set({ userInternalOverride: false, isInternalMovement: false })
-        .where(eq(schema.transaction.id, transfer.id));
-      await tx.update(schema.transaction).set({ userInternalOverride: true, isInternalMovement: true })
-        .where(eq(schema.transaction.id, grocery.id));
-
-      expect(await ingestion.syncForUser(userId, connectionId, connector(initialPage)))
-        .toMatchObject({ status: 'needs_review', conflictCount: 1 });
-      const [transferAfter] = await tx.select().from(schema.transaction).where(eq(schema.transaction.id, transfer.id));
-      const [groceryAfter] = await tx.select().from(schema.transaction).where(eq(schema.transaction.id, grocery.id));
-      expect(transferAfter).toMatchObject({ userInternalOverride: false, reviewStatus: 'needs_review' });
-      expect(groceryAfter).toMatchObject({ userInternalOverride: true, reviewStatus: 'clear' });
-      expect(await ingestion.listPendingReviewForUser(userId)).toMatchObject([{
-        transactionId: transfer.id, reason: 'internal_override_disagrees',
-      }]);
-      expect(await new TransactionRepository(tx).sumByMonthForUser(userId, '2026-10'))
-        .toMatchObject({ spending: '100.00', unresolvedMovementCount: 2 }); // transfer conflict + salary credit
+    it("treats paired-transfer evidence as a conflict but a merchant hint cannot override a manual internal choice", async () => {
+      await withConnection(async (f) => {
+        await f.ingestion.syncForUser(
+          f.userId,
+          f.connectionId,
+          connector(initialPage),
+        );
+        const transfer = await movement(f, "transfer-leg"),
+          grocery = await movement(f, "grocery-1");
+        await f.db.update("transaction", transfer.id, {
+          userInternalOverride: false,
+          isInternalMovement: false,
+        });
+        await f.db.update("transaction", grocery.id, {
+          userInternalOverride: true,
+          isInternalMovement: true,
+        });
+        expect(
+          await f.ingestion.syncForUser(
+            f.userId,
+            f.connectionId,
+            connector(initialPage),
+          ),
+        ).toMatchObject({ status: "needs_review", conflictCount: 1 });
+        expect(await movement(f, "grocery-1")).toMatchObject({
+          user_internal_override: true,
+          review_status: "clear",
+        });
+        expect(
+          await f.ingestion.listPendingReviewForUser(f.userId),
+        ).toMatchObject([
+          { transactionId: transfer.id, reason: "internal_override_disagrees" },
+        ]);
+        expect(
+          await f.totals.sumByMonthForUser(f.userId, "2026-10"),
+        ).toMatchObject({ spending: "100.00", unresolvedMovementCount: 2 });
+      });
     });
-  });
-
-  it('retains a confirmed receipt on bank removal but suspends its active interpretation', async () => {
-    await withConnection(async ({ tx, userId, connectionId, ingestion }) => {
-      await ingestion.syncForUser(userId, connectionId, connector(initialPage));
-      const [checking] = await tx.select().from(schema.account).where(eq(schema.account.externalId, 'checking-1'));
-      const [salary] = await tx.select().from(schema.transaction).where(and(
-        eq(schema.transaction.accountId, checking.id), eq(schema.transaction.externalId, 'salary-1'),
-      ));
-      await tx.update(schema.transaction).set({ isInternalMovement: false, userInternalOverride: false })
-        .where(eq(schema.transaction.id, salary.id));
-      const [source] = await tx.insert(schema.incomeSource).values({
-        userId, name: 'Salary', currency: 'CLP', regularity: 'irregular', amountKind: 'variable',
-        schedule: null, startDate: '2026-01-01',
-      }).returning();
-      await new IncomeService(new IncomeRepository(tx)).confirmReceiptForUser(userId, salary.id, { sourceId: source.id });
-      const removal = { ...removalPage, removedMovements: [{ ...removalPage.removedMovements[0], externalId: 'salary-1' }] };
-      expect(await ingestion.syncForUser(userId, connectionId, connector(removal)))
-        .toMatchObject({ status: 'needs_review', conflictCount: 1 });
-      expect((await tx.select().from(schema.transaction).where(eq(schema.transaction.id, salary.id)))[0])
-        .toMatchObject({ removalReason: 'reversed', reviewStatus: 'needs_review' });
-      expect(await tx.select().from(schema.incomeReceipt).where(eq(schema.incomeReceipt.transactionId, salary.id)))
-        .toHaveLength(1);
-      expect(await new TransactionRepository(tx).sumByMonthForUser(userId, '2026-10'))
-        .toMatchObject({ receivedIncome: '0.00' });
+    it("retains a receipt on removal but suspends its active interpretation", async () => {
+      await withConnection(async (f) => {
+        await f.ingestion.syncForUser(
+          f.userId,
+          f.connectionId,
+          connector(initialPage),
+        );
+        const { salary, income } = await confirmSalary(f);
+        expect(
+          await f.ingestion.syncForUser(
+            f.userId,
+            f.connectionId,
+            connector({
+              ...removalPage,
+              removedMovements: [
+                { ...removalPage.removedMovements[0], externalId: "salary-1" },
+              ],
+            }),
+          ),
+        ).toMatchObject({ status: "needs_review", conflictCount: 1 });
+        expect(
+          await f.db.rows("income_receipt", { transactionId: salary.id }),
+        ).toHaveLength(1);
+        expect(await income.listReceiptsForUser(f.userId, "2026-10")).toEqual(
+          [],
+        );
+      });
     });
-  });
-
-  it('does not overwrite a completed run with a stale concurrent sync', async () => {
-    await withConnection(async ({ tx, userId, connectionId, ingestion }) => {
-      const raced: BankingConnector = {
-        provider: 'fixture-bank',
-        fetchPage: vi.fn(async () => {
-          await tx.update(schema.providerSyncState).set({ checkpoint: 'newer-run', revision: 1 })
-            .where(eq(schema.providerSyncState.providerConnectionId, connectionId));
+    it("supersedes concurrent runs without overwriting their checkpoint or recording a stale failure", async () => {
+      await withConnection(async (f) => {
+        const fetchPage = vi.fn(async () => {
+          await f.db.update(
+            "provider_sync_state",
+            f.connectionId,
+            { checkpoint: "newer-run", revision: 1 },
+            "providerConnectionId",
+          );
           return initialPage;
-        }),
-      };
-      expect(await ingestion.syncForUser(userId, connectionId, raced)).toEqual({ status: 'superseded' });
-      expect(await tx.select().from(schema.account).where(eq(schema.account.providerConnectionId, connectionId)))
-        .toEqual([]);
-      expect((await tx.select().from(schema.providerSyncState)
-        .where(eq(schema.providerSyncState.providerConnectionId, connectionId)))[0]?.checkpoint).toBe('newer-run');
+        });
+        expect(
+          await f.ingestion.syncForUser(f.userId, f.connectionId, {
+            provider: "fixture-bank",
+            fetchPage,
+          }),
+        ).toEqual({ status: "superseded" });
+        expect(
+          await f.db.rows("account", { providerConnectionId: f.connectionId }),
+        ).toEqual([]);
+        expect(
+          (
+            await f.db.rows("provider_sync_state", {
+              providerConnectionId: f.connectionId,
+            })
+          )[0],
+        ).toMatchObject({ checkpoint: "newer-run", last_failure_reason: null });
+      });
     });
-  });
-
-  it('rolls back even account snapshots if another movement in the same run is invalid', async () => {
-    await withConnection(async ({ tx, userId, connectionId, ingestion }) => {
-      const invalid = {
-        ...initialPage, movements: [{ ...initialPage.movements[1], accountExternalId: 'unknown-account' }],
-      };
-      expect(await ingestion.syncForUser(userId, connectionId, connector(invalid)))
-        .toMatchObject({ status: 'failed', reason: 'invalid_data' });
-      expect(await tx.select().from(schema.account).where(eq(schema.account.providerConnectionId, connectionId)))
-        .toEqual([]);
-      expect((await tx.select().from(schema.providerSyncState)
-        .where(eq(schema.providerSyncState.providerConnectionId, connectionId)))[0])
-        .toMatchObject({ checkpoint: null, revision: 0, lastFailureReason: 'invalid_data' });
+    it("writes no account snapshots when any movement in the prepared batch is invalid", async () => {
+      await withConnection(async (f) => {
+        expect(
+          await f.ingestion.syncForUser(
+            f.userId,
+            f.connectionId,
+            connector({
+              ...initialPage,
+              movements: [
+                { ...initialPage.movements[1], accountExternalId: "unknown" },
+              ],
+            }),
+          ),
+        ).toMatchObject({ status: "failed", reason: "invalid_data" });
+        expect(
+          await f.db.rows("account", { providerConnectionId: f.connectionId }),
+        ).toEqual([]);
+        expect(
+          (
+            await f.db.rows("provider_sync_state", {
+              providerConnectionId: f.connectionId,
+            })
+          )[0],
+        ).toMatchObject({
+          checkpoint: null,
+          revision: 0,
+          last_failure_reason: "invalid_data",
+        });
+      });
     });
-  });
-
-  it('retains a previously verified internal pair when one unchanged leg is replayed', async () => {
-    await withConnection(async ({ tx, userId, connectionId, ingestion }) => {
-      await ingestion.syncForUser(userId, connectionId, connector(initialPage));
-      const partial = {
-        ...initialPage, observedAt: '2026-10-17T18:00:00.000Z', checkpoint: 'one-leg-only',
-        accounts: [], movements: [initialPage.movements[2]],
-      };
-      expect((await ingestion.syncForUser(userId, connectionId, connector(partial))).status).toBe('complete');
-      const [checking] = await tx.select().from(schema.account).where(eq(schema.account.externalId, 'checking-1'));
-      const [transfer] = await tx.select().from(schema.transaction).where(and(
-        eq(schema.transaction.accountId, checking.id), eq(schema.transaction.externalId, 'transfer-leg'),
-      ));
-      expect(transfer).toMatchObject({ isInternalMovement: true, providerInternalAssessment: 'internal' });
-      expect(await new TransactionRepository(tx).sumByMonthForUser(userId, '2026-10'))
-        .toMatchObject({ spending: '200.00' });
+    it("retains a previously verified internal pair on a one-leg replay", async () => {
+      await withConnection(async (f) => {
+        await f.ingestion.syncForUser(
+          f.userId,
+          f.connectionId,
+          connector(initialPage),
+        );
+        await f.ingestion.syncForUser(
+          f.userId,
+          f.connectionId,
+          connector({
+            ...initialPage,
+            observedAt: "2026-10-17T18:00:00.000Z",
+            accounts: [],
+            movements: [initialPage.movements[2]],
+          }),
+        );
+        expect(await movement(f, "transfer-leg")).toMatchObject({
+          is_internal_movement: true,
+          provider_internal_assessment: "internal",
+        });
+        expect(
+          await f.totals.sumByMonthForUser(f.userId, "2026-10"),
+        ).toMatchObject({ spending: "200.00" });
+      });
     });
-  });
-});
+  },
+);

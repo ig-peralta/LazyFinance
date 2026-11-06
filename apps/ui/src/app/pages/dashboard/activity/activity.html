@@ -12,27 +12,27 @@
     }
   </div>
 
-  @if (loading()) {
+  @if (transactions.isLoading()) {
     <div role="status" class="mt-6 rounded-3xl border border-surface bg-surface-0 p-8 text-sm text-muted-color dark:border-surface-700 dark:bg-surface-900">
       Cargando tus movimientos…
     </div>
-  } @else if (error()) {
+  } @else if (transactions.error()) {
     <div role="alert" class="mt-6 rounded-3xl border border-surface bg-surface-0 p-8 dark:border-surface-700 dark:bg-surface-900">
       <p class="font-semibold text-color-emphasis">No pudimos cargar tus movimientos.</p>
       <p class="mt-2 text-sm text-muted-color">Inténtalo de nuevo en un momento.</p>
       <button pButton severity="secondary" [outlined]="true" [rounded]="true"
-        data-testid="retry-activity" type="button" class="mt-5" (click)="loadRecent()">
+        data-testid="retry-activity" type="button" class="mt-5" (click)="transactions.reload()">
         Reintentar
       </button>
     </div>
-  } @else if (transactions().length === 0) {
+  } @else if (items().length === 0) {
     <div class="mt-6 rounded-3xl border border-surface bg-surface-0 p-8 dark:border-surface-700 dark:bg-surface-900">
       <p class="font-semibold text-color-emphasis">Todavía no hay movimientos para mostrar.</p>
       <p class="mt-2 text-sm text-muted-color">Cuando haya movimientos disponibles, aparecerán aquí.</p>
     </div>
   } @else {
     <ul class="mt-6 divide-y divide-surface rounded-3xl border border-surface bg-surface-0 dark:divide-surface-700 dark:border-surface-700 dark:bg-surface-900">
-      @for (transaction of transactions(); track transaction.id) {
+      @for (transaction of items(); track transaction.id) {
         <li class="group p-5 transition-colors first:rounded-t-3xl last:rounded-b-3xl hover:bg-surface-50 sm:p-6 dark:hover:bg-surface-800/50">
           <div class="flex items-start gap-4">
             <span aria-hidden="true" class="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-2xl bg-surface-100 text-sm font-semibold text-muted-color dark:bg-surface-800">
@@ -51,7 +51,7 @@
                 {{ transaction.account.alias || 'Cuenta' }} · {{ formattedDate(transaction.bookedAt) }}
               </p>
               <div class="mt-3 flex flex-wrap items-center gap-2">
-                <transaction-tag-selector [transaction]="transaction" (tagChanged)="onTagChanged($event)" />
+                <transaction-tag-selector [transaction]="transaction" />
                 @if (transaction.reviewStatus === 'needs_review') {
                   <p-tag value="Revisión pendiente" severity="warn" [rounded]="true" />
                 }
