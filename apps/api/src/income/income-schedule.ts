@@ -1,11 +1,11 @@
 import type { ExpectedIncome, ExpectedIncomePayment, IncomeExpectation } from '@lazyfinance/contracts';
 import { fromCents, toCents } from '../_utils/money';
 import { santiagoTimestamp } from '../_utils/santiago-time';
-import type { IncomeSourceRow } from '../persistence/schema/income-source.table';
+import type { IncomeSourceRecord } from './income-source.record';
 
 export function expectedIncomeForMonth(
   month: string,
-  sources: IncomeSourceRow[],
+  sources: IncomeSourceRecord[],
   expectations: IncomeExpectation[],
 ): ExpectedIncome {
   const payments: ExpectedIncomePayment[] = [];

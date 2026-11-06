@@ -1,9 +1,9 @@
 import { IncomeSourceInputSchema } from '@lazyfinance/contracts';
 import { describe, expect, it } from 'vitest';
-import type { IncomeSourceRow } from '../persistence/schema/income-source.table';
+import type { IncomeSourceRecord } from './income-source.record';
 import { expectedIncomeForMonth } from './income-schedule';
 
-function source(update: Partial<IncomeSourceRow> = {}): IncomeSourceRow {
+function source(update: Partial<IncomeSourceRecord> = {}): IncomeSourceRecord {
   return {
     id: '00000000-0000-4000-8000-000000000001',
     userId: '00000000-0000-4000-8000-000000000002',
