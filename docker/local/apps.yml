@@ -1,28 +1,70 @@
 name: lazyfinance-apps
 
 services:
+  init:
+    image: lazyfinance-persistence:local
+    build:
+      context: ../..
+      dockerfile: apps/persistence/Dockerfile
+    environment:
+      POSTGRES_MIGRATION_URL: 'postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-lazyfinance}'
+      PERSISTENCE_DATABASE_USER: ${PERSISTENCE_DATABASE_USER:-lazyfinance_app}
+      PERSISTENCE_DATABASE_PASSWORD: ${PERSISTENCE_DATABASE_PASSWORD:?Set a separate runtime password}
+    command: ['sh', '-ec', 'node dist/database/cli.js migrate && node dist/database/cli.js provision']
+    networks: [lazyfinance]
+    restart: 'no'
+
+  seed:
+    image: lazyfinance-persistence:local
+    profiles: [tools]
+    environment:
+      POSTGRES_MIGRATION_URL: 'postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-lazyfinance}'
+    command: ['node', 'dist/database/cli.js', 'seed']
+    networks: [lazyfinance]
+    depends_on:
+      init:
+        condition: service_completed_successfully
+
+  persistence:
+    image: lazyfinance-persistence:local
+    build:
+      context: ../..
+      dockerfile: apps/persistence/Dockerfile
+    environment:
+      HOST: 0.0.0.0
+      PORT: '3001'
+      POSTGRES_RUNTIME_URL: 'postgresql://${PERSISTENCE_DATABASE_USER:-lazyfinance_app}:${PERSISTENCE_DATABASE_PASSWORD:?Set a separate runtime password}@postgres:5432/${POSTGRES_DB:-lazyfinance}'
+      PERSISTENCE_RPC_PUBLIC_KEY: ${PERSISTENCE_RPC_PUBLIC_KEY:?Generate keys with pnpm rpc:keys}
+      PERSISTENCE_RPC_KEY_ID: ${PERSISTENCE_RPC_KEY_ID:-primary}
+    networks: [lazyfinance, services]
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
   api:
-    container_name: lazyfinance-api
     build:
       context: ../..
       dockerfile: apps/api/Dockerfile
     environment:
-      NODE_ENV: development
+      NODE_ENV: ${API_NODE_ENV:-development}
       PORT: '3000'
-      POSTGRES_URL: postgresql://user:password@postgres:5432/postgres
+      PERSISTENCE_RPC_URL: http://persistence:3001
+      PERSISTENCE_RPC_PRIVATE_KEY: ${PERSISTENCE_RPC_PRIVATE_KEY:?Generate keys with pnpm rpc:keys}
+      PERSISTENCE_RPC_KEY_ID: ${PERSISTENCE_RPC_KEY_ID:-primary}
       CORS_ORIGINS: '${CORS_ORIGINS:-http://localhost:4200,http://127.0.0.1:4200}'
       AUTH_PROVIDER: '${AUTH_PROVIDER:-mock}'
       FIREBASE_PROJECT_ID:
       FIREBASE_CLIENT_EMAIL:
       FIREBASE_PRIVATE_KEY:
-    ports:
-      - '3000:3000'
-    networks:
-      - lazyfinance
+    ports: ['3000:3000']
+    networks: [services, edge]
+    depends_on:
+      persistence:
+        condition: service_healthy
     restart: unless-stopped
 
   ui:
-    container_name: lazyfinance-ui
     build:
       context: ../..
       dockerfile: apps/ui/Dockerfile
@@ -30,12 +72,16 @@ services:
       NODE_ENV: production
       PORT: '4000'
       API_INTERNAL_URL: http://api:3000
-    ports:
-      - '4200:4000'
-    networks:
-      - lazyfinance
+    ports: ['4200:4000']
+    networks: [edge]
+    depends_on:
+      api:
+        condition: service_healthy
     restart: unless-stopped
 
 networks:
   lazyfinance:
     external: true
+  services:
+    internal: true
+  edge:

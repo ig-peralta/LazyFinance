@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
-      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-lazyfinance}
     volumes:
       - postgres-data:/var/lib/postgresql
     healthcheck:
@@ -14,6 +14,51 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks: [data]
+    restart: unless-stopped
+
+  init:
+    image: lazyfinance-persistence:local
+    build:
+      context: ../..
+      dockerfile: apps/persistence/Dockerfile
+    environment:
+      POSTGRES_MIGRATION_URL: 'postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-lazyfinance}'
+      PERSISTENCE_DATABASE_USER: ${PERSISTENCE_DATABASE_USER:-lazyfinance_app}
+      PERSISTENCE_DATABASE_PASSWORD: ${PERSISTENCE_DATABASE_PASSWORD:?Set a separate runtime password}
+    command: ['sh', '-ec', 'node dist/database/cli.js migrate && node dist/database/cli.js provision']
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [data]
+    restart: 'no'
+
+  seed:
+    image: lazyfinance-persistence:local
+    profiles: [tools]
+    environment:
+      POSTGRES_MIGRATION_URL: 'postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-lazyfinance}'
+    command: ['node', 'dist/database/cli.js', 'seed']
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    networks: [data]
+
+  persistence:
+    image: lazyfinance-persistence:local
+    build:
+      context: ../..
+      dockerfile: apps/persistence/Dockerfile
+    environment:
+      HOST: 0.0.0.0
+      PORT: '3001'
+      POSTGRES_RUNTIME_URL: 'postgresql://${PERSISTENCE_DATABASE_USER:-lazyfinance_app}:${PERSISTENCE_DATABASE_PASSWORD:?Set a separate runtime password}@postgres:5432/${POSTGRES_DB:-lazyfinance}'
+      PERSISTENCE_RPC_PUBLIC_KEY: ${PERSISTENCE_RPC_PUBLIC_KEY:?Generate keys with pnpm rpc:keys}
+      PERSISTENCE_RPC_KEY_ID: ${PERSISTENCE_RPC_KEY_ID:-primary}
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    networks: [data, services]
     restart: unless-stopped
 
   api:
@@ -21,9 +66,11 @@ services:
       context: ../..
       dockerfile: apps/api/Dockerfile
     environment:
-      NODE_ENV: development
+      NODE_ENV: ${API_NODE_ENV:-development}
       PORT: '3000'
-      POSTGRES_URL: "postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-postgres}"
+      PERSISTENCE_RPC_URL: http://persistence:3001
+      PERSISTENCE_RPC_PRIVATE_KEY: ${PERSISTENCE_RPC_PRIVATE_KEY:?Generate keys with pnpm rpc:keys}
+      PERSISTENCE_RPC_KEY_ID: ${PERSISTENCE_RPC_KEY_ID:-primary}
       CORS_ORIGINS: '${CORS_ORIGINS:-http://localhost:4200,http://127.0.0.1:4200}'
       AUTH_PROVIDER: '${AUTH_PROVIDER:-mock}'
       FIREBASE_PROJECT_ID:
@@ -32,8 +79,9 @@ services:
     ports:
       - '${API_PORT:-3000}:3000'
     depends_on:
-      postgres:
+      persistence:
         condition: service_healthy
+    networks: [services, edge]
     restart: unless-stopped
 
   ui:
@@ -48,8 +96,16 @@ services:
       - '${UI_PORT:-4200}:4000'
     depends_on:
       api:
-        condition: service_started
+        condition: service_healthy
+    networks: [edge]
     restart: unless-stopped
+
+networks:
+  data:
+    internal: true
+  services:
+    internal: true
+  edge:
 
 volumes:
   postgres-data:
