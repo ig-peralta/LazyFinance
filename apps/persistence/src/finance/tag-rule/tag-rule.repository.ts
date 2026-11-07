@@ -1,6 +1,7 @@
 import type { TagRuleInput } from "@lazyfinance/contracts";
 import type {
   CommitRuleDecisions,
+  MatchingRule,
   RuleCandidatesInput,
 } from "@lazyfinance/contracts/internal";
 import { Inject, Injectable } from "@nestjs/common";
@@ -18,6 +19,11 @@ import type {
 import type { TagRuleTables } from "./tag-rule.tables";
 
 type Tables = TagRuleTables & TagTables & AccountTables & TransactionTables;
+
+type DecisionRule = Pick<
+  MatchingRule,
+  "tagId" | "mode" | "matchField" | "direction" | "accountId"
+> & { approvedAt: Date | string | null };
 
 @Injectable()
 export class TagRuleRepository {
@@ -249,6 +255,7 @@ export class TagRuleRepository {
     const candidates = new Map(
       facts.movements.slice(0, 1000).map((row) => [row.id, row]),
     );
+    const rules = new Map(facts.rules.map((rule) => [rule.id, rule]));
     let changed = 0;
 
     for (const decision of input.decisions) {
@@ -259,7 +266,7 @@ export class TagRuleRepository {
           message: "Movement is not an automatic-tag candidate",
         });
 
-      if (await this.applyPrepared(previous, decision, facts.rules)) changed++;
+      if (await this.applyPrepared(previous, decision, rules)) changed++;
     }
 
     return { changed };
@@ -269,7 +276,7 @@ export class TagRuleRepository {
   async applyPrepared(
     previous: Selectable<TransactionTable>,
     decision: { tagId: string | null; ruleId: string | null },
-    rules: Awaited<ReturnType<TagRuleRepository["matchingRules"]>>,
+    rules: ReadonlyMap<string, DecisionRule>,
   ) {
     if (
       previous.tagDecisionOrigin === "manual" ||
@@ -283,7 +290,7 @@ export class TagRuleRepository {
     }
 
     if (decision.ruleId) {
-      const rule = rules.find((row) => row.id === decision.ruleId);
+      const rule = rules.get(decision.ruleId);
       if (
         !rule ||
         rule.tagId !== decision.tagId ||

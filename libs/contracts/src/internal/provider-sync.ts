@@ -101,12 +101,17 @@ export const ProviderRemovalRecordSchema = z.object({
   providerUpdatedAt: instant.nullable(),
 });
 
+export const ProviderMovementFactSchema = TransactionRecordSchema.extend({
+  externalId,
+  accountExternalId: externalId,
+  hasReceipt: z.boolean(),
+});
+
 export const ProviderSyncFactsSchema = z.object({
   state: ProviderSyncStateSchema,
   accounts: z.array(ProviderAccountRecordSchema).max(50000),
-  movements: z.array(TransactionRecordSchema).max(100000),
+  movements: z.array(ProviderMovementFactSchema).max(100000),
   removals: z.array(ProviderRemovalRecordSchema).max(100000),
-  receiptTransactionIds: z.array(z.uuid()).max(100000),
   rules: z.array(MatchingRuleSchema).max(10000),
   fingerprint: z.string().regex(/^[a-f0-9]{64}$/),
 });

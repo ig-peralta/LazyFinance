@@ -60,7 +60,6 @@ function setup(pages = [page()]) {
     accounts: [],
     movements: [],
     removals: [],
-    receiptTransactionIds: [],
     rules: [],
     fingerprint: "0".repeat(64),
   };

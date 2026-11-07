@@ -10,7 +10,7 @@ import {
   PersistenceClient,
   persistenceException,
 } from "../../persistence/persistence.client";
-import { automaticDecision, matchingRules, matchKey } from "./tag-matching";
+import { createRuleMatcher, matchKey } from "./tag-matching";
 
 function parse<T>(schema: z.ZodType<T>, value: unknown): T {
   const result = schema.safeParse(value);
@@ -96,6 +96,7 @@ export class TaggingService {
 
     for (let attempt = 0; ; attempt++) {
       const facts = await client.tagRules.candidates.query({ ruleId, after });
+      const matcher = createRuleMatcher(facts.rules);
       const batch = facts.movements.slice(0, 1000);
       const decisions = batch.flatMap((row) => {
         if (
@@ -112,7 +113,7 @@ export class TaggingService {
         )
           return [];
 
-        const decision = automaticDecision(row, facts.rules);
+        const decision = matcher.automaticDecision(row);
 
         return decision ? [{ transactionId: row.id, ...decision }] : [];
       });
@@ -143,20 +144,22 @@ export class TaggingService {
     if (movement.tagDecisionOrigin === "manual" || movement.removedAt !== null)
       return [];
 
-    return matchingRules(movement, rules).map((rule) => ({
-      ruleId: rule.id,
-      tagId: rule.tagId,
-      tagName: rule.tagName,
-      confidence:
-        rule.matchField === "merchant"
-          ? ("high" as const)
-          : ("medium" as const),
-      reason: `${rule.matchField}_exact`,
-      autoApply:
-        rule.mode === "auto" &&
-        rule.approvedAt !== null &&
-        movement.isInternalMovement === false &&
-        movement.reviewStatus === "clear",
-    }));
+    return createRuleMatcher(rules)
+      .matchingRules(movement)
+      .map((rule) => ({
+        ruleId: rule.id,
+        tagId: rule.tagId,
+        tagName: rule.tagName,
+        confidence:
+          rule.matchField === "merchant"
+            ? ("high" as const)
+            : ("medium" as const),
+        reason: `${rule.matchField}_exact`,
+        autoApply:
+          rule.mode === "auto" &&
+          rule.approvedAt !== null &&
+          movement.isInternalMovement === false &&
+          movement.reviewStatus === "clear",
+      }));
   }
 }

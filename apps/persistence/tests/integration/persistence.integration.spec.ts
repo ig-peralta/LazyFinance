@@ -1177,5 +1177,80 @@ describe.skipIf(!ownerUrl)(
         ]),
       );
     });
+
+    it("joins provider movement keys and receipt existence into fingerprinted facts", async () => {
+      const client = createTRPCClient<PersistenceRouter>({
+        links: [
+          httpLink({
+            url: `${url}/trpc`,
+            methodOverride: "POST",
+            headers: async () => ({
+              authorization: `Bearer ${await sign(ctx(a))}`,
+            }),
+          }),
+        ],
+      });
+      const account = randomUUID(),
+        movement = randomUUID();
+      await sql`insert into finance.account(id,user_id,provider_connection_id,type,external_id)
+        values (${account},${a},${connectionA},'checking','joined-facts-account')`.execute(
+        owner,
+      );
+      await sql`insert into finance."transaction"(id,account_id,amount,type,booked_at,external_id,is_internal_movement,source)
+        values (${movement},${account},40,'credit','2026-09-14T15:00:00Z','joined-facts-credit',false,'provider')`.execute(
+        owner,
+      );
+      const state = await client.providerSync.begin.mutate({
+        connectionId: connectionA,
+        provider: (
+          await sql<{ identifier: string }>`
+        select p.identifier from finance.provider p join finance.provider_connection c on c.provider_id=p.id where c.id=${connectionA}
+      `.execute(owner)
+        ).rows[0].identifier,
+      });
+      const scope = {
+        connectionId: connectionA,
+        revision: state.revision,
+        keys: [
+          {
+            accountExternalId: "joined-facts-account",
+            externalId: "joined-facts-credit",
+          },
+        ],
+      };
+      const before = await client.providerSync.facts.query(scope);
+      expect(before.movements).toEqual([
+        expect.objectContaining({
+          id: movement,
+          accountExternalId: "joined-facts-account",
+          hasReceipt: false,
+        }),
+      ]);
+      await client.incomeReceipts.confirm.mutate({
+        transactionId: movement,
+        sourceId: sourceA,
+        at: "2026-09-15T15:00:00.000Z",
+      });
+      const after = await client.providerSync.facts.query(scope);
+      expect(after.movements).toEqual([
+        expect.objectContaining({
+          id: movement,
+          accountExternalId: "joined-facts-account",
+          hasReceipt: true,
+        }),
+      ]);
+      expect(after.fingerprint).not.toBe(before.fingerprint);
+      await expect(
+        client.providerSync.commit.mutate({
+          scope,
+          expectedFingerprint: before.fingerprint,
+          observedAt: "2026-09-15T15:00:00.000Z",
+          checkpoint: "stale",
+          accounts: [],
+          movements: [],
+          removals: [],
+        }),
+      ).rejects.toMatchObject({ data: { code: "CONFLICT" } });
+    });
   },
 );

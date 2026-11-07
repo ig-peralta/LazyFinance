@@ -98,7 +98,12 @@ export class ProviderConnectionRepository {
     const movements = await this.db
       .selectFrom("finance.transaction as m")
       .innerJoin("finance.account as a", "a.id", "m.accountId")
+      .leftJoin("finance.income_receipt as r", "r.transactionId", "m.id")
       .selectAll("m")
+      .select([
+        "a.externalId as accountExternalId",
+        sql<boolean>`r.transaction_id IS NOT NULL`.as("hasReceipt"),
+      ])
       .where("a.providerConnectionId", "=", scope.connectionId)
       .where(sql<boolean>`EXISTS (SELECT 1 FROM jsonb_to_recordset(${keys}::jsonb) AS k("accountExternalId" text, "externalId" text)
         WHERE k."accountExternalId" = a.external_id AND k."externalId" = m.external_id)`)
@@ -115,17 +120,6 @@ export class ProviderConnectionRepository {
       .orderBy("r.movementExternalId")
       .limit(100001)
       .execute();
-    const receipts = await this.db
-      .selectFrom("finance.income_receipt as r")
-      .innerJoin("finance.transaction as m", "m.id", "r.transactionId")
-      .innerJoin("finance.account as a", "a.id", "m.accountId")
-      .select("r.transactionId")
-      .where("a.providerConnectionId", "=", scope.connectionId)
-      .where(sql<boolean>`EXISTS (SELECT 1 FROM jsonb_to_recordset(${keys}::jsonb) AS k("accountExternalId" text, "externalId" text)
-        WHERE k."accountExternalId" = a.external_id AND k."externalId" = m.external_id)`)
-      .orderBy("r.transactionId")
-      .limit(100001)
-      .execute();
     const rules = await this.tagging.matchingRules();
     // Hash the same schema-normalized representation sent to the API, not pg rows.
     const facts = ProviderSyncFactsSchema.omit({ fingerprint: true }).parse(
@@ -134,7 +128,6 @@ export class ProviderConnectionRepository {
         accounts,
         movements,
         removals,
-        receiptTransactionIds: receipts.map((row) => row.transactionId),
         rules,
       }),
     );
@@ -167,12 +160,9 @@ export class ProviderConnectionRepository {
         .filter((row) => row.externalId !== null)
         .map((row) => [row.externalId!, row]),
     );
-    const accountIds = new Map(
-      facts.accounts.map((row) => [row.id, row.externalId]),
-    );
     const movements = new Map(
       facts.movements.map((row) => [
-        keyOf(accountIds.get(row.accountId)!, row.externalId!),
+        keyOf(row.accountExternalId, row.externalId),
         row,
       ]),
     );
@@ -182,14 +172,13 @@ export class ProviderConnectionRepository {
         row,
       ]),
     );
-    const receipts = new Set(facts.receiptTransactionIds);
     const keys = new Set(
       scope.keys.map((row) => keyOf(row.accountExternalId, row.externalId)),
     );
     const removed = new Set(
       input.removals.map((row) => keyOf(row.accountExternalId, row.externalId)),
     );
-    const rules = await this.tagging.matchingRules();
+    const rules = new Map(facts.rules.map((rule) => [rule.id, rule]));
 
     for (const prepared of input.accounts) {
       const existing = accounts.get(prepared.externalId);
@@ -304,8 +293,7 @@ export class ProviderConnectionRepository {
         reasons.push("internal_override_disagrees");
 
       if (
-        previous &&
-        receipts.has(previous.id) &&
+        previous?.hasReceipt &&
         (prepared.type !== "credit" || effective !== false)
       )
         reasons.push("receipt_incompatible");
@@ -413,14 +401,14 @@ export class ProviderConnectionRepository {
         .set({
           removedAt: new Date(tombstone?.observedAt ?? removal.observedAt),
           removalReason: removal.reason,
-          reviewStatus: receipts.has(previous.id)
+          reviewStatus: previous.hasReceipt
             ? "needs_review"
             : previous.reviewStatus,
         })
         .where("id", "=", previous.id)
         .execute();
 
-      if (receipts.has(previous.id))
+      if (previous.hasReceipt)
         await this.conflict(
           previous.id,
           "removed_confirmed_income",

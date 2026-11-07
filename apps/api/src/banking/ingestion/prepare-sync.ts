@@ -6,7 +6,7 @@ import type {
   ProviderSyncScope,
 } from "@lazyfinance/contracts/internal";
 import { toCents } from "../../_utils/money";
-import { automaticDecision } from "../../transactions/tagging/tag-matching";
+import { createRuleMatcher } from "../../transactions/tagging/tag-matching";
 import type {
   ConnectorPage,
   NormalizedMovement,
@@ -171,12 +171,9 @@ export function prepareSync(
       });
   }
 
-  const accountKeys = new Map(
-    facts.accounts.map((row) => [row.id, row.externalId]),
-  );
   const existingMovements = new Map(
     facts.movements.map((row) => [
-      movementKey(accountKeys.get(row.accountId)!, row.externalId!),
+      movementKey(row.accountExternalId, row.externalId),
       row,
     ]),
   );
@@ -185,7 +182,7 @@ export function prepareSync(
       movementKey(row.accountExternalId, row.movementExternalId),
     ),
   );
-  const receipts = new Set(facts.receiptTransactionIds);
+  const matcher = createRuleMatcher(facts.rules);
   const prepared: CommitProviderSync["movements"] = [];
 
   for (const [key, movement] of movements) {
@@ -244,9 +241,7 @@ export function prepareSync(
     const direction = movementDirection(movement.amount);
     const conflict =
       (existing?.userInternalOverride === false && assessment === "internal") ||
-      (existing &&
-        receipts.has(existing.id) &&
-        (direction !== "credit" || effective !== false));
+      (existing?.hasReceipt && (direction !== "credit" || effective !== false));
     const reviewStatus =
       existing?.reviewStatus === "needs_review" || conflict
         ? ("needs_review" as const)
@@ -263,21 +258,18 @@ export function prepareSync(
         existing.isInternalMovement !== effective);
     const decision =
       existing?.tagDecisionOrigin !== "rule" || correction
-        ? automaticDecision(
-            {
-              accountId: owner.id,
-              type: direction,
-              merchant: movement.merchant,
-              description: movement.description,
-              tagDecisionOrigin: existing?.tagDecisionOrigin ?? "unreviewed",
-              tagId: existing?.tagId ?? null,
-              tagRuleId: existing?.tagRuleId ?? null,
-              removedAt: null,
-              reviewStatus,
-              isInternalMovement: effective,
-            },
-            facts.rules,
-          )
+        ? matcher.automaticDecision({
+            accountId: owner.id,
+            type: direction,
+            merchant: movement.merchant,
+            description: movement.description,
+            tagDecisionOrigin: existing?.tagDecisionOrigin ?? "unreviewed",
+            tagId: existing?.tagId ?? null,
+            tagRuleId: existing?.tagRuleId ?? null,
+            removedAt: null,
+            reviewStatus,
+            isInternalMovement: effective,
+          })
         : undefined;
     prepared.push({
       id: existing?.id ?? randomUUID(),

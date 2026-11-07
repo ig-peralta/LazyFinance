@@ -47,7 +47,6 @@ for (const maximumText of [false, true]) {
     accounts: [],
     movements: [],
     removals: [],
-    receiptTransactionIds: [],
     rules: [],
     fingerprint: "0".repeat(64),
   };
