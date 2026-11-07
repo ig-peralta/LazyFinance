@@ -102,8 +102,9 @@ by this infrastructure refactor.
 
 Fresh migrations only: table/types/constraints/indexes/grants/RLS apply together.
 There is no legacy migration adoption or automatic database reset. Owner credentials
-belong only to CLI/init/seed jobs; API rejects PostgreSQL credentials and persistence
-rejects owner/BYPASSRLS runtime roles. Demo seeding is explicit.
+belong only to CLI/init/seed jobs; the API uses private RPC without a database
+connection, and persistence rejects owner/BYPASSRLS runtime roles. Demo seeding
+is explicit.
 
 Compose supports private persistence, separate runtime environments and an owner-only
 init job. Its full stack separates data/service/edge networks; database/persistence

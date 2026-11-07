@@ -1,8 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { type Fixture, fixture, integration } from "../../../test/persistence";
 import { IncomeService } from "../../income/income.service";
-import { AccountClient } from "../../persistence/accounts.client";
-import { TransactionClient } from "../../persistence/transactions.client";
+import { SummariesService } from "../../summaries/summaries.service";
 import type { BankingConnector } from "../connector/banking-connector";
 import {
   correctionPage,
@@ -27,7 +26,7 @@ async function withConnection(
   work: (
     f: Fixture & {
       ingestion: BankingIngestionService;
-      totals: TransactionClient;
+      summaries: SummariesService;
     },
   ) => Promise<void>,
 ) {
@@ -37,7 +36,10 @@ async function withConnection(
     await work({
       ...f,
       ingestion: new BankingIngestionService(f.persistence),
-      totals: new TransactionClient(f.persistence),
+      summaries: new SummariesService(
+        f.persistence,
+        new IncomeService(f.persistence),
+      ),
     });
   } finally {
     await f.db.close();
@@ -102,9 +104,9 @@ describe.skipIf(!integration)(
           conflictCount: 0,
           checkpoint: "through-2026-10-15",
         });
-        const accounts = await new AccountClient(
-          f.persistence,
-        ).listActiveForUser(f.userId);
+        const accounts = await f.persistence
+          .user(f.userId)
+          .accounts.listActive.query();
         expect(new Map(accounts.map((row) => [row.type, row.balance]))).toEqual(
           new Map([
             ["checking", "1160.00"],
@@ -123,11 +125,11 @@ describe.skipIf(!integration)(
           is_internal_movement: null,
         });
         expect(
-          await f.totals.sumByMonthForUser(f.userId, "2026-10"),
+          await f.summaries.getMonthlyForUser(f.userId, "2026-10"),
         ).toMatchObject({
           spending: "200.00",
           receivedIncome: "0.00",
-          unclassifiedCreditAmount: "20.00",
+          unclassifiedCredits: { amount: "20.00" },
           unresolvedMovementCount: 1,
         });
         const tag = await f.persistence
@@ -174,7 +176,7 @@ describe.skipIf(!integration)(
           }),
         ).toHaveLength(1);
         expect(
-          await f.totals.sumByMonthForUser(f.userId, "2026-10"),
+          await f.summaries.getMonthlyForUser(f.userId, "2026-10"),
         ).toMatchObject({
           spending: "220.00",
           receivedIncome: "500.00",
@@ -253,7 +255,7 @@ describe.skipIf(!integration)(
           review_status: "needs_review",
         });
         expect(
-          await f.totals.sumByMonthForUser(f.userId, "2026-10"),
+          await f.summaries.getMonthlyForUser(f.userId, "2026-10"),
         ).toMatchObject({
           receivedIncome: "0.00",
           spending: "200.00",
@@ -325,7 +327,7 @@ describe.skipIf(!integration)(
           review_status: "clear",
         });
         expect(
-          await f.totals.sumByMonthForUser(f.userId, "2026-10"),
+          await f.summaries.getMonthlyForUser(f.userId, "2026-10"),
         ).toMatchObject({ receivedIncome: "480.00" });
         expect(
           (await f.db.rows("income_receipt", { transactionId: salary.id }))[0]
@@ -355,7 +357,7 @@ describe.skipIf(!integration)(
           amount: "-100.00",
         });
         expect(
-          await f.totals.sumByMonthForUser(f.userId, "2026-10"),
+          await f.summaries.getMonthlyForUser(f.userId, "2026-10"),
         ).toMatchObject({ spending: "100.00" });
         await f.ingestion.syncForUser(
           f.userId,
@@ -487,12 +489,10 @@ describe.skipIf(!integration)(
           ).status,
         ).toBe("complete");
         expect(
-          await new AccountClient(f.persistence).listActiveForUser(f.userId),
+          await f.persistence.user(f.userId).accounts.listActive.query(),
         ).toHaveLength(3);
         expect(
-          await new AccountClient(f.persistence).listActiveForUser(
-            f.otherUserId,
-          ),
+          await f.persistence.user(f.otherUserId).accounts.listActive.query(),
         ).toHaveLength(3);
       });
     });
@@ -530,7 +530,7 @@ describe.skipIf(!integration)(
           { transactionId: transfer.id, reason: "internal_override_disagrees" },
         ]);
         expect(
-          await f.totals.sumByMonthForUser(f.userId, "2026-10"),
+          await f.summaries.getMonthlyForUser(f.userId, "2026-10"),
         ).toMatchObject({ spending: "100.00", unresolvedMovementCount: 2 });
       });
     });
@@ -643,7 +643,7 @@ describe.skipIf(!integration)(
           provider_internal_assessment: "internal",
         });
         expect(
-          await f.totals.sumByMonthForUser(f.userId, "2026-10"),
+          await f.summaries.getMonthlyForUser(f.userId, "2026-10"),
         ).toMatchObject({ spending: "200.00" });
       });
     });

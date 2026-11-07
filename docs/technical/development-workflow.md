@@ -80,7 +80,7 @@ runs workspace test scripts, including Angular's default test behavior.
 | Tier | Dependencies / side effects | Evidence it provides |
 | --- | --- | --- |
 | Formatting, architecture, RPC drift, build/typecheck | No app services or database; generated/build output may be written | Source boundaries, generated agreement, compilation |
-| Explicit backend unit/DI files below | In-memory/mocked dependencies; no HTTP listener | Signatures/policies, proxy rollback logic, injection wiring, orchestration |
+| Explicit backend unit files below | In-memory/mocked dependencies; no HTTP listener | Financial calculations, signatures/policies, rollback logic and orchestration |
 | UI one-shot suite | Angular test compilation, injected `RPC_FETCH` and jsdom; no dev/API/DB server | Resource/session/SSR isolation and presentation behavior |
 | API HTTP/router/MCP specs | No real persistence needed when overridden, but may open local HTTP listeners | Transport policy, serialization, public/runtime surface and MCP auth |
 | Persistence PostgreSQL suite | Owner access to an existing disposable `_test` DB; creates/provisions fixtures and starts test HTTP listeners | Real RLS/grants, pooled users, identity races, migrations and rollback |
@@ -98,14 +98,19 @@ pnpm check:architecture
 pnpm build
 pnpm typecheck
 pnpm --filter ui exec ng test --watch=false
-pnpm --filter api exec vitest run src/rpc/injection.spec.ts src/auth/firebase/firebase-auth.service.spec.ts src/persistence/persistence.client.spec.ts src/banking/ingestion/banking-ingestion.service.spec.ts
-pnpm --filter persistence exec vitest run src/database/rpc-injection.spec.ts src/rpc/context-auth.spec.ts src/rpc/persistence.context.spec.ts src/rpc/rls.middleware.spec.ts src/rpc/rpc-types.spec.ts src/database/seed/ledger.spec.ts
+pnpm --filter api exec vitest run src/auth/auth.service.spec.ts src/summaries/summaries.service.spec.ts src/objectives/objectives.service.spec.ts src/transactions/transactions.service.spec.ts src/transactions/movement-totals.spec.ts src/persistence/persistence.client.spec.ts src/banking/ingestion/banking-ingestion.service.spec.ts
+pnpm --filter persistence exec vitest run src/rpc/context-auth.spec.ts src/rpc/persistence.context.spec.ts src/rpc/rls.middleware.spec.ts src/database/seed/ledger.spec.ts
 ```
 
 These selected backend tests are **not the full backend suite**. UI/build warnings
 and nonfatal lint diagnostics should be reported, not silently treated as zero
 warnings. Passing the selected tests does not validate images, a database load
 profile or live Firebase.
+
+Unit tests target decisions and transformations in services/helpers and actual
+security policy. Thin RPC delegation, constructor injection and generated type
+plumbing do not need their own unit tests. Integration tests cover real
+authentication, related ownership, serialization and transaction rollback.
 
 ### Service-starting integration checks
 

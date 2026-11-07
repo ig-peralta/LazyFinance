@@ -1,5 +1,5 @@
 import { generateKeyPairSync } from "node:crypto";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { EnvironmentService } from "../environment/environment.service";
 import { PersistenceClient } from "./persistence.client";
 
@@ -14,8 +14,6 @@ function client(key: string) {
   } as EnvironmentService);
 }
 
-afterEach(() => vi.unstubAllEnvs());
-
 describe("persistence signing-key readiness", () => {
   it("rejects malformed keys through awaited initialization, not an unobserved constructor promise", async () => {
     const service = client("not a PKCS8 key");
@@ -29,15 +27,5 @@ describe("persistence signing-key readiness", () => {
     const service = client(key);
     await expect(service.onModuleInit()).resolves.toBeUndefined();
     await expect(service.onModuleInit()).resolves.toBeUndefined();
-  });
-  it.each([
-    "POSTGRES_URL",
-    "POSTGRES_RUNTIME_URL",
-    "POSTGRES_MIGRATION_URL",
-  ])("refuses %s in the API runtime", (name) => {
-    vi.stubEnv(name, "postgresql://forbidden");
-    expect(() => client("unused")).toThrow(
-      "Database credentials must not be present",
-    );
   });
 });

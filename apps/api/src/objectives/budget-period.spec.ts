@@ -6,9 +6,9 @@ const monthly = {
   intent: "spending",
   isRecurring: true,
   period: "monthly",
-  startDate: new Date("2024-01-01T15:00:00.000Z"),
+  startDate: "2024-01-01T15:00:00.000Z",
   endDate: null,
-};
+} as const;
 
 describe("budgetPeriod", () => {
   it("uses calendar months and year-to-date windows in Santiago", () => {
@@ -29,8 +29,8 @@ describe("budgetPeriod", () => {
       ...monthly,
       isRecurring: false,
       period: null,
-      startDate: new Date("2025-09-01T15:00:00.000Z"),
-      endDate: new Date("2025-10-01T15:00:00.000Z"),
+      startDate: "2025-09-01T15:00:00.000Z",
+      endDate: "2025-10-01T15:00:00.000Z",
     };
     expect(budgetPeriod(fixed, "2025-09")).toEqual({
       period: "fixed",

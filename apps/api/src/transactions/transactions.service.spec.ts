@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { TransactionClient as TransactionRepository } from "../persistence/transactions.client";
+import type { PersistenceClient } from "../persistence/persistence.client";
 import { TransactionsService } from "./transactions.service";
 
 const userId = "00000000-0000-4000-8000-000000000001";
@@ -16,7 +16,7 @@ describe("TransactionsService", () => {
     const rows = [
       {
         id: firstId,
-        bookedAt: new Date("2026-10-15T15:00:00.000Z"),
+        bookedAt: "2026-10-15T15:00:00.000Z",
         amount: "-49990.00",
         type: "debit" as const,
         merchant: "Netflix",
@@ -32,7 +32,7 @@ describe("TransactionsService", () => {
       },
       {
         id: secondId,
-        bookedAt: new Date("2026-10-14T15:00:00.000Z"),
+        bookedAt: "2026-10-14T15:00:00.000Z",
         amount: "140000.00",
         type: "credit" as const,
         merchant: null,
@@ -47,10 +47,11 @@ describe("TransactionsService", () => {
         reviewStatus: "clear" as const,
       },
     ];
-    const listRecentForUser = vi.fn(async () => rows);
+    const query = vi.fn(async () => rows);
+    const user = vi.fn(() => ({ transactions: { recent: { query } } }));
     const service = new TransactionsService({
-      listRecentForUser,
-    } as unknown as TransactionRepository);
+      user,
+    } as unknown as PersistenceClient);
 
     await expect(service.getRecentForUser(userId)).resolves.toEqual([
       {
@@ -90,14 +91,14 @@ describe("TransactionsService", () => {
         reviewStatus: "clear",
       },
     ]);
-    expect(listRecentForUser).toHaveBeenCalledWith(userId);
+    expect(user).toHaveBeenCalledWith(userId);
   });
 
   it("returns no movements for an empty history", async () => {
-    const listRecentForUser = vi.fn(async () => []);
+    const query = vi.fn(async () => []);
     const service = new TransactionsService({
-      listRecentForUser,
-    } as unknown as TransactionRepository);
+      user: () => ({ transactions: { recent: { query } } }),
+    } as unknown as PersistenceClient);
 
     await expect(service.getRecentForUser(userId)).resolves.toEqual([]);
   });

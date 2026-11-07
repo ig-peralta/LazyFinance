@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { fixture, integration } from "../../../test/persistence";
 import { IncomeService } from "../../income/income.service";
-import { AccountClient } from "../../persistence/accounts.client";
-import { TransactionClient } from "../../persistence/transactions.client";
 
 describe.skipIf(!integration)(
   "normalized storage through signed factual reads",
@@ -22,7 +20,7 @@ describe.skipIf(!integration)(
           balance: "999.00",
         });
         expect(
-          await new AccountClient(f.persistence).listActiveForUser(f.userId),
+          await f.persistence.user(f.userId).accounts.listActive.query(),
         ).toEqual([
           expect.objectContaining({ id: f.accountId, balance: null }),
         ]);
@@ -42,13 +40,12 @@ describe.skipIf(!integration)(
           tagDecisionOrigin: "manual",
           isInternalMovement: null,
         });
-        const transactions = new TransactionClient(f.persistence),
-          income = new IncomeService(f.persistence),
+        const income = new IncomeService(f.persistence),
           asOf = new Date("2026-10-20T18:00:00Z");
         expect(
-          await transactions.sumByMonthForUser(f.userId, "2026-10", asOf),
+          await income.getSummaryForUser(f.userId, "2026-10", asOf),
         ).toMatchObject({
-          unclassifiedCreditAmount: "0.00",
+          unclassifiedCredits: { amount: "0.00", count: 0 },
           unresolvedMovementCount: 1,
         });
         const source = await income.createSourceForUser(f.userId, {
@@ -76,7 +73,7 @@ describe.skipIf(!integration)(
           asOf,
         );
         expect(
-          await transactions.sumByMonthForUser(f.userId, "2026-10", asOf),
+          await income.getSummaryForUser(f.userId, "2026-10", asOf),
         ).toMatchObject({
           receivedIncome: "500.00",
           unresolvedMovementCount: 0,
@@ -94,9 +91,11 @@ describe.skipIf(!integration)(
           ),
         ).rejects.toThrow("Received income requires");
         expect(
-          await transactions.sumByMonthForUser(f.userId, "2026-10", asOf),
+          await income.getSummaryForUser(f.userId, "2026-10", asOf),
         ).toMatchObject({ receivedIncome: "0.00", unresolvedMovementCount: 0 });
-        expect(await transactions.listRecentForUser(f.userId)).toEqual([]);
+        expect(
+          await f.persistence.user(f.userId).transactions.recent.query(),
+        ).toEqual([]);
         expect(
           await income.listReceiptsForUser(f.userId, "2026-10", asOf),
         ).toEqual([]);

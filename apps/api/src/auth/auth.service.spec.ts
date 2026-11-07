@@ -5,7 +5,7 @@ import {
 } from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
 import type { EnvironmentService } from "../environment/environment.service";
-import type { PersistenceClient as ExternalIdentityRepository } from "../persistence/persistence.client";
+import type { PersistenceClient } from "../persistence/persistence.client";
 import { AuthService } from "./auth.service";
 import type { FirebaseAuthService } from "./firebase/firebase-auth.service";
 import { mockIdentity } from "./mock/mock-auth.constants";
@@ -50,7 +50,7 @@ function createService(provider: "firebase" | "mock" = "mock") {
     {
       resolveOrCreate,
       resolveExisting,
-    } as unknown as ExternalIdentityRepository,
+    } as unknown as PersistenceClient,
   );
 
   return {

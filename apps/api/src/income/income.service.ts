@@ -18,7 +18,7 @@ import { fromCents, toCents } from "../_utils/money";
 import { monthBounds } from "../_utils/period";
 import { santiagoMonth } from "../_utils/santiago-time";
 import { PersistenceClient } from "../persistence/persistence.client";
-import { movementTotals } from "../persistence/transactions.client";
+import { movementTotals } from "../transactions/movement-totals";
 import { expectedIncomeForMonth } from "./income-schedule";
 
 function input<T>(schema: z.ZodType<T>, value: unknown): T {
@@ -218,10 +218,7 @@ export class IncomeService {
       asOf: now.toISOString(),
       expectedIncome: expected.totals,
       receivedIncome: received.receivedIncome,
-      unclassifiedCredits: {
-        amount: received.unclassifiedCreditAmount,
-        count: received.unclassifiedCreditCount,
-      },
+      unclassifiedCredits: received.unclassifiedCredits,
       unresolvedMovementCount: received.unresolvedMovementCount,
       expectedPayments: expected.payments,
       receipts: activeReceipts(facts).map(receiptResponse),

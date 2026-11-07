@@ -1,23 +1,26 @@
+import type { ObjectiveSummary } from "@lazyfinance/contracts";
 import { monthBounds } from "../_utils/period";
 import { santiagoTimestamp } from "../_utils/santiago-time";
 
 export type BudgetPeriod = "monthly" | "yearly" | "fixed";
 
 export function budgetPeriod(
-  objective: {
-    intent: string;
-    kind: string;
-    isRecurring: boolean | null;
-    period: string | null;
-    startDate: Date | null;
-    endDate: Date | null;
-  },
+  objective: Pick<
+    ObjectiveSummary,
+    "intent" | "kind" | "isRecurring" | "period" | "startDate" | "endDate"
+  >,
   month: string,
 ): { start: string; end: string; period: BudgetPeriod } | null {
   if (objective.intent !== "spending" || objective.kind !== "time_based")
     return null;
 
   const { start: monthStart, end: monthEnd } = monthBounds(month);
+  const startsAt = objective.startDate
+    ? santiagoTimestamp(new Date(objective.startDate))
+    : null;
+  const endsAt = objective.endDate
+    ? santiagoTimestamp(new Date(objective.endDate))
+    : null;
   let start: string;
   let end = monthEnd;
   let period: BudgetPeriod;
@@ -28,34 +31,18 @@ export function budgetPeriod(
   } else if (objective.isRecurring && objective.period === "yearly") {
     start = `${month.slice(0, 4)}-01-01 00:00:00`;
     period = "yearly";
-  } else if (
-    objective.isRecurring === false &&
-    objective.startDate &&
-    objective.endDate
-  ) {
-    start = santiagoTimestamp(objective.startDate);
+  } else if (objective.isRecurring === false && startsAt && endsAt) {
+    start = startsAt;
     period = "fixed";
   } else {
     return null;
   }
 
-  if (objective.startDate)
-    start =
-      start > santiagoTimestamp(objective.startDate)
-        ? start
-        : santiagoTimestamp(objective.startDate);
+  if (startsAt) start = start > startsAt ? start : startsAt;
 
-  if (objective.endDate)
-    end =
-      end < santiagoTimestamp(objective.endDate)
-        ? end
-        : santiagoTimestamp(objective.endDate);
+  if (endsAt) end = end < endsAt ? end : endsAt;
 
-  if (
-    start >= end ||
-    start >= monthEnd ||
-    (objective.endDate && santiagoTimestamp(objective.endDate) <= monthStart)
-  )
+  if (start >= end || start >= monthEnd || (endsAt && endsAt <= monthStart))
     return null;
 
   return { start, end, period };

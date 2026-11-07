@@ -140,9 +140,11 @@ API-internal workflow; these procedures are not public bank-linking endpoints.
    pnpm typecheck
    ```
 
-5. Add runtime validation/policy tests, generated/runtime-surface agreement and
-   relevant financial/ownership regressions. Update this inventory and the
-   affected domain guide when the exposed surface changes.
+5. Test business decisions and transformations in the responsible services/helpers,
+   and security rules in the middleware/verifiers that implement them. Use
+   integration coverage for ownership and atomicity, not unit tests of thin RPC
+   forwarding or constructor wiring. Update this inventory and the affected
+   domain guide when the exposed surface changes.
 
 `scripts/rpc-generate.mjs` statically generates both libraries. Check mode uses
 temporary output, compares it with committed sources and rejects unexpected

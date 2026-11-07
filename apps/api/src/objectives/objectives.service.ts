@@ -3,27 +3,21 @@ import { Injectable } from "@nestjs/common";
 import { fromCents, toCents } from "../_utils/money";
 import { monthBounds } from "../_utils/period";
 import { santiagoMonth, santiagoTimestamp } from "../_utils/santiago-time";
-import { ObjectiveClient } from "../persistence/objectives.client";
-import { TagClient } from "../persistence/tags.client";
-import { TransactionClient } from "../persistence/transactions.client";
+import { PersistenceClient } from "../persistence/persistence.client";
 import { budgetPeriod } from "./budget-period";
 
 @Injectable()
 export class ObjectivesService {
-  constructor(
-    private readonly objectives: ObjectiveClient,
-    private readonly tags: TagClient,
-    private readonly transactions: TransactionClient,
-  ) {}
+  constructor(private readonly persistence: PersistenceClient) {}
 
   async getForUser(userId: string): Promise<ObjectiveSummary[]> {
-    const rows = await this.objectives.listForUser(userId);
+    const client = this.persistence.user(userId);
+    const rows = await client.objectives.list.query();
     if (rows.length === 0) return [];
 
-    const links = await this.tags.listForObjectives(
-      userId,
-      rows.map(({ id }) => id),
-    );
+    const links = await client.objectives.tags.query({
+      ids: rows.map(({ id }) => id),
+    });
     const tagsByObjective = new Map<string, ObjectiveSummary["tags"]>();
 
     for (const { objectiveId, ...tag } of links) {
@@ -32,10 +26,8 @@ export class ObjectivesService {
       tagsByObjective.set(objectiveId, items);
     }
 
-    return rows.map(({ startDate, endDate, ...item }) => ({
+    return rows.map((item) => ({
       ...item,
-      startDate: startDate?.toISOString() ?? null,
-      endDate: endDate?.toISOString() ?? null,
       tags: tagsByObjective.get(item.id) ?? [],
     }));
   }
@@ -45,20 +37,10 @@ export class ObjectivesService {
     month: string,
     now = new Date(),
   ): Promise<BudgetProgress[]> {
-    const objectives = await this.objectives.listForUser(userId);
-    if (objectives.length === 0) return [];
-
-    const links = await this.tags.listForObjectives(
-      userId,
-      objectives.map(({ id }) => id),
-    );
+    const objectives = await this.getForUser(userId);
     const candidates = objectives.flatMap((objective) => {
       const window = budgetPeriod(objective, month);
-      const tagIds = new Set(
-        links
-          .filter((link) => link.objectiveId === objective.id)
-          .map(({ id }) => id),
-      );
+      const tagIds = new Set(objective.tags.map(({ id }) => id));
 
       return window && tagIds.size ? [{ objective, window, tagIds }] : [];
     });
@@ -71,15 +53,19 @@ export class ObjectivesService {
     );
     const asOf = month === santiagoMonth(now) ? now : undefined;
     const end = monthBounds(month).end;
-    const transactions = await (asOf
-      ? this.transactions.listTaggedDebitsForPeriod(userId, start, end, asOf)
-      : this.transactions.listTaggedDebitsForPeriod(userId, start, end));
+    const transactions = await this.persistence
+      .user(userId)
+      .transactions.taggedDebits.query({
+        start,
+        end,
+        asOf: asOf?.toISOString(),
+      });
 
     return candidates.map(({ objective, window, tagIds }) => {
       let spent = 0n;
 
       for (const transaction of transactions) {
-        const date = santiagoTimestamp(transaction.bookedAt);
+        const date = santiagoTimestamp(new Date(transaction.bookedAt));
 
         if (
           !tagIds.has(transaction.tagId) ||

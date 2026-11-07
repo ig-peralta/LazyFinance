@@ -157,7 +157,7 @@ pnpm rpc:keys
 pnpm dev
 ```
 
-The UI runs at <http://localhost:4200>, API at <http://localhost:3000>, and private persistence at `127.0.0.1:3001`. Do not export owner CLI credentials into the app runtimes. The API rejects PostgreSQL credentials; persistence rejects owner/BYPASSRLS runtime logins. Stop resources with `pnpm resources:down` when finished.
+The UI runs at <http://localhost:4200>, API at <http://localhost:3000>, and private persistence at `127.0.0.1:3001`. Owner credentials belong only to CLI jobs; persistence requires a restricted runtime login. The API connects only through private RPC. Stop resources with `pnpm resources:down` when finished.
 
 App-local `.env` files are separate from the root [Compose environment](.env.example). Never commit real keys/passwords. See the [technical manual](docs/technical/technical-manual.md).
 

@@ -1,24 +1,18 @@
 import type { RecentTransaction } from "@lazyfinance/contracts";
 import { Injectable } from "@nestjs/common";
-import { TransactionClient } from "../persistence/transactions.client";
+import { PersistenceClient } from "../persistence/persistence.client";
 
 @Injectable()
 export class TransactionsService {
-  constructor(private readonly transactions: TransactionClient) {}
+  constructor(private readonly persistence: PersistenceClient) {}
 
   async getRecentForUser(userId: string): Promise<RecentTransaction[]> {
-    const rows = await this.transactions.listRecentForUser(userId);
+    const rows = await this.persistence
+      .user(userId)
+      .transactions.recent.query();
     return rows.map(
-      ({
-        accountId,
-        accountAlias,
-        accountType,
-        currency,
-        bookedAt,
-        ...item
-      }) => ({
+      ({ accountId, accountAlias, accountType, currency, ...item }) => ({
         ...item,
-        bookedAt: bookedAt.toISOString(),
         account: {
           id: accountId,
           alias: accountAlias,

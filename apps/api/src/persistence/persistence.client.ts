@@ -38,16 +38,6 @@ export class PersistenceClient implements OnModuleInit {
   private readonly url: string;
 
   constructor(environment: EnvironmentService) {
-    if (
-      ["POSTGRES_URL", "POSTGRES_RUNTIME_URL", "POSTGRES_MIGRATION_URL"].some(
-        (key) => process.env[key],
-      )
-    ) {
-      throw new Error(
-        "Database credentials must not be present in the API runtime",
-      );
-    }
-
     const key = environment.get("PERSISTENCE_RPC_PRIVATE_KEY");
     if (!key) throw new Error("PERSISTENCE_RPC_PRIVATE_KEY is required");
 

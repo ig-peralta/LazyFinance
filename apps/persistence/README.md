@@ -82,7 +82,7 @@ protected/TLS service channel in deployment.
 ## Validation
 
 The [verification guide](../../docs/technical/development-workflow.md#verification-tiers)
-separates serverless unit/DI checks from listener/DB integration. The commands below
+separates serverless unit checks from listener/DB integration. The commands below
 are a general workflow, not a serverless-only promise when DB tests are configured.
 
 ```sh
@@ -96,7 +96,7 @@ pnpm --filter persistence test
 Database integration tests require `TEST_POSTGRES_OWNER_URL` pointing to a
 **disposable database whose name ends in `_test`**. They create test-owned rows
 and provision a separate runtime login. Without that variable, database tests
-are explicitly skipped; signing and type tests still run. Never use real user data.
+are explicitly skipped; unit tests still run. Never use real user data.
 
 Configured PostgreSQL integration tests open test HTTP listeners. The root
 `pnpm test:integration` runner separately runs the **API** suite against compiled

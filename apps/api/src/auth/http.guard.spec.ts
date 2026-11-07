@@ -12,7 +12,7 @@ import { AppModule } from "../app.module";
 import { configureCors } from "../cors";
 import { ENV_SCHEMA } from "../environment/environment.schema";
 import { EnvironmentService } from "../environment/environment.service";
-import { PersistenceClient as ExternalIdentityRepository } from "../persistence/persistence.client";
+import { PersistenceClient } from "../persistence/persistence.client";
 import type { AuthenticatedRequest } from "./auth.types";
 import { mockIdentity } from "./mock/mock-auth.constants";
 
@@ -41,7 +41,7 @@ describe("HTTP authentication", () => {
       imports: [AppModule],
       controllers: [ProbeHttpController],
     })
-      .overrideProvider(ExternalIdentityRepository)
+      .overrideProvider(PersistenceClient)
       .useValue({
         resolveExisting: async (identity: typeof mockIdentity) => {
           queries++;
@@ -168,7 +168,7 @@ describe("HTTP authentication", () => {
       },
     };
     const module = await Test.createTestingModule({ imports: [AppModule] })
-      .overrideProvider(ExternalIdentityRepository)
+      .overrideProvider(PersistenceClient)
       .useValue(db)
       .overrideProvider(EnvironmentService)
       .useValue({

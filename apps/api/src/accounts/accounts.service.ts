@@ -1,16 +1,12 @@
 import type { AccountSummary } from "@lazyfinance/contracts";
 import { Injectable } from "@nestjs/common";
-import { AccountClient } from "../persistence/accounts.client";
+import { PersistenceClient } from "../persistence/persistence.client";
 
 @Injectable()
 export class AccountsService {
-  constructor(private readonly accounts: AccountClient) {}
+  constructor(private readonly persistence: PersistenceClient) {}
 
-  async getActiveForUser(userId: string): Promise<AccountSummary[]> {
-    const rows = await this.accounts.listActiveForUser(userId);
-    return rows.map(({ lastSyncedAt, ...item }) => ({
-      ...item,
-      lastSyncedAt: lastSyncedAt?.toISOString() ?? null,
-    }));
+  getActiveForUser(userId: string): Promise<AccountSummary[]> {
+    return this.persistence.user(userId).accounts.listActive.query();
   }
 }

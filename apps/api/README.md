@@ -18,7 +18,7 @@ Technical references: [architecture](../../docs/technical/architecture.md),
   budget progress, tag matching/ranking and provider orchestration.
 - Typed clients call `@lazyfinance/rpc-persistence` with a 30-second Ed25519 JWT.
   Context is immutable per client, and public tRPC request IDs propagate privately.
-- **No SQL, ORM, pool or PostgreSQL credentials in the API runtime.** Owner-only
+- **No database driver, pool or SQL access in the API.** Owner-only
   migration/seed commands belong to [persistence](../persistence/README.md).
 - Provider calls and preparation stay outside SQL transactions. A prepared sync
   commits facts, conflicts, decisions/events and checkpoint atomically. Known
@@ -41,8 +41,8 @@ ignored `apps/api/.env`, and configure:
 | `FIREBASE_PROJECT_ID` | Required in Firebase mode. |
 | `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` | Optional paired Admin credentials. |
 
-`POSTGRES_URL`, `POSTGRES_RUNTIME_URL`, and `POSTGRES_MIGRATION_URL` must not be
-present. App-local dotenv files are not the root Compose `.env`.
+The API needs the private RPC URL/signing key, not database configuration.
+App-local dotenv files are not the root Compose `.env`.
 
 `pnpm --filter api dev` starts watch mode. `build`, `typecheck` and `test` are also
 available. Public auth procedures are `auth.config` and `auth.loginMock`; all
@@ -57,6 +57,11 @@ accepted directly as API authentication.
 to detect drift. Normal application builds need neither generation nor another
 application's source. The browser must never import private contracts/signing code.
 
+Feature services inject the single `PersistenceClient` and call its inferred
+`user(userId)` RPC surface directly. There are no per-domain persistence adapters
+or database-shaped Date conversions. Financial calculations stay in the owning
+service or shared pure domain helpers, not in transport wrappers.
+
 Public bodies are limited to 1 MiB and batches to 10 procedures. Private provider
 runs are bounded by 100 pages, 50,000 records, 32 MiB normalized JSON and 64 MiB
 prepared JSON/results. Oversized runs fail without partial writes/checkpoint
@@ -64,8 +69,9 @@ advancement; they are never silently split into independent commits. The private
 `providerSync.facts` query uses POST method override for large key scopes;
 ordinary empty queries remain GET. The private client deadline is 120 seconds.
 
-Unit/DI tests can use mocked dependencies without listeners. HTTP/router/MCP tests
-can run without real persistence, but Supertest can open ephemeral HTTP listeners;
+Service/helper unit tests can use mocked dependencies without listeners.
+HTTP/MCP policy tests can run without real persistence, but Supertest can open
+ephemeral HTTP listeners;
 the full API suite is **not serverless-only**. DB/workflow cases skip without the
 owner fixture URL and a matching private test service environment. Choose the
 [verification tier](../../docs/technical/development-workflow.md#verification-tiers)
