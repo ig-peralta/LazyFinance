@@ -38,6 +38,13 @@ provider pages and generated recurrence dates are not persisted relations.
   `income.expectedFacts` reads only declarations/dated expectations, `income.receipts`
   only receipt facts, and `income.facts` remains the complete repeatable-read income
   snapshot. Expected income covers the full requested month, not just `asOf`.
+- **Growing browse collections:** `transactions.list` uses bounded cursor pages,
+  not a complete-history transfer or client-side slicing. Apply filters and the
+  `(booked_at, id)` boundary before `limit + 1`, then use the shared
+  `pagination/cursor-page.ts` helper. Keep cursor timestamps exact and public/private
+  page envelopes aligned through the contracts factory. This browsing contract
+  does not replace complete aggregates or write-preparation snapshots. See
+  [cursor semantics](rpc-contracts.md#cursor-paginated-browsing).
 - **Existence and keys already joined:** project them in the same query.
   Provider movement facts include `accountExternalId` and `hasReceipt`, rather
   than requiring another account lookup and a separate receipt scan/set. Those

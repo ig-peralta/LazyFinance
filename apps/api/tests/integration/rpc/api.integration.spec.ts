@@ -6,11 +6,24 @@ import {
 import { Test } from "@nestjs/testing";
 import { Query, Router } from "nestjs-trpc";
 import request from "supertest";
-import { afterAll, beforeAll, expect, it } from "vitest";
+import { afterAll, beforeAll, expect, it, vi } from "vitest";
 import { AccountsService } from "../../../src/accounts/accounts.service";
 import { AppModule } from "../../../src/app.module";
 import { AuthService } from "../../../src/auth/auth.service";
 import { PersistenceClient } from "../../../src/persistence/persistence.client";
+import type { AsyncStub } from "../../fixtures/rpc-stubs";
+
+const listQuery = vi.fn<
+  AsyncStub<
+    ReturnType<PersistenceClient["user"]>["transactions"]["list"]["query"]
+  >
+>(async () => ({
+  items: [],
+  pageInfo: { nextCursor: null, hasMore: false },
+}));
+const user = vi.fn((_userId: string) => ({
+  transactions: { list: { query: listQuery } },
+}));
 
 @Router({ alias: "policyProbe" })
 class PolicyProbe {
@@ -37,7 +50,7 @@ beforeAll(async () => {
     providers: [PolicyProbe],
   })
     .overrideProvider(PersistenceClient)
-    .useValue({})
+    .useValue({ user })
     .overrideProvider(AuthService)
     .useValue({
       authenticate: async () => ({
@@ -83,4 +96,34 @@ it("rejects owner injection, hides private procedures and returns sanitized unav
   expect(JSON.stringify(response.body)).not.toMatch(
     /postgres|select |private key/i,
   );
+});
+
+it("serves cursor pages with shared defaults and rejects invalid pagination inputs", async () => {
+  const response = await request(app.getHttpServer())
+    .get("/trpc/transactions.list")
+    .query({ input: JSON.stringify({}) })
+    .expect(200);
+  expect(response.body.result.data).toEqual({
+    items: [],
+    pageInfo: { hasMore: false, nextCursor: null },
+  });
+  expect(user).toHaveBeenCalledWith("00000000-0000-4000-8000-000000000001");
+  expect(listQuery).toHaveBeenCalledExactlyOnceWith({ limit: 25 });
+
+  for (const input of [
+    { limit: 0 },
+    { limit: 101 },
+    { limit: 1.5 },
+    { limit: "10" },
+    { cursor: "" },
+    { cursor: "x".repeat(2049) },
+    { accountId: "not-a-uuid" },
+    { userId: "00000000-0000-4000-8000-000000000002" },
+  ])
+    await request(app.getHttpServer())
+      .get("/trpc/transactions.list")
+      .query({ input: JSON.stringify(input) })
+      .expect(400);
+
+  expect(listQuery).toHaveBeenCalledTimes(1);
 });

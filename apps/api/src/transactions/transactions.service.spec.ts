@@ -11,6 +11,10 @@ type RecentQuery = AsyncStub<
   ReturnType<PersistenceClient["user"]>["transactions"]["recent"]["query"]
 >;
 
+type ListQuery = AsyncStub<
+  ReturnType<PersistenceClient["user"]>["transactions"]["list"]["query"]
+>;
+
 describe("TransactionsService", () => {
   it("assembles tagged and untagged movements with a singular nullable tag", async () => {
     const tag = {
@@ -106,5 +110,65 @@ describe("TransactionsService", () => {
     } as unknown as PersistenceClient);
 
     await expect(service.getRecentForUser(userId)).resolves.toEqual([]);
+  });
+
+  it.each([
+    null,
+    "next-page",
+  ])("composes public page items without changing continuation metadata", async (nextCursor) => {
+    const record = {
+      id: firstId,
+      bookedAt: "2026-10-15T15:00:00.000Z",
+      amount: "9007199254740.99",
+      type: "credit" as const,
+      merchant: null,
+      description: "Deposit",
+      accountId: "00000000-0000-4000-8000-000000000021",
+      accountAlias: null,
+      accountType: "checking" as const,
+      currency: "CLP" as const,
+      tag: null,
+      tagDecisionOrigin: "unreviewed" as const,
+      tagRuleId: null,
+      reviewStatus: "needs_review" as const,
+    };
+    const pageInfo = { nextCursor, hasMore: nextCursor !== null };
+    const query = vi.fn<ListQuery>(async () => ({
+      items: [record],
+      pageInfo,
+    }));
+    const user = vi.fn(() => ({ transactions: { list: { query } } }));
+    const service = new TransactionsService({
+      user,
+    } as unknown as PersistenceClient);
+    const input = { limit: 1, cursor: "previous-page" };
+
+    const result = await service.listForUser(userId, input);
+    expect(result).toEqual({
+      items: [
+        {
+          id: firstId,
+          bookedAt: record.bookedAt,
+          amount: record.amount,
+          type: "credit",
+          merchant: null,
+          description: "Deposit",
+          account: {
+            id: record.accountId,
+            alias: null,
+            type: "checking",
+            currency: "CLP",
+          },
+          tag: null,
+          tagDecisionOrigin: "unreviewed",
+          tagRuleId: null,
+          reviewStatus: "needs_review",
+        },
+      ],
+      pageInfo,
+    });
+    expect(result.pageInfo).toBe(pageInfo);
+    expect(user).toHaveBeenCalledWith(userId);
+    expect(query).toHaveBeenCalledWith(input);
   });
 });

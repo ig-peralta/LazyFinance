@@ -123,6 +123,11 @@ Empty data, loading and failure are distinct states, even where a resource has
 an empty-array default. Use `hasValue()` before accessing a resource that has no
 default or is in an error state.
 
+The activity resource requests `transactions.list` with `{ limit: 10 }` and renders
+only that first page. It deliberately does not follow `pageInfo.nextCursor`,
+accumulate pages or expose pagination controls yet. Its existing scope cancellation,
+retry and confirmed-decision overlay apply to the page's items unchanged.
+
 The tag catalog is lazy: first interaction requests it, and all movements share
 it only within that page. Per-movement suggestions are browser-only and requested
 for unreviewed, untagged movements. They do not make SSR run an N+1 suggestion

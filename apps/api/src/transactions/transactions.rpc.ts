@@ -1,8 +1,11 @@
 import {
   RecentTransactionsResultSchema,
   RpcEmptySchema,
+  type TransactionsInput,
+  TransactionsInputSchema,
+  TransactionsPageSchema,
 } from "@lazyfinance/contracts";
-import { Ctx, Query, Router } from "nestjs-trpc";
+import { Ctx, Input, Query, Router } from "nestjs-trpc";
 import { type ApiRequestContext, rpcUser } from "../rpc/context";
 import { TransactionsService } from "./transactions.service";
 
@@ -17,5 +20,14 @@ export class TransactionsRpc {
   })
   recent(@Ctx() ctx: ApiRequestContext) {
     return this.service.getRecentForUser(rpcUser(ctx));
+  }
+
+  @Query({
+    input: TransactionsInputSchema,
+    output: TransactionsPageSchema,
+    meta: { auth: "user" },
+  })
+  list(@Ctx() ctx: ApiRequestContext, @Input() input: TransactionsInput) {
+    return this.service.listForUser(rpcUser(ctx), input);
   }
 }

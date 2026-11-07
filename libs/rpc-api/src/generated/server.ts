@@ -13,7 +13,7 @@ import { z } from "zod";
 
 const t = initTRPC.create();
 const publicProcedure = t.procedure;
-import { RpcEmptySchema, AccountsResultSchema, AuthConfigSchema, MockLoginInputSchema, MockLoginResultSchema, AuthPrincipalSchema, IncomeSourcesResultSchema, RpcIdSchema, IncomeSourceSchema, IncomeSourceInputSchema, ReplaceIncomeSourceSchema, IncomeExpectationsResultSchema, CreateIncomeExpectationSchema, IncomeExpectationSchema, ReplaceIncomeExpectationSchema, RpcVoidSchema, RpcMonthSchema, ExpectedIncomeSchema, IncomeReceiptsResultSchema, ConfirmIncomeReceiptSchema, IncomeReceiptSchema, IncomeSummarySchema, ObjectivesResultSchema, BudgetProgressResultSchema, MonthlySummarySchema, MonthlyComparisonSchema, TagsResultSchema, TagCreateInputSchema, TagSummarySchema, SuggestionsResultSchema, SetTagSchema, TagDecisionSchema, TagRulesResultSchema, TagRuleInputSchema, TagRuleResultSchema, ReplaceTagRuleSchema, ApplyTagRuleSchema, AppliedTagRuleSchema, RecentTransactionsResultSchema } from "@lazyfinance/contracts";
+import { RpcEmptySchema, AccountsResultSchema, AuthConfigSchema, MockLoginInputSchema, MockLoginResultSchema, AuthPrincipalSchema, IncomeSourcesResultSchema, RpcIdSchema, IncomeSourceSchema, IncomeSourceInputSchema, ReplaceIncomeSourceSchema, IncomeExpectationsResultSchema, CreateIncomeExpectationSchema, IncomeExpectationSchema, ReplaceIncomeExpectationSchema, RpcVoidSchema, RpcMonthSchema, ExpectedIncomeSchema, IncomeReceiptsResultSchema, ConfirmIncomeReceiptSchema, IncomeReceiptSchema, IncomeSummarySchema, ObjectivesResultSchema, BudgetProgressResultSchema, MonthlySummarySchema, MonthlyComparisonSchema, TagsResultSchema, TagCreateInputSchema, TagSummarySchema, SuggestionsResultSchema, SetTagSchema, TagDecisionSchema, TagRulesResultSchema, TagRuleInputSchema, TagRuleResultSchema, ReplaceTagRuleSchema, ApplyTagRuleSchema, AppliedTagRuleSchema, RecentTransactionsResultSchema, TransactionsInputSchema, TransactionsPageSchema } from "@lazyfinance/contracts";
 
 const appRouter = t.router({
   accounts: t.router({
@@ -162,6 +162,10 @@ const appRouter = t.router({
     recent: publicProcedure
       .input(RpcEmptySchema)
       .output(RecentTransactionsResultSchema)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    list: publicProcedure
+      .input(TransactionsInputSchema)
+      .output(TransactionsPageSchema)
       .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
     })
 });

@@ -48,7 +48,7 @@ readonly accounts = resource({
 });
 ```
 
-The view consumes `accounts.value()`, `accounts.isLoading()`, `accounts.error()` and `accounts.reload()`. The scope is absent until verification succeeds; changing it invalidates old values. Feature services are provided by `DashboardPage`, so navigation destroys their resources. Month selection is a reactive query input.
+The view consumes `accounts.value()`, `accounts.isLoading()`, `accounts.error()` and `accounts.reload()`. The scope is absent until verification succeeds; changing it invalidates old values. Feature services are provided by `DashboardPage`, so navigation destroys their resources. Month selection is a reactive query input. Activity uses only the first `transactions.list` page (`limit: 10`); continuation controls and a history view are not implemented.
 
 Tag commands publish confirmed decisions to page-local state. Only summaries and budget progress are invalidated; recent movements reflect the confirmed choice without component output/view-child chains. A decision completed after a read started wins over that older read, while a later explicit reload can reconcile changes from elsewhere. The tag catalog is lazy and shared within the page. Rule creation is a separate command: if it fails after saving a decision, the UI reports partial success instead of replaying or pretending to roll back the saved choice. Mutations are never automatically retried; cancelling a request does not guarantee server rollback.
 
