@@ -18,7 +18,7 @@ DashboardPage → feature data services → resources / explicit commands
 | `core/auth/auth-credentials.ts` | Accepted principal/token snapshot and its abort lifetime | HTTP, Firebase, cookies or navigation |
 | `core/rpc/rpc-client.ts` | Anonymous/candidate/scoped clients, cancellation and transport error policy | Session restoration or router navigation |
 | `core/auth/auth-api.ts` | Anonymous config/mock login and candidate `auth.principal` verification | Installing or expiring accepted credentials |
-| `core/auth/session.service.ts` | Restoration, Firebase observer, cookie handoff, revision checks and expiry navigation | Financial resource state |
+| `core/auth/session.service.ts` | Restoration, Firebase commands/observer, cookie handoff, revision/owner checks and expiry navigation | Financial resource state |
 | `features/*/*.data.ts` | Feature reads, query inputs, explicit commands and confirmed page-local updates | A second catalog of generic endpoint aliases |
 | Components / `createTagDecision` | Presentation and component-lifetime command/suggestion state | A global financial response cache |
 
@@ -40,6 +40,44 @@ cannot clear a newer accepted session. `SessionService` revision checks prevent
 obsolete asynchronous restoration/login results from becoming current; Firebase
 UID checks additionally reject a completed verification for a no-longer-current
 browser user. Logging out clears local state before awaiting Firebase sign-out.
+
+## Firebase commands and observer ordering
+
+Explicit Google/password login, registration, verification and credential linking
+are serialized by `SessionService`. They own an abort controller and, for account
+commands, capture the expected Firebase UID and accepted internal user UUID.
+Component destruction, logout, session expiry and account changes invalidate
+obsolete work. Candidate API verification receives the command signal; accepting
+a refreshed token does not itself cancel that same owner's linking command.
+
+Firebase ID-token callbacks are deferred while a command owns acceptance. SDK
+reauthentication, creation or forced refresh must not independently accept a token
+before the command's API/owner checks finish. An unexpected UID change invalidates
+the command and clears local access. Logout/expiry suppress subsequent observer
+acceptance until another explicit Firebase action; late callbacks cannot simply
+restore the signed-out principal.
+
+The non-abortable SDK operation has a separate barrier. A cancelled popup or
+creation must settle, and its late user is signed out when still current, before
+a new explicit SDK action starts. SDK sign-out is serialized too; cleanup never
+signs out a different/newer UID. A failed cleanup leaves local acceptance disabled,
+not a claim that Firebase persisted-state clearance succeeded. A fresh page load
+still restores Firebase's actual persisted state normally.
+
+Cancelling a signed-in linking command does not sign out an otherwise-current
+owner. Firebase may already have changed their credentials: current method status
+is refreshed from the same SDK user, without adopting an obsolete API result or
+pretending the link was rolled back. The security page scopes pending notices and
+errors to its current UID/internal owner and aborts its command signal on teardown.
+Passwords/pending OAuth credentials are not put in cookies, transfer state or a
+recovery queue. Only a five-minute, owner-bound, single-use Google-link readiness
+proof survives between the password confirmation and the popup button.
+
+An unverified password registration deliberately has a Firebase account snapshot
+but no accepted application credentials or SSR cookie. Verification reloads and
+refreshes the token before API acceptance. Browser account metadata is a UI hint,
+not evidence that can authorize financial requests. See the complete
+[sign-in/linking policy](identity.md#firebase-sign-in-and-credential-linking).
 
 ## Three cancellation lifetimes
 
@@ -161,7 +199,11 @@ in-memory responses. Angular HttpClient interceptors/testing controllers do not
 intercept this transport. Tests cover concurrent SSR identities, protected
 transfer-state absence, token/UID replacement, stale 401/restoration failures,
 resource/component cancellation, duplicate commands, read/decision ordering and
-partial success. Run once without a development/API/database server:
+partial success. Auth regression cases cover password verification, explicit
+same-owner linking, expired/consumed proof, SDK/API/observer races and cancelled
+credential mutations with mocked SDK operations. These cases must be executed to
+provide runtime evidence; compilation alone is not a passing test run. Run once
+without a development/API/database server:
 
 ```sh
 pnpm --filter ui exec ng test --watch=false
@@ -171,5 +213,5 @@ When adding a feature, keep its resource/command owner explicit, include accepte
 scope in protected query params, forward abort signals, avoid protected hydration
 IDs, invalidate only actual dependencies, and test out-of-order completions. Do
 not restore the removed catch-all API service, RxJS compatibility facade or fake
-HTTP errors. Management placeholders and the absent conversational/provider-linking
-features remain product limitations, not missing client aliases.
+HTTP errors. Financial-management placeholders and absent conversational/banking-
+provider-linking features remain product limitations, not missing client aliases.

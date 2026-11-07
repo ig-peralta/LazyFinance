@@ -1,0 +1,164 @@
+<section class="mx-auto max-w-3xl space-y-8">
+  <header>
+    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Tu cuenta</p>
+    <h1 class="mt-3 text-3xl font-semibold text-color-emphasis">Acceso y seguridad</h1>
+    <p class="mt-4 leading-7 text-muted-color">
+      Conecta Google y una contraseña para entrar a la misma cuenta. Tus datos financieros siguen perteneciendo al mismo usuario.
+    </p>
+  </header>
+
+  @if (session.provider() !== 'firebase') {
+    <p class="rounded-2xl border border-surface bg-surface-0 p-6 dark:bg-surface-950">
+      El acceso de demostración no permite modificar métodos de acceso.
+    </p>
+  } @else if (account(); as identity) {
+    <p class="text-sm text-muted-color">Cuenta de Firebase: {{ identity.email }}</p>
+
+    <section
+      class="rounded-2xl border border-surface bg-surface-0 p-6 dark:bg-surface-950"
+      aria-labelledby="google-method"
+    >
+      <h2 id="google-method" class="text-lg font-semibold">Google</h2>
+      @if (identity.google) {
+        <p class="mt-3 text-sm text-primary" data-testid="google-connected">Conectado</p>
+      } @else if (identity.password) {
+        <p class="mt-3 text-sm leading-6 text-muted-color">
+          Primero confirma tu contraseña actual. Después abre Google para demostrar que también controlas esa cuenta.
+        </p>
+        @if (session.googleLinkReady()) {
+          <button
+            type="button"
+            data-testid="link-google"
+            [disabled]="busy()"
+            (click)="linkGoogle()"
+            class="mt-5 rounded-xl bg-primary px-5 py-3 font-semibold text-primary-contrast disabled:opacity-60"
+          >
+            Conectar Google
+          </button>
+        } @else {
+          <form
+            class="mt-5 space-y-4"
+            data-testid="prepare-google-form"
+            (submit)="prepareGoogle($event, currentPassword)"
+          >
+            <label for="current-password" class="block text-sm font-semibold">Contraseña actual</label>
+            <input
+              #currentPassword
+              id="current-password"
+              name="current-password"
+              type="password"
+              autocomplete="current-password"
+              maxlength="4096"
+              required
+              [disabled]="busy()"
+              class="w-full rounded-xl border border-surface bg-surface-100 px-4 py-3 outline-none dark:bg-surface-900"
+            />
+            <button
+              type="submit"
+              [disabled]="busy()"
+              class="rounded-xl bg-primary px-5 py-3 font-semibold text-primary-contrast disabled:opacity-60"
+            >
+              Confirmar identidad
+            </button>
+          </form>
+        }
+      } @else {
+        <p class="mt-3 text-sm text-muted-color">Inicia sesión con un método compatible antes de conectar Google.</p>
+      }
+    </section>
+
+    <section
+      class="rounded-2xl border border-surface bg-surface-0 p-6 dark:bg-surface-950"
+      aria-labelledby="password-method"
+    >
+      <h2 id="password-method" class="text-lg font-semibold">Correo y contraseña</h2>
+      @if (identity.password) {
+        <p class="mt-3 text-sm text-primary" data-testid="password-connected">Conectado</p>
+      } @else if (identity.google && identity.emailVerified) {
+        <p class="mt-3 text-sm leading-6 text-muted-color">
+          Añade una contraseña para {{ identity.email }}. Te pediremos confirmar tu identidad en Google antes de conectarla.
+        </p>
+        <form
+          class="mt-5 space-y-4"
+          data-testid="add-password-form"
+          (submit)="addPassword($event, newPassword, confirmation)"
+        >
+          <div>
+            <label for="new-password" class="mb-2 block text-sm font-semibold">Nueva contraseña</label>
+            <input
+              #newPassword
+              id="new-password"
+              name="new-password"
+              type="password"
+              autocomplete="new-password"
+              minlength="6"
+              maxlength="4096"
+              required
+              [disabled]="busy()"
+              class="w-full rounded-xl border border-surface bg-surface-100 px-4 py-3 outline-none dark:bg-surface-900"
+            />
+          </div>
+          <div>
+            <label for="confirm-password" class="mb-2 block text-sm font-semibold">Repite la contraseña</label>
+            <input
+              #confirmation
+              id="confirm-password"
+              name="confirmation"
+              type="password"
+              autocomplete="new-password"
+              minlength="6"
+              maxlength="4096"
+              required
+              [disabled]="busy()"
+              class="w-full rounded-xl border border-surface bg-surface-100 px-4 py-3 outline-none dark:bg-surface-900"
+            />
+          </div>
+          <button
+            type="submit"
+            [disabled]="busy()"
+            class="rounded-xl bg-primary px-5 py-3 font-semibold text-primary-contrast disabled:opacity-60"
+          >
+            Conectar contraseña
+          </button>
+        </form>
+      } @else if (!identity.emailVerified) {
+        <p class="mt-3 text-sm leading-6 text-muted-color">Verifica tu correo antes de conectar una contraseña.</p>
+        <div class="mt-4 flex flex-wrap gap-4">
+          <button
+            type="button"
+            [disabled]="busy()"
+            (click)="resendVerification()"
+            class="text-sm font-semibold text-primary disabled:opacity-60"
+          >
+            Enviar verificación
+          </button>
+          <button
+            type="button"
+            [disabled]="busy()"
+            (click)="checkVerification()"
+            class="text-sm font-semibold text-primary disabled:opacity-60"
+          >
+            Ya verifiqué mi correo
+          </button>
+        </div>
+      }
+    </section>
+
+    @if (notice()) {
+      <p role="status" class="text-sm text-primary">{{ notice() }}</p>
+    }
+    @if (error()) {
+      <p role="alert" class="text-sm text-red-600">{{ error() }}</p>
+    }
+
+    <p class="text-sm leading-6 text-muted-color">
+      Cada método conectado permite entrar por separado: conectarlos no activa verificación en dos pasos ni hace que la contraseña herede la protección de Google.
+    </p>
+    <p class="text-sm leading-6 text-muted-color">
+      Un correo coincidente no autoriza unir cuentas. Si el método ya pertenece a otro usuario de Firebase, detenemos la conexión: no fusionamos identidades ni datos financieros.
+      Cerrar la página cancela los pasos pendientes, pero no revierte un cambio que Firebase ya haya confirmado.
+    </p>
+  } @else {
+    <p role="status" class="text-sm text-muted-color">Validando los métodos de acceso en este navegador...</p>
+  }
+</section>

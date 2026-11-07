@@ -13,7 +13,9 @@ export class AuthApi {
     return this.rpc.anonymous.auth.loginMock.mutate({ email, password });
   }
 
-  verifyPrincipal(token: string) {
-    return this.rpc.verificationClient(token).auth.principal.query();
+  verifyPrincipal(token: string, signal?: AbortSignal) {
+    return this.rpc
+      .verificationClient(token)
+      .auth.principal.query(undefined, { signal });
   }
 }

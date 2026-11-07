@@ -108,6 +108,9 @@
             <p class="mt-1 text-sm text-muted-color">{{ session.user()?.email }}</p>
             <div class="mt-7 flex flex-wrap items-center gap-5">
               <a routerLink="/dashboard" class="text-sm font-semibold text-primary">Ir al panel</a>
+              @if (provider() === 'firebase') {
+                <a routerLink="/seguridad" class="text-sm font-semibold text-primary">Métodos de acceso</a>
+              }
               <button
                 data-testid="logout"
                 type="button"
@@ -117,6 +120,40 @@
                 Cerrar sesión
               </button>
             </div>
+          </div>
+        } @else if (needsVerification()) {
+          <div class="mt-10 space-y-4 rounded-2xl border border-surface bg-surface-100 p-6 dark:bg-surface-900">
+            <h2 class="text-lg font-semibold">Verifica tu correo</h2>
+            <p class="text-sm leading-6 text-muted-color">
+              Confirma el enlace enviado a {{ session.firebaseAccount()?.email }}. Todavía no has accedido a tus datos de LazyFinance.
+            </p>
+            <button
+              type="button"
+              data-testid="check-verification"
+              [disabled]="busy()"
+              (click)="checkVerification()"
+              class="w-full rounded-xl bg-primary px-5 py-3 font-semibold text-primary-contrast disabled:opacity-60"
+            >
+              Ya verifiqué mi correo
+            </button>
+            <button
+              type="button"
+              data-testid="resend-verification"
+              [disabled]="busy()"
+              (click)="resendVerification()"
+              class="text-sm font-semibold text-primary disabled:opacity-60"
+            >
+              Reenviar verificación
+            </button>
+            <button
+              type="button"
+              data-testid="verification-logout"
+              [disabled]="busy()"
+              (click)="logout()"
+              class="block text-sm text-muted-color disabled:opacity-60"
+            >
+              Usar otra cuenta
+            </button>
           </div>
         } @else {
           @if (provider() === 'mock') {
@@ -168,7 +205,7 @@
               <button
                 data-testid="google-login"
                 type="button"
-                [disabled]="loading()"
+                [disabled]="busy()"
                 (click)="loginWithGoogle()"
                 class="flex w-full items-center justify-center gap-3 rounded-xl border border-surface px-5 py-3.5 font-semibold text-color transition-colors hover:bg-surface-100 disabled:cursor-wait disabled:opacity-60 dark:border-surface-700 dark:hover:bg-surface-900"
               >
@@ -190,14 +227,100 @@
                 {{ loading() ? 'Conectando...' : 'Continuar con Google' }}
               </button>
             </div>
+            <div class="my-6 flex items-center gap-4 text-xs text-muted-color">
+              <span class="h-px flex-1 bg-surface-200 dark:bg-surface-700"></span>
+              o con tu correo
+              <span class="h-px flex-1 bg-surface-200 dark:bg-surface-700"></span>
+            </div>
+            <form
+              class="space-y-5"
+              data-testid="firebase-password-form"
+              (submit)="submitPassword($event, firebaseEmail, firebasePassword, firebaseConfirmation)"
+            >
+              <div>
+                <label for="firebase-email" class="mb-2 block text-sm font-semibold">Correo electrónico</label>
+                <input
+                  #firebaseEmail
+                  id="firebase-email"
+                  name="email"
+                  type="email"
+                  autocomplete="username"
+                  required
+                  [disabled]="busy()"
+                  placeholder="tu@correo.cl"
+                  class="w-full rounded-xl border border-surface bg-surface-100 px-4 py-3 outline-none dark:bg-surface-900"
+                />
+              </div>
+              <div>
+                <label for="firebase-password" class="mb-2 block text-sm font-semibold">Contraseña</label>
+                <input
+                  #firebasePassword
+                  id="firebase-password"
+                  name="password"
+                  type="password"
+                  required
+                  maxlength="4096"
+                  [attr.minlength]="passwordMode() === 'register' ? 6 : null"
+                  [attr.autocomplete]="passwordMode() === 'register' ? 'new-password' : 'current-password'"
+                  [disabled]="busy()"
+                  class="w-full rounded-xl border border-surface bg-surface-100 px-4 py-3 outline-none dark:bg-surface-900"
+                />
+              </div>
+              <div [hidden]="passwordMode() !== 'register'">
+                <label for="firebase-confirmation" class="mb-2 block text-sm font-semibold">Repite la contraseña</label>
+                <input
+                  #firebaseConfirmation
+                  id="firebase-confirmation"
+                  name="confirmation"
+                  type="password"
+                  autocomplete="new-password"
+                  maxlength="4096"
+                  [required]="passwordMode() === 'register'"
+                  [disabled]="busy() || passwordMode() !== 'register'"
+                  class="w-full rounded-xl border border-surface bg-surface-100 px-4 py-3 outline-none dark:bg-surface-900"
+                />
+              </div>
+              <button
+                type="submit"
+                data-testid="password-login"
+                [disabled]="busy()"
+                class="w-full rounded-xl bg-primary px-5 py-3.5 font-semibold text-primary-contrast disabled:opacity-60"
+              >
+                {{ busy() ? 'Procesando...' : passwordMode() === 'register' ? 'Crear cuenta' : 'Iniciar sesión con correo' }}
+              </button>
+              <div class="flex flex-wrap justify-between gap-3 text-sm">
+                <button
+                  type="button"
+                  data-testid="toggle-registration"
+                  [disabled]="busy()"
+                  (click)="setPasswordMode(passwordMode() === 'register' ? 'signin' : 'register'); firebasePassword.value = ''; firebaseConfirmation.value = ''"
+                  class="font-semibold text-primary disabled:opacity-60"
+                >
+                  {{ passwordMode() === 'register' ? 'Ya tengo una cuenta' : 'Crear cuenta con correo' }}
+                </button>
+                <button
+                  type="button"
+                  data-testid="reset-password"
+                  [disabled]="busy()"
+                  (click)="sendPasswordReset(firebaseEmail)"
+                  class="text-muted-color disabled:opacity-60"
+                >
+                  Olvidé mi contraseña
+                </button>
+              </div>
+            </form>
           } @else {
             <button type="button" class="mt-8 text-sm font-semibold text-primary" (click)="config.reload()">
               Reintentar
             </button>
           }
-          @if (error()) {
-            <p role="alert" class="mt-4 text-sm text-red-600">{{ error() }}</p>
-          }
+        }
+
+        @if (notice()) {
+          <p role="status" class="mt-4 text-sm text-primary">{{ notice() }}</p>
+        }
+        @if (error()) {
+          <p role="alert" class="mt-4 text-sm text-red-600">{{ error() }}</p>
         }
 
         @if (provider() === 'mock') {

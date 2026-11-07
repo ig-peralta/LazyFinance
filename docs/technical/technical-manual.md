@@ -67,6 +67,41 @@ such as `pnpm --filter persistence dev` rather than invoking an app entrypoint
 from a directory containing another process's `.env`. Root `.env` is for Compose
 substitution; it is not a shared runtime secret bundle.
 
+### Firebase browser setup
+
+Before exercising real sign-in/linking in a project:
+
+1. Match the UI's public Web identifiers to API `FIREBASE_PROJECT_ID` and select
+   `AUTH_PROVIDER=firebase`. Never add Admin credentials to the browser bundle.
+2. Enable **Google** and **Email/Password** in Firebase Authentication's sign-in
+   providers. Email-link/passwordless sign-in is not this implementation.
+3. Authorize the actual browser host, including local hosts explicitly when
+   needed, and review the Google consent/support configuration. Popup-based
+   Google sign-in/reauthentication/linking requires popups to be allowed; a mobile
+   redirect fallback is not implemented.
+4. Review email templates, sender settings and verification/reset action URLs.
+   The app sends Firebase's standard emails; it does not implement a custom action
+   handler or consume reset/verification codes itself. Users return to the login
+   page to recheck verification or sign in with the reset password.
+5. Enable email-enumeration protection and enforce an appropriate password policy
+   (for example a 12+-character minimum). The form's six-character minimum is only
+   a basic input constraint, not the deployed security policy. Review Firebase's
+   account-per-email/trusted-provider behavior: LazyFinance never merges UIDs or
+   moves data to work around credential collisions.
+6. Using disposable accounts, verify password creation/email/reset, both linking
+   directions, same UID/internal owner after signing in with either method,
+   credential collisions and cancellation/logout. These are live-provider checks,
+   not proven by compilation or mocked SDK specs. Check Firebase's current
+   [account-linking guidance](https://firebase.google.com/docs/auth/web/account-linking)
+   and its linked SDK issue if a project's credential linking fails.
+
+The authenticated `/seguridad` page manages only same-UID Google/password methods.
+It does not merge separately created Firebase users, change financial ownership,
+unlink methods or add MFA. Adding password login provides another independent
+access path, not Google MFA enforcement. See the
+[full flow and security policy](identity.md#firebase-sign-in-and-credential-linking).
+Changing code does not enable these Firebase Console settings automatically.
+
 ## Run and inspect
 
 `pnpm dev` starts UI `localhost:4200`, API `localhost:3000`, and private persistence
@@ -150,8 +185,10 @@ fixture safety and live-Firebase distinctions. No real user database is a fixtur
   the seeded user. A token is not stored as a database user API key.
 - Browser/SSR mismatch: check browser API URL, `API_INTERNAL_URL`, CORS, token-only
   cookie and `auth.principal`. SSR revalidates cookies; forged users are discarded.
-- Firebase failures: verify Web/Admin project IDs, Google provider/domain setup,
-  token audience/issuer and paired optional Admin credentials.
+- Firebase failures: verify Web/Admin project IDs, Google/Email-Password provider
+  and authorized-domain setup, email templates, token audience/issuer and paired
+  optional Admin credentials. A credential collision is not permission to merge
+  UIDs or delete either account; use the existing method and explicit linking.
 - Oversized provider run: limits are 100 pages/50,000 records plus 32 MiB normalized
   and 64 MiB private JSON. It fails atomically, not as partial financial writes.
 - A failed/ambiguous mutation is not automatically retried. Only an explicit
