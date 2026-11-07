@@ -3,7 +3,14 @@ import { TestBed } from "@angular/core/testing";
 import type { RecentTransaction } from "@lazyfinance/contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { deferred } from "../../../testing/deferred";
-import { movement, rpcFailure, setupRpc, tag } from "../../../testing/rpc";
+import {
+  manualDecision,
+  movement,
+  type RpcOutput,
+  rpcFailure,
+  setupRpc,
+  tag,
+} from "../../../testing/rpc";
 import { createTagDecision } from "./tag-decision";
 import { TaggingData } from "./tagging.data";
 
@@ -17,7 +24,7 @@ describe("component-lifetime tag commands", () => {
   afterEach(() => TestBed.resetTestingModule());
 
   it("cancels a command on destruction and never publishes its late response", async () => {
-    const response = deferred<unknown>();
+    const response = deferred<RpcOutput<"tags.decide">>();
     const { callsTo } = setupRpc({ "tags.decide": () => response.promise });
     const tagging = TestBed.inject(TaggingData);
     const fixture = TestBed.createComponent(DecisionHost);
@@ -27,19 +34,17 @@ describe("component-lifetime tag commands", () => {
     fixture.destroy();
     expect(await saved).toBe(false);
     expect(callsTo("tags.decide")[0].options?.signal?.aborted).toBe(true);
-    response.resolve({ origin: "manual" });
+    response.resolve(manualDecision());
     await Promise.resolve();
     expect(tagging.changed()).toBeUndefined();
   });
 
   it("does not let an old transaction failure overwrite a newer pending action", async () => {
-    const first = deferred<unknown>(),
-      second = deferred<unknown>();
+    const first = deferred<Response>(),
+      second = deferred<RpcOutput<"tags.decide">>();
     const { callsTo } = setupRpc({
       "tags.decide": (input) =>
-        (input as { transactionId: string }).transactionId === movement.id
-          ? first.promise
-          : second.promise,
+        input.transactionId === movement.id ? first.promise : second.promise,
     });
     const fixture = TestBed.createComponent(DecisionHost);
     fixture.detectChanges();
@@ -53,7 +58,7 @@ describe("component-lifetime tag commands", () => {
     expect(await old).toBe(false);
     expect(decision.saving()).toBe(true);
     expect(decision.error()).toBeNull();
-    second.resolve({ origin: "manual" });
+    second.resolve(manualDecision("new-transaction"));
     expect(await current).toBe(true);
     expect(TestBed.inject(TaggingData).changed()?.selection.transactionId).toBe(
       "new-transaction",
@@ -62,7 +67,7 @@ describe("component-lifetime tag commands", () => {
   });
 
   it("does not submit duplicate writes while a transaction command is pending", async () => {
-    const response = deferred<unknown>();
+    const response = deferred<RpcOutput<"tags.decide">>();
     const { callsTo } = setupRpc({ "tags.decide": () => response.promise });
     const fixture = TestBed.createComponent(DecisionHost);
     fixture.detectChanges();
@@ -71,7 +76,7 @@ describe("component-lifetime tag commands", () => {
     decision.clearError();
     expect(await decision.choose(tag, false)).toBe(false);
     await vi.waitFor(() => expect(callsTo("tags.decide")).toHaveLength(1));
-    response.resolve({ origin: "manual" });
+    response.resolve(manualDecision());
     expect(await first).toBe(true);
   });
 });

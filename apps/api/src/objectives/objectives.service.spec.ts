@@ -1,11 +1,15 @@
 import type { ObjectiveSummary } from "@lazyfinance/contracts";
-import type { ObjectiveSpendingInput } from "@lazyfinance/contracts/internal";
 import { describe, expect, it, vi } from "vitest";
+import type { RpcStubs } from "../../tests/fixtures/rpc-stubs";
 import type { PersistenceClient } from "../persistence/persistence.client";
 import { ObjectivesService } from "./objectives.service";
 
 const userId = "00000000-0000-4000-8000-000000000001";
 const budgetId = "00000000-0000-4000-8000-000000000041";
+
+type ObjectivesClient = RpcStubs<
+  ReturnType<PersistenceClient["user"]>["objectives"]
+>;
 
 function budget(update: Partial<ObjectiveSummary> = {}): ObjectiveSummary {
   return {
@@ -24,23 +28,14 @@ function budget(update: Partial<ObjectiveSummary> = {}): ObjectiveSummary {
 }
 
 function setup(objectives: ObjectiveSummary[] = []) {
-  const spending = vi.fn(
-    async (
-      _input: ObjectiveSpendingInput,
-    ): Promise<
-      {
-        id: string;
-        amount: string;
-        count: number;
-      }[]
-    > => [],
-  );
+  const spending = vi.fn<ObjectivesClient["spending"]["query"]>(async () => []);
+  const reads = {
+    list: { query: async () => objectives },
+    spending: { query: spending },
+  } satisfies ObjectivesClient;
   const persistence = {
     user: () => ({
-      objectives: {
-        list: { query: async () => objectives },
-        spending: { query: spending },
-      },
+      objectives: reads,
     }),
   };
   return {

@@ -6,7 +6,8 @@ import { createTRPCClient, httpLink } from "@trpc/client";
 import { AppModule } from "../../src/app.module";
 import { FirebaseAuthService } from "../../src/auth/firebase/firebase-auth.service";
 import { EnvironmentService } from "../../src/environment/environment.service";
-import { FixtureDatabase, testEnvironment } from "./persistence";
+import { FixtureDatabase } from "./database";
+import { testEnvironment } from "./environment";
 
 export async function identityApi(
   identities?: Map<string, VerifiedExternalIdentity>,

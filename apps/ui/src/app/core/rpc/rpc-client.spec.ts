@@ -4,7 +4,9 @@ import { TRPCClientError } from "@trpc/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { deferred } from "../../../testing/deferred";
 import {
+  account,
   principal,
+  type RpcOutput,
   rpcFailure,
   rpcResponse,
   setupRpc,
@@ -48,12 +50,12 @@ describe("scoped native tRPC transport", () => {
   });
 
   it("cancels old-user work even when a fetch implementation ignores abort", async () => {
-    const old = deferred<unknown>();
+    const old = deferred<RpcOutput<"accounts.list">>();
     const { rpc, credentials, callsTo } = setupRpc({
       "accounts.list": (_input, call) =>
         call.authorization === "Bearer alice"
           ? old.promise
-          : [{ id: "bob-only" }],
+          : [account("bob-only")],
     });
     const pending = rpc.requireScope().client.accounts.list.query();
     const rejected = expect(pending).rejects.toSatisfy(isCancelled);
@@ -61,9 +63,9 @@ describe("scoped native tRPC transport", () => {
     credentials.accept({ ...principal, userId: "owner-b" }, "bob");
     await rejected;
     expect(callsTo("accounts.list")[0].options?.signal?.aborted).toBe(true);
-    old.resolve([{ id: "alice-secret" }]);
+    old.resolve([account("alice-secret")]);
     expect(await rpc.requireScope().client.accounts.list.query()).toEqual([
-      { id: "bob-only" },
+      account("bob-only"),
     ]);
   });
 
@@ -123,7 +125,7 @@ describe("scoped native tRPC transport", () => {
   });
 
   it("does not let a late 401 from an obsolete request log out a newer identity", async () => {
-    const old = deferred<unknown>();
+    const old = deferred<Response>();
     const { rpc, credentials, callsTo, navigate } = setupRpc({
       "accounts.list": () => old.promise,
     });

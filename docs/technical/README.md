@@ -26,6 +26,7 @@ target is not evidence of a delivered capability.
   setup, Compose topology, browser-versus-SSR configuration and troubleshooting.
 - [Development and verification](development-workflow.md): builds, Biome/editor/DI
   conventions, [file ownership and extraction](development-workflow.md#file-ownership-and-extraction),
+  [type safety and boundaries](development-workflow.md#type-safety-and-boundary-types),
   serverless versus listener/DB/live-Firebase checks and change review.
 - App entry points: [API](../../apps/api/README.md),
   [persistence](../../apps/persistence/README.md), [UI](../../apps/ui/README.md).

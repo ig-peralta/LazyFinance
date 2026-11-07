@@ -116,6 +116,37 @@ Test the extracted decisions/transformations, not import locations or constructo
 wiring. Preserve runtime behavior, wire contracts, authorization, money/calendar
 semantics and cancellation; verify the applicable static/build/contract checks.
 
+## Type safety and boundary types
+
+All application and shared-library TypeScript configurations use `strict`;
+application test configurations inherit it. Keep key/value and input/output
+relationships intact instead of silencing errors with `any`, broad `object`
+parameters or double assertions. Prefer inference, `satisfies` and generics that
+actually connect inputs to results. Schema-independent database operations accept
+`Kysely<DB>` without tying migrations to an evolving application table map. The
+migration-only database alias remains permissive at Kysely's migration boundary.
+
+`unknown` is appropriate for raw validation input, caught exceptions and opaque
+metadata. Narrow or validate it before use; a caller-selected generic return type
+does not validate JSON or prove the type of a thrown error. Serialization types
+must preserve nullable fields, tuple positions/lengths and exact numeric strings,
+while mapping timestamps to their wire representation.
+
+Test doubles must retain the contracts they stand in for. UI RPC handlers and
+recorded calls derive procedure names, inputs and outputs from `ApiRouter`;
+deferred responses use those output types. Deliberately malformed payloads and
+transport failures use an explicit raw `Response`, not a blanket untyped handler.
+API method stubs preserve parameters and awaited results without manufacturing
+tRPC's branded promise type. Check mocked behavior before any unavoidable cast at
+the class-injection seam; do not add production adapters just for tests.
+
+Owner SQL fixture shapes stay API-test-local and reuse shared facts where their
+meaning matches. Table-keyed generics check columns and values, while results
+retain raw pg snake-case keys, timestamp `Date` values and decimal strings. These
+are fixture representations, not a second runtime persistence layer or permission
+to import persistence source into the API. Static type checks do not validate
+actual database contents, SQL constraints or financial behavior.
+
 ## Backend test layout
 
 Both backend apps keep unit tests beside the implementation and integration

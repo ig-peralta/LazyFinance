@@ -1,12 +1,13 @@
-import type {
-  MovementAggregate,
-  PeriodInput,
-  TaggedMovementAggregate,
-} from "@lazyfinance/contracts/internal";
+import type { TaggedMovementAggregate } from "@lazyfinance/contracts/internal";
 import { describe, expect, it, vi } from "vitest";
+import type { RpcStubs } from "../../tests/fixtures/rpc-stubs";
 import type { IncomeService } from "../income/income.service";
 import type { PersistenceClient } from "../persistence/persistence.client";
 import { SummariesService } from "./summaries.service";
+
+type TransactionsClient = RpcStubs<
+  ReturnType<PersistenceClient["user"]>["transactions"]
+>;
 
 const expectedIncome = {
   amount: "1600000.00",
@@ -38,19 +39,27 @@ function periodGroups(received: string, spending: string) {
 }
 
 function setup() {
-  const aggregates = vi.fn(
-    async (_period: PeriodInput): Promise<MovementAggregate[]> => [],
+  const aggregates = vi.fn<TransactionsClient["aggregates"]["query"]>(
+    async () => [],
   );
-  const taggedAggregates = vi.fn(
-    async (_period: PeriodInput): Promise<TaggedMovementAggregate[]> => [],
+  const taggedAggregates = vi.fn<
+    TransactionsClient["taggedAggregates"]["query"]
+  >(async () => []);
+  const getExpectedForUser = vi.fn<IncomeService["getExpectedForUser"]>(
+    async (_userId, month = "2026-09") => ({
+      month,
+      currency: "CLP",
+      totals: expectedIncome,
+      payments: [],
+    }),
   );
-  const getExpectedForUser = vi.fn(async () => ({ totals: expectedIncome }));
+  const transactions = {
+    aggregates: { query: aggregates },
+    taggedAggregates: { query: taggedAggregates },
+  } satisfies Pick<TransactionsClient, "aggregates" | "taggedAggregates">;
   const persistence = {
     user: vi.fn(() => ({
-      transactions: {
-        aggregates: { query: aggregates },
-        taggedAggregates: { query: taggedAggregates },
-      },
+      transactions,
     })),
   };
 

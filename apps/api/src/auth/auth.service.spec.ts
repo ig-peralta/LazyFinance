@@ -4,7 +4,8 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
-import type { EnvironmentService } from "../environment/environment.service";
+import { testEnvironment } from "../../tests/fixtures/environment";
+import type { AsyncStub } from "../../tests/fixtures/rpc-stubs";
 import type { PersistenceClient } from "../persistence/persistence.client";
 import { AuthService } from "./auth.service";
 import type { FirebaseAuthService } from "./firebase/firebase-auth.service";
@@ -26,23 +27,29 @@ const identity = {
 };
 
 function createService(provider: "firebase" | "mock" = "mock") {
-  const mockVerify = vi.fn((token: string) => {
+  const mockVerify = vi.fn<MockAuthService["verify"]>((token) => {
     if (token !== "lazyfinance-demo-token")
       throw new UnauthorizedException("Invalid mock identity");
 
     return mockIdentity;
   });
-  const login = vi.fn(async () => ({ token: "lazyfinance-demo-token" }));
-  const mock = { verify: mockVerify, login } as unknown as MockAuthService;
-  const verify = vi.fn(async (token: string) => {
+  const login = vi.fn<MockAuthService["login"]>(async () => ({
+    token: "lazyfinance-demo-token",
+  }));
+  const mock = { verify: mockVerify, login } satisfies MockAuthService;
+  const verify = vi.fn<FirebaseAuthService["verify"]>(async (token) => {
     if (token === "lazyfinance-demo-token")
       throw new UnauthorizedException("Invalid Firebase ID token");
 
     return identity;
   });
-  const resolveOrCreate = vi.fn(async () => principal);
-  const resolveExisting = vi.fn(async () => principal);
-  const environment = { get: () => provider } as unknown as EnvironmentService;
+  const resolveOrCreate = vi.fn<
+    AsyncStub<PersistenceClient["resolveOrCreate"]>
+  >(async () => principal);
+  const resolveExisting = vi.fn<
+    AsyncStub<PersistenceClient["resolveExisting"]>
+  >(async () => principal);
+  const environment = testEnvironment({ AUTH_PROVIDER: provider });
   const service = new AuthService(
     environment,
     mock,

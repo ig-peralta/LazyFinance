@@ -1,10 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
+import type { AsyncStub } from "../../tests/fixtures/rpc-stubs";
 import type { PersistenceClient } from "../persistence/persistence.client";
 import { TransactionsService } from "./transactions.service";
 
 const userId = "00000000-0000-4000-8000-000000000001";
 const firstId = "00000000-0000-4000-8000-000000000011";
 const secondId = "00000000-0000-4000-8000-000000000012";
+
+type RecentQuery = AsyncStub<
+  ReturnType<PersistenceClient["user"]>["transactions"]["recent"]["query"]
+>;
 
 describe("TransactionsService", () => {
   it("assembles tagged and untagged movements with a singular nullable tag", async () => {
@@ -47,7 +52,7 @@ describe("TransactionsService", () => {
         reviewStatus: "clear" as const,
       },
     ];
-    const query = vi.fn(async () => rows);
+    const query = vi.fn<RecentQuery>(async () => rows);
     const user = vi.fn(() => ({ transactions: { recent: { query } } }));
     const service = new TransactionsService({
       user,
@@ -95,7 +100,7 @@ describe("TransactionsService", () => {
   });
 
   it("returns no movements for an empty history", async () => {
-    const query = vi.fn(async () => []);
+    const query = vi.fn<RecentQuery>(async () => []);
     const service = new TransactionsService({
       user: () => ({ transactions: { recent: { query } } }),
     } as unknown as PersistenceClient);

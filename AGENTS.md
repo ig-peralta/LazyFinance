@@ -17,7 +17,7 @@ implementation rules in their owning documents instead of duplicating them here.
 | Authentication, providers and internal user identity | [Identity](docs/technical/identity.md) |
 | UI resources, cancellation, sessions and SSR isolation | [UI data lifecycle](docs/technical/ui-data-lifecycle.md) |
 | Installation, environments, Compose and troubleshooting | [Technical manual](docs/technical/technical-manual.md) |
-| Build, formatting, injection, test layout and verification tiers | [Development workflow](docs/technical/development-workflow.md) |
+| Build, formatting, injection, type safety, test layout and verification tiers | [Development workflow](docs/technical/development-workflow.md) |
 | File placement, helper extraction and reuse | [File ownership and extraction](docs/technical/development-workflow.md#file-ownership-and-extraction) |
 | App-specific development | [API](apps/api/README.md), [persistence](apps/persistence/README.md), [UI](apps/ui/README.md) |
 | Provider contracts and prepared banking synchronization | [Banking guide](apps/api/src/banking/README.md) |

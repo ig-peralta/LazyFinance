@@ -36,7 +36,7 @@ describe("DashboardPage data ownership", () => {
       "summaries.monthly",
       "summaries.comparison",
       "objectives.progress",
-    ])
+    ] as const)
       expect(callsTo(procedure)).toHaveLength(1);
 
     await fixture.debugElement.injector
@@ -52,7 +52,7 @@ describe("DashboardPage data ownership", () => {
       "transactions.recent",
       "objectives.list",
       "summaries.comparison",
-    ])
+    ] as const)
       expect(callsTo(procedure)).toHaveLength(1);
 
     expect(TestBed.inject(TransferState).toJson()).toBe("{}");

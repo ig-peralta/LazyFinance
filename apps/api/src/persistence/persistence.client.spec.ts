@@ -1,17 +1,16 @@
 import { generateKeyPairSync } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import type { EnvironmentService } from "../environment/environment.service";
+import { testEnvironment } from "../../tests/fixtures/environment";
 import { PersistenceClient } from "./persistence.client";
 
 function client(key: string) {
-  const values = {
-    PERSISTENCE_RPC_URL: "http://127.0.0.1:3001",
-    PERSISTENCE_RPC_PRIVATE_KEY: key,
-    PERSISTENCE_RPC_KEY_ID: "primary",
-  };
-  return new PersistenceClient({
-    get: (name: keyof typeof values) => values[name],
-  } as EnvironmentService);
+  return new PersistenceClient(
+    testEnvironment({
+      PERSISTENCE_RPC_URL: "http://127.0.0.1:3001",
+      PERSISTENCE_RPC_PRIVATE_KEY: key,
+      PERSISTENCE_RPC_KEY_ID: "primary",
+    }),
+  );
 }
 
 describe("persistence signing-key readiness", () => {

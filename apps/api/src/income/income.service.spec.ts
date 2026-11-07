@@ -3,6 +3,7 @@ import type {
   IncomeSourceRecord,
 } from "@lazyfinance/contracts/internal";
 import { describe, expect, it } from "vitest";
+import type { RpcStubs } from "../../tests/fixtures/rpc-stubs";
 import type { PersistenceClient } from "../persistence/persistence.client";
 import { IncomeService } from "./income.service";
 
@@ -35,7 +36,16 @@ const receipt: IncomeFacts["receipts"][number] = {
   removedAt: null,
 };
 
-const service = (income: object) =>
+type IncomeClient = RpcStubs<ReturnType<PersistenceClient["user"]>["income"]>;
+
+type IncomeReads = {
+  [Method in "expectedFacts" | "receipts" | "facts"]?: Pick<
+    IncomeClient[Method],
+    "query"
+  >;
+};
+
+const service = (income: IncomeReads) =>
   new IncomeService({
     user: () => ({ income }),
   } as unknown as PersistenceClient);
