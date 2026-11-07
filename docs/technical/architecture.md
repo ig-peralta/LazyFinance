@@ -100,6 +100,13 @@ revision, including later corrections to purchases tracked before archival.
 Incompatible corrected facts retain the allocation as `needs_review` without
 reducing spending. See the [recovery rules](rpc-contracts.md#expense-recovery-semantics).
 
+Savings eligibility is defined and unit-tested as selected, signed cash allocations:
+credits add and debits withdraw on checking/savings accounts, without requiring
+known internal status or complete history. Same-goal tagged transfer legs net to
+zero; goal totals sharing tags overlap. This is not an account balance or a new
+progress endpoint. Existing savings reads remain target-only; see the
+[savings policy](../../apps/api/README.md#savings-contribution-policy-laz-35).
+
 Money remains exact decimal strings; calendar dates remain strings. Checking/savings
 cash and credit-card liabilities retain their existing meanings. Confirmed internal
 transfers/card payments do not count as spending/income. Unknown/review/removed
@@ -108,7 +115,7 @@ belongs to each transaction; expectations, receipts and balances remain distinct
 
 The UI has a working dashboard; tags/objective management destinations remain
 labelled placeholders. Provider linking/Fintoc mapping, conversational agents,
-external MCP authorization and unagreed savings-progress policies are not delivered
+external MCP authorization and measured savings-progress APIs/UI are not delivered
 by this infrastructure refactor.
 
 ## Operations
