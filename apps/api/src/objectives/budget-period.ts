@@ -1,6 +1,6 @@
 import type { ObjectiveSummary } from "@lazyfinance/contracts";
 import { monthBounds } from "../utils/period";
-import { santiagoTimestamp } from "../utils/santiago-time";
+import { compareBudgetBoundaries } from "./budget-policy";
 
 export type BudgetPeriod = "monthly" | "yearly" | "fixed";
 
@@ -15,12 +15,8 @@ export function budgetPeriod(
     return null;
 
   const { start: monthStart, end: monthEnd } = monthBounds(month);
-  const startsAt = objective.startDate
-    ? santiagoTimestamp(new Date(objective.startDate))
-    : null;
-  const endsAt = objective.endDate
-    ? santiagoTimestamp(new Date(objective.endDate))
-    : null;
+  const startsAt = objective.startDate;
+  const endsAt = objective.endDate;
   let start: string;
   let end = monthEnd;
   let period: BudgetPeriod;
@@ -38,11 +34,16 @@ export function budgetPeriod(
     return null;
   }
 
-  if (startsAt) start = start > startsAt ? start : startsAt;
+  if (startsAt && compareBudgetBoundaries(startsAt, start) > 0)
+    start = startsAt;
 
-  if (endsAt) end = end < endsAt ? end : endsAt;
+  if (endsAt && compareBudgetBoundaries(endsAt, end) < 0) end = endsAt;
 
-  if (start >= end || start >= monthEnd || (endsAt && endsAt <= monthStart))
+  if (
+    compareBudgetBoundaries(start, end) >= 0 ||
+    compareBudgetBoundaries(start, monthEnd) >= 0 ||
+    (endsAt && compareBudgetBoundaries(endsAt, monthStart) <= 0)
+  )
     return null;
 
   return { start, end, period };

@@ -18,6 +18,12 @@ describe("Budget progress resource view", () => {
           spent: "300000.00",
           remaining: "-20000.00",
           percentage: 107,
+          revisionId: "00000000-0000-4000-8000-000000000041",
+          tracking: {
+            start: "2026-09-01T04:00:00Z",
+            end: "2026-10-01T03:00:00Z",
+            archivedAt: null,
+          },
         },
         {
           id: "trip",
@@ -28,6 +34,12 @@ describe("Budget progress resource view", () => {
           spent: "350000.00",
           remaining: "300000.00",
           percentage: 53,
+          revisionId: "00000000-0000-4000-8000-000000000042",
+          tracking: {
+            start: "2026-01-01T03:00:00Z",
+            end: "2026-10-01T03:00:00Z",
+            archivedAt: null,
+          },
         },
       ],
     });
@@ -42,6 +54,39 @@ describe("Budget progress resource view", () => {
     const bars = fixture.nativeElement.querySelectorAll('[role="progressbar"]');
     expect(bars[0].getAttribute("aria-valuenow")).toBe("100");
     expect(bars[1].getAttribute("aria-valuenow")).toBe("53");
+    expect(TestBed.inject(TransferState).toJson()).toBe("{}");
+  });
+
+  it("labels archived partial windows without replacing their original limit", async () => {
+    setupRpc({
+      "objectives.progress": () => [
+        {
+          id: "food",
+          name: "Supermercado",
+          month: "2026-09",
+          period: "monthly",
+          limit: "280000.00",
+          spent: "20000.00",
+          remaining: "260000.00",
+          percentage: 7,
+          revisionId: "00000000-0000-4000-8000-000000000041",
+          tracking: {
+            start: "2026-09-01T04:00:00Z",
+            end: "2026-09-15T15:00:00Z",
+            archivedAt: "2026-09-15T15:00:00Z",
+          },
+        },
+      ],
+    });
+    const fixture = TestBed.createComponent(BudgetProgressView);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain("Archivado");
+    expect(text).toContain("fin excluido");
+    expect(text).toContain("Se conserva el límite original");
+    expect(text).toContain("$280.000");
     expect(TestBed.inject(TransferState).toJson()).toBe("{}");
   });
 });

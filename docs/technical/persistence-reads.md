@@ -22,12 +22,16 @@ provider pages and generated recurrence dates are not persisted relations.
 ## Choose the smallest useful read
 
 - **Stored parent/child data:** return the nested relationship from persistence.
-  `objectives.list` uses an ordered correlated JSON aggregation for tags. Parent
+  `objectives.list` selects the effective budget configuration (or an unstarted
+  first definition) and uses an ordered correlated JSON aggregation for tags. Parent
   limits apply to objectives, not flattened objective/tag rows; no tags means `[]`.
 - **Totals:** send identifiers and explicit time windows; return signed decimal
-  sums/counts. `objectives.spending` joins requested windows to owned objectives,
-  their tag links and eligible debit movements. The API chooses monthly/yearly/
-  fixed windows and interprets the signed sum as spending. A retained objective
+  sums/counts. `objectives.forPeriod` selects applicable spending definitions;
+  `spending` pins their revision IDs, joins revision-specific tags and eligible
+  debit movements, and intersects exact activation/end/archive bounds. The API
+  chooses monthly/yearly/fixed windows and interprets the signed sum as spending.
+  Returned bounds/archival state come from the aggregate statement, so a concurrent
+  archive cannot leave a stale cutoff paired with a new total. A retained objective
   with no matching movements returns zero; a foreign/deleted objective is absent.
 - **Different projection needs:** keep different reads, sharing the SQL predicate
   builder rather than making every caller receive the largest result.

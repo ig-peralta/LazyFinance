@@ -136,7 +136,8 @@ middleware receive `RUNTIME_DB`. The proxy permits harmless constructor reflecti
 for NestJS-tRPC provider discovery, not raw connection access.
 
 Normal procedures use read-committed. `income.expectedFacts`, `income.facts`,
-`tagRules.facts`, `tagRules.candidates` and `providerSync.facts` request repeatable-read snapshots.
+`tagRules.facts`, `tagRules.candidates`, `providerSync.facts`, `objectives.budget`
+and `objectives.budgetHistory` request repeatable-read snapshots.
 All user mutations acquire the same per-user advisory transaction lock. This
 serializes writes affecting prepared inputs, including rule insertion/removal
 that a row-only lock might miss. It is not a lock around provider network calls
@@ -149,7 +150,7 @@ incorrectly commit. Result-size failures also throw before commit.
 
 ## RLS and related ownership
 
-All 16 sensitive application tables enable **and force** RLS. The seventeenth,
+All 18 sensitive application tables enable **and force** RLS. The nineteenth,
 `finance.provider`, is a shared runtime-read-only catalog. Runtime grants and RLS
 are both required: a policy alone is not permission to access a table.
 
@@ -158,7 +159,9 @@ use direct owners or indexed parent ownership paths. Writes independently check
 related owners: an owned transaction cannot reference another user's tag/rule,
 a receipt needs both an owned movement and source, and an objective-tag link
 needs both owned ends. FKs alone cannot establish this. Tag decision events allow
-runtime SELECT/INSERT but not UPDATE/DELETE. Identity mappings remain
+runtime SELECT/INSERT but not UPDATE/DELETE. Budget revisions check a spending
+parent owner and permit runtime updates only to supersession metadata; their tag
+links are append-only and check both owners. Identity mappings remain
 bootstrap-only rather than becoming a user-readable identity directory.
 
 The local GUC is trusted because authenticated persistence owns SQL execution,
@@ -173,6 +176,7 @@ or generic transaction scripts.
 | --- | --- | --- |
 | Income confirmation | Lock/check source and eligible movement; upsert one receipt | Calendar/money calculations and response composition |
 | Tag decision | Decision and append-only event together | Normalize/rank rules and calculate suggestions |
+| Budget create/edit/archive | Check owned active tags and expected version; save revision/tag links, supersede pending versions or record one archival cutoff atomically | Supported periods, Santiago boundaries, next-period edits and exact remaining/progress arithmetic |
 | Prepared rule application | Re-read candidate fingerprint, check eligibility, persist decisions/events | Match the bounded candidate page |
 | Provider sync commit | Check revision/fingerprint; persist facts, tombstones, conflicts, decisions/events and checkpoint together | Fetch/validate all pages and prepare classifications |
 

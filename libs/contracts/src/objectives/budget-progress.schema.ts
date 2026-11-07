@@ -10,6 +10,12 @@ export const BudgetProgressSchema = z.object({
   spent: z.string(),
   remaining: z.string(),
   percentage: z.number().int().nonnegative(),
+  revisionId: z.uuid(),
+  tracking: z.object({
+    start: z.iso.datetime(),
+    end: z.iso.datetime(),
+    archivedAt: z.iso.datetime().nullable(),
+  }),
 });
 
 export type BudgetProgress = z.infer<typeof BudgetProgressSchema>;

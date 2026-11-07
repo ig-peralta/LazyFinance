@@ -1,4 +1,5 @@
 import type {
+  BudgetRevision,
   IncomeExpectation,
   ObjectiveSummary,
   TagSummary,
@@ -74,8 +75,20 @@ interface FixtureTables {
     endDate: Date | null;
     createdAt: string;
     updatedAt: string;
+    budgetVersion: number;
+    archivedAt: Date | null;
   };
   objective_tag: { objectiveId: string; tagId: string };
+  budget_revision: Omit<
+    BudgetRevision,
+    "budgetId" | "tags" | "startDate" | "endDate" | "effectiveFrom"
+  > & {
+    objectiveId: string;
+    startDate: Date | null;
+    endDate: Date | null;
+    effectiveFrom: Date;
+  };
+  budget_revision_tag: { revisionId: string; tagId: string };
   income_source: IncomeSourceRecord;
   income_expectation: IncomeExpectation;
   income_receipt: {
@@ -146,6 +159,8 @@ const schemas = {
   income_receipt: "finance",
   objective: "finance",
   objective_tag: "finance",
+  budget_revision: "finance",
+  budget_revision_tag: "finance",
   provider_sync_state: "finance",
   provider_movement_removal: "finance",
   provider_movement_conflict: "finance",

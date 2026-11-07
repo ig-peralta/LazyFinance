@@ -33,8 +33,8 @@ code cannot import private schemas, signing code, Nest or database implementatio
 | PostgreSQL | Exact stored facts, constraints/keys, related-owner RLS and transaction atomicity | Firebase verification, product authorization for external MCP clients |
 
 Public/private tRPC are separate surfaces, not two routes to the same router.
-The public generated library contains 34 procedures; the private library contains
-38, including bootstrap-only `identity.resolve`. `/mcp` exposes seven authenticated
+The public generated library contains 39 procedures; the private library contains
+44, including bootstrap-only `identity.resolve`. `/mcp` exposes seven authenticated
 read-only tools through the API's domain services, not direct persistence queries.
 Ordinary HTTP remains only for API `GET /`, persistence `GET /health` and MCP
 transport. Inventories and schema-change rules live in the

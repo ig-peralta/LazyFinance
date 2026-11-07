@@ -13,7 +13,7 @@ import { z } from "zod";
 
 const t = initTRPC.create();
 const publicProcedure = t.procedure;
-import { RpcEmptySchema, AccountsResultSchema, AuthConfigSchema, MockLoginInputSchema, MockLoginResultSchema, AuthPrincipalSchema, IncomeSourcesResultSchema, RpcIdSchema, IncomeSourceSchema, IncomeSourceInputSchema, ReplaceIncomeSourceSchema, IncomeExpectationsResultSchema, CreateIncomeExpectationSchema, IncomeExpectationSchema, ReplaceIncomeExpectationSchema, RpcVoidSchema, RpcMonthSchema, ExpectedIncomeSchema, IncomeReceiptsResultSchema, ConfirmIncomeReceiptSchema, IncomeReceiptSchema, IncomeSummarySchema, ObjectivesResultSchema, BudgetProgressResultSchema, MonthlySummarySchema, MonthlyComparisonSchema, TagsResultSchema, TagCreateInputSchema, TagSummarySchema, SuggestionsResultSchema, SetTagSchema, TagDecisionSchema, TagRulesResultSchema, TagRuleInputSchema, TagRuleResultSchema, ReplaceTagRuleSchema, ApplyTagRuleSchema, AppliedTagRuleSchema, RecentTransactionsResultSchema, TransactionsInputSchema, TransactionsPageSchema } from "@lazyfinance/contracts";
+import { RpcEmptySchema, AccountsResultSchema, AuthConfigSchema, MockLoginInputSchema, MockLoginResultSchema, AuthPrincipalSchema, IncomeSourcesResultSchema, RpcIdSchema, IncomeSourceSchema, IncomeSourceInputSchema, ReplaceIncomeSourceSchema, IncomeExpectationsResultSchema, CreateIncomeExpectationSchema, IncomeExpectationSchema, ReplaceIncomeExpectationSchema, RpcVoidSchema, RpcMonthSchema, ExpectedIncomeSchema, IncomeReceiptsResultSchema, ConfirmIncomeReceiptSchema, IncomeReceiptSchema, IncomeSummarySchema, ObjectivesResultSchema, BudgetDetailSchema, BudgetHistoryInputSchema, BudgetHistoryPageSchema, CreateBudgetInputSchema, UpdateBudgetInputSchema, BudgetVersionInputSchema, BudgetProgressResultSchema, MonthlySummarySchema, MonthlyComparisonSchema, TagsResultSchema, TagCreateInputSchema, TagSummarySchema, SuggestionsResultSchema, SetTagSchema, TagDecisionSchema, TagRulesResultSchema, TagRuleInputSchema, TagRuleResultSchema, ReplaceTagRuleSchema, ApplyTagRuleSchema, AppliedTagRuleSchema, RecentTransactionsResultSchema, TransactionsInputSchema, TransactionsPageSchema } from "@lazyfinance/contracts";
 
 const appRouter = t.router({
   accounts: t.router({
@@ -99,6 +99,26 @@ const appRouter = t.router({
       .input(RpcEmptySchema)
       .output(ObjectivesResultSchema)
       .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    budget: publicProcedure
+      .input(RpcIdSchema)
+      .output(BudgetDetailSchema)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    budgetHistory: publicProcedure
+      .input(BudgetHistoryInputSchema)
+      .output(BudgetHistoryPageSchema)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    createBudget: publicProcedure
+      .input(CreateBudgetInputSchema)
+      .output(BudgetDetailSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    updateBudget: publicProcedure
+      .input(UpdateBudgetInputSchema)
+      .output(BudgetDetailSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    archiveBudget: publicProcedure
+      .input(BudgetVersionInputSchema)
+      .output(BudgetDetailSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
     progress: publicProcedure
       .input(RpcMonthSchema)
       .output(BudgetProgressResultSchema)

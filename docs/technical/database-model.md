@@ -1,8 +1,8 @@
 # Implemented database model
 
 This reference describes the checked-in Kysely migrations, not a conceptual
-product model. PostgreSQL 18 holds **17 application tables** in fixed `identity`
-and `finance` schemas. Sixteen sensitive tables force user/identity RLS;
+product model. PostgreSQL 18 holds **19 application tables** in fixed `identity`
+and `finance` schemas. Eighteen sensitive tables force user/identity RLS;
 `finance.provider` is the shared read-only catalog exception. There is no tenancy,
 membership or account-sharing model. See [security and RLS](persistence-security.md)
 for policy/grant details.
@@ -31,8 +31,10 @@ All unqualified table names in the finance section below belong to `finance`.
 | `tag` | `id`; unique `(user_id, name)` | User-owned catalog with archive flag |
 | `tag_rule` | `id` → owned tag and optional owned account | User-owned exact-match suggestion or approved automatic rule |
 | `tag_decision_event` | `id` → movement, optional previous/new tags and rule; `user_id` | Runtime append-only audit history, with every referenced owner checked |
-| `objective` | `id`; `user_id` | User-owned amount/time-based spending/saving declaration |
+| `objective` | `id`; `user_id` | Stable spending/saving declaration identity; spending write version and archival cutoff |
 | `objective_tag` | PK `(objective_id, tag_id)` | Both ends must be owned; multiple tags may describe one budget |
+| `budget_revision` | `id` → spending objective; unique `(objective_id, version)` and live effective boundary | Immutable configuration payload; runtime may update only supersession metadata |
+| `budget_revision_tag` | PK `(revision_id, tag_id)` | Append-only revision selection; both revision and tag must be owned |
 | `income_source` | `id`; `user_id` | Regularity, amount behavior, schedule and effective dates |
 | `income_expectation` | `id` → source | Source-owned dated expectation for irregular income |
 | `income_receipt` | PK `transaction_id`; `source_id` | At most one confirmed source per movement; both ends owned |
@@ -79,6 +81,9 @@ erDiagram
     finance_tag_rule o|--o{ finance_tag_decision_event : explains
     finance_objective ||--o{ finance_objective_tag : selects
     finance_tag ||--o{ finance_objective_tag : groups
+    finance_objective ||--o{ finance_budget_revision : retains
+    finance_budget_revision ||--o{ finance_budget_revision_tag : selects
+    finance_tag ||--o{ finance_budget_revision_tag : groups
     finance_income_source ||--o{ finance_income_expectation : plans
     finance_income_source ||--o{ finance_income_receipt : receives
     finance_transaction ||--o| finance_income_receipt : confirms
@@ -142,6 +147,16 @@ erDiagram
         uuid objective_id PK, FK
         uuid tag_id PK, FK
     }
+    finance_budget_revision {
+        uuid id PK
+        uuid objective_id FK
+        int version
+        timestamptz effective_from
+    }
+    finance_budget_revision_tag {
+        uuid revision_id PK, FK
+        uuid tag_id PK, FK
+    }
     finance_income_source {
         uuid id PK
         uuid user_id FK
@@ -201,6 +216,12 @@ evidence, not guaranteed local relational links.
 - Objective checks distinguish amount-only declarations, recurring time-based
   periods and bounded one-off periods. A stored saving intent does not by itself
   implement savings-progress policy.
+- Spending revisions retain definition-specific tag membership. Initial adoption
+  preserves existing IDs, actual timestamp bounds and the known selection without
+  inventing earlier revisions. Superseded pending definitions remain auditable.
+  Archival truncates tracking without prorating the limit or freezing transactions;
+  historical tag metadata remains readable. Savings declarations retain their
+  existing model. Budget timestamp projections preserve SQL microseconds.
 
 SQL checks protect representation and relationships; they do not replace API
 calendar calculations or authoritative command checks. For example, receipt
@@ -226,12 +247,12 @@ workflow has been shipped.
 
 ## Migration and seed lifecycle
 
-Twenty small migrations are globally ordered across `migrations/identity` and
+Twenty-one migrations are globally ordered across `migrations/identity` and
 `migrations/finance`: schema/bootstrap foundations plus the table migrations.
 Kysely's PostgreSQL migrator owns locking and transactional DDL/ledger updates.
 Each new sensitive table brings its constraints, indexes, grants and RLS together;
 do not create an unprotected intermediate migration. The owner-only Kysely ledger
-is infrastructure, not an eighteenth application table or an RPC feature.
+is infrastructure, not an application table or an RPC feature.
 
 Use a **fresh empty database**. There is no Drizzle journal adoption, old-data
 import, automatic reset or legacy relocation path. Already applied migrations

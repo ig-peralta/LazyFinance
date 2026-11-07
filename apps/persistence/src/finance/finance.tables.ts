@@ -1,4 +1,6 @@
 import type { AccountTables } from "./account/account.tables";
+import type { BudgetRevisionTables } from "./budget-revision/budget-revision.tables";
+import type { BudgetRevisionTagTables } from "./budget-revision-tag/budget-revision-tag.tables";
 import type { IncomeExpectationTables } from "./income-expectation/income-expectation.tables";
 import type { IncomeReceiptTables } from "./income-receipt/income-receipt.tables";
 import type { IncomeSourceTables } from "./income-source/income-source.tables";
@@ -15,6 +17,8 @@ import type { TagRuleTables } from "./tag-rule/tag-rule.tables";
 import type { TransactionTables } from "./transaction/transaction.tables";
 
 export type FinanceTables = AccountTables &
+  BudgetRevisionTables &
+  BudgetRevisionTagTables &
   ProviderTables &
   ProviderConnectionTables &
   TransactionTables &

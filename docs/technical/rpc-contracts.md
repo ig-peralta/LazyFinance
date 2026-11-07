@@ -44,14 +44,14 @@ inferred Promises; there is no cross-app source import or HTTP/Observable adapte
 ## Public surface
 
 The [generated public router](../../libs/rpc-api/src/generated/server.ts) currently
-contains **34 procedures**. Prefix each method below with its router name.
+contains **39 procedures**. Prefix each method below with its router name.
 
 | Router | Methods | Responsibility |
 | --- | --- | --- |
 | `auth` | `config`, `loginMock`, `principal` | Provider selection, local mock login, verified principal |
 | `accounts` | `list` | Active accounts, balances and freshness |
 | `transactions` | `recent`, `list` | Ten-movement preview and cursor-paginated history with tag/review provenance |
-| `objectives` | `list`, `progress` | Objectives and supported spending-budget progress |
+| `objectives` | `list`, `progress`, `budget`, `budgetHistory`, `createBudget`, `updateBudget`, `archiveBudget` | Effective objectives, revisioned spending-budget management/history and progress |
 | `summaries` | `monthly`, `comparison` | Financial summary and equivalent-period comparison |
 | `income` | `sources`, `source`, `createSource`, `updateSource`, `archiveSource`, `expectations`, `createExpectation`, `updateExpectation`, `removeExpectation`, `expected`, `receipts`, `confirm`, `clear`, `summary` | Declarations, dated expectations, explicit receipts and calculated summaries |
 | `tags` | `list`, `create`, `suggestions`, `decide`, `reset` | Single-tag classification and explicit no-tag/reset choices |
@@ -74,7 +74,7 @@ are not implemented by this RPC cutover.
 ## Private surface
 
 The [generated private router](../../libs/rpc-persistence/src/generated/server.ts)
-currently contains **38 procedures**. They expose owned facts and authoritative
+currently contains **44 procedures**. They expose owned facts and authoritative
 commands rather than copying public screen calculations into persistence.
 
 | Router | Methods |
@@ -82,7 +82,7 @@ commands rather than copying public screen calculations into persistence.
 | `identity` | `resolve` (bootstrap only) |
 | `accounts` | `listActive` |
 | `transactions` | `recent`, `list`, `aggregates`, `taggedAggregates` |
-| `objectives` | `list` (nested tags), `spending` (signed sums/counts for API-supplied windows) |
+| `objectives` | `list` (effective definitions/nested tags), `forPeriod`, `spending` (revision-pinned sums/windows), `budget`, `budgetHistory`, `createBudget`, `updateBudget`, `archiveBudget` |
 | `income` | `sources`, `source`, `createSource`, `updateSource`, `archiveSource`, `expectedFacts`, `receipts`, `facts` |
 | `incomeExpectations` | `list`, `create`, `update`, `remove` |
 | `incomeReceipts` | `confirm`, `clear` |
@@ -101,6 +101,16 @@ classification-only aggregates, joined tag aggregates, or a complete snapshot.
 Do not reintroduce table-shaped reads for the API to join or aggregate itself.
 
 ## Wire semantics and transport
+
+Budget creation accepts monthly/yearly calendar-aligned starts or fixed inclusive
+local dates. Started recurring edits take effect next month/year; started fixed
+budgets and started schedules cannot be edited. Updates/archive require an expected
+version. Details separate effective and pending definitions; `budgetHistory` uses
+the shared cursor envelope, bound to the budget ID. Archive is server-timed and
+idempotent, cancels pending revisions and preserves historical configuration.
+Progress includes its revision ID and exact tracking bounds/archival state; late
+eligible financial facts may still reconcile earlier totals. No MCP write tools
+or management screen are added by these operations.
 
 - Money is an exact decimal string, not a floating-point JSON number. Nullable
   balances stay nullable; unknown is not zero. PostgreSQL numeric/int8 parsers

@@ -34,7 +34,7 @@ describe("budgetPeriod", () => {
     };
     expect(budgetPeriod(fixed, "2025-09")).toEqual({
       period: "fixed",
-      start: "2025-09-01 11:00:00",
+      start: fixed.startDate,
       end: "2025-10-01 00:00:00",
     });
     expect(budgetPeriod(fixed, "2026-09")).toBeNull();

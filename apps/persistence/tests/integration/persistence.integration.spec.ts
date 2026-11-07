@@ -198,6 +198,13 @@ describe.skipIf(!ownerUrl)(
         await sql`insert into finance.objective_tag(objective_id,tag_id) values (${objective},${tag})`.execute(
           owner,
         );
+        await sql`insert into finance.budget_revision(id,objective_id,version,name,amount,kind,effective_from)
+          values (${objective},${objective},1,'Initial',1,'amount_based',now())`.execute(
+          owner,
+        );
+        await sql`insert into finance.budget_revision_tag(revision_id,tag_id) values (${objective},${tag})`.execute(
+          owner,
+        );
         await sql`insert into finance.tag_decision_event(user_id,transaction_id,tag_id,rule_id,kind) values (${user},${movement},${tag},${rule},'manual_tag')`.execute(
           owner,
         );
@@ -262,7 +269,7 @@ describe.skipIf(!ownerUrl)(
           .filter((name) => !name.startsWith("failure."))
           .sort(),
       ).toEqual(expected.sort());
-      expect(expected).toHaveLength(37);
+      expect(expected).toHaveLength(44);
 
       for (const name of expected)
         expect(procedures[name]._def.meta).toMatchObject({
@@ -270,7 +277,7 @@ describe.skipIf(!ownerUrl)(
         });
     });
 
-    it("migrates idempotently and enables/forces RLS on all 16 sensitive tables", async () => {
+    it("migrates idempotently and enables/forces RLS on all 18 sensitive tables", async () => {
       expect(await migrate(owner, migrationProvider())).toEqual([]);
       const { rows } = await sql<{
         relrowsecurity: boolean;
@@ -279,7 +286,7 @@ describe.skipIf(!ownerUrl)(
       from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname in ('identity','finance') and c.relkind='r' and c.relname != 'provider'`.execute(
         owner,
       );
-      expect(rows).toHaveLength(16);
+      expect(rows).toHaveLength(18);
       expect(
         rows.every((row) => row.relrowsecurity && row.relforcerowsecurity),
       ).toBe(true);
@@ -324,6 +331,8 @@ describe.skipIf(!ownerUrl)(
         "tag_decision_event",
         "objective",
         "objective_tag",
+        "budget_revision",
+        "budget_revision_tag",
         "income_source",
         "income_expectation",
         "income_receipt",
@@ -406,6 +415,53 @@ describe.skipIf(!ownerUrl)(
         runtime,
       );
       expect(settings).toEqual({ user_id: null, request_id: null });
+    });
+
+    it("protects budget revision ownership and prevents rewriting configuration payloads", async () => {
+      await withRequestContext(runtime, ctx(a), async (tx) => {
+        const revisions = await sql<{
+          id: string;
+        }>`select id from finance.budget_revision`.execute(tx);
+        const links = await sql<{
+          revision_id: string;
+        }>`select revision_id from finance.budget_revision_tag`.execute(tx);
+        expect(revisions.rows.map((row) => row.id)).toEqual([objectiveA]);
+        expect(links.rows.map((row) => row.revision_id)).toEqual([objectiveA]);
+      });
+      for (const work of [
+        (db: QueryExecutorProvider) =>
+          sql`insert into finance.budget_revision(objective_id,version,name,amount,kind,effective_from)
+          values (${objectiveB},2,'Foreign',1,'amount_based',now())`.execute(
+            db,
+          ),
+        (db: QueryExecutorProvider) =>
+          sql`insert into finance.budget_revision_tag(revision_id,tag_id)
+          values (${objectiveA},${tagB})`.execute(db),
+        (db: QueryExecutorProvider) =>
+          sql`insert into finance.budget_revision_tag(revision_id,tag_id)
+          values (${objectiveB},${tagA})`.execute(db),
+      ])
+        await expect(withRequestContext(runtime, ctx(a), work)).rejects.toThrow(
+          /row-level security/,
+        );
+
+      for (const work of [
+        (db: QueryExecutorProvider) =>
+          sql`update finance.budget_revision set amount=2 where id=${objectiveA}`.execute(
+            db,
+          ),
+        (db: QueryExecutorProvider) =>
+          sql`delete from finance.budget_revision where id=${objectiveA}`.execute(
+            db,
+          ),
+        (db: QueryExecutorProvider) =>
+          sql`delete from finance.budget_revision_tag where revision_id=${objectiveA}`.execute(
+            db,
+          ),
+      ])
+        await expect(withRequestContext(runtime, ctx(a), work)).rejects.toThrow(
+          /permission denied/,
+        );
     });
 
     it("denies cross-user foreign references and owner reassignment", async () => {
@@ -1119,6 +1175,7 @@ describe.skipIf(!ownerUrl)(
       };
       const windows = [monthly, shorter, empty, objectiveB].map((id) => ({
         id,
+        revisionId: id,
         start: id === shorter ? "2026-09-10 00:00:00" : period.start,
         end: period.end,
       }));
@@ -1129,9 +1186,24 @@ describe.skipIf(!ownerUrl)(
       expect(totals).toHaveLength(3);
       expect(totals).toEqual(
         expect.arrayContaining([
-          { id: monthly, amount: "-21.00", count: 3 },
-          { id: shorter, amount: "-20.00", count: 2 },
-          { id: empty, amount: "0", count: 0 },
+          expect.objectContaining({
+            id: monthly,
+            revisionId: monthly,
+            amount: "-21.00",
+            count: 3,
+          }),
+          expect.objectContaining({
+            id: shorter,
+            revisionId: shorter,
+            amount: "-20.00",
+            count: 2,
+          }),
+          expect.objectContaining({
+            id: empty,
+            revisionId: empty,
+            amount: "0",
+            count: 0,
+          }),
         ]),
       );
       await expect(
