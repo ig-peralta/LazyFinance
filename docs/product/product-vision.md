@@ -44,6 +44,13 @@ Use representative demo scenarios to build and revisit the model. The goal is **
 
 Advance the financial API, web workflows, real-user identity, external MCP authorization, provider connectivity and our own text agent as parallel tracks. Define a neutral bank connector and implement Fintoc as its first adapter. Establish client discovery and user authorization to enable third-party MCP workflows. The first-party agent should draw on the same user-scoped financial capabilities; MCP access for other agents complements it rather than replacing it.
 
+While Stage B was being built, the [platform direction evolved](../planning/stage-b/platform-evolution.md)
+to make persistence, contracts, ownership and session boundaries explicit. That
+record explains the engineering changes supporting these product intentions;
+it does not replace the stage's workstreams or certify their completion. The
+[stage planning guide](../planning/stage-b/README.md) maps the recorded workstreams
+to their gate criteria.
+
 ### Stage C — broaden the experience
 
 Voice can extend a useful, reliable text experience. Advanced analysis (such as projections, anomalies, duplicate charges, price changes and goal simulations), further provider adapters and other financial capabilities are possible directions as their data needs and value become clear. MCP-enabled use cases can be considered alongside them. **Stage C work is selected only after Stage B is closed and reviewed**, so these examples do not prescribe its scope.
