@@ -21,6 +21,24 @@ because a supporting implementation has merged.
 | [Provider-neutral banking and Fintoc](../snapshots/backlog-2026-11-02.md#provider-neutral-banking-and-fintoc--laz-28) | LAZ-28 | Owned linking and repeatable normalized imports that preserve decisions and expose sync quality |
 | [First-party text assistant](../snapshots/backlog-2026-11-02.md#first-party-text-assistant--laz-26) | LAZ-26 | Authenticated Spanish conversations grounded in existing financial services, without financial writes |
 
+These are Linear issue identifiers, not GitHub PR numbers. For example, LAZ-26
+is the text-assistant workstream; PR #26 is part of the platform work described
+below.
+
+## Cross-cutting work alongside the stage
+
+While Stage B was being built, PRs #26, #27 and #28 changed the engineering
+direction toward a shared financial capability layer with explicit persistence,
+contract, ownership and session boundaries. The
+[platform-evolution rationale](platform-evolution.md) explains why this supports
+the product, what changed and what it does not deliver on behalf of the six
+workstreams.
+
+This is supporting work within Stage B, not another stage, a replacement backlog
+or a gate decision. Current implementation details belong in the
+[technical guides](../../technical/README.md); issue status continues to belong
+in Linear.
+
 ## Completion and handoff
 
 Use the [Stage B Definition of Done](definition-of-done.md) and each committed

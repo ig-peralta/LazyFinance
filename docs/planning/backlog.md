@@ -21,7 +21,7 @@ states or proving every issue's acceptance criteria.
 | Stage | Recorded issue scope | Stage-owned guidance and evidence |
 | --- | --- | --- |
 | [A — financial core](stage-a/README.md) | 19 issues, all Done at capture | [Closure](stage-a/closure.md), [documentary retrospective](stage-a/retrospective.md) and [gate criteria](stage-a/definition-of-done.md); not a reconstructed start-of-sprint selection |
-| [B — parallel product tracks](stage-b/README.md) | 46 issues across six workstreams in the snapshot | [Workstream map](stage-b/README.md#workstreams-from-linear) and [gate criteria](stage-b/definition-of-done.md); closure/retrospective follow the gate |
+| [B — parallel product tracks](stage-b/README.md) | 46 issues across six workstreams in the snapshot | [Workstream map](stage-b/README.md#workstreams-from-linear), [platform-evolution rationale](stage-b/platform-evolution.md) and [gate criteria](stage-b/definition-of-done.md); closure/retrospective follow the gate |
 | [C — expanded experience](stage-c/README.md) | No issues in the snapshot | [Selection rules](stage-c/README.md#direction-is-not-a-selected-backlog) and [gate criteria](stage-c/definition-of-done.md); commitments are selected only after the Stage B review |
 
 The [all-issue snapshot](snapshots/backlog-2026-11-02.md) contains every parent,

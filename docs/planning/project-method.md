@@ -8,8 +8,12 @@ Financial answers depend on decisions about balances, transfers, budgets, income
 
 The Phase 1 guide proposed starting with Fintoc. The Phase 2 guide and the current [product vision](../product/product-vision.md#development-sequence-and-decision-gates) record the change to **core validation before Fintoc**. The Stage A gate (LAZ-18) is documented in the [Stage A closure record](stage-a/closure.md); subsequent work proceeds in parallel under the Stage B milestone. This change in sequence is part of the project history, not a claim that the initial Fintoc integration is already delivered.
 
-The [planning index](README.md) organizes stage criteria and historical evidence
-separately from current technical specifications.
+While Stage B was being built, the [platform direction evolved](stage-b/platform-evolution.md)
+toward shared financial capabilities with explicit persistence, contract, identity
+and session boundaries. This supports the existing product intentions rather than
+replacing the six Stage B workstreams. The [planning index](README.md) separates
+that rationale from stage criteria, historical evidence and current technical
+specifications.
 
 ## Planning and execution
 

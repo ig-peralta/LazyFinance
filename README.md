@@ -115,6 +115,7 @@ reading order and distinction between implementation, evidence and targets.
 | [Product Definition of Done](docs/planning/product-definition-of-done.md) | Agreed-release exit checklist |
 | [Stage A](docs/planning/stage-a/README.md) | Financial-core gate criteria, [closure](docs/planning/stage-a/closure.md) and [documentary retrospective](docs/planning/stage-a/retrospective.md) |
 | [Stage B](docs/planning/stage-b/README.md) | Six parallel workstreams and gate criteria |
+| [Platform evolution alongside Stage B](docs/planning/stage-b/platform-evolution.md) | Product intentions, engineering direction and boundaries of PRs #26–#28 |
 | [Stage C](docs/planning/stage-c/README.md) | Candidate direction, post-Stage-B selection rules and gate criteria |
 | [Stage-sprint record template](docs/planning/stage-sprint-record-template.md) | Future planning/closure/retrospective record fields; not completed meeting evidence |
 | [Backlog snapshot — 2026-11-02](docs/planning/snapshots/backlog-2026-11-02.md) | All 65 issues and individual completion checks at extraction time |

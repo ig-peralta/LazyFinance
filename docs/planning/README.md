@@ -11,8 +11,14 @@ introduce separate Linear cycles or additional stages.
 | Stage | Purpose | Start here |
 | --- | --- | --- |
 | A — financial-core validation | Establish financial meaning with controlled data before provider integration | [Scope and evidence](stage-a/README.md), [closure](stage-a/closure.md), [documentary retrospective](stage-a/retrospective.md) |
-| B — parallel product tracks | Advance financial services, web workflows, identity, external MCP authorization, banking and the text agent | [Workstreams and boundaries](stage-b/README.md) |
+| B — parallel product tracks | Advance financial services, web workflows, identity, external MCP authorization, banking and the text agent | [Workstreams and boundaries](stage-b/README.md), [platform evolution during Stage B](stage-b/platform-evolution.md) |
 | C — expanded experience | Select further capabilities from the Stage B review, not from an assumed issue list | [Direction and selection rules](stage-c/README.md) |
+
+The Stage B platform-evolution record explains the intentions behind PRs
+[#26](https://github.com/ig-peralta/LazyFinance/pull/26),
+[#27](https://github.com/ig-peralta/LazyFinance/pull/27) and
+[#28](https://github.com/ig-peralta/LazyFinance/pull/28). It is not a Stage B closure
+record or a replacement for the technical implementation guides.
 
 ## Stage gates
 

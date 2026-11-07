@@ -14,5 +14,7 @@ Sprint B is Done when:
 - [ ] A stage gate records which workstream results passed, the Git baseline, unresolved product limitations, and the scope decision. A **dated work snapshot and retrospective** preserve what was learned and what needs attention in the next sprint.
 - [ ] Only **after** reviewing Sprint B's actual results does the team select and create Sprint C issues, goal, priorities, and acceptance criteria. The current Sprint C milestone is a direction, not a pre-filled backlog.
 
-The [product Definition of Done](../product-definition-of-done.md) remains a
-separate release review.
+The [platform-evolution record](platform-evolution.md) explains supporting changes
+made while the stage was being built; it does not close this checklist. The
+[product Definition of Done](../product-definition-of-done.md) remains a separate
+release review.
