@@ -74,16 +74,16 @@ are not implemented by this RPC cutover.
 ## Private surface
 
 The [generated private router](../../libs/rpc-persistence/src/generated/server.ts)
-currently contains **35 procedures**. They expose owned facts and authoritative
+currently contains **37 procedures**. They expose owned facts and authoritative
 commands rather than copying public screen calculations into persistence.
 
 | Router | Methods |
 | --- | --- |
 | `identity` | `resolve` (bootstrap only) |
 | `accounts` | `listActive` |
-| `transactions` | `recent`, `aggregates`, `taggedDebits` |
-| `objectives` | `list`, `tags` |
-| `income` | `sources`, `source`, `createSource`, `updateSource`, `archiveSource`, `facts` |
+| `transactions` | `recent`, `aggregates`, `taggedAggregates` |
+| `objectives` | `list` (nested tags), `spending` (signed sums/counts for API-supplied windows) |
+| `income` | `sources`, `source`, `createSource`, `updateSource`, `archiveSource`, `expectedFacts`, `receipts`, `facts` |
 | `incomeExpectations` | `list`, `create`, `update`, `remove` |
 | `incomeReceipts` | `confirm`, `clear` |
 | `tags` | `list`, `create` |
@@ -94,6 +94,11 @@ Every private procedure uses user context except `identity.resolve`. The latter
 cannot be called with user context; bootstrap cannot call finance procedures.
 `GET /health` is liveness, not a database/admin RPC. Provider synchronization is an
 API-internal workflow; these procedures are not public bank-linking endpoints.
+
+Read contracts follow the [purpose-shaped persistence read pattern](persistence-reads.md).
+Select the projection actually needed: declarations/expectations, receipt facts,
+classification-only aggregates, joined tag aggregates, or a complete snapshot.
+Do not reintroduce table-shaped reads for the API to join or aggregate itself.
 
 ## Wire semantics and transport
 
@@ -107,9 +112,9 @@ API-internal workflow; these procedures are not public bank-linking endpoints.
   request options). Object inputs are explicitly shaped; do not inject `userId`.
 - Both clients use standard non-batched `httpLink`. The public server allows up
   to 10 procedures per batch; this is not a transaction guarantee. Private RPC
-  permits one procedure per request. `providerSync.facts` alone uses private POST
-  method override because key scopes may exceed URL limits. Empty queries remain
-  GET, avoiding Express turning an absent POST body into `{}`.
+  permits one procedure per request. `providerSync.facts` and `objectives.spending`
+  use private POST method override because key/window lists may exceed URL limits.
+  Empty queries remain GET, avoiding Express turning an absent POST body into `{}`.
 - Bounded factual arrays and serialized-byte limits reject overflow rather than
   serving a silently incomplete financial snapshot. See the
   [resource budgets](persistence-security.md#resource-and-error-boundaries).
@@ -127,8 +132,10 @@ API-internal workflow; these procedures are not public bank-linking endpoints.
    input/output schemas and default-deny-compatible metadata. Ordinary class
    dependencies use constructor inference with **runtime class imports**; keep
    `@Inject(RLS_DB)` / `@Inject(RUNTIME_DB)` for symbol tokens.
-3. Keep financial orchestration in the API and cross-table atomic commands in
-   persistence. A new table needs migration-time grants, related-owner RLS,
+3. Keep financial orchestration in the API, joined/aggregated stored facts and
+   cross-table atomic commands in persistence. Apply the
+   [read-contract checklist](persistence-reads.md#change-review-checklist).
+   A new table needs migration-time grants, related-owner RLS,
    table-local Kysely types, repository/module wiring and isolation tests.
 4. Generate and review both router files from the repository root:
 

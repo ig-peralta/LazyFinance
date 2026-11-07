@@ -54,6 +54,11 @@ Rule input includes target tag, optional account scope, debit/credit direction,
 and `es-CL` lowercase. These are exact normalized matches, not fuzzy or substring
 matches.
 
+The API builds a normalized-key lookup once per immutable rule snapshot and
+merges preordered merchant/description and global/account buckets. It does not
+scan and sort the entire rule list for every movement. Ordering and ambiguity
+rules remain identical; SQL does not implement a second text normalizer.
+
 The API ranks matching active rules with active tags by descending priority,
 then account specificity, then stable creation-time/ID order. Equal top
 priority/specificity pointing at different tags is ambiguous, so no automatic

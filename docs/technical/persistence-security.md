@@ -135,8 +135,8 @@ outside a scope throws; nested scopes and repository use of `transaction`,
 middleware receive `RUNTIME_DB`. The proxy permits harmless constructor reflection
 for NestJS-tRPC provider discovery, not raw connection access.
 
-Normal procedures use read-committed. `income.facts`, `tagRules.facts`,
-`tagRules.candidates` and `providerSync.facts` request repeatable-read snapshots.
+Normal procedures use read-committed. `income.expectedFacts`, `income.facts`,
+`tagRules.facts`, `tagRules.candidates` and `providerSync.facts` request repeatable-read snapshots.
 All user mutations acquire the same per-user advisory transaction lock. This
 serializes writes affecting prepared inputs, including rule insertion/removal
 that a row-only lock might miss. It is not a lock around provider network calls

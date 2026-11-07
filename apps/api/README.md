@@ -62,11 +62,17 @@ Feature services inject the single `PersistenceClient` and call its inferred
 or database-shaped Date conversions. Financial calculations stay in the owning
 service or shared pure domain helpers, not in transport wrappers.
 
+Follow the [persistence read pattern](../../docs/technical/persistence-reads.md):
+joined objective/tag reads, SQL sums for API-computed budget windows, narrow
+income reads and snapshot-local rule/expectation indexes. Do not fetch full
+collections just to join IDs or sum raw movements in a feature service.
+
 Public bodies are limited to 1 MiB and batches to 10 procedures. Private provider
 runs are bounded by 100 pages, 50,000 records, 32 MiB normalized JSON and 64 MiB
 prepared JSON/results. Oversized runs fail without partial writes/checkpoint
 advancement; they are never silently split into independent commits. The private
-`providerSync.facts` query uses POST method override for large key scopes;
+`providerSync.facts` and `objectives.spending` queries use POST method override
+for large key/window lists;
 ordinary empty queries remain GET. The private client deadline is 120 seconds.
 
 Unit tests stay beside their implementation in `src/**/*.spec.ts`; run only those

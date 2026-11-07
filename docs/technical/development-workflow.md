@@ -173,6 +173,9 @@ observe the [identity verification boundaries](identity.md#verification-scope).
 
 ## Financial and security review checklist
 
+- Follow the [persistence read pattern](persistence-reads.md): purpose-shaped
+  projections, stored joins and factual aggregates in persistence; no discarded
+  snapshots, repeated catalog joins or nested scans over downloaded movements.
 - Preserve exact money/date/null semantics; do not infer income from any credit,
   tag, balance delta or provider salary hint.
 - Preserve ownership at public authentication, signed private context and related
