@@ -1,7 +1,7 @@
 export type WireValue<T> = T extends Date
   ? string
-  : T extends readonly (infer Item)[]
-    ? WireValue<Item>[]
+  : T extends readonly unknown[]
+    ? { -readonly [Key in keyof T]: WireValue<T[Key]> }
     : T extends object
       ? { [Key in keyof T]: WireValue<T[Key]> }
       : T;

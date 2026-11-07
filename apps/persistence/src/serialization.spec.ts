@@ -1,7 +1,22 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 import { wireValue } from "./serialization";
 
 describe("wireValue", () => {
+  it("preserves tuple positions and lengths, including income schedule days", () => {
+    const days: [number, number | "last"] = [1, "last"];
+    const result = wireValue({
+      days,
+      timestamps: [new Date("2026-09-15T15:00:00.000Z"), null] as const,
+    });
+
+    expectTypeOf(result.days).toEqualTypeOf<[number, number | "last"]>();
+    expectTypeOf(result.timestamps).toEqualTypeOf<[string, null]>();
+    expect(result).toEqual({
+      days: [1, "last"],
+      timestamps: ["2026-09-15T15:00:00.000Z", null],
+    });
+  });
+
   it("types and serializes nested timestamps without changing exact numeric strings or JSON keys", () => {
     const at = new Date("2026-09-15T15:00:00.000Z");
     const input = {
