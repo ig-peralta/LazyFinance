@@ -34,7 +34,7 @@ code cannot import private schemas, signing code, Nest or database implementatio
 
 Public/private tRPC are separate surfaces, not two routes to the same router.
 The public generated library contains 33 procedures; the private library contains
-35, including bootstrap-only `identity.resolve`. `/mcp` exposes seven authenticated
+37, including bootstrap-only `identity.resolve`. `/mcp` exposes seven authenticated
 read-only tools through the API's domain services, not direct persistence queries.
 Ordinary HTTP remains only for API `GET /`, persistence `GET /health` and MCP
 transport. Inventories and schema-change rules live in the
@@ -79,6 +79,11 @@ progress, tag normalization/matching/ranking and provider orchestration.
 Persistence exposes bounded stored facts/aggregates and named authoritative
 commands, not public screen computations or arbitrary SQL scripts.
 
+The [persistence read pattern](persistence-reads.md) keeps stored relationships,
+projections and factual sums in SQL instead of downloading rows for API-side
+joins/aggregation. Calendar windows, recurrence, financial interpretation and
+provider/rule decisions remain in the API.
+
 Income receipts are confirmed only against locked eligible owned transactions and
 sources. Tag decisions and audit events commit together. Provider fetching and
 preparation are outside SQL; commit rechecks revision/fingerprint and atomically
@@ -102,8 +107,9 @@ by this infrastructure refactor.
 
 Fresh migrations only: table/types/constraints/indexes/grants/RLS apply together.
 There is no legacy migration adoption or automatic database reset. Owner credentials
-belong only to CLI/init/seed jobs; API rejects PostgreSQL credentials and persistence
-rejects owner/BYPASSRLS runtime roles. Demo seeding is explicit.
+belong only to CLI/init/seed jobs; the API uses private RPC without a database
+connection, and persistence rejects owner/BYPASSRLS runtime roles. Demo seeding
+is explicit.
 
 Compose supports private persistence, separate runtime environments and an owner-only
 init job. Its full stack separates data/service/edge networks; database/persistence

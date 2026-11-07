@@ -206,6 +206,76 @@ describe("income calendar", () => {
     });
   });
 
+  it("keeps irregular expectations with their source and applies each source's effective dates", () => {
+    const first = source({
+      regularity: "irregular",
+      schedule: null,
+      startDate: "2026-01-10",
+    });
+    const second = source({
+      id: "second",
+      regularity: "irregular",
+      schedule: null,
+      archivedAt: "2026-01-16T02:00:00.000Z",
+    });
+    const result = expectedIncomeForMonth(
+      "2026-01",
+      [first, second],
+      [
+        {
+          id: "one",
+          sourceId: first.id,
+          date: "2026-01-12",
+          amount: "10.01",
+          isEstimate: false,
+        },
+        {
+          id: "two",
+          sourceId: second.id,
+          date: "2026-01-12",
+          amount: "20.02",
+          isEstimate: true,
+        },
+        {
+          id: "early",
+          sourceId: first.id,
+          date: "2026-01-09",
+          amount: "100.00",
+          isEstimate: false,
+        },
+        {
+          id: "late",
+          sourceId: second.id,
+          date: "2026-01-16",
+          amount: "100.00",
+          isEstimate: false,
+        },
+        {
+          id: "unrelated",
+          sourceId: "missing",
+          date: "2026-01-12",
+          amount: "100.00",
+          isEstimate: false,
+        },
+      ],
+    );
+    expect(
+      result.payments.map(({ expectationId, sourceId }) => ({
+        expectationId,
+        sourceId,
+      })),
+    ).toEqual([
+      { expectationId: "one", sourceId: first.id },
+      { expectationId: "two", sourceId: second.id },
+    ]);
+    expect(result.totals).toEqual({
+      amount: "30.03",
+      estimatedAmount: "20.02",
+      unknownAmountCount: 0,
+      paymentCount: 2,
+    });
+  });
+
   it("rejects declarations that cannot produce coherent payments", () => {
     const {
       id: _,

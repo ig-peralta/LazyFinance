@@ -1,7 +1,6 @@
 import { AccountsResultSchema, RpcEmptySchema } from "@lazyfinance/contracts";
 import { Ctx, Query, Router } from "nestjs-trpc";
-import type { ApiRequestContext } from "../rpc/api.context";
-import { rpcUser } from "../rpc/api.middleware";
+import { type ApiRequestContext, rpcUser } from "../rpc/context";
 import { AccountsService } from "./accounts.service";
 
 @Router({ alias: "accounts" })

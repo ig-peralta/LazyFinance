@@ -6,10 +6,8 @@ import {
   type ProviderSyncOutcome,
 } from "@lazyfinance/contracts/internal";
 import { Injectable } from "@nestjs/common";
-import {
-  PersistenceClient,
-  persistenceException,
-} from "../../persistence/persistence.client";
+import { PersistenceClient } from "../../persistence/persistence.client";
+import { persistenceException } from "../../rpc/persistence-error";
 import type { BankingConnector } from "../connector/banking-connector";
 import {
   type ConnectorFailure,

@@ -3,12 +3,7 @@ import type { AuthPrincipal } from "@lazyfinance/contracts";
 import { Injectable } from "@nestjs/common";
 import type { ContextOptions, TRPCContext } from "nestjs-trpc";
 import { AuthService } from "../auth/auth.service";
-
-export type ApiRequestContext = {
-  requestId: string;
-  principal?: AuthPrincipal;
-  authenticate: () => Promise<AuthPrincipal>;
-};
+import type { ApiRequestContext } from "./context";
 
 @Injectable()
 export class ApiContext implements TRPCContext {

@@ -3,9 +3,9 @@ import { BadRequestException } from "@nestjs/common";
 import { RpcException } from "@nestjs/microservices";
 import { McpContext } from "@rekog/mcp-nest";
 import { z } from "zod";
-import { checkedMonth } from "../_utils/month-query";
-import { santiagoMonth } from "../_utils/santiago-time";
 import type { AuthenticatedRequest } from "../auth/auth.types";
+import { checkedMonth } from "../utils/month-query";
+import { santiagoMonth } from "../utils/santiago-time";
 
 export const readOnlyTool = {
   readOnlyHint: true,

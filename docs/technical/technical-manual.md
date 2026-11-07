@@ -49,8 +49,8 @@ using a database owner when setup fails.
 App-local dotenv files are independent of root Compose `.env`. See
 [`apps/api/.env.example`](../../apps/api/.env.example),
 [`apps/persistence/.env.example`](../../apps/persistence/.env.example), and
-[root Compose example](../../.env.example). Do not export owner credentials while
-running `pnpm dev`: API and persistence reject inappropriate database credentials.
+[root Compose example](../../.env.example). Keep owner CLI credentials separate
+from the app runtimes; persistence requires a restricted runtime login.
 `pnpm rpc:keys` prints a fresh pair; private key only to API, public key only to
 persistence. Do not commit the output.
 
@@ -130,7 +130,7 @@ rotation require explicit operator procedures not supplied by this local stack.
 
 Use `pnpm rpc:generate` after router changes, `pnpm rpc:check` for drift,
 `pnpm check:architecture`, `pnpm build` and `pnpm typecheck`. Tests have different
-side effects: explicit unit/DI and UI in-memory tests can run serverlessly, but
+side effects: service/helper unit and UI in-memory tests can run serverlessly, but
 HTTP/router/MCP tests may open ephemeral listeners even without external services.
 Do not run `pnpm test` or the integration runner as a serverless-only check.
 

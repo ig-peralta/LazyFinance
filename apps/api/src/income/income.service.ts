@@ -12,25 +12,14 @@ import type {
   IncomeFacts,
   IncomeSourceRecord,
 } from "@lazyfinance/contracts/internal";
-import { BadRequestException, Injectable } from "@nestjs/common";
-import { z } from "zod";
-import { fromCents, toCents } from "../_utils/money";
-import { monthBounds } from "../_utils/period";
-import { santiagoMonth } from "../_utils/santiago-time";
+import { Injectable } from "@nestjs/common";
+import { movementTotals } from "../finance/movement-totals";
 import { PersistenceClient } from "../persistence/persistence.client";
-import { movementTotals } from "../persistence/transactions.client";
+import { fromCents, toCents } from "../utils/money";
+import { monthBounds } from "../utils/period";
+import { santiagoMonth } from "../utils/santiago-time";
+import { parseInput } from "../validation/parse-input";
 import { expectedIncomeForMonth } from "./income-schedule";
-
-function input<T>(schema: z.ZodType<T>, value: unknown): T {
-  const result = schema.safeParse(value);
-  if (!result.success)
-    throw new BadRequestException({
-      message: "Invalid income input",
-      issues: result.error.issues,
-    });
-
-  return result.data;
-}
 
 function sourceResponse({
   userId: _,
@@ -47,8 +36,8 @@ function receiptResponse(
   return { transactionId, sourceId, sourceName, bookedAt, amount, confirmedAt };
 }
 
-function activeReceipts(facts: IncomeFacts) {
-  return facts.receipts.filter(
+function activeReceipts(receipts: IncomeFacts["receipts"]) {
+  return receipts.filter(
     (row) =>
       row.type === "credit" &&
       row.isInternalMovement === false &&
@@ -77,7 +66,11 @@ export class IncomeService {
     userId: string,
     value: unknown,
   ): Promise<IncomeSource> {
-    const source = input(IncomeSourceInputSchema, value);
+    const source = parseInput(
+      IncomeSourceInputSchema,
+      value,
+      "Invalid income input",
+    );
     source.expectedAmount =
       source.expectedAmount === null
         ? null
@@ -93,7 +86,11 @@ export class IncomeService {
     id: string,
     value: unknown,
   ): Promise<IncomeSource> {
-    const source = input(IncomeSourceInputSchema, value);
+    const source = parseInput(
+      IncomeSourceInputSchema,
+      value,
+      "Invalid income input",
+    );
     source.expectedAmount =
       source.expectedAmount === null
         ? null
@@ -130,7 +127,11 @@ export class IncomeService {
     sourceId: string,
     value: unknown,
   ): Promise<IncomeExpectation> {
-    const expectation = input(IncomeExpectationInputSchema, value);
+    const expectation = parseInput(
+      IncomeExpectationInputSchema,
+      value,
+      "Invalid income input",
+    );
     expectation.amount = fromCents(toCents(expectation.amount));
 
     return this.persistence
@@ -143,7 +144,11 @@ export class IncomeService {
     id: string,
     value: unknown,
   ): Promise<IncomeExpectation> {
-    const expectation = input(IncomeExpectationInputSchema, value);
+    const expectation = parseInput(
+      IncomeExpectationInputSchema,
+      value,
+      "Invalid income input",
+    );
     expectation.amount = fromCents(toCents(expectation.amount));
 
     return this.persistence
@@ -157,15 +162,12 @@ export class IncomeService {
       .incomeExpectations.remove.mutate({ id });
   }
 
-  private facts(userId: string, month: string, asOf?: Date) {
-    input(MonthSchema, month);
-    return this.persistence
-      .user(userId)
-      .income.facts.query({ ...monthBounds(month), asOf: asOf?.toISOString() });
-  }
-
   async getExpectedForUser(userId: string, month = santiagoMonth(new Date())) {
-    const facts = await this.facts(userId, month);
+    const facts = await this.persistence
+      .user(userId)
+      .income.expectedFacts.query(
+        monthBounds(parseInput(MonthSchema, month, "Invalid income input")),
+      );
     return expectedIncomeForMonth(month, facts.sources, facts.expectations);
   }
 
@@ -175,7 +177,11 @@ export class IncomeService {
     value: unknown,
     now = new Date(),
   ): Promise<IncomeReceipt> {
-    const { sourceId } = input(IncomeReceiptInputSchema, value);
+    const { sourceId } = parseInput(
+      IncomeReceiptInputSchema,
+      value,
+      "Invalid income input",
+    );
     return receiptResponse(
       await this.persistence.user(userId).incomeReceipts.confirm.mutate({
         transactionId,
@@ -194,9 +200,11 @@ export class IncomeService {
     month = santiagoMonth(new Date()),
     now = new Date(),
   ): Promise<IncomeReceipt[]> {
-    return activeReceipts(await this.facts(userId, month, now)).map(
-      receiptResponse,
-    );
+    const receipts = await this.persistence.user(userId).income.receipts.query({
+      ...monthBounds(parseInput(MonthSchema, month, "Invalid income input")),
+      asOf: now.toISOString(),
+    });
+    return activeReceipts(receipts).map(receiptResponse);
   }
 
   async getSummaryForUser(
@@ -204,7 +212,10 @@ export class IncomeService {
     month = santiagoMonth(new Date()),
     now = new Date(),
   ): Promise<IncomeSummary> {
-    const facts = await this.facts(userId, month, now);
+    const facts = await this.persistence.user(userId).income.facts.query({
+      ...monthBounds(parseInput(MonthSchema, month, "Invalid income input")),
+      asOf: now.toISOString(),
+    });
     const expected = expectedIncomeForMonth(
       month,
       facts.sources,
@@ -218,13 +229,10 @@ export class IncomeService {
       asOf: now.toISOString(),
       expectedIncome: expected.totals,
       receivedIncome: received.receivedIncome,
-      unclassifiedCredits: {
-        amount: received.unclassifiedCreditAmount,
-        count: received.unclassifiedCreditCount,
-      },
+      unclassifiedCredits: received.unclassifiedCredits,
       unresolvedMovementCount: received.unresolvedMovementCount,
       expectedPayments: expected.payments,
-      receipts: activeReceipts(facts).map(receiptResponse),
+      receipts: activeReceipts(facts.receipts).map(receiptResponse),
     };
   }
 }

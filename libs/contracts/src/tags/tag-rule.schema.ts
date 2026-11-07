@@ -36,6 +36,21 @@ export type TagCreateInput = z.infer<typeof TagCreateInputSchema>;
 
 export type TagRuleInput = z.infer<typeof TagRuleInputSchema>;
 
+export const TagRuleResultSchema = z.object({
+  id: z.uuid(),
+  tagId: z.uuid(),
+  accountId: z.uuid().nullable(),
+  direction: z.enum(["debit", "credit"]),
+  matchField: z.enum(["merchant", "description"]),
+  matchValue: z.string(),
+  priority: z.number().int(),
+  mode: z.enum(["suggest", "auto"]),
+  approvedAt: z.iso.datetime().nullable(),
+  active: z.boolean(),
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime(),
+});
+
 export const TagSuggestionSchema = z.object({
   ruleId: z.uuid(),
   tagId: z.uuid(),

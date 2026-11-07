@@ -13,7 +13,8 @@ target is not evidence of a delivered capability.
 | [Architecture](architecture.md) | Runtime/dependency boundaries, responsibility split and product scope |
 | [Private RPC, transactions and RLS](persistence-security.md) | Signed contexts, bootstrap, roles/grants, related ownership, rollback, atomic commands and limits |
 | [Implemented database model and ERD](database-model.md) | All 17 application tables, actual relationships/keys, financial representation and fresh migrations |
-| [RPC contracts and clients](rpc-contracts.md) | Public/private exports, 33/35 procedure inventories, MCP, code generation and wire semantics |
+| [RPC contracts and clients](rpc-contracts.md) | Public/private exports, 33/37 procedure inventories, MCP, code generation and wire semantics |
+| [Persistence read pattern](persistence-reads.md) | Purpose-shaped joins/aggregates, bounded projections, cardinality, snapshots and review checklist |
 | [UI/session/SSR lifetimes](ui-data-lifecycle.md) | Accepted credentials, candidate verification, cancellation, page resources, command/read races and hydration isolation |
 | [Provider-neutral identity](identity.md) | Provider/issuer/subject namespaces, internal principals, verifier selection, provisioning and session boundaries |
 | [Tag decisions and rules](../../apps/api/src/transactions/tagging/README.md) | Manual no-tag versus reset, matching, approved automation and atomic decision/event writes |
@@ -24,7 +25,9 @@ target is not evidence of a delivered capability.
 - [Technical manual](technical-manual.md): process/environment separation, local
   setup, Compose topology, browser-versus-SSR configuration and troubleshooting.
 - [Development and verification](development-workflow.md): builds, Biome/editor/DI
-  conventions, serverless versus listener/DB/live-Firebase checks and change review.
+  conventions, [file ownership and extraction](development-workflow.md#file-ownership-and-extraction),
+  [type safety and boundaries](development-workflow.md#type-safety-and-boundary-types),
+  serverless versus listener/DB/live-Firebase checks and change review.
 - App entry points: [API](../../apps/api/README.md),
   [persistence](../../apps/persistence/README.md), [UI](../../apps/ui/README.md).
 - Environment examples: [root Compose](../../.env.example),

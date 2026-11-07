@@ -3,32 +3,10 @@ import type { VerifiedExternalIdentity } from "@lazyfinance/contracts";
 import type { PersistenceContext } from "@lazyfinance/contracts/context";
 import { createContextSigner } from "@lazyfinance/rpc-auth";
 import type { PersistenceRouter } from "@lazyfinance/rpc-persistence";
-import {
-  HttpException,
-  Injectable,
-  type OnModuleInit,
-  ServiceUnavailableException,
-} from "@nestjs/common";
-import {
-  createTRPCClient,
-  httpLink,
-  splitLink,
-  TRPCClientError,
-} from "@trpc/client";
+import { Injectable, type OnModuleInit } from "@nestjs/common";
+import { createTRPCClient, httpLink, splitLink } from "@trpc/client";
 import { EnvironmentService } from "../environment/environment.service";
 import { currentRequestId } from "../rpc/request-context";
-
-export function persistenceException(
-  error: unknown,
-): HttpException | undefined {
-  if (!(error instanceof TRPCClientError)) return undefined;
-
-  const status: number | undefined = error.data?.httpStatus;
-
-  return status && [400, 401, 403, 404, 409, 413, 429].includes(status)
-    ? new HttpException(error.message, status)
-    : new ServiceUnavailableException("Persistence is unavailable");
-}
 
 @Injectable()
 export class PersistenceClient implements OnModuleInit {
@@ -38,16 +16,6 @@ export class PersistenceClient implements OnModuleInit {
   private readonly url: string;
 
   constructor(environment: EnvironmentService) {
-    if (
-      ["POSTGRES_URL", "POSTGRES_RUNTIME_URL", "POSTGRES_MIGRATION_URL"].some(
-        (key) => process.env[key],
-      )
-    ) {
-      throw new Error(
-        "Database credentials must not be present in the API runtime",
-      );
-    }
-
     const key = environment.get("PERSISTENCE_RPC_PRIVATE_KEY");
     if (!key) throw new Error("PERSISTENCE_RPC_PRIVATE_KEY is required");
 
@@ -109,9 +77,12 @@ export class PersistenceClient implements OnModuleInit {
     return createTRPCClient<PersistenceRouter>({
       links: [
         splitLink({
-          // Scope-key lists can exceed URL limits. Ordinary no-input queries stay GET;
+          // Key/window lists can exceed URL limits. Ordinary no-input queries stay GET;
           // Express turns an absent POST body into {}, which is not z.void().
-          condition: (operation) => operation.path === "providerSync.facts",
+          condition: (operation) =>
+            ["providerSync.facts", "objectives.spending"].includes(
+              operation.path,
+            ),
           true: httpLink({ ...options, methodOverride: "POST" }),
           false: httpLink(options),
         }),

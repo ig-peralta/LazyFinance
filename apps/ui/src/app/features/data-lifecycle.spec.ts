@@ -1,10 +1,12 @@
 import { ApplicationRef, TransferState } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { deferred } from "../../testing/deferred";
 import {
-  deferred,
+  account,
   movement,
   principal,
+  type RpcOutput,
   setupRpc,
   tag,
 } from "../../testing/rpc";
@@ -16,15 +18,6 @@ import { ObjectivesData } from "./objectives/objectives.data";
 import { SummariesData } from "./summaries/summaries.data";
 import { TaggingData } from "./tagging/tagging.data";
 import { TransactionsData } from "./transactions/transactions.data";
-
-const account = (name: string) => ({
-  id: name,
-  alias: name,
-  type: "checking",
-  currency: "CLP",
-  balance: "10.00",
-  lastSyncedAt: null,
-});
 
 const stable = () => TestBed.inject(ApplicationRef).whenStable();
 
@@ -45,7 +38,7 @@ describe("feature resource and command lifetimes", () => {
   });
 
   it("clears an already displayed identity immediately, before the next user response arrives", async () => {
-    const bob = deferred<unknown>();
+    const bob = deferred<RpcOutput<"accounts.list">>();
     const { credentials, callsTo } = setupRpc({
       "accounts.list": (_input, call) =>
         call.authorization === "Bearer alice"
@@ -71,7 +64,7 @@ describe("feature resource and command lifetimes", () => {
   });
 
   it("drops late old-user results and reloads under a refreshed token", async () => {
-    const old = deferred<unknown>();
+    const old = deferred<RpcOutput<"accounts.list">>();
     const { credentials, callsTo } = setupRpc({
       "accounts.list": (_input, call) =>
         call.authorization === "Bearer alice"
@@ -117,7 +110,7 @@ describe("feature resource and command lifetimes", () => {
   });
 
   it("preserves confirmed decisions when an older read finishes, but lets a later reload reconcile server changes", async () => {
-    const old = deferred<unknown>();
+    const old = deferred<RpcOutput<"transactions.recent">>();
     const { callsTo, handlers } = setupRpc({
       "transactions.recent": () => old.promise,
     });
@@ -191,7 +184,7 @@ describe("feature resource and command lifetimes", () => {
   });
 
   it("does not continue a multi-step command under a newer identity", async () => {
-    const created = deferred<unknown>();
+    const created = deferred<RpcOutput<"tags.create">>();
     const { credentials, callsTo } = setupRpc({
       "tags.create": () => created.promise,
     });
@@ -215,7 +208,7 @@ describe("feature resource and command lifetimes", () => {
   });
 
   it("cancels page-owned reads on destruction and leaves no private TransferState", async () => {
-    const pending = deferred<unknown>();
+    const pending = deferred<RpcOutput<"accounts.list">>();
     const { callsTo } = setupRpc({ "accounts.list": () => pending.promise });
     const fixture = TestBed.createComponent(DashboardPage);
     fixture.detectChanges();

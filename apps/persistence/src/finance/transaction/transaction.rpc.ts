@@ -4,10 +4,10 @@ import {
   type PeriodInput,
   PeriodInputSchema,
   RecentTransactionRecordsSchema,
-  TaggedDebitRecordsSchema,
+  TaggedMovementAggregatesSchema,
 } from "@lazyfinance/contracts/internal";
 import { Input, Query, Router } from "nestjs-trpc";
-import { wireValue } from "../query-period";
+import { wireValue } from "../../serialization";
 import { TransactionRepository } from "./transaction.repository";
 
 @Router({ alias: "transactions" })
@@ -42,10 +42,10 @@ export class TransactionRpc {
 
   @Query({
     input: PeriodInputSchema,
-    output: TaggedDebitRecordsSchema,
+    output: TaggedMovementAggregatesSchema,
     meta: { context: "user" },
   })
-  async taggedDebits(@Input() period: PeriodInput) {
-    return wireValue(await this.repository.taggedDebits(period));
+  taggedAggregates(@Input() period: PeriodInput) {
+    return this.repository.taggedAggregates(period);
   }
 }

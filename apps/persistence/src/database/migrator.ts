@@ -38,8 +38,8 @@ export class MultiMigrationProvider implements MigrationProvider {
   }
 }
 
-export async function migrate(
-  database: Kysely<any>,
+export async function migrate<DB>(
+  database: Kysely<DB>,
   provider: MigrationProvider = new MultiMigrationProvider(),
 ) {
   const { error, results } = await new Migrator({

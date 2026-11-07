@@ -1,43 +1,16 @@
 import type { BudgetProgress, ObjectiveSummary } from "@lazyfinance/contracts";
 import { Injectable } from "@nestjs/common";
-import { fromCents, toCents } from "../_utils/money";
-import { monthBounds } from "../_utils/period";
-import { santiagoMonth, santiagoTimestamp } from "../_utils/santiago-time";
-import { ObjectiveClient } from "../persistence/objectives.client";
-import { TagClient } from "../persistence/tags.client";
-import { TransactionClient } from "../persistence/transactions.client";
+import { PersistenceClient } from "../persistence/persistence.client";
+import { fromCents, toCents } from "../utils/money";
+import { santiagoMonth } from "../utils/santiago-time";
 import { budgetPeriod } from "./budget-period";
 
 @Injectable()
 export class ObjectivesService {
-  constructor(
-    private readonly objectives: ObjectiveClient,
-    private readonly tags: TagClient,
-    private readonly transactions: TransactionClient,
-  ) {}
+  constructor(private readonly persistence: PersistenceClient) {}
 
-  async getForUser(userId: string): Promise<ObjectiveSummary[]> {
-    const rows = await this.objectives.listForUser(userId);
-    if (rows.length === 0) return [];
-
-    const links = await this.tags.listForObjectives(
-      userId,
-      rows.map(({ id }) => id),
-    );
-    const tagsByObjective = new Map<string, ObjectiveSummary["tags"]>();
-
-    for (const { objectiveId, ...tag } of links) {
-      const items = tagsByObjective.get(objectiveId) ?? [];
-      items.push(tag);
-      tagsByObjective.set(objectiveId, items);
-    }
-
-    return rows.map(({ startDate, endDate, ...item }) => ({
-      ...item,
-      startDate: startDate?.toISOString() ?? null,
-      endDate: endDate?.toISOString() ?? null,
-      tags: tagsByObjective.get(item.id) ?? [],
-    }));
+  getForUser(userId: string): Promise<ObjectiveSummary[]> {
+    return this.persistence.user(userId).objectives.list.query();
   }
 
   async getSpendingProgressForUser(
@@ -45,64 +18,44 @@ export class ObjectivesService {
     month: string,
     now = new Date(),
   ): Promise<BudgetProgress[]> {
-    const objectives = await this.objectives.listForUser(userId);
-    if (objectives.length === 0) return [];
-
-    const links = await this.tags.listForObjectives(
-      userId,
-      objectives.map(({ id }) => id),
-    );
+    const objectives = await this.getForUser(userId);
     const candidates = objectives.flatMap((objective) => {
       const window = budgetPeriod(objective, month);
-      const tagIds = new Set(
-        links
-          .filter((link) => link.objectiveId === objective.id)
-          .map(({ id }) => id),
-      );
-
-      return window && tagIds.size ? [{ objective, window, tagIds }] : [];
+      return window && objective.tags.length ? [{ objective, window }] : [];
     });
     if (candidates.length === 0) return [];
 
-    const start = candidates.reduce(
-      (earliest, item) =>
-        item.window.start < earliest ? item.window.start : earliest,
-      candidates[0].window.start,
-    );
-    const asOf = month === santiagoMonth(now) ? now : undefined;
-    const end = monthBounds(month).end;
-    const transactions = await (asOf
-      ? this.transactions.listTaggedDebitsForPeriod(userId, start, end, asOf)
-      : this.transactions.listTaggedDebitsForPeriod(userId, start, end));
+    const totals = await this.persistence
+      .user(userId)
+      .objectives.spending.query({
+        windows: candidates.map(({ objective, window }) => ({
+          id: objective.id,
+          start: window.start,
+          end: window.end,
+        })),
+        asOf: month === santiagoMonth(now) ? now.toISOString() : undefined,
+      });
+    const amounts = new Map(totals.map(({ id, amount }) => [id, amount]));
 
-    return candidates.map(({ objective, window, tagIds }) => {
-      let spent = 0n;
-
-      for (const transaction of transactions) {
-        const date = santiagoTimestamp(transaction.bookedAt);
-
-        if (
-          !tagIds.has(transaction.tagId) ||
-          date < window.start ||
-          date >= window.end
-        )
-          continue;
-
-        spent -= toCents(transaction.amount);
-      }
-
+    return candidates.flatMap(({ objective, window }) => {
+      const amount = amounts.get(objective.id);
+      // An objective removed between the two reads is no longer reportable.
+      if (amount === undefined) return [];
+      const spent = -toCents(amount);
       const limit = toCents(objective.amount);
 
-      return {
-        id: objective.id,
-        name: objective.name,
-        month,
-        period: window.period,
-        limit: fromCents(limit),
-        spent: fromCents(spent),
-        remaining: fromCents(limit - spent),
-        percentage: Number((spent * 100n) / limit),
-      };
+      return [
+        {
+          id: objective.id,
+          name: objective.name,
+          month,
+          period: window.period,
+          limit: fromCents(limit),
+          spent: fromCents(spent),
+          remaining: fromCents(limit - spent),
+          percentage: Number((spent * 100n) / limit),
+        },
+      ];
     });
   }
 }

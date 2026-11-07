@@ -21,7 +21,7 @@ export class AuthService {
     private readonly environment: EnvironmentService,
     private readonly mock: MockAuthService,
     private readonly firebase: FirebaseAuthService,
-    private readonly identities: PersistenceClient,
+    private readonly persistence: PersistenceClient,
   ) {}
 
   config(): AuthConfig {
@@ -35,7 +35,7 @@ export class AuthService {
     if (!parsed.success) throw new BadRequestException("Invalid login request");
 
     const result = await this.mock.login(parsed.data);
-    await this.identities.resolveExisting(this.mock.verify(result.token));
+    await this.persistence.resolveExisting(this.mock.verify(result.token));
 
     return result;
   }
@@ -52,10 +52,10 @@ export class AuthService {
 
     switch (this.config().provider) {
       case "mock":
-        return this.identities.resolveExisting(this.mock.verify(match[1]));
+        return this.persistence.resolveExisting(this.mock.verify(match[1]));
       case "firebase": {
         const identity = await this.firebase.verify(match[1]);
-        return this.identities.resolveOrCreate(identity);
+        return this.persistence.resolveOrCreate(identity);
       }
     }
   }

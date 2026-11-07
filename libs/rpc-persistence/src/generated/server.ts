@@ -13,7 +13,7 @@ import { z } from "zod";
 
 const t = initTRPC.create();
 const publicProcedure = t.procedure;
-import { EmptyInputSchema, AccountRecordsSchema, IdInputSchema, ExpectationRecordsSchema, ExpectationCreateSchema, ExpectationRecordSchema, ExpectationUpdateSchema, VoidResultSchema, ReceiptConfirmSchema, ReceiptFactSchema, IncomeSourceRecordsSchema, IncomeSourceRecordSchema, IncomeSourceCreateSchema, IncomeSourceUpdateSchema, AtIdInputSchema, PeriodInputSchema, IncomeFactsSchema, ObjectiveRecordsSchema, ObjectiveIdsInputSchema, ObjectiveTagRecordsSchema, BeginProviderSyncSchema, ProviderSyncStateSchema, ProviderSyncScopeSchema, ProviderSyncFactsSchema, CommitProviderSyncSchema, ProviderSyncOutcomeSchema, RecordProviderFailureSchema, ProviderReviewRecordsSchema, TagRecordsSchema, TagCreateSchema, TagRecordSchema, TagRuleRecordsSchema, TagRuleCreateSchema, TagRuleRecordSchema, TagRuleReplaceSchema, TaggingFactsSchema, ManualTagCommandSchema, RuleCandidatesInputSchema, RuleCandidatesSchema, CommitRuleDecisionsSchema, ChangedCountSchema, RecentTransactionRecordsSchema, MovementAggregatesSchema, TaggedDebitRecordsSchema, IdentityResolutionInputSchema } from "@lazyfinance/contracts/internal";
+import { EmptyInputSchema, AccountRecordsSchema, IdInputSchema, ExpectationRecordsSchema, ExpectationCreateSchema, ExpectationRecordSchema, ExpectationUpdateSchema, VoidResultSchema, ReceiptConfirmSchema, ReceiptFactSchema, IncomeSourceRecordsSchema, IncomeSourceRecordSchema, IncomeSourceCreateSchema, IncomeSourceUpdateSchema, AtIdInputSchema, PeriodInputSchema, ExpectedIncomeFactsSchema, ReceiptFactsSchema, IncomeFactsSchema, ObjectiveRecordsSchema, ObjectiveSpendingInputSchema, ObjectiveSpendingFactsSchema, BeginProviderSyncSchema, ProviderSyncStateSchema, ProviderSyncScopeSchema, ProviderSyncFactsSchema, CommitProviderSyncSchema, ProviderSyncOutcomeSchema, RecordProviderFailureSchema, ProviderReviewRecordsSchema, TagRecordsSchema, TagCreateSchema, TagRecordSchema, TagRuleRecordsSchema, TagRuleCreateSchema, TagRuleRecordSchema, TagRuleReplaceSchema, TaggingFactsSchema, ManualTagCommandSchema, RuleCandidatesInputSchema, RuleCandidatesSchema, CommitRuleDecisionsSchema, ChangedCountSchema, RecentTransactionRecordsSchema, MovementAggregatesSchema, TaggedMovementAggregatesSchema, IdentityResolutionInputSchema } from "@lazyfinance/contracts/internal";
 import { TagDecisionSchema, AuthPrincipalSchema } from "@lazyfinance/contracts";
 
 const appRouter = t.router({
@@ -72,6 +72,14 @@ const appRouter = t.router({
       .input(AtIdInputSchema)
       .output(IncomeSourceRecordSchema)
       .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    expectedFacts: publicProcedure
+      .input(PeriodInputSchema)
+      .output(ExpectedIncomeFactsSchema)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    receipts: publicProcedure
+      .input(PeriodInputSchema)
+      .output(ReceiptFactsSchema)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
     facts: publicProcedure
       .input(PeriodInputSchema)
       .output(IncomeFactsSchema)
@@ -82,9 +90,9 @@ const appRouter = t.router({
       .input(EmptyInputSchema)
       .output(ObjectiveRecordsSchema)
       .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
-    tags: publicProcedure
-      .input(ObjectiveIdsInputSchema)
-      .output(ObjectiveTagRecordsSchema)
+    spending: publicProcedure
+      .input(ObjectiveSpendingInputSchema)
+      .output(ObjectiveSpendingFactsSchema)
       .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
     }),
   providerSync: t.router({
@@ -166,9 +174,9 @@ const appRouter = t.router({
       .input(PeriodInputSchema)
       .output(MovementAggregatesSchema)
       .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
-    taggedDebits: publicProcedure
+    taggedAggregates: publicProcedure
       .input(PeriodInputSchema)
-      .output(TaggedDebitRecordsSchema)
+      .output(TaggedMovementAggregatesSchema)
       .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
     }),
   identity: t.router({

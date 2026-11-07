@@ -6,25 +6,13 @@ import {
 } from "@lazyfinance/contracts";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { z } from "zod";
-import {
-  PersistenceClient,
-  persistenceException,
-} from "../../persistence/persistence.client";
-import { automaticDecision, matchingRules, matchKey } from "./tag-matching";
-
-function parse<T>(schema: z.ZodType<T>, value: unknown): T {
-  const result = schema.safeParse(value);
-  if (!result.success)
-    throw new BadRequestException({
-      message: "Invalid tag input",
-      issues: result.error.issues,
-    });
-
-  return result.data;
-}
+import { PersistenceClient } from "../../persistence/persistence.client";
+import { persistenceException } from "../../rpc/persistence-error";
+import { parseInput } from "../../validation/parse-input";
+import { createRuleMatcher, matchKey } from "./tag-matching";
 
 function normalizedRule(value: unknown): TagRuleInput {
-  const input = parse(TagRuleInputSchema, value);
+  const input = parseInput(TagRuleInputSchema, value, "Invalid tag input");
   const matchValue = matchKey(input.matchValue);
   if (!matchValue || matchValue.length > 240)
     throw new BadRequestException("Invalid normalized rule value");
@@ -45,7 +33,9 @@ export class TaggingService {
   async createTagForUser(userId: string, value: unknown) {
     const { isArchived: _, ...tag } = await this.persistence
       .user(userId)
-      .tags.create.mutate(parse(TagCreateInputSchema, value));
+      .tags.create.mutate(
+        parseInput(TagCreateInputSchema, value, "Invalid tag input"),
+      );
     return tag;
   }
 
@@ -56,7 +46,7 @@ export class TaggingService {
   ) {
     return this.persistence.user(userId).tagRules.manual.mutate({
       transactionId,
-      ...parse(ManualTagDecisionInputSchema, value),
+      ...parseInput(ManualTagDecisionInputSchema, value, "Invalid tag input"),
     });
   }
 
@@ -96,6 +86,7 @@ export class TaggingService {
 
     for (let attempt = 0; ; attempt++) {
       const facts = await client.tagRules.candidates.query({ ruleId, after });
+      const matcher = createRuleMatcher(facts.rules);
       const batch = facts.movements.slice(0, 1000);
       const decisions = batch.flatMap((row) => {
         if (
@@ -112,7 +103,7 @@ export class TaggingService {
         )
           return [];
 
-        const decision = automaticDecision(row, facts.rules);
+        const decision = matcher.automaticDecision(row);
 
         return decision ? [{ transactionId: row.id, ...decision }] : [];
       });
@@ -143,20 +134,22 @@ export class TaggingService {
     if (movement.tagDecisionOrigin === "manual" || movement.removedAt !== null)
       return [];
 
-    return matchingRules(movement, rules).map((rule) => ({
-      ruleId: rule.id,
-      tagId: rule.tagId,
-      tagName: rule.tagName,
-      confidence:
-        rule.matchField === "merchant"
-          ? ("high" as const)
-          : ("medium" as const),
-      reason: `${rule.matchField}_exact`,
-      autoApply:
-        rule.mode === "auto" &&
-        rule.approvedAt !== null &&
-        movement.isInternalMovement === false &&
-        movement.reviewStatus === "clear",
-    }));
+    return createRuleMatcher(rules)
+      .matchingRules(movement)
+      .map((rule) => ({
+        ruleId: rule.id,
+        tagId: rule.tagId,
+        tagName: rule.tagName,
+        confidence:
+          rule.matchField === "merchant"
+            ? ("high" as const)
+            : ("medium" as const),
+        reason: `${rule.matchField}_exact`,
+        autoApply:
+          rule.mode === "auto" &&
+          rule.approvedAt !== null &&
+          movement.isInternalMovement === false &&
+          movement.reviewStatus === "clear",
+      }));
   }
 }

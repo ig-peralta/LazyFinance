@@ -1,5 +1,5 @@
-import { toCents } from "../../_utils/money";
-import { santiagoParts } from "../../_utils/santiago-time";
+import { toCents } from "../../utils/money";
+import { santiagoParts } from "../../utils/santiago-time";
 import type { NormalizedMovement } from "../connector/normalized-banking.schema";
 
 export function movementKey(

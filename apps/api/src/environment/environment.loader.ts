@@ -7,7 +7,7 @@ function validateDotenv(config: Record<string, unknown>): EnvironmentVariables {
     throw new Error(`Invalid configuration: ${result.error.message}`);
   }
 
-  return result.data as EnvironmentVariables;
+  return result.data;
 }
 
 export function loadEnvironmentVariables(): EnvironmentVariables {

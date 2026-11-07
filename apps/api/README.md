@@ -18,7 +18,7 @@ Technical references: [architecture](../../docs/technical/architecture.md),
   budget progress, tag matching/ranking and provider orchestration.
 - Typed clients call `@lazyfinance/rpc-persistence` with a 30-second Ed25519 JWT.
   Context is immutable per client, and public tRPC request IDs propagate privately.
-- **No SQL, ORM, pool or PostgreSQL credentials in the API runtime.** Owner-only
+- **No database driver, pool or SQL access in the API.** Owner-only
   migration/seed commands belong to [persistence](../persistence/README.md).
 - Provider calls and preparation stay outside SQL transactions. A prepared sync
   commits facts, conflicts, decisions/events and checkpoint atomically. Known
@@ -41,8 +41,8 @@ ignored `apps/api/.env`, and configure:
 | `FIREBASE_PROJECT_ID` | Required in Firebase mode. |
 | `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` | Optional paired Admin credentials. |
 
-`POSTGRES_URL`, `POSTGRES_RUNTIME_URL`, and `POSTGRES_MIGRATION_URL` must not be
-present. App-local dotenv files are not the root Compose `.env`.
+The API needs the private RPC URL/signing key, not database configuration.
+App-local dotenv files are not the root Compose `.env`.
 
 `pnpm --filter api dev` starts watch mode. `build`, `typecheck` and `test` are also
 available. Public auth procedures are `auth.config` and `auth.loginMock`; all
@@ -57,17 +57,35 @@ accepted directly as API authentication.
 to detect drift. Normal application builds need neither generation nor another
 application's source. The browser must never import private contracts/signing code.
 
+Feature services inject the single `PersistenceClient` and call its inferred
+`user(userId)` RPC surface directly. There are no per-domain persistence adapters
+or database-shaped Date conversions. Financial calculations stay in the owning
+service or shared pure domain helpers, not in transport wrappers.
+
+Follow the [persistence read pattern](../../docs/technical/persistence-reads.md):
+joined objective/tag reads, SQL sums for API-computed budget windows, narrow
+income reads and snapshot-local rule/expectation indexes. Do not fetch full
+collections just to join IDs or sum raw movements in a feature service.
+
 Public bodies are limited to 1 MiB and batches to 10 procedures. Private provider
 runs are bounded by 100 pages, 50,000 records, 32 MiB normalized JSON and 64 MiB
 prepared JSON/results. Oversized runs fail without partial writes/checkpoint
 advancement; they are never silently split into independent commits. The private
-`providerSync.facts` query uses POST method override for large key scopes;
+`providerSync.facts` and `objectives.spending` queries use POST method override
+for large key/window lists;
 ordinary empty queries remain GET. The private client deadline is 120 seconds.
 
-Unit/DI tests can use mocked dependencies without listeners. HTTP/router/MCP tests
-can run without real persistence, but Supertest can open ephemeral HTTP listeners;
-the full API suite is **not serverless-only**. DB/workflow cases skip without the
-owner fixture URL and a matching private test service environment. Choose the
+Unit tests stay beside their implementation in `src/**/*.spec.ts`; run only those
+with `pnpm --filter api exec vitest run src`. Integration suites live in
+`tests/integration/<feature>/*.integration.spec.ts`, shared fixtures in
+`tests/fixtures/`, and app-wide test setup in `tests/setup.ts`. App builds exclude
+`tests/`; typechecks and default Vitest discovery include the relocated tests.
+
+Service/helper unit tests can use mocked dependencies without listeners.
+HTTP/RPC/MCP integration tests can run without real persistence, but Supertest
+can open ephemeral HTTP listeners; the full API suite is **not serverless-only**.
+DB/workflow cases skip without the owner fixture URL and a matching private test
+service environment. Choose the
 [verification tier](../../docs/technical/development-workflow.md#verification-tiers)
 appropriate to the session.
 
@@ -81,6 +99,6 @@ TEST_POSTGRES_OWNER_URL=postgresql://owner:password@localhost:5432/lazyfinance_t
 The runner builds dependencies, migrates/provisions, starts compiled persistence
 with restricted runtime credentials and ephemeral keys, runs API tests through
 both real HTTP boundaries, then stops that service. Owner SQL is confined to
-`apps/api/test` fixture tooling. It is not available to the API application/image.
+`apps/api/tests/fixtures` tooling. It is not available to the API application/image.
 Live Firebase verification additionally requires `TEST_FIREBASE_ID_TOKEN_A/B` and
 optionally `TEST_FIREBASE_PROJECT_ID` / `TEST_FIREBASE_EXPIRED_ID_TOKEN`.

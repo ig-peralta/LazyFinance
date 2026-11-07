@@ -2,6 +2,8 @@ import "@angular/compiler";
 import { PLATFORM_ID } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
 import { provideRouter, Router } from "@angular/router";
+import type { ApiRouter } from "@lazyfinance/rpc-api";
+import type { inferRouterInputs, inferRouterOutputs } from "@trpc/server";
 import { vi } from "vitest";
 import { AuthCredentials } from "../app/core/auth/auth-credentials";
 import { SessionService } from "../app/core/auth/session.service";
@@ -13,11 +15,33 @@ import { TaggingData } from "../app/features/tagging/tagging.data";
 import { TransactionsData } from "../app/features/transactions/transactions.data";
 import { API_URL } from "../app/tokens/api-url";
 
+type Inputs = inferRouterInputs<ApiRouter>;
+type Outputs = inferRouterOutputs<ApiRouter>;
+type RouterName = keyof Inputs & keyof Outputs & string;
+
+export type RpcProcedure = {
+  [Router in RouterName]: `${Router}.${keyof Inputs[Router] & keyof Outputs[Router] & string}`;
+}[RouterName];
+
+export type RpcInput<Procedure extends RpcProcedure> =
+  Procedure extends `${infer Router extends RouterName}.${infer Method}`
+    ? Method extends keyof Inputs[Router]
+      ? Inputs[Router][Method]
+      : never
+    : never;
+
+export type RpcOutput<Procedure extends RpcProcedure> =
+  Procedure extends `${infer Router extends RouterName}.${infer Method}`
+    ? Method extends keyof Outputs[Router]
+      ? Outputs[Router][Method]
+      : never
+    : never;
+
 export const principal = {
   userId: "owner-a",
   email: "demo@lazyfinance.cl",
   name: "Camila Rojas",
-};
+} satisfies RpcOutput<"auth.principal">;
 
 export const emptySummary = {
   month: "2026-09",
@@ -32,7 +56,7 @@ export const emptySummary = {
     paymentCount: 0,
   },
   unclassifiedCredits: { amount: "0.00", count: 0 },
-};
+} satisfies RpcOutput<"summaries.monthly">;
 
 export const emptyComparison = {
   month: "2026-09",
@@ -41,13 +65,22 @@ export const emptyComparison = {
   receivedIncome: { current: "0.00", previous: "0.00", change: "0.00" },
   spending: { current: "0.00", previous: "0.00", change: "0.00" },
   unresolvedMovementCount: { current: 0, previous: 0 },
-};
+} satisfies RpcOutput<"summaries.comparison">;
 
 export const tag = {
   id: "00000000-0000-4000-8000-000000000031",
   name: "Comida",
   color: "#22AA77",
-};
+} satisfies RpcOutput<"tags.create">;
+
+export const account = (name: string): RpcOutput<"accounts.list">[number] => ({
+  id: name,
+  alias: name,
+  type: "checking",
+  currency: "CLP",
+  balance: "10.00",
+  lastSyncedAt: null,
+});
 
 export const movement = {
   id: "00000000-0000-4000-8000-000000000012",
@@ -66,22 +99,36 @@ export const movement = {
   tagDecisionOrigin: "unreviewed" as const,
   tagRuleId: null,
   reviewStatus: "clear" as const,
-};
+} satisfies RpcOutput<"transactions.recent">[number];
 
-export interface RpcCall {
-  procedure: string;
-  input: unknown;
+export const manualDecision = (
+  transactionId = movement.id,
+  tagId: string | null = tag.id,
+): RpcOutput<"tags.decide"> => ({
+  transactionId,
+  tagId,
+  origin: "manual",
+  ruleId: null,
+  decidedAt: "2026-10-15T15:00:00.000Z",
+});
+
+export interface RpcCall<Procedure extends RpcProcedure = RpcProcedure> {
+  procedure: Procedure;
+  input: RpcInput<Procedure>;
   authorization: string | null;
   options?: RequestInit;
 }
 
-export type RpcHandler = (
-  input: unknown,
-  call: RpcCall,
-) => unknown | Promise<unknown>;
+export type RpcHandler<Procedure extends RpcProcedure> = (
+  input: RpcInput<Procedure>,
+  call: RpcCall<Procedure>,
+) => RpcOutput<Procedure> | Response | Promise<RpcOutput<Procedure> | Response>;
 
-export type RpcHandlers = Record<string, RpcHandler>;
+export type RpcHandlers = {
+  [Procedure in RpcProcedure]?: RpcHandler<Procedure>;
+};
 
+/** Raw transport escape hatch for error or intentionally malformed responses. */
 export const rpcResponse = (data: unknown) =>
   new Response(JSON.stringify({ result: { data } }), {
     headers: { "content-type": "application/json" },
@@ -118,52 +165,78 @@ export function createRpcFetch(overrides: RpcHandlers = {}) {
     "tags.suggestions": () => [],
     "tags.create": (input) => ({
       ...tag,
-      name: (input as { name: string }).name,
+      name: input.name,
     }),
-    "tags.decide": (input) => ({
-      ...(input as object),
-      origin: "manual",
-      ruleId: null,
-      decidedAt: "2026-10-15T15:00:00.000Z",
-    }),
+    "tags.decide": (input) => manualDecision(input.transactionId, input.tagId),
     "tags.reset": (input) => ({
-      transactionId: (input as { id: string }).id,
+      transactionId: input.id,
       tagId: null,
       origin: "unreviewed",
       ruleId: null,
       decidedAt: null,
     }),
-    "tagRules.create": () => ({ id: "rule" }),
+    "tagRules.create": (input) => ({
+      id: "00000000-0000-4000-8000-000000000032",
+      tagId: input.tagId,
+      accountId: input.accountId ?? null,
+      direction: input.direction,
+      matchField: input.matchField,
+      matchValue: input.matchValue,
+      priority: input.priority ?? 0,
+      mode: input.autoApply ? "auto" : "suggest",
+      approvedAt: input.autoApply ? "2026-10-15T15:00:00.000Z" : null,
+      active: true,
+      createdAt: "2026-10-15T15:00:00.000Z",
+      updatedAt: "2026-10-15T15:00:00.000Z",
+    }),
     ...overrides,
   };
   const calls: RpcCall[] = [];
-  const fetch = vi.fn<typeof globalThis.fetch>(async (url, options) => {
-    const parsed = new URL(String(url));
-    const procedure = parsed.pathname.replace("/trpc/", "");
-    const input = options?.body
-      ? JSON.parse(String(options.body))
-      : JSON.parse(parsed.searchParams.get("input") ?? "null");
-    const call = {
+
+  async function respond<Procedure extends RpcProcedure>(
+    procedure: Procedure,
+    input: unknown,
+    options?: RequestInit,
+  ): Promise<Response> {
+    const handler = handlers[procedure];
+    if (!handler) throw new Error(`Unexpected test RPC: ${procedure}`);
+
+    const call: RpcCall<Procedure> = {
       procedure,
-      input,
+      // The real typed client encodes this request. Keep the JSON assertion at
+      // dispatch, rather than erasing types from every handler and recorded call.
+      input: input as RpcInput<Procedure>,
       authorization: new Headers(options?.headers).get("authorization"),
       options,
     };
     calls.push(call);
-    const handler = handlers[procedure];
-    if (!handler) throw new Error(`Unexpected test RPC: ${procedure}`);
-
-    const value = await handler(input, call);
+    const value = await handler(call.input, call);
 
     return value instanceof Response ? value : rpcResponse(value);
+  }
+
+  const fetch = vi.fn<typeof globalThis.fetch>(async (url, options) => {
+    const parsed = new URL(String(url));
+    const procedure = parsed.pathname.replace("/trpc/", "");
+    if (!Object.hasOwn(handlers, procedure)) {
+      throw new Error(`Unexpected test RPC: ${procedure}`);
+    }
+
+    const encoded = options?.body
+      ? String(options.body)
+      : parsed.searchParams.get("input");
+    const input: unknown = encoded == null ? undefined : JSON.parse(encoded);
+    return respond(procedure as RpcProcedure, input, options);
   });
 
   return {
     fetch,
     handlers,
     calls,
-    callsTo: (procedure: string) =>
-      calls.filter((call) => call.procedure === procedure),
+    callsTo: <Procedure extends RpcProcedure>(procedure: Procedure) =>
+      calls.filter(
+        (call): call is RpcCall<Procedure> => call.procedure === procedure,
+      ),
   };
 }
 
@@ -202,15 +275,4 @@ export function setupRpc(
     session,
     rpc: TestBed.inject(RpcClient),
   };
-}
-
-export function deferred<T>() {
-  let resolve!: (value: T) => void;
-  let reject!: (reason: unknown) => void;
-  const promise = new Promise<T>((yes, no) => {
-    resolve = yes;
-    reject = no;
-  });
-
-  return { promise, resolve, reject };
 }

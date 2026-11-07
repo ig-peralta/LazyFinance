@@ -114,8 +114,8 @@ password**; unmanaged/unsafe collisions are refused. Runtime startup rejects
 superuser, BYPASSRLS, role/database-creation or replication privileges, membership
 in powerful/bootstrap/database-owner/table-owner roles, and CREATE access to the
 application schemas. Persistence also rejects `POSTGRES_MIGRATION_URL` in its
-runtime environment. The API rejects the `POSTGRES_URL`, `POSTGRES_RUNTIME_URL`
-and `POSTGRES_MIGRATION_URL` variables; it has no database fallback.
+runtime environment. The API uses the private RPC URL and signing key, with no
+database driver or connection.
 
 Do not inject the root Compose environment wholesale into app processes. These
 checks are guardrails, not a substitute for keeping credentials separate.
@@ -135,8 +135,8 @@ outside a scope throws; nested scopes and repository use of `transaction`,
 middleware receive `RUNTIME_DB`. The proxy permits harmless constructor reflection
 for NestJS-tRPC provider discovery, not raw connection access.
 
-Normal procedures use read-committed. `income.facts`, `tagRules.facts`,
-`tagRules.candidates` and `providerSync.facts` request repeatable-read snapshots.
+Normal procedures use read-committed. `income.expectedFacts`, `income.facts`,
+`tagRules.facts`, `tagRules.candidates` and `providerSync.facts` request repeatable-read snapshots.
 All user mutations acquire the same per-user advisory transaction lock. This
 serializes writes affecting prepared inputs, including rule insertion/removal
 that a row-only lock might miss. It is not a lock around provider network calls

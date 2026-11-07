@@ -2,7 +2,7 @@
 
 Private NestJS/tRPC service using Kysely, `pg`, `identity`/`finance` schemas and
 PostgreSQL user RLS. The API and UI now use the matching RPC boundaries; no API
-database fallback remains. Its 35 private procedures expose identity resolution,
+database fallback remains. Its 37 private procedures expose identity resolution,
 bounded financial facts, income commands, tag decisions/rules, and prepared atomic
 provider sync. Product calculations remain in the API. Read the
 [private RPC/RLS reference](../../docs/technical/persistence-security.md),
@@ -57,6 +57,9 @@ protected/TLS service channel in deployment.
 
 ## Boundaries
 
+- Follow the [purpose-shaped read pattern](../../docs/technical/persistence-reads.md):
+  joins/projections and factual SQL sums belong here; API calendar/financial
+  interpretation must not be copied into a second implementation.
 - Only migration/seed tooling receives owner credentials.
 - Feature repositories inject `RLS_DB`, which fails outside a scoped transaction.
 - Each RPC verifies the signed user/bootstrap identity before opening a transaction.
@@ -82,8 +85,14 @@ protected/TLS service channel in deployment.
 ## Validation
 
 The [verification guide](../../docs/technical/development-workflow.md#verification-tiers)
-separates serverless unit/DI checks from listener/DB integration. The commands below
+separates serverless unit checks from listener/DB integration. The commands below
 are a general workflow, not a serverless-only promise when DB tests are configured.
+
+Unit tests stay beside their implementation in `src/**/*.spec.ts`; run only those
+with `pnpm --filter persistence exec vitest run src`. Real PostgreSQL/RPC tests
+live in `tests/integration/*.integration.spec.ts`, with suite-specific fixtures
+kept in the suite. App builds exclude `tests/`; typechecks and default Vitest
+discovery include the relocated tests.
 
 ```sh
 pnpm rpc:generate
@@ -96,7 +105,7 @@ pnpm --filter persistence test
 Database integration tests require `TEST_POSTGRES_OWNER_URL` pointing to a
 **disposable database whose name ends in `_test`**. They create test-owned rows
 and provision a separate runtime login. Without that variable, database tests
-are explicitly skipped; signing and type tests still run. Never use real user data.
+are explicitly skipped; unit tests still run. Never use real user data.
 
 Configured PostgreSQL integration tests open test HTTP listeners. The root
 `pnpm test:integration` runner separately runs the **API** suite against compiled

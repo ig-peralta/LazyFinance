@@ -4,8 +4,8 @@ import type {
   IncomeExpectation,
   IncomeSource,
 } from "@lazyfinance/contracts";
-import { fromCents, toCents } from "../_utils/money";
-import { santiagoTimestamp } from "../_utils/santiago-time";
+import { fromCents, toCents } from "../utils/money";
+import { santiagoTimestamp } from "../utils/santiago-time";
 
 export type ScheduledIncomeSource = Omit<
   IncomeSource,
@@ -23,6 +23,12 @@ export function expectedIncomeForMonth(
   const monthStart = Date.UTC(year, number - 1, 1);
   const monthEnd = Date.UTC(year, number, 1);
   const lastDay = new Date(Date.UTC(year, number, 0)).getUTCDate();
+  const expectationsBySource = new Map<string, IncomeExpectation[]>();
+  for (const expectation of expectations) {
+    const items = expectationsBySource.get(expectation.sourceId) ?? [];
+    items.push(expectation);
+    expectationsBySource.set(expectation.sourceId, items);
+  }
 
   for (const source of sources) {
     const archiveDate = source.archivedAt
@@ -52,12 +58,8 @@ export function expectedIncomeForMonth(
     };
 
     if (source.regularity === "irregular") {
-      for (const expectation of expectations) {
-        if (
-          expectation.sourceId !== source.id ||
-          !eligibleDate(expectation.date)
-        )
-          continue;
+      for (const expectation of expectationsBySource.get(source.id) ?? []) {
+        if (!eligibleDate(expectation.date)) continue;
 
         payments.push({
           sourceId: source.id,

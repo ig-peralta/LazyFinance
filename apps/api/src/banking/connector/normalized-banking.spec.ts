@@ -1,6 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { fromCents, toCents } from "../../_utils/money";
-import type { BankingConnector } from "./banking-connector";
 import {
   correctionPage,
   expiredFailure,
@@ -9,7 +7,9 @@ import {
   retryableFailure,
   revokedFailure,
   unknownBalancePage,
-} from "./fixtures/normalized-pages";
+} from "../../../tests/fixtures/banking/normalized-pages";
+import { fromCents, toCents } from "../../utils/money";
+import type { BankingConnector } from "./banking-connector";
 import {
   ConnectorResultSchema,
   NormalizedMovementSchema,

@@ -11,6 +11,7 @@ import { BudgetProgressSchema, ObjectiveSummarySchema } from "../objectives";
 import { MonthSchema } from "../summaries/month.schema";
 import {
   TagRuleInputSchema,
+  TagRuleResultSchema,
   TagSuggestionSchema,
   TagSummarySchema,
 } from "../tags";
@@ -26,21 +27,6 @@ export const ObjectivesResultSchema = z.array(ObjectiveSummarySchema);
 export const BudgetProgressResultSchema = z.array(BudgetProgressSchema);
 export const TagsResultSchema = z.array(TagSummarySchema);
 export const SuggestionsResultSchema = z.array(TagSuggestionSchema);
-
-export const TagRuleResultSchema = z.object({
-  id: z.uuid(),
-  tagId: z.uuid(),
-  accountId: z.uuid().nullable(),
-  direction: z.enum(["debit", "credit"]),
-  matchField: z.enum(["merchant", "description"]),
-  matchValue: z.string(),
-  priority: z.number().int(),
-  mode: z.enum(["suggest", "auto"]),
-  approvedAt: z.iso.datetime().nullable(),
-  active: z.boolean(),
-  createdAt: z.iso.datetime(),
-  updatedAt: z.iso.datetime(),
-});
 
 export const TagRulesResultSchema = z.array(TagRuleResultSchema);
 

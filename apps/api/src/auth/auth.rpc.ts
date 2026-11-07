@@ -7,7 +7,7 @@ import {
   RpcEmptySchema,
 } from "@lazyfinance/contracts";
 import { Ctx, Input, Mutation, Query, Router } from "nestjs-trpc";
-import type { ApiRequestContext } from "../rpc/api.context";
+import type { ApiRequestContext } from "../rpc/context";
 import { AuthService } from "./auth.service";
 
 @Router({ alias: "auth" })

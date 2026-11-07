@@ -49,6 +49,13 @@ different checks. A superseded revision does not overwrite newer work. Only a
 known conflict rejection is read/prepared again (at most two retries); a lost
 response or timeout is not retried because the commit may have succeeded.
 
+Movement snapshot rows already include their account external ID and receipt
+existence from SQL joins. Those fields participate in the fingerprint and are
+re-read on commit; the API does not rebuild them from separate arrays. Rule
+matching indexes each immutable rule snapshot once, and commit validation reuses
+the revalidated rule set through an ID lookup. See the
+[read pattern](../../../../docs/technical/persistence-reads.md).
+
 The 50,000-record bound counts **accounts + movements + removals across all
 pages**, including repeated records on separate pages. UTF-8 serialized normalized
 pages also share a cumulative 32 MiB budget; private prepared bodies and factual

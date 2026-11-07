@@ -88,6 +88,7 @@ reading order and distinction between implementation, evidence and targets.
 | [Private RPC, transactions and RLS](docs/technical/persistence-security.md) | Assertions, bootstrap, runtime roles, related-owner policies, atomicity and budgets |
 | [Database model and implemented ERD](docs/technical/database-model.md) | All 17 tables, relationships/keys, representation and fresh-migration lifecycle |
 | [RPC contracts and clients](docs/technical/rpc-contracts.md) | Public/private procedures, MCP tools, type-only libraries and generation workflow |
+| [Persistence read pattern](docs/technical/persistence-reads.md) | Purpose-shaped joins/aggregates, cardinality, snapshots and data-access review rules |
 | [Provider-neutral identity](docs/technical/identity.md) | External provider/issuer/subject mapping, internal principals and current provider-selection limits |
 | [UI/session/SSR lifetimes](docs/technical/ui-data-lifecycle.md) | Verified scopes, resources, cancellation, command/read ordering and hydration privacy |
 | [Technical manual](docs/technical/technical-manual.md) | Installation, environment/credential separation, Compose, operation and troubleshooting |
@@ -157,7 +158,7 @@ pnpm rpc:keys
 pnpm dev
 ```
 
-The UI runs at <http://localhost:4200>, API at <http://localhost:3000>, and private persistence at `127.0.0.1:3001`. Do not export owner CLI credentials into the app runtimes. The API rejects PostgreSQL credentials; persistence rejects owner/BYPASSRLS runtime logins. Stop resources with `pnpm resources:down` when finished.
+The UI runs at <http://localhost:4200>, API at <http://localhost:3000>, and private persistence at `127.0.0.1:3001`. Owner credentials belong only to CLI jobs; persistence requires a restricted runtime login. The API connects only through private RPC. Stop resources with `pnpm resources:down` when finished.
 
 App-local `.env` files are separate from the root [Compose environment](.env.example). Never commit real keys/passwords. See the [technical manual](docs/technical/technical-manual.md).
 

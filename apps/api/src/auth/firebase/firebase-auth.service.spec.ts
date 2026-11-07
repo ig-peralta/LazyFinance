@@ -1,7 +1,7 @@
 import { VerifiedExternalIdentitySchema } from "@lazyfinance/contracts";
 import { UnauthorizedException } from "@nestjs/common";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { EnvironmentService } from "../../environment/environment.service";
+import { testEnvironment } from "../../../tests/fixtures/environment";
 import { FirebaseAuthService } from "./firebase-auth.service";
 
 const admin = vi.hoisted(() => {
@@ -59,21 +59,12 @@ function service(
     privateKey?: string;
   } = { projectId },
 ): FirebaseAuthService {
-  const environment = {
-    get: (key: string) =>
-      ({
-        AUTH_PROVIDER: config.provider ?? "firebase",
-        FIREBASE_PROJECT_ID: config.projectId,
-        FIREBASE_CLIENT_EMAIL: config.clientEmail,
-        FIREBASE_PRIVATE_KEY: config.privateKey,
-      })[
-        key as
-          | "AUTH_PROVIDER"
-          | "FIREBASE_PROJECT_ID"
-          | "FIREBASE_CLIENT_EMAIL"
-          | "FIREBASE_PRIVATE_KEY"
-      ],
-  } as unknown as EnvironmentService;
+  const environment = testEnvironment({
+    AUTH_PROVIDER: config.provider ?? "firebase",
+    FIREBASE_PROJECT_ID: config.projectId,
+    FIREBASE_CLIENT_EMAIL: config.clientEmail,
+    FIREBASE_PRIVATE_KEY: config.privateKey,
+  });
   const firebase = new FirebaseAuthService(environment);
   firebase.onModuleInit();
 

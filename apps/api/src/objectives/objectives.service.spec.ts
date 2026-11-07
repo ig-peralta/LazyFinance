@@ -1,196 +1,87 @@
+import type { ObjectiveSummary } from "@lazyfinance/contracts";
 import { describe, expect, it, vi } from "vitest";
-import type { ObjectiveClient as ObjectiveRepository } from "../persistence/objectives.client";
-import type { TagClient as TagRepository } from "../persistence/tags.client";
-import type { TransactionClient as TransactionRepository } from "../persistence/transactions.client";
+import type { RpcStubs } from "../../tests/fixtures/rpc-stubs";
+import type { PersistenceClient } from "../persistence/persistence.client";
 import { ObjectivesService } from "./objectives.service";
 
 const userId = "00000000-0000-4000-8000-000000000001";
 const budgetId = "00000000-0000-4000-8000-000000000041";
-const goalId = "00000000-0000-4000-8000-000000000042";
 
-describe("ObjectivesService", () => {
-  it("assembles budget and savings targets with their independent tag lists", async () => {
-    const listForUser = vi.fn(async () => [
-      {
-        id: budgetId,
-        name: "Viaje",
-        amount: "240000.00",
-        kind: "time_based" as const,
-        intent: "spending" as const,
-        isRecurring: false,
-        period: null,
-        startDate: new Date("2025-09-01T15:00:00.000Z"),
-        endDate: new Date("2025-10-01T15:00:00.000Z"),
-      },
-      {
-        id: goalId,
-        name: "Fondo",
-        amount: "6500000.00",
-        kind: "amount_based" as const,
-        intent: "saving" as const,
-        isRecurring: null,
-        period: null,
-        startDate: null,
-        endDate: null,
-      },
-    ]);
-    const links = [
-      {
-        objectiveId: budgetId,
-        id: "00000000-0000-4000-8000-000000000031",
-        name: "Familia",
-        color: null,
-      },
-      {
-        objectiveId: budgetId,
-        id: "00000000-0000-4000-8000-000000000032",
-        name: "Vacaciones",
-        color: "#0D9488",
-      },
-    ];
-    const listForObjectives = vi.fn(async () => links);
-    const service = new ObjectivesService(
-      { listForUser } as unknown as ObjectiveRepository,
-      { listForObjectives } as unknown as TagRepository,
-      {} as TransactionRepository,
-    );
+type ObjectivesClient = RpcStubs<
+  ReturnType<PersistenceClient["user"]>["objectives"]
+>;
 
-    await expect(service.getForUser(userId)).resolves.toEqual([
-      {
-        id: budgetId,
-        name: "Viaje",
-        amount: "240000.00",
-        kind: "time_based",
-        intent: "spending",
-        isRecurring: false,
-        period: null,
-        startDate: "2025-09-01T15:00:00.000Z",
-        endDate: "2025-10-01T15:00:00.000Z",
-        tags: links.map(({ objectiveId: _, ...tag }) => tag),
-      },
-      {
-        id: goalId,
-        name: "Fondo",
-        amount: "6500000.00",
-        kind: "amount_based",
-        intent: "saving",
-        isRecurring: null,
-        period: null,
-        startDate: null,
-        endDate: null,
-        tags: [],
-      },
-    ]);
-    expect(listForUser).toHaveBeenCalledWith(userId);
-    expect(listForObjectives).toHaveBeenCalledWith(userId, [budgetId, goalId]);
+function budget(update: Partial<ObjectiveSummary> = {}): ObjectiveSummary {
+  return {
+    id: budgetId,
+    name: "Supermercado",
+    amount: "280000.00",
+    kind: "time_based",
+    intent: "spending",
+    isRecurring: true,
+    period: "monthly",
+    startDate: "2024-01-01T15:00:00.000Z",
+    endDate: null,
+    tags: [{ id: "groceries", name: "Supermercado", color: null }],
+    ...update,
+  };
+}
+
+function setup(objectives: ObjectiveSummary[] = []) {
+  const spending = vi.fn<ObjectivesClient["spending"]["query"]>(async () => []);
+  const reads = {
+    list: { query: async () => objectives },
+    spending: { query: spending },
+  } satisfies ObjectivesClient;
+  const persistence = {
+    user: () => ({
+      objectives: reads,
+    }),
+  };
+  return {
+    service: new ObjectivesService(persistence as unknown as PersistenceClient),
+    spending,
+  };
+}
+
+describe("ObjectivesService spending progress", () => {
+  it("does not aggregate empty, saving, unsupported or untagged budgets", async () => {
+    for (const objectives of [
+      [],
+      [budget({ intent: "saving" })],
+      [budget({ tags: [] })],
+      [budget({ period: "weekly" })],
+      [budget({ isRecurring: false, endDate: "2025-01-01T15:00:00Z" })],
+    ]) {
+      const { service, spending } = setup(objectives);
+      await expect(
+        service.getSpendingProgressForUser(userId, "2026-09"),
+      ).resolves.toEqual([]);
+      expect(spending).not.toHaveBeenCalled();
+    }
   });
 
-  it("does not query tags if there are no objectives", async () => {
-    const listForUser = vi.fn(async () => []);
-    const listForObjectives = vi.fn();
-    const service = new ObjectivesService(
-      { listForUser } as unknown as ObjectiveRepository,
-      { listForObjectives } as unknown as TagRepository,
-      {} as TransactionRepository,
-    );
-
-    await expect(service.getForUser(userId)).resolves.toEqual([]);
-    expect(listForObjectives).not.toHaveBeenCalled();
-  });
-
-  it("combines single-tag movements across budget tags and separates monthly from yearly spend", async () => {
-    const groceryId = "00000000-0000-4000-8000-000000000051";
-    const vacationId = "00000000-0000-4000-8000-000000000052";
-    const groceriesTag = "00000000-0000-4000-8000-000000000031";
-    const familyTag = "00000000-0000-4000-8000-000000000032";
-    const vacationTag = "00000000-0000-4000-8000-000000000033";
-    const listForUser = vi.fn(async () => [
-      {
-        id: groceryId,
-        name: "Supermercado",
-        amount: "280000.00",
-        kind: "time_based",
-        intent: "spending",
-        isRecurring: true,
-        period: "monthly",
-        startDate: new Date("2024-01-01T15:00:00Z"),
-        endDate: null,
-      },
-      {
-        id: vacationId,
+  it("interprets signed aggregate facts using independent monthly and yearly windows", async () => {
+    const yearlyId = "00000000-0000-4000-8000-000000000052";
+    const { service, spending } = setup([
+      budget(),
+      budget({
+        id: yearlyId,
         name: "Vacaciones",
-        amount: "650000.00",
-        kind: "time_based",
-        intent: "spending",
-        isRecurring: true,
         period: "yearly",
-        startDate: new Date("2024-01-01T15:00:00Z"),
-        endDate: null,
-      },
-      {
-        id: goalId,
-        name: "Fondo",
-        amount: "6500000.00",
-        kind: "amount_based",
-        intent: "saving",
-        isRecurring: null,
-        period: null,
-        startDate: null,
-        endDate: null,
-      },
+        amount: "650000.00",
+      }),
     ]);
-    const listForObjectives = vi.fn(async () => [
-      {
-        objectiveId: groceryId,
-        id: groceriesTag,
-        name: "Supermercado",
-        color: null,
-      },
-      { objectiveId: groceryId, id: familyTag, name: "Familia", color: null },
-      {
-        objectiveId: vacationId,
-        id: vacationTag,
-        name: "Vacaciones",
-        color: null,
-      },
+    spending.mockResolvedValue([
+      { id: budgetId, amount: "-300000.00", count: 2 },
+      { id: yearlyId, amount: "-350000.00", count: 2 },
     ]);
-    const listTaggedDebitsForPeriod = vi.fn(async () => [
-      {
-        id: "00000000-0000-4000-8000-000000000061",
-        amount: "-250000.00",
-        bookedAt: new Date("2026-09-15T15:00:00Z"),
-        tagId: groceriesTag,
-      },
-      {
-        id: "00000000-0000-4000-8000-000000000064",
-        amount: "-50000.00",
-        bookedAt: new Date("2026-09-15T15:00:00Z"),
-        tagId: familyTag,
-      },
-      {
-        id: "00000000-0000-4000-8000-000000000062",
-        amount: "-200000.00",
-        bookedAt: new Date("2026-01-14T15:00:00Z"),
-        tagId: vacationTag,
-      },
-      {
-        id: "00000000-0000-4000-8000-000000000063",
-        amount: "-150000.00",
-        bookedAt: new Date("2026-09-17T15:00:00Z"),
-        tagId: vacationTag,
-      },
-    ]);
-    const service = new ObjectivesService(
-      { listForUser } as unknown as ObjectiveRepository,
-      { listForObjectives } as unknown as TagRepository,
-      { listTaggedDebitsForPeriod } as unknown as TransactionRepository,
-    );
 
     await expect(
       service.getSpendingProgressForUser(userId, "2026-09"),
     ).resolves.toEqual([
       {
-        id: groceryId,
+        id: budgetId,
         name: "Supermercado",
         month: "2026-09",
         period: "monthly",
@@ -200,7 +91,7 @@ describe("ObjectivesService", () => {
         percentage: 107,
       },
       {
-        id: vacationId,
+        id: yearlyId,
         name: "Vacaciones",
         month: "2026-09",
         period: "yearly",
@@ -210,51 +101,68 @@ describe("ObjectivesService", () => {
         percentage: 53,
       },
     ]);
-    expect(listTaggedDebitsForPeriod).toHaveBeenCalledWith(
-      userId,
-      "2026-01-01 00:00:00",
-      "2026-10-01 00:00:00",
-    );
+    expect(spending).toHaveBeenCalledWith({
+      windows: [
+        {
+          id: budgetId,
+          start: "2026-09-01 00:00:00",
+          end: "2026-10-01 00:00:00",
+        },
+        {
+          id: yearlyId,
+          start: "2026-01-01 00:00:00",
+          end: "2026-10-01 00:00:00",
+        },
+      ],
+      asOf: undefined,
+    });
   });
 
-  it("limits the current month’s budget query to now", async () => {
-    const now = new Date("2026-10-16T15:00:00.000Z");
-    const listTaggedDebitsForPeriod = vi.fn(async () => []);
-    const service = new ObjectivesService(
-      {
-        listForUser: vi.fn(async () => [
-          {
-            id: budgetId,
-            name: "Supermercado",
-            amount: "280000.00",
-            kind: "time_based",
-            intent: "spending",
-            isRecurring: true,
-            period: "monthly",
-            startDate: new Date("2024-01-01T15:00:00.000Z"),
-            endDate: null,
-          },
-        ]),
-      } as unknown as ObjectiveRepository,
-      {
-        listForObjectives: vi.fn(async () => [
-          {
-            objectiveId: budgetId,
-            id: "00000000-0000-4000-8000-000000000031",
-            name: "Supermercado",
-            color: null,
-          },
-        ]),
-      } as unknown as TagRepository,
-      { listTaggedDebitsForPeriod } as unknown as TransactionRepository,
-    );
+  it("distinguishes zero spending from an objective removed between reads", async () => {
+    const { service, spending } = setup([budget()]);
+    spending.mockResolvedValue([{ id: budgetId, amount: "0", count: 0 }]);
+    await expect(
+      service.getSpendingProgressForUser(userId, "2026-09"),
+    ).resolves.toMatchObject([
+      { spent: "0.00", remaining: "280000.00", percentage: 0 },
+    ]);
+    spending.mockResolvedValue([]);
+    await expect(
+      service.getSpendingProgressForUser(userId, "2026-09"),
+    ).resolves.toEqual([]);
+  });
 
+  it("keeps exact cents when aggregate amounts exceed safe integer cents", async () => {
+    const { service, spending } = setup([
+      budget({ amount: "9007199254740.99" }),
+    ]);
+    spending.mockResolvedValue([
+      { id: budgetId, amount: "-90071992547409.98", count: 2 },
+    ]);
+    await expect(
+      service.getSpendingProgressForUser(userId, "2026-09"),
+    ).resolves.toMatchObject([
+      {
+        spent: "90071992547409.98",
+        remaining: "-81064793292668.99",
+        percentage: 999,
+      },
+    ]);
+  });
+
+  it("caps current-month factual reads at now without shortening the budget period", async () => {
+    const now = new Date("2026-10-16T15:00:00.000Z");
+    const { service, spending } = setup([budget()]);
     await service.getSpendingProgressForUser(userId, "2026-10", now);
-    expect(listTaggedDebitsForPeriod).toHaveBeenCalledWith(
-      userId,
-      "2026-10-01 00:00:00",
-      "2026-11-01 00:00:00",
-      now,
-    );
+    expect(spending).toHaveBeenCalledWith({
+      windows: [
+        {
+          id: budgetId,
+          start: "2026-10-01 00:00:00",
+          end: "2026-11-01 00:00:00",
+        },
+      ],
+      asOf: now.toISOString(),
+    });
   });
 });

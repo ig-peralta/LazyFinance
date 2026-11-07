@@ -5,7 +5,7 @@ import { provideRouter } from "@angular/router";
 import type { AuthConfig } from "@lazyfinance/contracts";
 import { SsrCookieService } from "ngx-cookie-service-ssr";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { deferred } from "../../../testing/rpc";
+import { deferred } from "../../../testing/deferred";
 import { initializeServices } from "../../services/initializer";
 import { AuthApi } from "./auth-api";
 import { SessionService } from "./session.service";

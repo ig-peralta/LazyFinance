@@ -2,8 +2,9 @@ import { randomUUID } from "node:crypto";
 import type { ProviderSyncFacts } from "@lazyfinance/contracts/internal";
 import { TRPCClientError } from "@trpc/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { initialPage } from "../../../tests/fixtures/banking/normalized-pages";
+import type { RpcStubs } from "../../../tests/fixtures/rpc-stubs";
 import type { PersistenceClient } from "../../persistence/persistence.client";
-import { initialPage } from "../connector/fixtures/normalized-pages";
 import {
   type ConnectorPage,
   ConnectorPageSchema,
@@ -41,6 +42,10 @@ const page = (): ConnectorPage => ({
 
 const bytes = (value: unknown) => Buffer.byteLength(JSON.stringify(value));
 
+type ProviderSyncClient = RpcStubs<
+  ReturnType<PersistenceClient["user"]>["providerSync"]
+>;
+
 function setup(pages = [page()]) {
   const connectionId = randomUUID();
   const facts: ProviderSyncFacts = {
@@ -60,28 +65,36 @@ function setup(pages = [page()]) {
     accounts: [],
     movements: [],
     removals: [],
-    receiptTransactionIds: [],
     rules: [],
     fingerprint: "0".repeat(64),
   };
   const rpc = {
-    begin: { mutate: vi.fn(async () => facts.state) },
-    facts: { query: vi.fn(async () => facts) },
+    begin: {
+      mutate: vi.fn<ProviderSyncClient["begin"]["mutate"]>(
+        async () => facts.state,
+      ),
+    },
+    facts: {
+      query: vi.fn<ProviderSyncClient["facts"]["query"]>(async () => facts),
+    },
     commit: {
-      mutate: vi.fn(async () => ({
+      mutate: vi.fn<ProviderSyncClient["commit"]["mutate"]>(async () => ({
         status: "complete",
         conflictCount: 0,
         checkpoint: "saved",
       })),
     },
     failure: {
-      mutate: vi.fn(async () => ({
+      mutate: vi.fn<ProviderSyncClient["failure"]["mutate"]>(async () => ({
         status: "failed",
         reason: "invalid_data",
         retryAfter: null,
       })),
     },
-  };
+  } satisfies Pick<
+    ProviderSyncClient,
+    "begin" | "facts" | "commit" | "failure"
+  >;
   const fetchPage = vi.fn(async () => pages.shift()!);
   const service = new BankingIngestionService({
     user: () => ({ providerSync: rpc }),

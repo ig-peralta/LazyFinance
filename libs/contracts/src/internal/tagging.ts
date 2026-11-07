@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   TagCreateInputSchema,
   TagRuleInputSchema,
+  TagRuleResultSchema,
 } from "../tags/tag-rule.schema";
 
 export const TagCreateSchema = TagCreateInputSchema;
@@ -12,20 +13,8 @@ export const TagRuleReplaceSchema = z.strictObject({
   rule: TagRuleInputSchema,
 });
 
-export const TagRuleRecordSchema = z.object({
-  id: z.uuid(),
+export const TagRuleRecordSchema = TagRuleResultSchema.extend({
   userId: z.uuid(),
-  tagId: z.uuid(),
-  accountId: z.uuid().nullable(),
-  direction: z.enum(["debit", "credit"]),
-  matchField: z.enum(["merchant", "description"]),
-  matchValue: z.string(),
-  priority: z.number().int(),
-  mode: z.enum(["suggest", "auto"]),
-  approvedAt: z.iso.datetime().nullable(),
-  active: z.boolean(),
-  createdAt: z.iso.datetime(),
-  updatedAt: z.iso.datetime(),
 });
 
 export const TagRuleRecordsSchema = z.array(TagRuleRecordSchema).max(10000);

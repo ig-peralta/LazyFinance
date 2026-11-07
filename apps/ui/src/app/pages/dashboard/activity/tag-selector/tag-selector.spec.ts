@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   movement,
   type RpcHandlers,
+  type RpcOutput,
   rpcFailure,
   setupRpc,
   tag,
@@ -18,7 +19,7 @@ const suggestion = {
   confidence: "high",
   reason: "merchant_exact",
   autoApply: false,
-};
+} satisfies RpcOutput<"tags.suggestions">[number];
 
 function setup(
   transaction: RecentTransaction = movement,
