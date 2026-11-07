@@ -41,8 +41,10 @@ different boundaries; changing a bank adapter does not change who owns an accoun
 The identity contract and mapping table are provider-neutral. The table permits
 different provider/issuer namespaces to reference one application user, with at
 most one mapping per `(user_id, provider, issuer)`. This representational capability
-does **not** implement account linking or merging: current onboarding creates a
-new user for a new verified subject or resolves an existing explicit mapping.
+does **not** implement cross-namespace account linking or merging: current
+onboarding creates a new user for a new verified subject or resolves an existing
+explicit mapping. Firebase credential linking below keeps one existing UID; it
+does not add another external-identity mapping.
 
 The currently implemented API modes are:
 
@@ -55,7 +57,9 @@ The currently implemented API modes are:
 that mode's login. This is multi-provider-ready identity modelling with two
 implemented verifiers, not simultaneous arbitrary provider login, an automatic
 plugin registry, or email-based federation. The current real-provider browser
-flow is Google through Firebase; the Firebase UID, not a raw Google OAuth subject
+flows are Google and email/password through Firebase. These are **sign-in methods
+within the `firebase` namespace**, not additional `AuthProvider` values. The
+Firebase UID, not `firebase.sign_in_provider`, an email, a raw Google OAuth subject
 or access token, is the verified subject used by that adapter. A token from the
 unselected mode is not a fallback credential.
 
@@ -86,6 +90,61 @@ The bootstrap context can call only the narrow resolver, not finance procedures.
 Its `SECURITY DEFINER` owner has no financial access and cannot be assumed by the
 runtime. A normal user context cannot call bootstrap. These restrictions preserve
 ownership without introducing a general system/admin bypass.
+
+## Firebase sign-in and credential linking
+
+The browser offers Google sign-in, password sign-in/registration, email
+verification resend/recheck, and Firebase password-reset emails. Passwords go to
+the Firebase Web SDK, not to LazyFinance's API or database. Password inputs are
+cleared on submission; the app does not persist passwords or pending OAuth
+credentials. Firebase owns password storage, email action links and credential
+validation.
+
+Creating a password account signs into Firebase and sends a verification email,
+but does **not** accept a LazyFinance principal, provision through `auth.principal`
+or write an SSR token cookie. A verified email is required for first internal-user
+provisioning. Rechecking verification reloads the Firebase user, forces a new ID
+token and verifies it through the API before entering the app. If sending the
+email fails after creation, the Firebase account still exists: resend verification
+or sign in again rather than assuming creation rolled back. Existing mapped
+subjects retain the resolution behavior described above, even if a later token
+lacks verified-email evidence.
+
+The authenticated `/seguridad` page ("Acceso y seguridad") displays the current
+Firebase methods and offers explicit, same-account linking:
+
+| Current method | Adding a method |
+| --- | --- |
+| Google, no password | Use the current verified Firebase email, enter/confirm a new password, reauthenticate with Google, then call Firebase `linkWithCredential` on that user |
+| Password, no Google | Reauthenticate with the current password and verify a fresh token with the API; click a separate button to call `linkWithPopup` on that user |
+| Both | Display both as connected; no unlink, password-change or merge command |
+
+The separate Google button preserves the popup's user gesture instead of opening
+it after an asynchronous password check. Its in-memory proof is UID/internal-owner
+bound, single-use and expires after five minutes; expiry is checked at use, not
+just by the UI hint. After linking, the browser forces a fresh token and requires
+the API to resolve the **same internal user UUID**. A UID/owner change fails
+closed. No finance procedure, data migration or ownership update is part of linking.
+
+Credential collisions stop the flow. The app neither signs into the other account
+to copy data nor deletes/reassigns either identity. A sign-in collision directs
+the person to use their existing method and link from security settings; it does
+not enumerate registered methods or store/replay the failed OAuth credential.
+Separately created Firebase UIDs are not merged, even if emails match. Firebase's
+own trusted-provider/account-per-email policies can affect sign-in behavior; the
+app always maps the UID Firebase actually authenticates, never an email inferred
+from an error. Reset requests use generic confirmation, including a missing-user
+response, but full enumeration protection still requires Firebase configuration.
+
+These checks protect the application flow and asynchronous session handling;
+they are **not** a separate server-enforced MFA or recent-authentication policy.
+Either connected method can sign into the account on its own. In particular,
+adding a password does not inherit Google account MFA. Firebase credentials,
+email recovery, browser/XSS protection and project policy remain security
+boundaries; Firebase's email recovery behavior is separate from the page's
+reauthenticated linking flow. Client cancellation cannot undo a link already
+confirmed by Firebase;
+see [command lifetimes](ui-data-lifecycle.md#firebase-commands-and-observer-ordering).
 
 ## Sessions across browser and SSR
 
@@ -121,7 +180,10 @@ shared guarantee.
 | Service signing/private database configuration | Separate API/persistence credentials, described in the [manual](technical-manual.md#environments) |
 
 Both UI environment files currently use the public `lazyfinance-dev` Web project.
-Google sign-in must be enabled and the browser domain authorized in that project.
+Google and Email/Password sign-in must be enabled and the browser domain
+authorized in that project. Review email templates/action URLs, password policy,
+email-enumeration protection and account-per-email settings before deployment;
+see the [Firebase setup checklist](technical-manual.md#firebase-browser-setup).
 Admin credentials, service signing keys and user tokens never belong in the UI
 bundle or committed examples. Production rejects `FIREBASE_AUTH_EMULATOR_HOST`;
 there is no emulator-based production authentication path. Mock needs neither
@@ -139,7 +201,8 @@ To support another provider:
 - Add the appropriate browser/server credential flow without changing the
   internal `AuthPrincipal` or allowing client-proposed user scope.
 - Specify explicit ownership-safe linking/recovery if required. Never merge
-  people by matching email. No user-facing link/unlink/merge flow exists today.
+  people by matching email. Current linking covers only Google/password methods
+  under one Firebase UID, not arbitrary namespaces, unlinking or cross-UID merges.
 - Verify first/repeat/concurrent resolution, issuer separation, collisions,
   rejected credentials, two-user isolation and obsolete-session races.
 

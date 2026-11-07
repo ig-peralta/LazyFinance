@@ -35,6 +35,11 @@ export class AppShell {
       label: "Presupuestos y metas",
       description: "Ir a presupuestos y metas",
     },
+    {
+      path: "/seguridad",
+      label: "Acceso y seguridad",
+      description: "Gestionar métodos de acceso",
+    },
   ] as const;
 
   protected toggleMenu(): void {

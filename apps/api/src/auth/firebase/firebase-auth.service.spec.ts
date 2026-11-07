@@ -140,6 +140,27 @@ describe("Firebase ID token verification", () => {
     expect(first.providerSubject).not.toBe(second.providerSubject);
   });
 
+  it("keeps one external identity when the same Firebase UID uses Google or password", async () => {
+    admin.verifyIdToken
+      .mockResolvedValueOnce({
+        ...decoded,
+        firebase: { sign_in_provider: "google.com" },
+      })
+      .mockResolvedValueOnce({
+        ...decoded,
+        firebase: { sign_in_provider: "password" },
+      });
+    const firebase = service();
+    const google = await firebase.verify("google-id-token");
+    const password = await firebase.verify("password-id-token");
+
+    expect(password).toEqual(google);
+    expect(password).toMatchObject({
+      provider: "firebase",
+      providerSubject: decoded.uid,
+    });
+  });
+
   it.each([
     "",
     " ",

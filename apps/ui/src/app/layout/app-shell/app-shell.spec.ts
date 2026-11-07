@@ -13,6 +13,9 @@ class TagsStub {}
 @Component({ template: "<h1>Presupuestos y metas</h1>" })
 class ObjectivesStub {}
 
+@Component({ template: "<h1>Acceso y seguridad</h1>" })
+class SecurityStub {}
+
 describe("AppShell", () => {
   afterEach(() => TestBed.resetTestingModule());
 
@@ -33,6 +36,7 @@ describe("AppShell", () => {
               { path: "dashboard", component: TagsStub },
               { path: "etiquetas", component: TagsStub },
               { path: "presupuestos-y-metas", component: ObjectivesStub },
+              { path: "seguridad", component: SecurityStub },
             ],
           },
         ]),
@@ -45,7 +49,7 @@ describe("AppShell", () => {
     return { harness, clear, logout, root };
   }
 
-  it("links to the three destinations and marks the active one", async () => {
+  it("links to financial and account-security destinations and marks the active one", async () => {
     const { root } = await setup();
     const links = Array.from(
       root.querySelectorAll('nav[aria-label="Navegación principal"] a'),
@@ -55,10 +59,12 @@ describe("AppShell", () => {
       "Resumen",
       "Etiquetas",
       "Presupuestos y metas",
+      "Acceso y seguridad",
     ]);
     expect(links.map((a) => a.getAttribute("aria-current"))).toEqual([
       null,
       "page",
+      null,
       null,
     ]);
   });
@@ -74,7 +80,7 @@ describe("AppShell", () => {
     harness.detectChanges();
     expect(toggle.getAttribute("aria-expanded")).toBe("true");
     const mobileLinks = root.querySelectorAll("#mobile-menu a");
-    expect(mobileLinks).toHaveLength(3);
+    expect(mobileLinks).toHaveLength(4);
 
     (mobileLinks[2] as HTMLAnchorElement).click();
     await harness.fixture.whenStable();

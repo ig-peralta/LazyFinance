@@ -31,7 +31,7 @@ Data access uses native, inferred `@trpc/client` Promises and Angular resources.
 | `core/rpc/rpc-client.ts`        | Request-local clients, immutable bearer scopes, abort propagation, no-store fetch and current-session 401 handling.        |
 | `core/auth/auth-credentials.ts` | Accepted verified identity and its cancellation lifetime; no networking or routing.                                        |
 | `core/auth/auth-api.ts`         | Explicit anonymous configuration/login and candidate-token verification. Verification never installs or expires a session. |
-| `core/auth/session.service.ts`  | Firebase/mock restoration, cookie handoff, verification races and session expiration routing.                              |
+| `core/auth/session.service.ts`  | Firebase/mock restoration, explicit credential commands, cookie handoff, verification/owner races and expiration routing. |
 | `features/*/*.data.ts`          | Page-owned query resources and explicit commands, not another set of endpoint aliases.                                     |
 | Components                      | Render resource values/loading/errors and handle presentation interactions.                                                |
 
@@ -52,7 +52,32 @@ The view consumes `accounts.value()`, `accounts.isLoading()`, `accounts.error()`
 
 Tag commands publish confirmed decisions to page-local state. Only summaries and budget progress are invalidated; recent movements reflect the confirmed choice without component output/view-child chains. A decision completed after a read started wins over that older read, while a later explicit reload can reconcile changes from elsewhere. The tag catalog is lazy and shared within the page. Rule creation is a separate command: if it fails after saving a decision, the UI reports partial success instead of replaying or pretending to roll back the saved choice. Mutations are never automatically retried; cancelling a request does not guarantee server rollback.
 
-Both environment files currently use the public `lazyfinance-dev` Firebase Web app identifiers. Set `AUTH_PROVIDER=firebase` and `FIREBASE_PROJECT_ID=lazyfinance-dev` on the API to test Google sign-in; enable Google sign-in and authorize the UI's local domain in Firebase. Before deploying against another Firebase project, update the corresponding UI environment file and the API project ID together. Admin credentials are never included in the UI. Mock mode works without Firebase or an emulator. See [provider-neutral identity](../../docs/technical/identity.md) for verifier selection, internal-user mapping and the limits of current multi-provider support.
+Both environment files currently use the public `lazyfinance-dev` Firebase Web app identifiers. Set `AUTH_PROVIDER=firebase` and `FIREBASE_PROJECT_ID=lazyfinance-dev` on the API, enable **Google and Email/Password**, and authorize the UI's domain in Firebase. Before deploying against another project, update the UI environment file and API project ID together. Admin credentials are never included in the UI. Mock mode works without Firebase or an emulator. Review the [Firebase setup checklist](../../docs/technical/technical-manual.md#firebase-browser-setup) before live verification.
+
+### Sign-in and account methods
+
+- `/login` offers Google, password sign-in, password registration, verification
+  resend/recheck and reset-email requests in Firebase mode. A new password account
+  must verify its email before first LazyFinance onboarding; registration alone
+  installs neither an application principal nor an SSR token cookie.
+- Authenticated `/seguridad` ("Acceso y seguridad") connects methods to the same
+  Firebase UID: Google-only users confirm Google again before adding a password;
+  password-only users confirm their current password, then click a separate
+  Google popup button. That readiness proof expires after five minutes and is
+  single-use. Password inputs are cleared on submission, not stored for retries.
+- A linked method must retain the same internal financial owner after fresh API
+  verification. Email matches do not merge accounts/data. Separate Firebase UIDs,
+  unlinking and cross-provider namespace linking are unsupported.
+- SDK popups cannot truly be aborted, and a confirmed credential mutation cannot
+  be rolled back by leaving the page. Session barriers and UID/owner checks stop
+  obsolete results from accepting another identity. A failed link should be
+  reconciled by checking its actual methods, not automatically replaying it.
+
+Either connected method can grant access on its own; this is not MFA. In
+particular a new password does not inherit Google MFA. The existing JavaScript-
+readable bearer cookie and local-only logout/revocation limitations remain. See
+[identity/security boundaries](../../docs/technical/identity.md#firebase-sign-in-and-credential-linking)
+and [session command lifetimes](../../docs/technical/ui-data-lifecycle.md#firebase-commands-and-observer-ordering).
 
 SSR can fetch balances after verification. Clients/auth snapshots are render-request-local, with no module-global client, batch queue or response cache. Fetch uses `cache: no-store` and SSR HTML is private/non-cacheable. Protected resources have no transfer-cache `id`, and components do not manually populate `TransferState`: the browser revalidates its identity and refetches rather than inheriting another session's serialized data. Disabling Angular's HTTP transfer cache alone would not protect manual/resource transfer state. `API_INTERNAL_URL` selects the SSR-only base URL (Compose: `http://api:3000`) without changing the browser URL. Tests inject `RPC_FETCH` and exercise real vanilla clients/resources with in-memory responses; no development/API/database server is needed.
 
