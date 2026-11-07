@@ -1,9 +1,5 @@
-import type {
-  MonthlyComparison,
-  MonthlySummary,
-  TagSummary,
-} from "@lazyfinance/contracts";
-import type { MovementAggregate } from "@lazyfinance/contracts/internal";
+import type { MonthlyComparison, MonthlySummary } from "@lazyfinance/contracts";
+import type { TaggedMovementAggregate } from "@lazyfinance/contracts/internal";
 import { Injectable } from "@nestjs/common";
 import { fromCents, toCents } from "../_utils/money";
 import { monthBounds, previousMonth } from "../_utils/period";
@@ -12,33 +8,39 @@ import { IncomeService } from "../income/income.service";
 import { PersistenceClient } from "../persistence/persistence.client";
 import { movementTotals } from "../transactions/movement-totals";
 
-function spendingByTag(groups: MovementAggregate[], tags: TagSummary[]) {
-  const amounts = new Map<string, { cents: bigint; count: number }>();
+function spendingByTag(groups: TaggedMovementAggregate[]) {
+  const amounts = new Map<
+    string,
+    {
+      id: string;
+      name: string;
+      color: string | null;
+      cents: bigint;
+      count: number;
+    }
+  >();
 
   for (const row of groups) {
     if (
-      row.tagId === null ||
+      row.tag === null ||
       row.type !== "debit" ||
       row.isInternalMovement !== false ||
       row.reviewStatus !== "clear"
     )
       continue;
 
-    const total = amounts.get(row.tagId) ?? { cents: 0n, count: 0 };
+    const total = amounts.get(row.tag.id) ?? {
+      ...row.tag,
+      cents: 0n,
+      count: 0,
+    };
     total.cents -= toCents(row.amount);
     total.count += row.count;
-    amounts.set(row.tagId, total);
+    amounts.set(row.tag.id, total);
   }
 
-  return tags
-    .flatMap(({ id, name, color }) => {
-      const total = amounts.get(id);
-      if (!total) return [];
-
-      return [
-        { id, name, color, amount: fromCents(total.cents), count: total.count },
-      ];
-    })
+  return [...amounts.values()]
+    .map(({ cents, ...tag }) => ({ ...tag, amount: fromCents(cents) }))
     .sort((left, right) => {
       const difference = toCents(right.amount) - toCents(left.amount);
       return difference === 0n
@@ -63,9 +65,11 @@ export class SummariesService {
   ): Promise<MonthlySummary> {
     const client = this.persistence.user(userId);
     const asOf = month === santiagoMonth(now) ? now.toISOString() : undefined;
-    const [groups, tags, expected] = await Promise.all([
-      client.transactions.aggregates.query({ ...monthBounds(month), asOf }),
-      client.tags.list.query(),
+    const [groups, expected] = await Promise.all([
+      client.transactions.taggedAggregates.query({
+        ...monthBounds(month),
+        asOf,
+      }),
       this.income.getExpectedForUser(userId, month),
     ]);
     const totals = movementTotals(groups);
@@ -74,7 +78,7 @@ export class SummariesService {
       month,
       expectedIncome: expected.totals,
       ...totals,
-      tags: spendingByTag(groups, tags),
+      tags: spendingByTag(groups),
     };
   }
 

@@ -262,7 +262,7 @@ describe.skipIf(!ownerUrl)(
           .filter((name) => !name.startsWith("failure."))
           .sort(),
       ).toEqual(expected.sort());
-      expect(expected).toHaveLength(35);
+      expect(expected).toHaveLength(37);
 
       for (const name of expected)
         expect(procedures[name]._def.meta).toMatchObject({
@@ -573,12 +573,10 @@ describe.skipIf(!ownerUrl)(
         }),
       ]);
       expect(await client.objectives.list.query()).toEqual([
-        expect.objectContaining({ id: objectiveA }),
-      ]);
-      expect(
-        await client.objectives.tags.query({ ids: [objectiveA, objectiveB] }),
-      ).toEqual([
-        { objectiveId: objectiveA, id: tagA, name: "A", color: null },
+        expect.objectContaining({
+          id: objectiveA,
+          tags: [{ id: tagA, name: "A", color: null }],
+        }),
       ]);
       expect(await client.tags.list.query()).toEqual([
         { id: tagA, name: "A", color: null, isArchived: false },
@@ -602,6 +600,13 @@ describe.skipIf(!ownerUrl)(
       ]);
       expect(facts.aggregates).toEqual(
         await client.transactions.aggregates.query(period),
+      );
+      expect(await client.income.expectedFacts.query(period)).toEqual({
+        sources: facts.sources,
+        expectations: facts.expectations,
+      });
+      expect(await client.income.receipts.query(period)).toEqual(
+        facts.receipts,
       );
     });
 
@@ -1047,6 +1052,130 @@ describe.skipIf(!ownerUrl)(
           decisions: [],
         }),
       ).rejects.toMatchObject({ data: { code: "CONFLICT" } });
+    });
+
+    it("aggregates owned budget windows without fan-out and preserves empty objectives and archived tag facts", async () => {
+      const client = createTRPCClient<PersistenceRouter>({
+        links: [
+          httpLink({
+            url: `${url}/trpc`,
+            headers: async () => ({
+              authorization: `Bearer ${await sign(ctx(a))}`,
+            }),
+          }),
+        ],
+      });
+      const budgetClient = createTRPCClient<PersistenceRouter>({
+        links: [
+          httpLink({
+            url: `${url}/trpc`,
+            methodOverride: "POST",
+            headers: async () => ({
+              authorization: `Bearer ${await sign(ctx(a))}`,
+            }),
+          }),
+        ],
+      });
+      const archived = randomUUID(),
+        other = randomUUID();
+      const monthly = randomUUID(),
+        shorter = randomUUID(),
+        empty = randomUUID();
+      await sql`insert into finance.tag(id,user_id,name,is_archived) values
+        (${archived},${a},'Historical budget tag',true), (${other},${a},'Other budget tag',false)`.execute(
+        owner,
+      );
+      for (const id of [monthly, shorter, empty])
+        await sql`insert into finance.objective(id,user_id,name,amount,kind,intent,is_recurring,period,start_date)
+          values (${id},${a},${id},100,'time_based','spending',true,'monthly','2026-01-01T15:00:00Z')`.execute(
+          owner,
+        );
+      for (const id of [monthly, shorter])
+        await sql`insert into finance.objective_tag(objective_id,tag_id)
+          values (${id},${archived}), (${id},${other})`.execute(owner);
+
+      for (const [tag, amount, booked, internal, review, removed] of [
+        [archived, -10, "2026-09-14T15:00:00Z", false, "clear", false],
+        [other, -10, "2026-09-15T15:00:00Z", false, "clear", false],
+        [archived, -1, "2026-09-01T04:00:00Z", false, "clear", false],
+        [archived, -2, "2026-09-01T03:59:59.999Z", false, "clear", false],
+        [archived, -3, "2026-10-01T03:00:00Z", false, "clear", false],
+        [archived, -4, "2026-09-16T15:00:00Z", false, "clear", false],
+        [null, -5, "2026-09-14T15:00:00Z", false, "clear", false],
+        [archived, -50, "2026-09-14T15:00:00Z", true, "clear", false],
+        [archived, -60, "2026-09-14T15:00:00Z", null, "clear", false],
+        [archived, -70, "2026-09-14T15:00:00Z", false, "needs_review", false],
+        [archived, -80, "2026-09-14T15:00:00Z", false, "clear", true],
+      ] as const)
+        await sql`insert into finance."transaction"(account_id,amount,type,booked_at,tag_id,tag_decision_origin,is_internal_movement,review_status,removed_at,removal_reason)
+          values (${accountA},${amount},'debit',${new Date(booked)},${tag},${tag ? "manual" : "unreviewed"},${internal},${review},${removed ? new Date(booked) : null},${removed ? "removed" : null})`.execute(
+          owner,
+        );
+
+      const period = {
+        start: "2026-09-01 00:00:00",
+        end: "2026-10-01 00:00:00",
+        asOf: "2026-09-15T15:00:00.000Z",
+      };
+      const windows = [monthly, shorter, empty, objectiveB].map((id) => ({
+        id,
+        start: id === shorter ? "2026-09-10 00:00:00" : period.start,
+        end: period.end,
+      }));
+      const totals = await budgetClient.objectives.spending.query({
+        windows,
+        asOf: period.asOf,
+      });
+      expect(totals).toHaveLength(3);
+      expect(totals).toEqual(
+        expect.arrayContaining([
+          { id: monthly, amount: "-21.00", count: 3 },
+          { id: shorter, amount: "-20.00", count: 2 },
+          { id: empty, amount: "0", count: 0 },
+        ]),
+      );
+      await expect(
+        budgetClient.objectives.spending.query({
+          windows: [windows[0], windows[0]],
+        }),
+      ).rejects.toMatchObject({ data: { code: "BAD_REQUEST" } });
+      expect(
+        (await client.objectives.list.query()).find(({ id }) => id === empty)
+          ?.tags,
+      ).toEqual([]);
+      expect(
+        (await client.objectives.list.query()).find(({ id }) => id === monthly)
+          ?.tags,
+      ).toEqual(
+        expect.arrayContaining([
+          { id: archived, name: "Historical budget tag", color: null },
+        ]),
+      );
+      const tagged = await client.transactions.taggedAggregates.query(period);
+      expect(tagged).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            tag: { id: archived, name: "Historical budget tag", color: null },
+            type: "debit",
+            isInternalMovement: false,
+            reviewStatus: "clear",
+            amount: "-11.00",
+            count: 2,
+          }),
+          expect.objectContaining({ tag: null, amount: "-5.00", count: 1 }),
+        ]),
+      );
+      expect(await client.transactions.aggregates.query(period)).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            type: "debit",
+            isInternalMovement: false,
+            reviewStatus: "clear",
+            amount: "-26.00",
+            count: 4,
+          }),
+        ]),
+      );
     });
   },
 );

@@ -99,9 +99,12 @@ export class PersistenceClient implements OnModuleInit {
     return createTRPCClient<PersistenceRouter>({
       links: [
         splitLink({
-          // Scope-key lists can exceed URL limits. Ordinary no-input queries stay GET;
+          // Key/window lists can exceed URL limits. Ordinary no-input queries stay GET;
           // Express turns an absent POST body into {}, which is not z.void().
-          condition: (operation) => operation.path === "providerSync.facts",
+          condition: (operation) =>
+            ["providerSync.facts", "objectives.spending"].includes(
+              operation.path,
+            ),
           true: httpLink({ ...options, methodOverride: "POST" }),
           false: httpLink(options),
         }),

@@ -8,7 +8,6 @@ function group(update: Partial<MovementAggregate>): MovementAggregate {
     isInternalMovement: false,
     reviewStatus: "clear",
     hasReceipt: false,
-    tagId: null,
     amount: "10.01",
     count: 1,
     ...update,

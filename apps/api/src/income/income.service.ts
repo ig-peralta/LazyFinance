@@ -47,8 +47,8 @@ function receiptResponse(
   return { transactionId, sourceId, sourceName, bookedAt, amount, confirmedAt };
 }
 
-function activeReceipts(facts: IncomeFacts) {
-  return facts.receipts.filter(
+function activeReceipts(receipts: IncomeFacts["receipts"]) {
+  return receipts.filter(
     (row) =>
       row.type === "credit" &&
       row.isInternalMovement === false &&
@@ -157,15 +157,10 @@ export class IncomeService {
       .incomeExpectations.remove.mutate({ id });
   }
 
-  private facts(userId: string, month: string, asOf?: Date) {
-    input(MonthSchema, month);
-    return this.persistence
-      .user(userId)
-      .income.facts.query({ ...monthBounds(month), asOf: asOf?.toISOString() });
-  }
-
   async getExpectedForUser(userId: string, month = santiagoMonth(new Date())) {
-    const facts = await this.facts(userId, month);
+    const facts = await this.persistence
+      .user(userId)
+      .income.expectedFacts.query(monthBounds(input(MonthSchema, month)));
     return expectedIncomeForMonth(month, facts.sources, facts.expectations);
   }
 
@@ -194,9 +189,11 @@ export class IncomeService {
     month = santiagoMonth(new Date()),
     now = new Date(),
   ): Promise<IncomeReceipt[]> {
-    return activeReceipts(await this.facts(userId, month, now)).map(
-      receiptResponse,
-    );
+    const receipts = await this.persistence.user(userId).income.receipts.query({
+      ...monthBounds(input(MonthSchema, month)),
+      asOf: now.toISOString(),
+    });
+    return activeReceipts(receipts).map(receiptResponse);
   }
 
   async getSummaryForUser(
@@ -204,7 +201,10 @@ export class IncomeService {
     month = santiagoMonth(new Date()),
     now = new Date(),
   ): Promise<IncomeSummary> {
-    const facts = await this.facts(userId, month, now);
+    const facts = await this.persistence.user(userId).income.facts.query({
+      ...monthBounds(input(MonthSchema, month)),
+      asOf: now.toISOString(),
+    });
     const expected = expectedIncomeForMonth(
       month,
       facts.sources,
@@ -221,7 +221,7 @@ export class IncomeService {
       unclassifiedCredits: received.unclassifiedCredits,
       unresolvedMovementCount: received.unresolvedMovementCount,
       expectedPayments: expected.payments,
-      receipts: activeReceipts(facts).map(receiptResponse),
+      receipts: activeReceipts(facts.receipts).map(receiptResponse),
     };
   }
 }

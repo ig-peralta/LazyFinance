@@ -1,7 +1,7 @@
-import type { TagSummary } from "@lazyfinance/contracts";
 import type {
   MovementAggregate,
   PeriodInput,
+  TaggedMovementAggregate,
 } from "@lazyfinance/contracts/internal";
 import { describe, expect, it, vi } from "vitest";
 import type { IncomeService } from "../income/income.service";
@@ -15,13 +15,15 @@ const expectedIncome = {
   paymentCount: 3,
 };
 
-function group(update: Partial<MovementAggregate>): MovementAggregate {
+function group(
+  update: Partial<TaggedMovementAggregate>,
+): TaggedMovementAggregate {
   return {
     type: "debit",
     isInternalMovement: false,
     reviewStatus: "clear",
     hasReceipt: false,
-    tagId: null,
+    tag: null,
     amount: "-10.00",
     count: 1,
     ...update,
@@ -39,14 +41,16 @@ function setup() {
   const aggregates = vi.fn(
     async (_period: PeriodInput): Promise<MovementAggregate[]> => [],
   );
-  const tags = vi.fn(
-    async (): Promise<(TagSummary & { isArchived: boolean })[]> => [],
+  const taggedAggregates = vi.fn(
+    async (_period: PeriodInput): Promise<TaggedMovementAggregate[]> => [],
   );
   const getExpectedForUser = vi.fn(async () => ({ totals: expectedIncome }));
   const persistence = {
     user: vi.fn(() => ({
-      transactions: { aggregates: { query: aggregates } },
-      tags: { list: { query: tags } },
+      transactions: {
+        aggregates: { query: aggregates },
+        taggedAggregates: { query: taggedAggregates },
+      },
     })),
   };
 
@@ -56,26 +60,28 @@ function setup() {
       { getExpectedForUser } as unknown as IncomeService,
     ),
     aggregates,
-    tags,
+    taggedAggregates,
     getExpectedForUser,
   };
 }
 
 describe("SummariesService", () => {
   it("includes untagged spending in the total beyond the exclusive tag breakdown", async () => {
-    const { service, aggregates, tags } = setup();
+    const { service, taggedAggregates } = setup();
     const food = "00000000-0000-4000-8000-000000000031";
     const leisure = "00000000-0000-4000-8000-000000000032";
-    aggregates.mockResolvedValue([
-      group({ tagId: food, amount: "-4000.00" }),
-      group({ tagId: leisure, amount: "-5000.00" }),
+    taggedAggregates.mockResolvedValue([
+      group({
+        tag: { id: food, name: "Comida", color: null },
+        amount: "-4000.00",
+      }),
+      group({
+        tag: { id: leisure, name: "Ocio", color: null },
+        amount: "-5000.00",
+      }),
       group({ amount: "-1000.00" }),
       group({ type: "credit", hasReceipt: true, amount: "1550000.00" }),
       group({ type: "credit", amount: "100.00" }),
-    ]);
-    tags.mockResolvedValue([
-      { id: food, name: "Comida", color: null, isArchived: false },
-      { id: leisure, name: "Ocio", color: null, isArchived: false },
     ]);
 
     const summary = await service.getMonthlyForUser("owner", "2026-09");
@@ -91,7 +97,7 @@ describe("SummariesService", () => {
       { id: leisure, name: "Ocio", color: null, amount: "5000.00", count: 1 },
       { id: food, name: "Comida", color: null, amount: "4000.00", count: 1 },
     ]);
-    expect(aggregates).toHaveBeenCalledExactlyOnceWith({
+    expect(taggedAggregates).toHaveBeenCalledExactlyOnceWith({
       start: "2026-09-01 00:00:00",
       end: "2026-10-01 00:00:00",
       asOf: undefined,
@@ -99,7 +105,7 @@ describe("SummariesService", () => {
   });
 
   it("compares adjacent months without tag reads or floating point money math", async () => {
-    const { service, aggregates, tags } = setup();
+    const { service, aggregates, taggedAggregates } = setup();
     aggregates.mockImplementation(async ({ start }) =>
       start.startsWith("2026-01")
         ? periodGroups("100000.01", "1000.00")
@@ -120,7 +126,7 @@ describe("SummariesService", () => {
       spending: { current: "1000.00", previous: "1100.00", change: "-100.00" },
       unresolvedMovementCount: { current: 0, previous: 0 },
     });
-    expect(tags).not.toHaveBeenCalled();
+    expect(taggedAggregates).not.toHaveBeenCalled();
     expect(aggregates).toHaveBeenCalledWith({
       start: "2025-12-01 00:00:00",
       end: "2026-01-01 00:00:00",
@@ -128,18 +134,20 @@ describe("SummariesService", () => {
   });
 
   it("cuts off the current month at now and compares the same Santiago day in the preceding month", async () => {
-    const { service, aggregates, getExpectedForUser } = setup();
+    const { service, aggregates, taggedAggregates, getExpectedForUser } =
+      setup();
     const now = new Date("2026-10-16T15:30:45.000Z");
     aggregates.mockImplementation(async ({ start }) =>
       start.startsWith("2026-10")
         ? periodGroups("100.00", "50.00")
         : periodGroups("80.00", "75.00"),
     );
+    taggedAggregates.mockResolvedValue(periodGroups("100.00", "50.00"));
 
     const summary = await service.getMonthlyForUser("owner", "2026-10", now);
     expect(summary.expectedIncome).toEqual(expectedIncome);
     expect(getExpectedForUser).toHaveBeenCalledWith("owner", "2026-10");
-    expect(aggregates).toHaveBeenCalledWith({
+    expect(taggedAggregates).toHaveBeenCalledWith({
       start: "2026-10-01 00:00:00",
       end: "2026-11-01 00:00:00",
       asOf: now.toISOString(),
@@ -176,18 +184,19 @@ describe("SummariesService", () => {
   });
 
   it("includes archived tags, preserves exact sort order and excludes internal or reviewed amounts", async () => {
-    const { service, aggregates, tags } = setup();
-    tags.mockResolvedValue([
-      { id: "a", name: "Archived", color: null, isArchived: true },
-      { id: "b", name: "Internal", color: null, isArchived: false },
-      { id: "c", name: "Other", color: null, isArchived: false },
-    ]);
-    aggregates.mockResolvedValue([
-      group({ tagId: "a", amount: "-9007199254740.99", count: 2 }),
-      group({ tagId: "c", amount: "-9007199254740.98" }),
-      group({ tagId: "b", isInternalMovement: true, amount: "-9999.00" }),
-      group({ tagId: "c", reviewStatus: "needs_review", count: 3 }),
-      group({ tagId: "c", isInternalMovement: null, count: 2 }),
+    const { service, taggedAggregates } = setup();
+    const archived = { id: "a", name: "Archived", color: null };
+    const other = { id: "c", name: "Other", color: null };
+    taggedAggregates.mockResolvedValue([
+      group({ tag: archived, amount: "-9007199254740.99", count: 2 }),
+      group({ tag: other, amount: "-9007199254740.98" }),
+      group({
+        tag: { id: "b", name: "Internal", color: null },
+        isInternalMovement: true,
+        amount: "-9999.00",
+      }),
+      group({ tag: other, reviewStatus: "needs_review", count: 3 }),
+      group({ tag: other, isInternalMovement: null, count: 2 }),
     ]);
 
     const summary = await service.getMonthlyForUser("owner", "2026-09");

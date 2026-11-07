@@ -1,3 +1,4 @@
+import type { TagSummary } from "@lazyfinance/contracts";
 import type { PeriodInput } from "@lazyfinance/contracts/internal";
 import { Inject, Injectable } from "@nestjs/common";
 import { type Kysely, sql } from "kysely";
@@ -48,6 +49,24 @@ export class TransactionRepository {
   }
 
   aggregates(period: PeriodInput) {
+    return this.aggregateQuery(period).execute();
+  }
+
+  taggedAggregates(period: PeriodInput) {
+    return this.aggregateQuery(period)
+      .leftJoin("finance.tag as t", "t.id", "m.tagId")
+      .select(
+        sql<TagSummary | null>`CASE WHEN t.id IS NULL THEN NULL ELSE
+        jsonb_build_object('id', t.id, 'name', t.name, 'color', t.color) END`.as(
+          "tag",
+        ),
+      )
+      .groupBy("t.id")
+      .limit(50001)
+      .execute();
+  }
+
+  private aggregateQuery(period: PeriodInput) {
     return this.db
       .selectFrom("finance.transaction as m")
       .leftJoin("finance.income_receipt as r", "r.transactionId", "m.id")
@@ -55,32 +74,13 @@ export class TransactionRepository {
         "m.type",
         "m.isInternalMovement",
         "m.reviewStatus",
-        "m.tagId",
         sql<boolean>`r.transaction_id IS NOT NULL`.as("hasReceipt"),
         sql<string>`sum(m.amount)::text`.as("amount"),
         sql<number>`count(*)::int`.as("count"),
       ])
       .where(movementPeriod(period))
       .where("m.removedAt", "is", null)
-      .groupBy(["m.type", "m.isInternalMovement", "m.reviewStatus", "m.tagId"])
-      .groupBy(sql`r.transaction_id IS NOT NULL`)
-      .limit(50001)
-      .execute();
-  }
-
-  taggedDebits(period: PeriodInput) {
-    return this.db
-      .selectFrom("finance.transaction as m")
-      .innerJoin("finance.tag as t", "t.id", "m.tagId")
-      .select(["m.id", "m.bookedAt", "m.amount", "t.id as tagId"])
-      .where(movementPeriod(period))
-      .where("m.type", "=", "debit")
-      .where("m.isInternalMovement", "=", false)
-      .where("m.reviewStatus", "=", "clear")
-      .where("m.removedAt", "is", null)
-      .orderBy("m.bookedAt")
-      .orderBy("m.id")
-      .limit(50001)
-      .execute();
+      .groupBy(["m.type", "m.isInternalMovement", "m.reviewStatus"])
+      .groupBy(sql`r.transaction_id IS NOT NULL`);
   }
 }

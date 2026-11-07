@@ -1,8 +1,9 @@
 import {
   EmptyInputSchema,
-  ObjectiveIdsInputSchema,
   ObjectiveRecordsSchema,
-  ObjectiveTagRecordsSchema,
+  ObjectiveSpendingFactsSchema,
+  type ObjectiveSpendingInput,
+  ObjectiveSpendingInputSchema,
 } from "@lazyfinance/contracts/internal";
 import { Input, Query, Router } from "nestjs-trpc";
 import { wireValue } from "../query-period";
@@ -22,11 +23,11 @@ export class ObjectiveRpc {
   }
 
   @Query({
-    input: ObjectiveIdsInputSchema,
-    output: ObjectiveTagRecordsSchema,
+    input: ObjectiveSpendingInputSchema,
+    output: ObjectiveSpendingFactsSchema,
     meta: { context: "user" },
   })
-  tags(@Input() input: { ids: string[] }) {
-    return this.repository.tags(input.ids);
+  spending(@Input() input: ObjectiveSpendingInput) {
+    return this.repository.spending(input);
   }
 }

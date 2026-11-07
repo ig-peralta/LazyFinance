@@ -49,43 +49,58 @@ export const MovementAggregateSchema = z.object({
   isInternalMovement: z.boolean().nullable(),
   reviewStatus: z.enum(["clear", "needs_review"]),
   hasReceipt: z.boolean(),
-  tagId: z.uuid().nullable(),
   amount: z.string(),
   count: z.number().int().nonnegative(),
 });
 
+// 2 directions × 3 internal states × 2 review states × 2 receipt states.
 export const MovementAggregatesSchema = z
   .array(MovementAggregateSchema)
-  .max(50000);
+  .max(24);
 
-export const TaggedDebitRecordSchema = z.object({
-  id: z.uuid(),
-  bookedAt: z.iso.datetime(),
-  amount: z.string(),
-  tagId: z.uuid(),
+export const TaggedMovementAggregateSchema = MovementAggregateSchema.extend({
+  tag: TagSummarySchema.nullable(),
 });
 
-export const TaggedDebitRecordsSchema = z
-  .array(TaggedDebitRecordSchema)
+export const TaggedMovementAggregatesSchema = z
+  .array(TaggedMovementAggregateSchema)
   .max(50000);
 
-export const ObjectiveRecordSchema = ObjectiveSummarySchema.omit({
-  tags: true,
+export const ObjectiveRecordSchema = ObjectiveSummarySchema.extend({
+  tags: z.array(TagSummarySchema).max(50000),
 });
 
 export const ObjectiveRecordsSchema = z.array(ObjectiveRecordSchema).max(10000);
 
-export const ObjectiveIdsInputSchema = z.strictObject({
-  ids: z.array(z.uuid()).max(10000),
+export const ObjectiveSpendingInputSchema = z.strictObject({
+  windows: z
+    .array(
+      z
+        .strictObject({
+          id: z.uuid(),
+          start: LocalTimestampSchema,
+          end: LocalTimestampSchema,
+        })
+        .refine((window) => window.start < window.end, "Empty budget window"),
+    )
+    .min(1)
+    .max(10000)
+    .refine(
+      (windows) => new Set(windows.map(({ id }) => id)).size === windows.length,
+      "Duplicate budget windows",
+    ),
+  asOf: z.iso.datetime().optional(),
 });
 
-export const ObjectiveTagRecordSchema = TagSummarySchema.extend({
-  objectiveId: z.uuid(),
-});
-
-export const ObjectiveTagRecordsSchema = z
-  .array(ObjectiveTagRecordSchema)
-  .max(50000);
+export const ObjectiveSpendingFactsSchema = z
+  .array(
+    z.object({
+      id: z.uuid(),
+      amount: z.string(),
+      count: z.number().int().nonnegative(),
+    }),
+  )
+  .max(10000);
 
 export const TagRecordSchema = TagSummarySchema.extend({
   isArchived: z.boolean(),
@@ -149,10 +164,15 @@ export const ReceiptFactSchema = z.object({
   removedAt: z.iso.datetime().nullable(),
 });
 
-export const IncomeFactsSchema = z.object({
+export const ExpectedIncomeFactsSchema = z.object({
   sources: z.array(IncomeSourceRecordSchema).max(10000),
   expectations: z.array(IncomeExpectationSchema).max(50000),
-  receipts: z.array(ReceiptFactSchema).max(50000),
+});
+
+export const ReceiptFactsSchema = z.array(ReceiptFactSchema).max(50000);
+
+export const IncomeFactsSchema = ExpectedIncomeFactsSchema.extend({
+  receipts: ReceiptFactsSchema,
   aggregates: MovementAggregatesSchema,
 });
 
@@ -163,6 +183,14 @@ export type IncomeSourceRecord = z.infer<typeof IncomeSourceRecordSchema>;
 export type IncomeFacts = z.infer<typeof IncomeFactsSchema>;
 
 export type MovementAggregate = z.infer<typeof MovementAggregateSchema>;
+
+export type TaggedMovementAggregate = z.infer<
+  typeof TaggedMovementAggregateSchema
+>;
+
+export type ObjectiveSpendingInput = z.infer<
+  typeof ObjectiveSpendingInputSchema
+>;
 
 export * from "./provider-sync";
 export * from "./tagging";

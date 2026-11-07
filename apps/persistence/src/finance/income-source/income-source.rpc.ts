@@ -2,6 +2,7 @@ import type { IncomeSourceInput } from "@lazyfinance/contracts";
 import {
   AtIdInputSchema,
   EmptyInputSchema,
+  ExpectedIncomeFactsSchema,
   IdInputSchema,
   IncomeFactsSchema,
   IncomeSourceCreateSchema,
@@ -10,6 +11,7 @@ import {
   IncomeSourceUpdateSchema,
   type PeriodInput,
   PeriodInputSchema,
+  ReceiptFactsSchema,
 } from "@lazyfinance/contracts/internal";
 import { Input, Mutation, Query, Router } from "nestjs-trpc";
 import { wireValue } from "../query-period";
@@ -68,6 +70,28 @@ export class IncomeSourceRpc {
   })
   async archiveSource(@Input() input: { id: string; at: string }) {
     return wireValue(await this.repository.archive(input.id, input.at));
+  }
+
+  @Query({
+    input: PeriodInputSchema,
+    output: ExpectedIncomeFactsSchema,
+    meta: { context: "user", snapshot: true },
+  })
+  async expectedFacts(@Input() period: PeriodInput) {
+    const [sources, expectations] = await Promise.all([
+      this.repository.sources(),
+      this.repository.expectations(period),
+    ]);
+    return wireValue({ sources, expectations });
+  }
+
+  @Query({
+    input: PeriodInputSchema,
+    output: ReceiptFactsSchema,
+    meta: { context: "user" },
+  })
+  async receipts(@Input() period: PeriodInput) {
+    return wireValue(await this.repository.receipts(period));
   }
 
   @Query({
