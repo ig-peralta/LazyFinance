@@ -1,5 +1,5 @@
 import type { PreparedProviderAccount } from "@lazyfinance/contracts/internal";
-import { toCents } from "../../_utils/money";
+import { toCents } from "../../utils/money";
 import type { NormalizedMovement } from "../connector/normalized-banking.schema";
 import { movementDirection, movementKey } from "./normalized-movement";
 

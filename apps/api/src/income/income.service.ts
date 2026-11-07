@@ -13,11 +13,11 @@ import type {
   IncomeSourceRecord,
 } from "@lazyfinance/contracts/internal";
 import { Injectable } from "@nestjs/common";
-import { fromCents, toCents } from "../_utils/money";
-import { monthBounds } from "../_utils/period";
-import { santiagoMonth } from "../_utils/santiago-time";
 import { movementTotals } from "../finance/movement-totals";
 import { PersistenceClient } from "../persistence/persistence.client";
+import { fromCents, toCents } from "../utils/money";
+import { monthBounds } from "../utils/period";
+import { santiagoMonth } from "../utils/santiago-time";
 import { parseInput } from "../validation/parse-input";
 import { expectedIncomeForMonth } from "./income-schedule";
 

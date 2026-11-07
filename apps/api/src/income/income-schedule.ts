@@ -4,8 +4,8 @@ import type {
   IncomeExpectation,
   IncomeSource,
 } from "@lazyfinance/contracts";
-import { fromCents, toCents } from "../_utils/money";
-import { santiagoTimestamp } from "../_utils/santiago-time";
+import { fromCents, toCents } from "../utils/money";
+import { santiagoTimestamp } from "../utils/santiago-time";
 
 export type ScheduledIncomeSource = Omit<
   IncomeSource,

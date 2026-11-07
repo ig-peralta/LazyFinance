@@ -1,6 +1,6 @@
 import type { ObjectiveSummary } from "@lazyfinance/contracts";
-import { monthBounds } from "../_utils/period";
-import { santiagoTimestamp } from "../_utils/santiago-time";
+import { monthBounds } from "../utils/period";
+import { santiagoTimestamp } from "../utils/santiago-time";
 
 export type BudgetPeriod = "monthly" | "yearly" | "fixed";
 

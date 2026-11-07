@@ -8,7 +8,7 @@ import {
   revokedFailure,
   unknownBalancePage,
 } from "../../../tests/fixtures/banking/normalized-pages";
-import { fromCents, toCents } from "../../_utils/money";
+import { fromCents, toCents } from "../../utils/money";
 import type { BankingConnector } from "./banking-connector";
 import {
   ConnectorResultSchema,

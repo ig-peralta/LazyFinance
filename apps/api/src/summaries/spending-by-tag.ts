@@ -1,5 +1,5 @@
 import type { TaggedMovementAggregate } from "@lazyfinance/contracts/internal";
-import { fromCents, toCents } from "../_utils/money";
+import { fromCents, toCents } from "../utils/money";
 
 export function spendingByTag(groups: TaggedMovementAggregate[]) {
   const amounts = new Map<

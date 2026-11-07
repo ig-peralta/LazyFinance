@@ -1,5 +1,5 @@
 import type { MovementAggregate } from "@lazyfinance/contracts/internal";
-import { fromCents, toCents } from "../_utils/money";
+import { fromCents, toCents } from "../utils/money";
 
 export function movementTotals(groups: MovementAggregate[]) {
   let received = 0n,
