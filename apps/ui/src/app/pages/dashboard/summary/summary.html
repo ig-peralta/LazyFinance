@@ -33,14 +33,32 @@
     <article
       class="mt-6 rounded-3xl border border-surface bg-surface-0 p-6 sm:max-w-lg dark:border-surface-700 dark:bg-surface-900"
     >
-      <h3 class="text-sm text-muted-color">Gastos</h3>
+      <h3 class="text-sm text-muted-color">Gastos netos de las compras del mes</h3>
       <p class="mt-2 text-3xl font-semibold tabular-nums text-color-emphasis">
         {{ money(data.spending) }}
+      </p>
+      <p class="mt-3 text-sm text-muted-color">
+        Compras {{ money(data.grossSpending) }} · devoluciones {{ money(data.refunds) }} ·
+        reembolsos {{ money(data.reimbursements) }}.
+      </p>
+      <p class="mt-2 text-xs text-muted-color">
+        Los ajustes confirmados se atribuyen a la compra original, aunque el abono llegue después.
       </p>
     </article>
     <p class="mt-3 text-xs leading-5 text-muted-color">
       No contamos transferencias ni pagos de tarjeta entre tus propias cuentas.
     </p>
+    @if (data.recoveredExpenseCredits.count) {
+      <p class="mt-3 text-sm text-muted-color">
+        Abonos por devoluciones y reembolsos recibidos este mes:
+        {{ money(data.recoveredExpenseCredits.amount) }}. No son ingresos ni reducen otras compras del mes.
+      </p>
+    }
+    @if (data.unresolvedAdjustmentCount || data.recoveredExpenseCredits.needsReviewCount) {
+      <p role="status" class="mt-3 text-sm text-muted-color">
+        Hay ajustes de gastos por revisar tras cambios en los movimientos. Los importes pendientes no reducen el gasto.
+      </p>
+    }
     @if (data.unresolvedMovementCount) {
       <p role="status" class="mt-3 text-sm leading-5 text-muted-color">
         Hay {{ data.unresolvedMovementCount }} movimientos por revisar para determinar si son internos.

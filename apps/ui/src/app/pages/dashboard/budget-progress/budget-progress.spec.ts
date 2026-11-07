@@ -102,6 +102,12 @@ describe("Budget progress resource view", () => {
     expect(text).toContain("fin excluido");
     expect(text).toContain("Se conserva el límite original");
     expect(text).toContain("$280.000");
+    expect(text).toContain("$35.000");
+    expect(text).toContain("$10.000");
+    expect(text).toContain("$5.000");
+    expect(text).toContain("El gasto usado es neto");
+    expect(text).toContain("se permiten ajustes de compras anteriores");
+    expect(text).toContain("1 ajustes por revisar; no se descuentan del gasto");
     expect(TestBed.inject(TransferState).toJson()).toBe("{}");
   });
 });

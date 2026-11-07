@@ -50,6 +50,14 @@ readonly accounts = resource({
 
 The view consumes `accounts.value()`, `accounts.isLoading()`, `accounts.error()` and `accounts.reload()`. The scope is absent until verification succeeds; changing it invalidates old values. Feature services are provided by `DashboardPage`, so navigation destroys their resources. Month selection is a reactive query input. Activity uses only the first `transactions.list` page (`limit: 10`); continuation controls and a history view are not implemented.
 
+The dashboard distinguishes gross purchase cost, confirmed refunds/reimbursements
+and net spending. Recoveries follow the original purchase period/tag; cash recovered
+in the credit period is shown separately, not as earned income. Archived budget
+purchases can receive later corrections, and pending adjustments are disclosed
+without reducing cost. Allocation commands exist in the public RPC, but a refund
+management screen is not implemented. See the
+[shared semantics](../../docs/technical/rpc-contracts.md#expense-recovery-semantics).
+
 Tag commands publish confirmed decisions to page-local state. Only summaries and budget progress are invalidated; recent movements reflect the confirmed choice without component output/view-child chains. A decision completed after a read started wins over that older read, while a later explicit reload can reconcile changes from elsewhere. The tag catalog is lazy and shared within the page. Rule creation is a separate command: if it fails after saving a decision, the UI reports partial success instead of replaying or pretending to roll back the saved choice. Mutations are never automatically retried; cancelling a request does not guarantee server rollback.
 
 Both environment files currently use the public `lazyfinance-dev` Firebase Web app identifiers. Set `AUTH_PROVIDER=firebase` and `FIREBASE_PROJECT_ID=lazyfinance-dev` on the API, enable **Google and Email/Password**, and authorize the UI's domain in Firebase. Before deploying against another project, update the UI environment file and API project ID together. Admin credentials are never included in the UI. Mock mode works without Firebase or an emulator. Review the [Firebase setup checklist](../../docs/technical/technical-manual.md#firebase-browser-setup) before live verification.

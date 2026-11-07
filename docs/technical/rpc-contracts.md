@@ -171,8 +171,9 @@ or remaining purchase cost, including retained decisions awaiting review.
   edited/removed decisions or bank corrections. Comparisons use the same recovery
   observation time for both purchase windows. Income keeps its existing `asOf`.
 
-These fields are shared by public summaries, progress and their MCP tools.
-There is no refund-management screen or MCP write tool in this slice.
+These fields are shared by public summaries, progress and their MCP tools. The
+dashboard explains gross/net cost, credit-period recoveries and pending review;
+there is no refund-management screen or MCP write tool in this slice.
 
 ## Cursor-paginated browsing
 

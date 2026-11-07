@@ -80,6 +80,41 @@ describe("Summary resource view", () => {
     expect(TestBed.inject(TransferState).toJson()).toBe("{}");
   });
 
+  it("distinguishes original purchase net cost from recovered cash and pending corrections", async () => {
+    setupRpc({
+      "summaries.monthly": () => ({
+        ...emptySummary,
+        grossSpending: "100000.00",
+        refunds: "30000.00",
+        reimbursements: "20000.00",
+        spending: "50000.00",
+        recoveredExpenseCredits: {
+          amount: "4000.00",
+          count: 1,
+          needsReviewCount: 1,
+        },
+        unresolvedAdjustmentCount: 1,
+      }),
+    });
+    const fixture = TestBed.createComponent(Summary);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const text = fixture.nativeElement.textContent;
+    for (const value of [
+      "Gastos netos",
+      "$100.000",
+      "$30.000",
+      "$20.000",
+      "$50.000",
+      "$4.000",
+      "compra original",
+      "No son ingresos",
+      "ajustes de gastos por revisar",
+    ])
+      expect(text).toContain(value);
+  });
+
   it("retries failed reads and shows the empty tagged-spending state", async () => {
     setupRpc({
       "summaries.monthly": vi
