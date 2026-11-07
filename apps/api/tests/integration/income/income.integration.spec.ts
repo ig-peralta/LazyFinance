@@ -2,14 +2,14 @@ import { randomUUID } from "node:crypto";
 import type { IncomeSourceInput } from "@lazyfinance/contracts";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
+import { IncomeService } from "../../../src/income/income.service";
+import { SummariesService } from "../../../src/summaries/summaries.service";
 import {
   type Fixture,
   fixture,
   integration,
   startApi,
-} from "../../test/persistence";
-import { SummariesService } from "../summaries/summaries.service";
-import { IncomeService } from "./income.service";
+} from "../../fixtures/persistence";
 
 function sourceInput(
   changes: Partial<IncomeSourceInput> = {},

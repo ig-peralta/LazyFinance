@@ -1,18 +1,18 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
+import type { ConnectorPage } from "../../../src/banking/connector/normalized-banking.schema";
+import { BankingIngestionService } from "../../../src/banking/ingestion/banking-ingestion.service";
+import { TaggingService } from "../../../src/transactions/tagging/tagging.service";
+import {
+  correctionPage,
+  initialPage,
+} from "../../fixtures/banking/normalized-pages";
 import {
   type Fixture,
   fixture,
   integration,
   startApi,
-} from "../../../test/persistence";
-import {
-  correctionPage,
-  initialPage,
-} from "../../banking/connector/fixtures/normalized-pages";
-import type { ConnectorPage } from "../../banking/connector/normalized-banking.schema";
-import { BankingIngestionService } from "../../banking/ingestion/banking-ingestion.service";
-import { TaggingService } from "./tagging.service";
+} from "../../fixtures/persistence";
 
 async function withUsers(
   work: (

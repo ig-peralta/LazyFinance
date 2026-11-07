@@ -85,6 +85,12 @@ The [verification guide](../../docs/technical/development-workflow.md#verificati
 separates serverless unit checks from listener/DB integration. The commands below
 are a general workflow, not a serverless-only promise when DB tests are configured.
 
+Unit tests stay beside their implementation in `src/**/*.spec.ts`; run only those
+with `pnpm --filter persistence exec vitest run src`. Real PostgreSQL/RPC tests
+live in `tests/integration/*.integration.spec.ts`, with suite-specific fixtures
+kept in the suite. App builds exclude `tests/`; typechecks and default Vitest
+discovery include the relocated tests.
+
 ```sh
 pnpm rpc:generate
 pnpm rpc:check

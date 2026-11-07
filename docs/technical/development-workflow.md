@@ -69,20 +69,45 @@ documentation and overload signatures attached to their declaration. Biome
 preserves this spacing but does not insert/enforce logical section boundaries;
 readability still needs review.
 
+## Backend test layout
+
+Both backend apps keep unit tests beside the implementation and integration
+suites outside application source:
+
+```text
+apps/<app>/
+  src/                         # implementation and colocated *.spec.ts unit tests
+  tests/
+    fixtures/                  # shared test data, app/DB setup and clients, when needed
+    integration/               # *.integration.spec.ts, grouped by feature when useful
+    setup.ts                   # app-wide test setup, when needed
+```
+
+HTTP/RPC/MCP tests that assemble an application belong in `tests/integration/`
+even when persistence is mocked. Keep suite-specific helpers in the suite and
+shared fixtures app-local; do not make one app depend on another app's tests.
+Shared data fixtures can also serve colocated unit tests. Production code must
+not import test support.
+
+Vitest discovers both locations by default. Filter to `src` for unit tests only,
+or `tests/integration` for integration suites only. App build configurations
+exclude `tests/`, while typechecks include relocated suites and fixtures. API
+test support is consolidated under `apps/api/tests/`, not a separate `test/` tree.
+
 ## Verification tiers
 
 **"No external services required" does not mean "no listener is opened."** API
 router/HTTP/MCP specs can use Supertest, which binds an ephemeral listener even
-when the Nest app itself only calls `init()`. Choose explicit unit files when a
+when the Nest app itself only calls `init()`. Select `src` unit tests when a
 session must not start servers. `pnpm test` is not a serverless-only shortcut; it
 runs workspace test scripts, including Angular's default test behavior.
 
 | Tier | Dependencies / side effects | Evidence it provides |
 | --- | --- | --- |
 | Formatting, architecture, RPC drift, build/typecheck | No app services or database; generated/build output may be written | Source boundaries, generated agreement, compilation |
-| Explicit backend unit files below | In-memory/mocked dependencies; no HTTP listener | Financial calculations, signatures/policies, rollback logic and orchestration |
+| Backend `src/**/*.spec.ts` unit tests | In-memory/mocked dependencies; no HTTP listener | Financial calculations, signatures/policies, rollback logic and orchestration |
 | UI one-shot suite | Angular test compilation, injected `RPC_FETCH` and jsdom; no dev/API/DB server | Resource/session/SSR isolation and presentation behavior |
-| API HTTP/router/MCP specs | No real persistence needed when overridden, but may open local HTTP listeners | Transport policy, serialization, public/runtime surface and MCP auth |
+| API `tests/integration/` HTTP/router/MCP specs | No real persistence needed when overridden, but may open local HTTP listeners | Transport policy, serialization, public/runtime surface and MCP auth |
 | Persistence PostgreSQL suite | Owner access to an existing disposable `_test` DB; creates/provisions fixtures and starts test HTTP listeners | Real RLS/grants, pooled users, identity races, migrations and rollback |
 | Root API integration runner | Builds, migrates/provisions disposable DB, starts compiled persistence plus API test listeners | API workflows through real public/private RPC and restricted SQL roles |
 | Live Firebase extension | Same isolated integration setup plus current test-user ID tokens and Firebase verification network access | Real token verification and two-user mapping/isolation |
@@ -98,14 +123,14 @@ pnpm check:architecture
 pnpm build
 pnpm typecheck
 pnpm --filter ui exec ng test --watch=false
-pnpm --filter api exec vitest run src/auth/auth.service.spec.ts src/summaries/summaries.service.spec.ts src/objectives/objectives.service.spec.ts src/transactions/transactions.service.spec.ts src/transactions/movement-totals.spec.ts src/persistence/persistence.client.spec.ts src/banking/ingestion/banking-ingestion.service.spec.ts
-pnpm --filter persistence exec vitest run src/rpc/context-auth.spec.ts src/rpc/persistence.context.spec.ts src/rpc/rls.middleware.spec.ts src/database/seed/ledger.spec.ts
+pnpm --filter api exec vitest run src
+pnpm --filter persistence exec vitest run src
 ```
 
-These selected backend tests are **not the full backend suite**. UI/build warnings
-and nonfatal lint diagnostics should be reported, not silently treated as zero
-warnings. Passing the selected tests does not validate images, a database load
-profile or live Firebase.
+These backend commands run all colocated unit tests, **not integration suites**.
+UI/build warnings and nonfatal lint diagnostics should be reported, not silently
+treated as zero warnings. Passing unit tests does not validate images, a database
+load profile or live Firebase.
 
 Unit tests target decisions and transformations in services/helpers and actual
 security policy. Thin RPC delegation, constructor injection and generated type
@@ -121,7 +146,7 @@ Never use the development/user database or put real credentials in a committed
 command/log. The following URL is a placeholder:
 
 ```sh
-TEST_POSTGRES_OWNER_URL=postgresql://owner:password@localhost:5432/lazyfinance_test pnpm --filter persistence test
+TEST_POSTGRES_OWNER_URL=postgresql://owner:password@localhost:5432/lazyfinance_test pnpm --filter persistence exec vitest run tests/integration
 TEST_POSTGRES_OWNER_URL=postgresql://owner:password@localhost:5432/lazyfinance_test pnpm test:integration
 ```
 

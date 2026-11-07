@@ -3,9 +3,9 @@ import type { ApiRouter } from "@lazyfinance/rpc-api";
 import { UnauthorizedException } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { createTRPCClient, httpLink } from "@trpc/client";
-import { AppModule } from "../src/app.module";
-import { FirebaseAuthService } from "../src/auth/firebase/firebase-auth.service";
-import { EnvironmentService } from "../src/environment/environment.service";
+import { AppModule } from "../../src/app.module";
+import { FirebaseAuthService } from "../../src/auth/firebase/firebase-auth.service";
+import { EnvironmentService } from "../../src/environment/environment.service";
 import { FixtureDatabase, testEnvironment } from "./persistence";
 
 export async function identityApi(

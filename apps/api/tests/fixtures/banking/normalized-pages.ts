@@ -1,7 +1,7 @@
 import type {
   ConnectorFailure,
   ConnectorPage,
-} from "../normalized-banking.schema";
+} from "../../../src/banking/connector/normalized-banking.schema";
 
 // Partial imported history; these reported balances include earlier activity
 // outside the window. The two owned-account pairs share movement IDs across

@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import type { VerifiedExternalIdentity } from "@lazyfinance/contracts";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { identityApi } from "../../test/identity-api";
-import { integration } from "../../test/persistence";
+import { identityApi } from "../../fixtures/identity-api";
+import { integration } from "../../fixtures/persistence";
 
 describe.skipIf(!integration)(
   "Firebase principal provisioning through both tRPC services",

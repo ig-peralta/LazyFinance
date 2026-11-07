@@ -4,7 +4,6 @@
     "moduleResolution": "NodeNext",
     "target": "ES2023",
     "outDir": "dist",
-    "rootDir": "src",
     "strict": true,
     "declaration": true,
     "esModuleInterop": true,
@@ -13,5 +12,5 @@
     "skipLibCheck": true,
     "types": ["node", "vitest/globals"]
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts", "tests/**/*.ts"]
 }

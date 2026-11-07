@@ -69,11 +69,17 @@ advancement; they are never silently split into independent commits. The private
 `providerSync.facts` query uses POST method override for large key scopes;
 ordinary empty queries remain GET. The private client deadline is 120 seconds.
 
+Unit tests stay beside their implementation in `src/**/*.spec.ts`; run only those
+with `pnpm --filter api exec vitest run src`. Integration suites live in
+`tests/integration/<feature>/*.integration.spec.ts`, shared fixtures in
+`tests/fixtures/`, and app-wide test setup in `tests/setup.ts`. App builds exclude
+`tests/`; typechecks and default Vitest discovery include the relocated tests.
+
 Service/helper unit tests can use mocked dependencies without listeners.
-HTTP/MCP policy tests can run without real persistence, but Supertest can open
-ephemeral HTTP listeners;
-the full API suite is **not serverless-only**. DB/workflow cases skip without the
-owner fixture URL and a matching private test service environment. Choose the
+HTTP/RPC/MCP integration tests can run without real persistence, but Supertest
+can open ephemeral HTTP listeners; the full API suite is **not serverless-only**.
+DB/workflow cases skip without the owner fixture URL and a matching private test
+service environment. Choose the
 [verification tier](../../docs/technical/development-workflow.md#verification-tiers)
 appropriate to the session.
 
@@ -87,6 +93,6 @@ TEST_POSTGRES_OWNER_URL=postgresql://owner:password@localhost:5432/lazyfinance_t
 The runner builds dependencies, migrates/provisions, starts compiled persistence
 with restricted runtime credentials and ephemeral keys, runs API tests through
 both real HTTP boundaries, then stops that service. Owner SQL is confined to
-`apps/api/test` fixture tooling. It is not available to the API application/image.
+`apps/api/tests/fixtures` tooling. It is not available to the API application/image.
 Live Firebase verification additionally requires `TEST_FIREBASE_ID_TOKEN_A/B` and
 optionally `TEST_FIREBASE_PROJECT_ID` / `TEST_FIREBASE_EXPIRED_ID_TOKEN`.

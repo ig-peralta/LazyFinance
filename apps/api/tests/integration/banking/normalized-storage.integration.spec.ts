@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { fixture, integration } from "../../../test/persistence";
-import { IncomeService } from "../../income/income.service";
+import { IncomeService } from "../../../src/income/income.service";
+import { fixture, integration } from "../../fixtures/persistence";
 
 describe.skipIf(!integration)(
   "normalized storage through signed factual reads",

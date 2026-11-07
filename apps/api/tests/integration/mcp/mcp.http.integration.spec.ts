@@ -3,9 +3,9 @@ import { Test } from "@nestjs/testing";
 import { MCP_STRATEGY, McpStrategy } from "@rekog/mcp-nest";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { AppModule } from "../app.module";
-import { mockIdentity } from "../auth/mock/mock-auth.constants";
-import { PersistenceClient } from "../persistence/persistence.client";
+import { AppModule } from "../../../src/app.module";
+import { mockIdentity } from "../../../src/auth/mock/mock-auth.constants";
+import { PersistenceClient } from "../../../src/persistence/persistence.client";
 
 const demoToken = "lazyfinance-demo-token";
 

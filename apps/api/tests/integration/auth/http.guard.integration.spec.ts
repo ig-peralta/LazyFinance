@@ -8,13 +8,13 @@ import {
 import { Test } from "@nestjs/testing";
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { AppModule } from "../app.module";
-import { configureCors } from "../cors";
-import { ENV_SCHEMA } from "../environment/environment.schema";
-import { EnvironmentService } from "../environment/environment.service";
-import { PersistenceClient } from "../persistence/persistence.client";
-import type { AuthenticatedRequest } from "./auth.types";
-import { mockIdentity } from "./mock/mock-auth.constants";
+import { AppModule } from "../../../src/app.module";
+import type { AuthenticatedRequest } from "../../../src/auth/auth.types";
+import { mockIdentity } from "../../../src/auth/mock/mock-auth.constants";
+import { configureCors } from "../../../src/cors";
+import { ENV_SCHEMA } from "../../../src/environment/environment.schema";
+import { EnvironmentService } from "../../../src/environment/environment.service";
+import { PersistenceClient } from "../../../src/persistence/persistence.client";
 
 @Controller("api/probe")
 class ProbeHttpController {

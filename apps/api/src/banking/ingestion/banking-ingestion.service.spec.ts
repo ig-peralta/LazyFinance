@@ -2,8 +2,8 @@ import { randomUUID } from "node:crypto";
 import type { ProviderSyncFacts } from "@lazyfinance/contracts/internal";
 import { TRPCClientError } from "@trpc/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { initialPage } from "../../../tests/fixtures/banking/normalized-pages";
 import type { PersistenceClient } from "../../persistence/persistence.client";
-import { initialPage } from "../connector/fixtures/normalized-pages";
 import {
   type ConnectorPage,
   ConnectorPageSchema,

@@ -4,15 +4,15 @@ import { Test } from "@nestjs/testing";
 import { MCP_STRATEGY, McpStrategy } from "@rekog/mcp-nest";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { santiagoMonth } from "../../_utils/santiago-time";
-import { AccountsService } from "../../accounts/accounts.service";
-import { AppModule } from "../../app.module";
-import { AuthService } from "../../auth/auth.service";
-import { IncomeService } from "../../income/income.service";
-import { ObjectivesService } from "../../objectives/objectives.service";
-import { PersistenceClient } from "../../persistence/persistence.client";
-import { SummariesService } from "../../summaries/summaries.service";
-import { TransactionsService } from "../../transactions/transactions.service";
+import { santiagoMonth } from "../../../src/_utils/santiago-time";
+import { AccountsService } from "../../../src/accounts/accounts.service";
+import { AppModule } from "../../../src/app.module";
+import { AuthService } from "../../../src/auth/auth.service";
+import { IncomeService } from "../../../src/income/income.service";
+import { ObjectivesService } from "../../../src/objectives/objectives.service";
+import { PersistenceClient } from "../../../src/persistence/persistence.client";
+import { SummariesService } from "../../../src/summaries/summaries.service";
+import { TransactionsService } from "../../../src/transactions/transactions.service";
 
 describe("Dashboard MCP tools", () => {
   let app: INestApplication;

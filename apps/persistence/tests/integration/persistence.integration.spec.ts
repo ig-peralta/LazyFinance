@@ -20,18 +20,21 @@ import { type Kysely, sql } from "kysely";
 import { Migrator } from "kysely/migration";
 import { AppRouterHost, Ctx, Input, Mutation, Router } from "nestjs-trpc";
 import { z } from "zod";
-import { AppModule } from "../app.module";
-import type { PersistenceRequestContext } from "../rpc/persistence.context";
-import { createDatabase } from "./connection";
-import { DatabaseModule } from "./database.module";
-import { MultiMigrationProvider, migrate } from "./migrator";
-import { assertRuntimeRole, provisionRuntime } from "./provision";
+import { AppModule } from "../../src/app.module";
+import { createDatabase } from "../../src/database/connection";
+import { DatabaseModule } from "../../src/database/database.module";
+import { MultiMigrationProvider, migrate } from "../../src/database/migrator";
+import {
+  assertRuntimeRole,
+  provisionRuntime,
+} from "../../src/database/provision";
 import {
   createRlsDbProxy,
   OutsideRlsSessionError,
   withRequestContext,
-} from "./rls";
-import { RLS_DB } from "./tokens";
+} from "../../src/database/rls";
+import { RLS_DB } from "../../src/database/tokens";
+import type { PersistenceRequestContext } from "../../src/rpc/persistence.context";
 
 @Router({ alias: "failure" })
 class FailureRouter {

@@ -1,10 +1,14 @@
 import { randomUUID } from "node:crypto";
 import type { VerifiedExternalIdentity } from "@lazyfinance/contracts";
 import { describe, expect, it, vi } from "vitest";
-import { identityApi } from "../../test/identity-api";
-import { integration } from "../../test/persistence";
-import { BankingIngestionService } from "../banking/ingestion/banking-ingestion.service";
-import { mockEmail, mockIdentity, mockToken } from "./mock/mock-auth.constants";
+import {
+  mockEmail,
+  mockIdentity,
+  mockToken,
+} from "../../../src/auth/mock/mock-auth.constants";
+import { BankingIngestionService } from "../../../src/banking/ingestion/banking-ingestion.service";
+import { identityApi } from "../../fixtures/identity-api";
+import { integration } from "../../fixtures/persistence";
 
 async function ownedFlow(
   api: Awaited<ReturnType<typeof identityApi>>,

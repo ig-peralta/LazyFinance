@@ -6,12 +6,12 @@ import { Test } from "@nestjs/testing";
 import { MCP_STRATEGY, type McpStrategy } from "@rekog/mcp-nest";
 import { createTRPCClient, httpLink } from "@trpc/client";
 import { Pool, types } from "pg";
-import { AppModule } from "../src/app.module";
-import { MockAuthService } from "../src/auth/mock/mock-auth.service";
-import { testMockAuth } from "../src/auth/testing/mock-auth-fixtures";
-import { ENV_SCHEMA } from "../src/environment/environment.schema";
-import { EnvironmentService } from "../src/environment/environment.service";
-import { PersistenceClient } from "../src/persistence/persistence.client";
+import { AppModule } from "../../src/app.module";
+import { MockAuthService } from "../../src/auth/mock/mock-auth.service";
+import { ENV_SCHEMA } from "../../src/environment/environment.schema";
+import { EnvironmentService } from "../../src/environment/environment.service";
+import { PersistenceClient } from "../../src/persistence/persistence.client";
+import { testMockAuth } from "./auth/mock-auth";
 
 export const integration = Boolean(
   process.env.TEST_POSTGRES_OWNER_URL && process.env.TEST_PERSISTENCE_RPC_URL,

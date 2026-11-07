@@ -3,7 +3,7 @@ import type {
   VerifiedExternalIdentity,
 } from "@lazyfinance/contracts";
 import { UnauthorizedException } from "@nestjs/common";
-import { mockIdentity } from "../mock/mock-auth.constants";
+import { mockIdentity } from "../../../src/auth/mock/mock-auth.constants";
 
 export function testMockAuth(principals: Record<string, AuthPrincipal>) {
   const verify = (token: string): VerifiedExternalIdentity => {

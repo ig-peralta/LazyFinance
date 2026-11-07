@@ -1,8 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import { type Fixture, fixture, integration } from "../../../test/persistence";
-import { IncomeService } from "../../income/income.service";
-import { SummariesService } from "../../summaries/summaries.service";
-import type { BankingConnector } from "../connector/banking-connector";
+import type { BankingConnector } from "../../../src/banking/connector/banking-connector";
+import type {
+  ConnectorPage,
+  ConnectorResult,
+} from "../../../src/banking/connector/normalized-banking.schema";
+import { BankingIngestionService } from "../../../src/banking/ingestion/banking-ingestion.service";
+import { IncomeService } from "../../../src/income/income.service";
+import { SummariesService } from "../../../src/summaries/summaries.service";
 import {
   correctionPage,
   expiredFailure,
@@ -10,12 +14,8 @@ import {
   removalPage,
   retryableFailure,
   unknownBalancePage,
-} from "../connector/fixtures/normalized-pages";
-import type {
-  ConnectorPage,
-  ConnectorResult,
-} from "../connector/normalized-banking.schema";
-import { BankingIngestionService } from "./banking-ingestion.service";
+} from "../../fixtures/banking/normalized-pages";
+import { type Fixture, fixture, integration } from "../../fixtures/persistence";
 
 const connector = (result: ConnectorResult): BankingConnector => ({
   provider: "fixture-bank",

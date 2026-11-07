@@ -7,10 +7,10 @@ import { Test } from "@nestjs/testing";
 import { Query, Router } from "nestjs-trpc";
 import request from "supertest";
 import { afterAll, beforeAll, expect, it } from "vitest";
-import { AccountsService } from "../accounts/accounts.service";
-import { AppModule } from "../app.module";
-import { AuthService } from "../auth/auth.service";
-import { PersistenceClient } from "../persistence/persistence.client";
+import { AccountsService } from "../../../src/accounts/accounts.service";
+import { AppModule } from "../../../src/app.module";
+import { AuthService } from "../../../src/auth/auth.service";
+import { PersistenceClient } from "../../../src/persistence/persistence.client";
 
 @Router({ alias: "policyProbe" })
 class PolicyProbe {
