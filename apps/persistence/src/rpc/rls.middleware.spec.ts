@@ -1,6 +1,7 @@
 import "reflect-metadata";
 import { randomUUID } from "node:crypto";
 import type { PersistenceContext } from "@lazyfinance/contracts/context";
+import { TRPCError } from "@trpc/server";
 import type { Kysely, Transaction } from "kysely";
 import { describe, expect, it, vi } from "vitest";
 import { withRequestContext } from "../database/rls";
@@ -62,5 +63,55 @@ describe("private middleware denial and result budgets (scaled byte limit)", () 
     await expect(
       middleware.use(options("界".repeat(43))),
     ).rejects.toMatchObject({ code: "PAYLOAD_TOO_LARGE" });
+  });
+
+  it("preserves wrapped input/application codes from a different tRPC instance", async () => {
+    const foreign = Object.assign(new Error("Duplicate budget windows"), {
+      code: "BAD_REQUEST" as const,
+    });
+    expect(foreign).not.toBeInstanceOf(TRPCError);
+    await expect(
+      middleware.use({
+        ...options(null),
+        next: vi.fn(async () => ({ ok: false as const, error: foreign })),
+      }),
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: "Duplicate budget windows",
+    });
+  });
+
+  it("prioritizes sanitized SQLSTATE mappings over an outer application code", async () => {
+    const foreign = Object.assign(new Error("private SQL details"), {
+      code: "BAD_REQUEST" as const,
+      cause: Object.assign(new Error("private constraint details"), {
+        code: "23503",
+      }),
+    });
+    await expect(
+      middleware.use({
+        ...options(null),
+        next: vi.fn(async () => ({ ok: false as const, error: foreign })),
+      }),
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: "Invalid persistence data",
+    });
+  });
+
+  it("does not expose an outer message when the nested SQLSTATE is unknown", async () => {
+    const foreign = Object.assign(new Error("private table and SQL text"), {
+      code: "BAD_REQUEST" as const,
+      cause: Object.assign(new Error("private SQL details"), { code: "42P01" }),
+    });
+    await expect(
+      middleware.use({
+        ...options(null),
+        next: vi.fn(async () => ({ ok: false as const, error: foreign })),
+      }),
+    ).rejects.toMatchObject({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Persistence operation failed",
+    });
   });
 });
