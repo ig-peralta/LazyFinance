@@ -1,6 +1,6 @@
 import type { ObjectiveSummary } from "@lazyfinance/contracts";
 import { monthBounds } from "../utils/period";
-import { compareBudgetBoundaries } from "./budget-policy";
+import { compareObjectiveBoundaries } from "./objective-time";
 
 export type BudgetPeriod = "monthly" | "yearly" | "fixed";
 
@@ -34,15 +34,15 @@ export function budgetPeriod(
     return null;
   }
 
-  if (startsAt && compareBudgetBoundaries(startsAt, start) > 0)
+  if (startsAt && compareObjectiveBoundaries(startsAt, start) > 0)
     start = startsAt;
 
-  if (endsAt && compareBudgetBoundaries(endsAt, end) < 0) end = endsAt;
+  if (endsAt && compareObjectiveBoundaries(endsAt, end) < 0) end = endsAt;
 
   if (
-    compareBudgetBoundaries(start, end) >= 0 ||
-    compareBudgetBoundaries(start, monthEnd) >= 0 ||
-    (endsAt && compareBudgetBoundaries(endsAt, monthStart) <= 0)
+    compareObjectiveBoundaries(start, end) >= 0 ||
+    compareObjectiveBoundaries(start, monthEnd) >= 0 ||
+    (endsAt && compareObjectiveBoundaries(endsAt, monthStart) <= 0)
   )
     return null;
 

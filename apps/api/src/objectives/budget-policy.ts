@@ -4,27 +4,8 @@ import type {
 } from "@lazyfinance/contracts";
 import { TRPCError } from "@trpc/server";
 import { monthBounds } from "../utils/period";
-import { santiagoMonth, santiagoTimestamp } from "../utils/santiago-time";
-
-/** Preserve fractional precision when comparing stored instants to local bounds. */
-export function budgetLocalTime(value: string) {
-  if (!value.includes("T")) return `${value}.000000`;
-
-  const fraction = value.match(/\.(\d+)Z$/)?.[1] ?? "";
-  return `${santiagoTimestamp(new Date(value))}.${fraction.padEnd(6, "0")}`;
-}
-
-export function compareBudgetBoundaries(left: string, right: string) {
-  const utcKey = (value: string) => {
-    const [whole, fraction = ""] = value.slice(0, -1).split(".");
-    return `${whole}.${fraction.padEnd(6, "0")}`;
-  };
-  // Stored instants must not be reordered by Santiago's repeated DST hour.
-  const bothInstants = left.includes("T") && right.includes("T");
-  const first = bothInstants ? utcKey(left) : budgetLocalTime(left);
-  const second = bothInstants ? utcKey(right) : budgetLocalTime(right);
-  return first < second ? -1 : first > second ? 1 : 0;
-}
+import { santiagoMonth } from "../utils/santiago-time";
+import { objectiveLocalTime } from "./objective-time";
 
 export function budgetSchedule(schedule: BudgetScheduleInput, now: Date) {
   if (schedule.period !== "fixed") {
@@ -79,7 +60,7 @@ export function nextBudgetRevision(current: BudgetRevision, now: Date) {
       : `${Number(month.slice(0, 4)) + 1}-01-01 00:00:00`;
   if (
     current.endDate &&
-    budgetLocalTime(current.endDate) <= budgetLocalTime(effectiveFrom)
+    objectiveLocalTime(current.endDate) <= objectiveLocalTime(effectiveFrom)
   )
     throw new TRPCError({
       code: "BAD_REQUEST",

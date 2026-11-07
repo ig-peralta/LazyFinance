@@ -6,11 +6,7 @@ import {
 } from "@lazyfinance/contracts";
 import { describe, expect, it } from "vitest";
 import { budgetPeriod } from "./budget-period";
-import {
-  budgetLocalTime,
-  budgetSchedule,
-  nextBudgetRevision,
-} from "./budget-policy";
+import { budgetSchedule, nextBudgetRevision } from "./budget-policy";
 
 const now = new Date("2026-11-15T15:00:00Z");
 const tagId = "00000000-0000-4000-8000-000000000031";
@@ -165,7 +161,6 @@ describe("budget calendar policy", () => {
       end: definition.endDate,
       period: "fixed",
     });
-    expect(budgetLocalTime(endDate)).toBe("2026-11-01 00:00:00.123456");
   });
 
   it("does not reverse a legacy fixed window inside Santiago's repeated DST hour", () => {

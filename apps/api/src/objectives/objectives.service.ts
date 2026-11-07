@@ -17,12 +17,11 @@ import { monthBounds } from "../utils/period";
 import { santiagoMonth } from "../utils/santiago-time";
 import { parseInput } from "../validation/parse-input";
 import { budgetPeriod } from "./budget-period";
+import { budgetSchedule, nextBudgetRevision } from "./budget-policy";
 import {
-  budgetLocalTime,
-  budgetSchedule,
-  compareBudgetBoundaries,
-  nextBudgetRevision,
-} from "./budget-policy";
+  compareObjectiveBoundaries,
+  objectiveLocalTime,
+} from "./objective-time";
 
 @Injectable()
 export class ObjectivesService {
@@ -93,7 +92,7 @@ export class ObjectivesService {
       });
 
     const wasStarted =
-      compareBudgetBoundaries(current.startDate, now.toISOString()) <= 0;
+      compareObjectiveBoundaries(current.startDate, now.toISOString()) <= 0;
     if (wasStarted && input.budget.schedule)
       throw new TRPCError({
         code: "BAD_REQUEST",
@@ -169,10 +168,10 @@ export class ObjectivesService {
         !window ||
         !objective.tags.length ||
         (objective.archivedAt &&
-          budgetLocalTime(objective.archivedAt) <=
-            budgetLocalTime(monthStart)) ||
+          objectiveLocalTime(objective.archivedAt) <=
+            objectiveLocalTime(monthStart)) ||
         (month === santiagoMonth(now) &&
-          compareBudgetBoundaries(window.start, now.toISOString()) > 0)
+          compareObjectiveBoundaries(window.start, now.toISOString()) > 0)
       )
         return [];
 
