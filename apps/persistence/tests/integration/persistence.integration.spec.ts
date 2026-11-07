@@ -16,7 +16,7 @@ import {
   httpLink,
 } from "@trpc/client";
 import { TRPCError } from "@trpc/server";
-import { type Kysely, sql } from "kysely";
+import { type Kysely, type QueryExecutorProvider, sql } from "kysely";
 import { Migrator } from "kysely/migration";
 import { AppRouterHost, Ctx, Input, Mutation, Router } from "nestjs-trpc";
 import { z } from "zod";
@@ -89,8 +89,8 @@ const migrationProvider = () =>
 describe.skipIf(!ownerUrl)(
   "persistence boundary with real PostgreSQL runtime roles",
   () => {
-    let owner: Kysely<any>;
-    let runtime: Kysely<any>;
+    let owner: Kysely<Record<string, never>>;
+    let runtime: Kysely<Record<string, never>>;
     let app: INestApplication;
     let url: string;
     let sign: Awaited<ReturnType<typeof createContextSigner>>;
@@ -360,17 +360,17 @@ describe.skipIf(!ownerUrl)(
       });
 
       for (const work of [
-        (db: Kysely<any>) =>
+        (db: QueryExecutorProvider) =>
           sql`select * from identity.external_identity`.execute(db),
-        (db: Kysely<any>) =>
+        (db: QueryExecutorProvider) =>
           sql`insert into finance.provider(identifier) values (${randomUUID()})`.execute(
             db,
           ),
-        (db: Kysely<any>) =>
+        (db: QueryExecutorProvider) =>
           sql`update finance.tag_decision_event set kind='reset' where user_id=${a}`.execute(
             db,
           ),
-        (db: Kysely<any>) =>
+        (db: QueryExecutorProvider) =>
           sql`set local role lazyfinance_identity_bootstrap`.execute(db),
       ])
         await expect(withRequestContext(runtime, ctx(a), work)).rejects.toThrow(
@@ -410,31 +410,31 @@ describe.skipIf(!ownerUrl)(
 
     it("denies cross-user foreign references and owner reassignment", async () => {
       for (const work of [
-        (db: Kysely<any>) =>
+        (db: QueryExecutorProvider) =>
           sql`insert into finance.account(user_id,provider_connection_id,type) values (${a},${connectionB},'checking')`.execute(
             db,
           ),
-        (db: Kysely<any>) =>
+        (db: QueryExecutorProvider) =>
           sql`update finance.account set user_id=${b} where id=${accountA}`.execute(
             db,
           ),
-        (db: Kysely<any>) =>
+        (db: QueryExecutorProvider) =>
           sql`update finance."transaction" set tag_id=${tagB},tag_decision_origin='manual' where id=${movementA}`.execute(
             db,
           ),
-        (db: Kysely<any>) =>
+        (db: QueryExecutorProvider) =>
           sql`update finance.tag_rule set account_id=${accountB} where id=${ruleA}`.execute(
             db,
           ),
-        (db: Kysely<any>) =>
+        (db: QueryExecutorProvider) =>
           sql`update finance.income_receipt set source_id=${sourceB} where transaction_id=${movementA}`.execute(
             db,
           ),
-        (db: Kysely<any>) =>
+        (db: QueryExecutorProvider) =>
           sql`insert into finance.objective_tag(objective_id,tag_id) values (${objectiveA},${tagB})`.execute(
             db,
           ),
-        (db: Kysely<any>) =>
+        (db: QueryExecutorProvider) =>
           sql`insert into finance.tag_decision_event(user_id,transaction_id,kind) values (${a},${movementB},'reset')`.execute(
             db,
           ),

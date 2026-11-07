@@ -1,6 +1,6 @@
 import { type Kysely, sql } from "kysely";
 
-export async function assertRuntimeRole(database: Kysely<any>) {
+export async function assertRuntimeRole<DB>(database: Kysely<DB>) {
   const {
     rows: [role],
   } = await sql<{ safe: boolean }>`SELECT
@@ -23,8 +23,8 @@ export async function assertRuntimeRole(database: Kysely<any>) {
 }
 
 /** Owner-only CLI operation. Existing passwords/roles are never silently changed. */
-export async function provisionRuntime(
-  database: Kysely<any>,
+export async function provisionRuntime<DB>(
+  database: Kysely<DB>,
   login: string,
   password: string,
 ) {

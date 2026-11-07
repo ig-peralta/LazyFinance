@@ -1,6 +1,7 @@
 import "reflect-metadata";
 import { randomUUID } from "node:crypto";
-import type { Kysely } from "kysely";
+import type { PersistenceContext } from "@lazyfinance/contracts/context";
+import type { Kysely, Transaction } from "kysely";
 import { describe, expect, it, vi } from "vitest";
 import { withRequestContext } from "../database/rls";
 import { RlsMiddleware } from "./rls.middleware";
@@ -10,7 +11,13 @@ vi.mock("@lazyfinance/contracts/internal", () => ({
 }));
 
 vi.mock("../database/rls", () => ({
-  withRequestContext: vi.fn(async (_db, _ctx, operation) => operation({})),
+  withRequestContext: vi.fn(
+    async <DB, Result>(
+      _db: Kysely<DB>,
+      _ctx: PersistenceContext,
+      operation: (transaction: Transaction<DB>) => Promise<Result>,
+    ): Promise<Result> => operation({} as Transaction<DB>),
+  ),
 }));
 
 describe("private middleware denial and result budgets (scaled byte limit)", () => {
