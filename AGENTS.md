@@ -24,8 +24,8 @@ implementation rules in their owning documents instead of duplicating them here.
 | Manual tag decisions, matching and approved automation | [Tagging guide](apps/api/src/transactions/tagging/README.md) |
 | Product direction, interoperability and requirements | [Vision](docs/product/product-vision.md), [innovation](docs/product/innovation.md), [requirements](docs/product/product-requirements.md) |
 | User outcomes and quality targets | [User journeys](docs/product/user-journeys.md), [non-functional requirements](docs/product/non-functional-requirements.md) |
-| Planning, stage milestones and backlog evidence | [Project method](docs/planning/project-method.md), [backlog](docs/planning/backlog.md) |
-| Product and sprint completion criteria | [Product Definition of Done](docs/planning/product-definition-of-done.md), [sprint definitions](docs/planning/sprint-definitions-of-done.md) |
+| Planning, stage milestones and backlog evidence | [Planning index](docs/planning/README.md), [project method](docs/planning/project-method.md), [backlog](docs/planning/backlog.md) |
+| Product and stage completion criteria | [Product Definition of Done](docs/planning/product-definition-of-done.md), [stage gates](docs/planning/README.md#stage-gates) |
 | Academic material and conceptual diagrams | [Submissions](docs/submissions/README.md), [diagram inventory](docs/diagrams/README.md) |
 
 Source/configuration and migrations take precedence over stale prose. Update the

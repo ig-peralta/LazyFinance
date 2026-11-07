@@ -36,7 +36,7 @@ The [innovation reference](innovation.md#example-a-decision-in-the-users-existin
 
 ## Staged validation and scope
 
-- **Stage A — financial-core gate:** use representative CLP demo data to demonstrate coherent account, movement, transfer, budget, savings-target and income scenarios across the available user-scoped interfaces. Record unresolved nonblocking assumptions before starting a provider adapter. The [Stage A closure record](../planning/snapshots/stage-a-closure.md) documents its completed, deliberately bounded data-model gate; it is not a claim that banking, external-client authorization or the agent are finished.
+- **Stage A — financial-core gate:** use representative CLP demo data to demonstrate coherent account, movement, transfer, budget, savings-target and income scenarios across the available user-scoped interfaces. Record unresolved nonblocking assumptions before starting a provider adapter. The [Stage A closure record](../planning/stage-a/closure.md) documents its completed, deliberately bounded data-model gate; it is not a claim that banking, external-client authorization or the agent are finished.
 - **Stage B — parallel product tracks:** refine financial services and web workflows, introduce real-user identity, complete external MCP authorization with a reference client, implement Fintoc as a provider adapter, and deliver the first-party text agent. Each track must meet its issue checks or be explicitly re-scoped at the gate; the [dated backlog](../planning/snapshots/backlog-2026-11-02.md) is an interim view, not a release-completion record.
 - **Stage C — candidate expansion:** decide after the Stage B review whether to select voice, advanced analysis, additional providers or other validated financial capabilities. No Stage C issue is assumed selected yet. Shared family finances, organizational or adviser workflows, and approval-based action preparation require new ownership and permissions rules before they could become product requirements for a later release.
 
@@ -44,7 +44,7 @@ The first release scope does not include executing transactions or moving money 
 
 ## Core-model decision questions
 
-These questions shaped the financial-core validation and remain useful when extending the model. The [Stage A closure record](../planning/snapshots/stage-a-closure.md) and linked implementation decisions document what was resolved at its gate; an open question here is not evidence that its answer was already implemented.
+These questions shaped the financial-core validation and remain useful when extending the model. The [Stage A closure record](../planning/stage-a/closure.md) and linked implementation decisions document what was resolved at its gate; an open question here is not evidence that its answer was already implemented.
 
 1. How should transfers and credit-card payments be represented so balances and spending remain correct without relying on tag names to identify internal movements?
 2. Which balance is meaningful for checking, savings and credit-card accounts, and how should freshness and reconciliation be represented?

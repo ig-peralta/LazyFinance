@@ -63,7 +63,7 @@ These are initial areas of responsibility, not exclusive assignments: the team s
 
 ## Methodology
 
-The project follows **iterative and incremental development with agile practices, without claiming a formal Scrum framework**. The financial core was validated with controlled data before advancing to parallel work on the UI, identity, provider connectivity, and agent. **Each stage milestone is one sprint; its assigned Linear issues are that sprint's Sprint Backlog.** The team does not create separate Linear cycles. For reviewers without access to Linear, the repository provides a [complete dated backlog snapshot with issue-specific completion checks](docs/planning/snapshots/backlog-2026-11-02.md) and **stage-closure evidence**. Sprint C issues will be selected after the Stage B review. See the [method and its rationale](docs/planning/project-method.md), [Sprint A/B/C product definitions of done](docs/planning/sprint-definitions-of-done.md), and [product Definition of Done](docs/planning/product-definition-of-done.md).
+The project follows **iterative and incremental development with agile practices, without claiming a formal Scrum framework**. The financial core was validated with controlled data before advancing to parallel work on the UI, identity, provider connectivity, and agent. **Each stage milestone is one sprint; its assigned Linear issues are that sprint's Sprint Backlog.** The team does not create separate Linear cycles. For reviewers without access to Linear, the repository provides a [complete dated backlog snapshot with issue-specific completion checks](docs/planning/snapshots/backlog-2026-11-02.md) and **stage-closure evidence**. Sprint C issues will be selected after the Stage B review. The [planning index](docs/planning/README.md) organizes stage scope, criteria and evidence; see also the [method and its rationale](docs/planning/project-method.md) and [product Definition of Done](docs/planning/product-definition-of-done.md).
 
 ## Documentation
 
@@ -109,14 +109,15 @@ reading order and distinction between implementation, evidence and targets.
 
 | Document | Purpose |
 | --- | --- |
+| [Planning index](docs/planning/README.md) | Stage-organized scope, completion criteria, rationale and evidence; shared planning references |
 | [Project method](docs/planning/project-method.md) | Iterative/incremental approach and milestone-as-sprint rationale |
 | [Backlog and stage evidence](docs/planning/backlog.md) | How live issue tracking and dated repository snapshots relate |
-| [Sprint definitions of done](docs/planning/sprint-definitions-of-done.md) | Stage A/B/C gate criteria |
 | [Product Definition of Done](docs/planning/product-definition-of-done.md) | Agreed-release exit checklist |
+| [Stage A](docs/planning/stage-a/README.md) | Financial-core gate criteria, [closure](docs/planning/stage-a/closure.md) and [documentary retrospective](docs/planning/stage-a/retrospective.md) |
+| [Stage B](docs/planning/stage-b/README.md) | Six parallel workstreams and gate criteria |
+| [Stage C](docs/planning/stage-c/README.md) | Candidate direction, post-Stage-B selection rules and gate criteria |
 | [Stage-sprint record template](docs/planning/stage-sprint-record-template.md) | Future planning/closure/retrospective record fields; not completed meeting evidence |
 | [Backlog snapshot — 2026-11-02](docs/planning/snapshots/backlog-2026-11-02.md) | All 65 issues and individual completion checks at extraction time |
-| [Stage A closure](docs/planning/snapshots/stage-a-closure.md) | Completed core-model gate, issue worklist and bounded limitations |
-| [Stage A documentary retrospective](docs/planning/stage-a-retrospective.md) | Retrospective analysis from available records, not invented meeting minutes |
 
 Historical records preserve their original context; old Drizzle references or
 earlier validation evidence do not describe the latest runtime by themselves.

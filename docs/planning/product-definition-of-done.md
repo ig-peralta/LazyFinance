@@ -1,6 +1,6 @@
 # LazyFinance — Product Definition of Done
 
-This is the **exit checklist for a usable LazyFinance product release**, not a claim that the product is already complete. The [product requirements](../product/product-requirements.md) describe the intended experience; the [backlog snapshot](snapshots/backlog-2026-11-02.md) records issue-level scope at a particular date, and the [sprint definitions of done](sprint-definitions-of-done.md) cover staged delivery. Completing an issue or sprint does not by itself complete the product.
+This is the **exit checklist for a usable LazyFinance product release**, not a claim that the product is already complete. The [product requirements](../product/product-requirements.md) describe the intended experience; the [backlog snapshot](snapshots/backlog-2026-11-02.md) records issue-level scope at a particular date, and the [stage definitions of done](README.md#stage-gates) cover staged delivery. Completing an issue or sprint does not by itself complete the product.
 
 LazyFinance is Done for its agreed release scope only when the team can demonstrate and verify **all** of the following:
 

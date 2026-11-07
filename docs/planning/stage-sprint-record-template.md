@@ -2,7 +2,7 @@
 
 **One stage milestone equals one sprint.** The issues assigned to that milestone are its Sprint Backlog. Record the goal and selected issues in Linear when planning a stage; keep the issue list and decisions there during development. There is no separate Linear cycle to create. After the stage closes, preserve a dated repository record of its worklist, gate decision, and retrospective. A blank template or post-closure issue list cannot prove that a planning meeting or team retrospective occurred.
 
-Check each selected issue's acceptance criteria and the [sprint product Definition of Done](sprint-definitions-of-done.md) at the gate. The [product Definition of Done](product-definition-of-done.md) is a separate release review.
+Check each selected issue's acceptance criteria and the appropriate [stage Definition of Done](README.md#stage-gates) at the gate. Save completed stage-specific records in that [stage's folder](README.md#read-by-stage). The [product Definition of Done](product-definition-of-done.md) is a separate release review.
 
 ## At stage planning — sprint goal and Sprint Backlog
 

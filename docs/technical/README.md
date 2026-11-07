@@ -42,8 +42,10 @@ target is not evidence of a delivered capability.
 - [Conceptual UML PNGs](../diagrams/README.md): historical product sketches with
   explicit inaccuracies. Use the implemented ERD above for the actual data model.
 - [Dated backlog](../planning/snapshots/backlog-2026-11-02.md) and
-  [Stage A closure](../planning/snapshots/stage-a-closure.md): historical delivery
+  [Stage A closure](../planning/stage-a/closure.md): historical delivery
   evidence; references to the then-current Drizzle stack are intentionally dated.
+- [Stage-organized planning](../planning/README.md) separates stage scope, gates
+  and evidence.
 
 Current source/configuration and migrations take precedence when a guide becomes
 stale. Update the corresponding references, generated contracts and tests together;
