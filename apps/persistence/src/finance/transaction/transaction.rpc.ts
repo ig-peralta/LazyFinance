@@ -1,10 +1,15 @@
 import {
+  type TransactionsInput,
+  TransactionsInputSchema,
+} from "@lazyfinance/contracts";
+import {
   EmptyInputSchema,
   MovementAggregatesSchema,
   type PeriodInput,
   PeriodInputSchema,
   RecentTransactionRecordsSchema,
   TaggedMovementAggregatesSchema,
+  TransactionRecordsPageSchema,
 } from "@lazyfinance/contracts/internal";
 import { Input, Query, Router } from "nestjs-trpc";
 import { wireValue } from "../../serialization";
@@ -20,15 +25,16 @@ export class TransactionRpc {
     meta: { context: "user" },
   })
   async recent() {
-    const rows = await this.repository.recent();
-    return wireValue(
-      rows.map(({ joinedTagId, tagName, tagColor, ...row }) => ({
-        ...row,
-        tag: joinedTagId
-          ? { id: joinedTagId, name: tagName!, color: tagColor }
-          : null,
-      })),
-    );
+    return wireValue(await this.repository.recent());
+  }
+
+  @Query({
+    input: TransactionsInputSchema,
+    output: TransactionRecordsPageSchema,
+    meta: { context: "user" },
+  })
+  async list(@Input() input: TransactionsInput) {
+    return wireValue(await this.repository.list(input));
   }
 
   @Query({

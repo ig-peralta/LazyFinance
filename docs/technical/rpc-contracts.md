@@ -44,13 +44,13 @@ inferred Promises; there is no cross-app source import or HTTP/Observable adapte
 ## Public surface
 
 The [generated public router](../../libs/rpc-api/src/generated/server.ts) currently
-contains **33 procedures**. Prefix each method below with its router name.
+contains **34 procedures**. Prefix each method below with its router name.
 
 | Router | Methods | Responsibility |
 | --- | --- | --- |
 | `auth` | `config`, `loginMock`, `principal` | Provider selection, local mock login, verified principal |
 | `accounts` | `list` | Active accounts, balances and freshness |
-| `transactions` | `recent` | Recent movements with tag/review provenance |
+| `transactions` | `recent`, `list` | Ten-movement preview and cursor-paginated history with tag/review provenance |
 | `objectives` | `list`, `progress` | Objectives and supported spending-budget progress |
 | `summaries` | `monthly`, `comparison` | Financial summary and equivalent-period comparison |
 | `income` | `sources`, `source`, `createSource`, `updateSource`, `archiveSource`, `expectations`, `createExpectation`, `updateExpectation`, `removeExpectation`, `expected`, `receipts`, `confirm`, `clear`, `summary` | Declarations, dated expectations, explicit receipts and calculated summaries |
@@ -74,14 +74,14 @@ are not implemented by this RPC cutover.
 ## Private surface
 
 The [generated private router](../../libs/rpc-persistence/src/generated/server.ts)
-currently contains **37 procedures**. They expose owned facts and authoritative
+currently contains **38 procedures**. They expose owned facts and authoritative
 commands rather than copying public screen calculations into persistence.
 
 | Router | Methods |
 | --- | --- |
 | `identity` | `resolve` (bootstrap only) |
 | `accounts` | `listActive` |
-| `transactions` | `recent`, `aggregates`, `taggedAggregates` |
+| `transactions` | `recent`, `list`, `aggregates`, `taggedAggregates` |
 | `objectives` | `list` (nested tags), `spending` (signed sums/counts for API-supplied windows) |
 | `income` | `sources`, `source`, `createSource`, `updateSource`, `archiveSource`, `expectedFacts`, `receipts`, `facts` |
 | `incomeExpectations` | `list`, `create`, `update`, `remove` |
@@ -121,6 +121,45 @@ Do not reintroduce table-shaped reads for the API to join or aggregate itself.
 - UI code consumes tRPC errors through `core/rpc/rpc-error.ts`, not fabricated
   `HttpErrorResponse` objects. Private SQL errors are sanitized before crossing
   boundaries. Ambiguous command failures are never automatically replayed.
+
+## Cursor-paginated browsing
+
+`libs/contracts/src/pagination` owns the reusable `CursorPageInputSchema`,
+`CursorPageInfoSchema` and `cursorPageSchema(itemSchema)` factory. Compose named
+domain inputs/outputs from these rather than repeating pagination envelopes:
+
+```ts
+export const TransactionsInputSchema = CursorPageInputSchema.extend({
+  accountId: z.uuid().optional(),
+});
+export const TransactionsPageSchema = cursorPageSchema(RecentTransactionSchema);
+```
+
+Inputs are strict objects; `limit` defaults to 25 and accepts integers from 1 to
+100. Omit `cursor` for the first page. Outputs contain `{ items, pageInfo }`, with
+`pageInfo: { hasMore, nextCursor }`; the cursor is null exactly when no next page
+exists. There is no total-count query or page-number promise.
+
+Both `transactions.list` boundaries use that shape. Persistence filters and orders
+before fetching `limit + 1`; its shared `pagination/cursor-page.ts` helper removes
+the lookahead and builds metadata from the last returned row. The API maps stored
+records to public items without changing metadata. The optional `accountId` is a
+selection filter, never an ownership override. Removed movements are excluded;
+review-pending movements and archived tag metadata remain visible as in `recent`.
+
+Transaction cursors are versioned base64url boundaries containing both
+`bookedAt` and `id`, ordered descending, plus the original account filter. SQL
+preserves microsecond precision for cursor timestamps instead of round-tripping
+through JavaScript `Date`. Treat tokens as opaque: pass them back with the same
+filters, or restart without a cursor. Invalid/unsupported tokens or changed
+filters produce `BAD_REQUEST`. Tokens are not encrypted, signed or authorization;
+RLS independently scopes every page, even with a forged/foreign cursor.
+
+Pages use separate statement snapshots, not a frozen history. Newer inserts do
+not shift unchanged older rows through offset positions, but booking-date
+corrections can move rows across boundaries. Restart to reconcile current history.
+Do not compute financial totals from a page or paginate complete calculation
+snapshots. `transactions.recent` and its MCP tool remain ten-item previews.
 
 ## Changing a contract or procedure
 
