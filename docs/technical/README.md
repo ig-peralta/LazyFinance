@@ -25,7 +25,8 @@ target is not evidence of a delivered capability.
 - [Technical manual](technical-manual.md): process/environment separation, local
   setup, Compose topology, browser-versus-SSR configuration and troubleshooting.
 - [Development and verification](development-workflow.md): builds, Biome/editor/DI
-  conventions, serverless versus listener/DB/live-Firebase checks and change review.
+  conventions, [file ownership and extraction](development-workflow.md#file-ownership-and-extraction),
+  serverless versus listener/DB/live-Firebase checks and change review.
 - App entry points: [API](../../apps/api/README.md),
   [persistence](../../apps/persistence/README.md), [UI](../../apps/ui/README.md).
 - Environment examples: [root Compose](../../.env.example),

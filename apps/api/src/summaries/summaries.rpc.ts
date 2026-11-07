@@ -6,8 +6,7 @@ import {
 import { Ctx, Input, Query, Router } from "nestjs-trpc";
 import { checkedMonth } from "../_utils/month-query";
 import { santiagoMonth } from "../_utils/santiago-time";
-import type { ApiRequestContext } from "../rpc/api.context";
-import { rpcUser } from "../rpc/api.middleware";
+import { type ApiRequestContext, rpcUser } from "../rpc/context";
 import { SummariesService } from "./summaries.service";
 
 @Router({ alias: "summaries" })

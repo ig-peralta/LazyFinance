@@ -13,7 +13,7 @@ import {
   RecordProviderFailureSchema,
 } from "@lazyfinance/contracts/internal";
 import { Input, Mutation, Query, Router } from "nestjs-trpc";
-import { wireValue } from "../query-period";
+import { wireValue } from "../../serialization";
 import { ProviderConnectionRepository } from "./provider-connection.repository";
 
 @Router({ alias: "providerSync" })

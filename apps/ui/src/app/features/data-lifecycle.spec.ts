@@ -1,13 +1,8 @@
 import { ApplicationRef, TransferState } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  deferred,
-  movement,
-  principal,
-  setupRpc,
-  tag,
-} from "../../testing/rpc";
+import { deferred } from "../../testing/deferred";
+import { movement, principal, setupRpc, tag } from "../../testing/rpc";
 import { isCancelled } from "../core/rpc/rpc-error";
 import { Account } from "../pages/dashboard/account/account";
 import { DashboardPage } from "../pages/dashboard/dashboard.page";

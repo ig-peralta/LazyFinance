@@ -10,9 +10,9 @@ import { TRPCError } from "@trpc/server";
 import { type Kysely, sql } from "kysely";
 import { fingerprint } from "../../database/fingerprint";
 import { RLS_DB } from "../../database/tokens";
+import { wireValue } from "../../serialization";
 import type { FinanceTables } from "../finance.tables";
 import type { ProviderMovementConflictTable } from "../provider-movement-conflict/provider-movement-conflict.tables";
-import { wireValue } from "../query-period";
 import { TagRuleRepository } from "../tag-rule/tag-rule.repository";
 
 const keyOf = (account: string, movement: string) =>

@@ -15,8 +15,3 @@ export function movementPeriod({
     AND m.booked_at < (${end}::timestamp AT TIME ZONE 'America/Santiago')
     ${asOf ? sql`AND m.booked_at <= ${new Date(asOf)}` : sql``}`;
 }
-
-export function wireValue(value: unknown): unknown {
-  // pg numeric/int8 values are strings; only timestamps require JSON adaptation.
-  return JSON.parse(JSON.stringify(value));
-}

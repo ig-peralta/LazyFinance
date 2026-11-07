@@ -12,25 +12,14 @@ import type {
   IncomeFacts,
   IncomeSourceRecord,
 } from "@lazyfinance/contracts/internal";
-import { BadRequestException, Injectable } from "@nestjs/common";
-import { z } from "zod";
+import { Injectable } from "@nestjs/common";
 import { fromCents, toCents } from "../_utils/money";
 import { monthBounds } from "../_utils/period";
 import { santiagoMonth } from "../_utils/santiago-time";
+import { movementTotals } from "../finance/movement-totals";
 import { PersistenceClient } from "../persistence/persistence.client";
-import { movementTotals } from "../transactions/movement-totals";
+import { parseInput } from "../validation/parse-input";
 import { expectedIncomeForMonth } from "./income-schedule";
-
-function input<T>(schema: z.ZodType<T>, value: unknown): T {
-  const result = schema.safeParse(value);
-  if (!result.success)
-    throw new BadRequestException({
-      message: "Invalid income input",
-      issues: result.error.issues,
-    });
-
-  return result.data;
-}
 
 function sourceResponse({
   userId: _,
@@ -77,7 +66,11 @@ export class IncomeService {
     userId: string,
     value: unknown,
   ): Promise<IncomeSource> {
-    const source = input(IncomeSourceInputSchema, value);
+    const source = parseInput(
+      IncomeSourceInputSchema,
+      value,
+      "Invalid income input",
+    );
     source.expectedAmount =
       source.expectedAmount === null
         ? null
@@ -93,7 +86,11 @@ export class IncomeService {
     id: string,
     value: unknown,
   ): Promise<IncomeSource> {
-    const source = input(IncomeSourceInputSchema, value);
+    const source = parseInput(
+      IncomeSourceInputSchema,
+      value,
+      "Invalid income input",
+    );
     source.expectedAmount =
       source.expectedAmount === null
         ? null
@@ -130,7 +127,11 @@ export class IncomeService {
     sourceId: string,
     value: unknown,
   ): Promise<IncomeExpectation> {
-    const expectation = input(IncomeExpectationInputSchema, value);
+    const expectation = parseInput(
+      IncomeExpectationInputSchema,
+      value,
+      "Invalid income input",
+    );
     expectation.amount = fromCents(toCents(expectation.amount));
 
     return this.persistence
@@ -143,7 +144,11 @@ export class IncomeService {
     id: string,
     value: unknown,
   ): Promise<IncomeExpectation> {
-    const expectation = input(IncomeExpectationInputSchema, value);
+    const expectation = parseInput(
+      IncomeExpectationInputSchema,
+      value,
+      "Invalid income input",
+    );
     expectation.amount = fromCents(toCents(expectation.amount));
 
     return this.persistence
@@ -160,7 +165,9 @@ export class IncomeService {
   async getExpectedForUser(userId: string, month = santiagoMonth(new Date())) {
     const facts = await this.persistence
       .user(userId)
-      .income.expectedFacts.query(monthBounds(input(MonthSchema, month)));
+      .income.expectedFacts.query(
+        monthBounds(parseInput(MonthSchema, month, "Invalid income input")),
+      );
     return expectedIncomeForMonth(month, facts.sources, facts.expectations);
   }
 
@@ -170,7 +177,11 @@ export class IncomeService {
     value: unknown,
     now = new Date(),
   ): Promise<IncomeReceipt> {
-    const { sourceId } = input(IncomeReceiptInputSchema, value);
+    const { sourceId } = parseInput(
+      IncomeReceiptInputSchema,
+      value,
+      "Invalid income input",
+    );
     return receiptResponse(
       await this.persistence.user(userId).incomeReceipts.confirm.mutate({
         transactionId,
@@ -190,7 +201,7 @@ export class IncomeService {
     now = new Date(),
   ): Promise<IncomeReceipt[]> {
     const receipts = await this.persistence.user(userId).income.receipts.query({
-      ...monthBounds(input(MonthSchema, month)),
+      ...monthBounds(parseInput(MonthSchema, month, "Invalid income input")),
       asOf: now.toISOString(),
     });
     return activeReceipts(receipts).map(receiptResponse);
@@ -202,7 +213,7 @@ export class IncomeService {
     now = new Date(),
   ): Promise<IncomeSummary> {
     const facts = await this.persistence.user(userId).income.facts.query({
-      ...monthBounds(input(MonthSchema, month)),
+      ...monthBounds(parseInput(MonthSchema, month, "Invalid income input")),
       asOf: now.toISOString(),
     });
     const expected = expectedIncomeForMonth(

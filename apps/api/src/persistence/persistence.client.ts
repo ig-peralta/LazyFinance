@@ -3,32 +3,10 @@ import type { VerifiedExternalIdentity } from "@lazyfinance/contracts";
 import type { PersistenceContext } from "@lazyfinance/contracts/context";
 import { createContextSigner } from "@lazyfinance/rpc-auth";
 import type { PersistenceRouter } from "@lazyfinance/rpc-persistence";
-import {
-  HttpException,
-  Injectable,
-  type OnModuleInit,
-  ServiceUnavailableException,
-} from "@nestjs/common";
-import {
-  createTRPCClient,
-  httpLink,
-  splitLink,
-  TRPCClientError,
-} from "@trpc/client";
+import { Injectable, type OnModuleInit } from "@nestjs/common";
+import { createTRPCClient, httpLink, splitLink } from "@trpc/client";
 import { EnvironmentService } from "../environment/environment.service";
 import { currentRequestId } from "../rpc/request-context";
-
-export function persistenceException(
-  error: unknown,
-): HttpException | undefined {
-  if (!(error instanceof TRPCClientError)) return undefined;
-
-  const status: number | undefined = error.data?.httpStatus;
-
-  return status && [400, 401, 403, 404, 409, 413, 429].includes(status)
-    ? new HttpException(error.message, status)
-    : new ServiceUnavailableException("Persistence is unavailable");
-}
 
 @Injectable()
 export class PersistenceClient implements OnModuleInit {

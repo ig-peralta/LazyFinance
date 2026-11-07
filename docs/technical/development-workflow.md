@@ -69,6 +69,53 @@ documentation and overload signatures attached to their declaration. Biome
 preserves this spacing but does not insert/enforce logical section boundaries;
 readability still needs review.
 
+## File ownership and extraction
+
+Choose placement by **responsibility, ownership and genuine reuse**, not by a
+ban on top-level declarations or a target number of files. Prefer the narrowest
+cohesive owner:
+
+| Scope | Use it for | Examples |
+| --- | --- | --- |
+| Private to a file | Small implementation details that help explain their only consumer | `normalizedRule`, `sourceResponse`, repository table intersections, session-cookie constants |
+| Feature-local file | A substantial policy/calculation with its own name and behavioral tests, even with one consumer | `summaries/spending-by-tag.ts`, `banking/ingestion/movement-assessment.ts` |
+| Application-level area | The same semantics used across feature boundaries | API `validation/parse-input.ts`, `finance/movement-totals.ts`, RPC error/context helpers; persistence `serialization.ts` |
+| Shared library/domain | A real cross-application contract or capability with compatible dependencies | Public tag-rule shape in contracts' `tags/`, private extension in `internal/tagging.ts` |
+| Test support | Reusable fixtures, synchronization and test transport helpers | UI `testing/deferred.ts` separate from RPC fixtures |
+
+Extract when a declaration represents a separate responsibility, obscures service
+orchestration, needs focused behavioral coverage, or is genuinely shared. Keep
+tiny selectors, closely coupled types, local constants and one-off helpers with
+their owner when another file would only add indirection. Sharing a literal or a
+similar-looking shape does not by itself establish shared semantics.
+
+Application-wide does not mean a catch-all `utils`, `types` or `constants` file.
+Keep infrastructure in its owning area: transport error policy belongs in `rpc`,
+financial interpretation in `finance`, and input-to-HTTP-error conversion in API
+validation—not in framework-neutral contracts. Do not create a Nest/Angular
+service or module merely to house pure functions, or import another app's source
+to reuse a helper. Preserve feature/provider lifetimes and dependency direction.
+
+For example, income and tagging share input parsing while retaining their own
+error messages. Authentication, startup configuration and provider ingestion
+still own their different failure policies. Generic persistence serialization
+maps nested `Date` values to strings in its return type; it must not pretend the
+wire representation has the original `Date` type or convert decimal strings to
+numbers.
+
+Keep mixed-domain contract implementations out of barrel indexes: put them in
+domain files and re-export the supported package surface from `index.ts`.
+Common files should contain genuinely shared primitives, not orphaned domain
+schemas. A small cohesive module need not be split just because it is named
+`index.ts`. Derive public/private variants from their domain-owned schema when
+their meaning really is shared, rather than maintaining duplicate definitions.
+
+When moving code, update all consumers directly, carry relevant tests with it,
+and remove the original definition instead of leaving compatibility re-exports.
+Test the extracted decisions/transformations, not import locations or constructor
+wiring. Preserve runtime behavior, wire contracts, authorization, money/calendar
+semantics and cancellation; verify the applicable static/build/contract checks.
+
 ## Backend test layout
 
 Both backend apps keep unit tests beside the implementation and integration

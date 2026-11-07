@@ -2,13 +2,8 @@ import { Component, signal } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
 import type { RecentTransaction } from "@lazyfinance/contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  deferred,
-  movement,
-  rpcFailure,
-  setupRpc,
-  tag,
-} from "../../../testing/rpc";
+import { deferred } from "../../../testing/deferred";
+import { movement, rpcFailure, setupRpc, tag } from "../../../testing/rpc";
 import { createTagDecision } from "./tag-decision";
 import { TaggingData } from "./tagging.data";
 

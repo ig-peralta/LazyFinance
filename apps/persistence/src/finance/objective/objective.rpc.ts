@@ -6,7 +6,7 @@ import {
   ObjectiveSpendingInputSchema,
 } from "@lazyfinance/contracts/internal";
 import { Input, Query, Router } from "nestjs-trpc";
-import { wireValue } from "../query-period";
+import { wireValue } from "../../serialization";
 import { ObjectiveRepository } from "./objective.repository";
 
 @Router({ alias: "objectives" })

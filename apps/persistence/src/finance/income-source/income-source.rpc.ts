@@ -14,7 +14,7 @@ import {
   ReceiptFactsSchema,
 } from "@lazyfinance/contracts/internal";
 import { Input, Mutation, Query, Router } from "nestjs-trpc";
-import { wireValue } from "../query-period";
+import { wireValue } from "../../serialization";
 import { TransactionRepository } from "../transaction/transaction.repository";
 import { IncomeSourceRepository } from "./income-source.repository";
 

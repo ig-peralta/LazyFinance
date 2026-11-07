@@ -5,7 +5,7 @@ import {
   VoidResultSchema,
 } from "@lazyfinance/contracts/internal";
 import { Input, Mutation, Router } from "nestjs-trpc";
-import { wireValue } from "../query-period";
+import { wireValue } from "../../serialization";
 import { IncomeReceiptRepository } from "./income-receipt.repository";
 
 @Router({ alias: "incomeReceipts" })

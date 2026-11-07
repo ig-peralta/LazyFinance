@@ -2,8 +2,8 @@ import { createEnvironmentInjector, EnvironmentInjector } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
 import { TRPCClientError } from "@trpc/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { deferred } from "../../../testing/deferred";
 import {
-  deferred,
   principal,
   rpcFailure,
   rpcResponse,

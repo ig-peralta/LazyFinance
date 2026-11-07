@@ -17,8 +17,7 @@ import {
   TagsResultSchema,
 } from "@lazyfinance/contracts";
 import { Ctx, Input, Mutation, Query, Router } from "nestjs-trpc";
-import type { ApiRequestContext } from "../../rpc/api.context";
-import { rpcUser } from "../../rpc/api.middleware";
+import { type ApiRequestContext, rpcUser } from "../../rpc/context";
 import { TaggingService } from "./tagging.service";
 
 @Router({ alias: "tags" })

@@ -7,7 +7,7 @@ import {
   TaggedMovementAggregatesSchema,
 } from "@lazyfinance/contracts/internal";
 import { Input, Query, Router } from "nestjs-trpc";
-import { wireValue } from "../query-period";
+import { wireValue } from "../../serialization";
 import { TransactionRepository } from "./transaction.repository";
 
 @Router({ alias: "transactions" })

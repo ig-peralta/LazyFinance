@@ -6,25 +6,13 @@ import {
 } from "@lazyfinance/contracts";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { z } from "zod";
-import {
-  PersistenceClient,
-  persistenceException,
-} from "../../persistence/persistence.client";
+import { PersistenceClient } from "../../persistence/persistence.client";
+import { persistenceException } from "../../rpc/persistence-error";
+import { parseInput } from "../../validation/parse-input";
 import { createRuleMatcher, matchKey } from "./tag-matching";
 
-function parse<T>(schema: z.ZodType<T>, value: unknown): T {
-  const result = schema.safeParse(value);
-  if (!result.success)
-    throw new BadRequestException({
-      message: "Invalid tag input",
-      issues: result.error.issues,
-    });
-
-  return result.data;
-}
-
 function normalizedRule(value: unknown): TagRuleInput {
-  const input = parse(TagRuleInputSchema, value);
+  const input = parseInput(TagRuleInputSchema, value, "Invalid tag input");
   const matchValue = matchKey(input.matchValue);
   if (!matchValue || matchValue.length > 240)
     throw new BadRequestException("Invalid normalized rule value");
@@ -45,7 +33,9 @@ export class TaggingService {
   async createTagForUser(userId: string, value: unknown) {
     const { isArchived: _, ...tag } = await this.persistence
       .user(userId)
-      .tags.create.mutate(parse(TagCreateInputSchema, value));
+      .tags.create.mutate(
+        parseInput(TagCreateInputSchema, value, "Invalid tag input"),
+      );
     return tag;
   }
 
@@ -56,7 +46,7 @@ export class TaggingService {
   ) {
     return this.persistence.user(userId).tagRules.manual.mutate({
       transactionId,
-      ...parse(ManualTagDecisionInputSchema, value),
+      ...parseInput(ManualTagDecisionInputSchema, value, "Invalid tag input"),
     });
   }
 
