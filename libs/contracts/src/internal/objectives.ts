@@ -94,6 +94,7 @@ export const ObjectiveSpendingInputSchema = z.strictObject({
       "Duplicate budget windows",
     ),
   asOf: z.iso.datetime().optional(),
+  adjustmentsAsOf: z.iso.datetime().optional(),
 });
 
 export const ObjectiveSpendingFactsSchema = z
@@ -103,6 +104,9 @@ export const ObjectiveSpendingFactsSchema = z
       revisionId: z.uuid(),
       amount: z.string(),
       count: z.number().int().nonnegative(),
+      refundAmount: z.string(),
+      reimbursementAmount: z.string(),
+      adjustmentReviewCount: z.number().int().nonnegative(),
       start: z.iso.datetime(),
       end: z.iso.datetime(),
       archivedAt: z.iso.datetime().nullable(),

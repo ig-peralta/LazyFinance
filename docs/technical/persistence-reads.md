@@ -29,7 +29,8 @@ provider pages and generated recurrence dates are not persisted relations.
   sums/counts. `objectives.forPeriod` selects applicable spending definitions;
   `spending` pins their revision IDs, joins revision-specific tags and eligible
   debit movements, and intersects exact activation/end/archive bounds. The API
-  chooses monthly/yearly/fixed windows and interprets the signed sum as spending.
+  chooses monthly/yearly/fixed windows and interprets signed gross amounts plus
+  purchase-attributed refund/reimbursement sums as net spending.
   Returned bounds/archival state come from the aggregate statement, so a concurrent
   archive cannot leave a stale cutoff paired with a new total. A retained objective
   with no matching movements returns zero; a foreign/deleted objective is absent.
@@ -53,6 +54,14 @@ provider pages and generated recurrence dates are not persisted relations.
   Provider movement facts include `accountExternalId` and `hasReceipt`, rather
   than requiring another account lookup and a separate receipt scan/set. Those
   fields are included in the canonical fingerprint and recomputed on commit.
+- **Expense recovery:** aggregate allocations separately to one row per purchase
+  and per credit before grouping movements, never flattening allocations into a
+  movement sum. Purchase facts include refunds, reimbursements and review counts;
+  credit facts include applied recoveries, reserved allocations and the remaining
+  unclassified count. `adjustmentsAsOf` bounds confirmation/credit observation
+  independently from the purchase window/`asOf`, so a later refund can restate an
+  earlier period. This is a cutoff over current facts, not historical time travel
+  through edited/deleted decisions or provider corrections. Both joins use RLS.
 
 Use named typed procedures, not arbitrary SQL/filter expressions over RPC. The
 API injects the single `PersistenceClient` directly; no per-domain transport

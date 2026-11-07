@@ -8,8 +8,26 @@ const summary = {
   ...emptySummary,
   spending: "20000.00",
   tags: [
-    { id: "food", name: "Comida", color: null, amount: "5000.00", count: 1 },
-    { id: "leisure", name: "Ocio", color: null, amount: "10000.00", count: 1 },
+    {
+      id: "food",
+      name: "Comida",
+      color: null,
+      amount: "5000.00",
+      grossAmount: "5000.00",
+      refunds: "0.00",
+      reimbursements: "0.00",
+      count: 1,
+    },
+    {
+      id: "leisure",
+      name: "Ocio",
+      color: null,
+      amount: "10000.00",
+      grossAmount: "10000.00",
+      refunds: "0.00",
+      reimbursements: "0.00",
+      count: 1,
+    },
   ],
 };
 

@@ -5,6 +5,7 @@ import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { RLS_DB } from "../../database/tokens";
 import type { BudgetRevisionTables } from "../budget-revision/budget-revision.tables";
 import type { BudgetRevisionTagTables } from "../budget-revision-tag/budget-revision-tag.tables";
+import { purchaseRecovery } from "../expense-adjustment/expense-adjustment-sql";
 import type { ObjectiveTagTables } from "../objective-tag/objective-tag.tables";
 import type { TagTables } from "../tag/tag.tables";
 import type { TransactionTables } from "../transaction/transaction.tables";
@@ -135,7 +136,7 @@ export class ObjectiveRepository {
       .execute();
   }
 
-  spending({ windows, asOf }: ObjectiveSpendingInput) {
+  spending({ windows, asOf, adjustmentsAsOf }: ObjectiveSpendingInput) {
     const requested = sql<{
       id: string;
       revisionId: string;
@@ -215,11 +216,23 @@ export class ObjectiveRepository {
             ]),
           ),
       )
+      .leftJoinLateral(purchaseRecovery(adjustmentsAsOf).as("pa"), (join) =>
+        join.onTrue(),
+      )
       .select([
         "o.id",
         "w.revisionId",
         sql<string>`coalesce(sum(m.amount), 0)::text`.as("amount"),
         sql<number>`count(m.id)::int`.as("count"),
+        sql<string>`coalesce(sum(pa.refund_amount::numeric),0)::text`.as(
+          "refundAmount",
+        ),
+        sql<string>`coalesce(sum(pa.reimbursement_amount::numeric),0)::text`.as(
+          "reimbursementAmount",
+        ),
+        sql<number>`coalesce(sum(pa.adjustment_review_count),0)::int`.as(
+          "adjustmentReviewCount",
+        ),
         budgetTimestamp(start).as("start"),
         budgetTimestamp(end).as("end"),
         budgetTimestamp(sql.ref<Date | null>("o.archivedAt")).as("archivedAt"),

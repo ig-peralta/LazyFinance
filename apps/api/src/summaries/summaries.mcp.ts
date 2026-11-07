@@ -20,7 +20,7 @@ export class SummariesMcpController {
   @Tool({
     name: "consultar_resumen_gastos_mensuales",
     description:
-      "Resume los gastos registrados en un mes calendario y los desglosa por etiqueta con importe y número de movimientos, en CLP. Por defecto consulta el mes actual hasta hoy (America/Santiago); excluye transferencias y ahorro entre cuentas. Cada compra tiene como máximo una etiqueta: los grupos no se superponen, pero el total también incluye gastos sin etiqueta.",
+      "Resume compras brutas, devoluciones, reembolsos y gasto neto del mes en CLP. Los ajustes confirmados se atribuyen al período y etiqueta de la compra original, aunque el abono llegue después; los abonos recibidos se muestran aparte y no son ingresos. Usa America/Santiago y excluye movimientos internos. Cada compra tiene como máximo una etiqueta; el total incluye compras sin etiqueta. Los ajustes por revisar no reducen el gasto.",
     parameters: monthParameters,
     annotations: {
       title: "Consultar gastos por mes y etiqueta",
@@ -30,24 +30,39 @@ export class SummariesMcpController {
       month: true,
       spending: true,
       tags: true,
+      grossSpending: true,
+      refunds: true,
+      reimbursements: true,
+      unresolvedAdjustmentCount: true,
+      recoveredExpenseCredits: true,
+      adjustmentsAsOf: true,
     }),
   })
   async getMonthly(
     @Payload() { month }: z.infer<typeof monthParameters>,
     @Ctx() ctx: McpContext,
   ) {
-    const {
-      month: period,
-      spending,
-      tags,
-    } = await this.summaries.getMonthlyForUser(mcpUserId(ctx), mcpMonth(month));
-    return { month: period, spending, tags };
+    const summary = await this.summaries.getMonthlyForUser(
+      mcpUserId(ctx),
+      mcpMonth(month),
+    );
+    return {
+      month: summary.month,
+      spending: summary.spending,
+      tags: summary.tags,
+      grossSpending: summary.grossSpending,
+      refunds: summary.refunds,
+      reimbursements: summary.reimbursements,
+      unresolvedAdjustmentCount: summary.unresolvedAdjustmentCount,
+      recoveredExpenseCredits: summary.recoveredExpenseCredits,
+      adjustmentsAsOf: summary.adjustmentsAsOf,
+    };
   }
 
   @Tool({
     name: "comparar_gastos_mensuales",
     description:
-      "Compara los gastos de un mes con los del anterior en CLP e indica la diferencia absoluta. Para el mes actual compara solo hasta la misma fecha y hora del mes anterior (o su último día si es más corto); los meses pasados se comparan completos. Úsala para responder si se gastó más o menos que el mes anterior, no para proyectar el fin de mes.",
+      "Compara el gasto neto de compras de un mes con el anterior en CLP. Devoluciones y reembolsos confirmados se atribuyen al período de la compra original con la información disponible ahora, no a la fecha del abono. Para el mes actual usa fechas comparables; los meses pasados se comparan completos. No proyecta el fin de mes.",
     parameters: monthParameters,
     annotations: {
       title: "Comparar gastos con el mes anterior",

@@ -62,6 +62,9 @@ function fact(id: string, amount: string, count: number) {
     revisionId: id,
     amount,
     count,
+    refundAmount: "0.00",
+    reimbursementAmount: "0.00",
+    adjustmentReviewCount: 0,
     start: "2026-09-01T04:00:00.000000Z",
     end: "2026-10-01T03:00:00.000000Z",
     archivedAt: null,
@@ -188,6 +191,11 @@ describe("ObjectivesService spending progress", () => {
         period: "monthly",
         limit: "280000.00",
         spent: "300000.00",
+        grossSpent: "300000.00",
+        refunds: "0.00",
+        reimbursements: "0.00",
+        unresolvedAdjustmentCount: 0,
+        adjustmentsAsOf: expect.any(String),
         remaining: "-20000.00",
         percentage: 107,
         revisionId: budgetId,
@@ -200,6 +208,11 @@ describe("ObjectivesService spending progress", () => {
         period: "yearly",
         limit: "650000.00",
         spent: "350000.00",
+        grossSpent: "350000.00",
+        refunds: "0.00",
+        reimbursements: "0.00",
+        unresolvedAdjustmentCount: 0,
+        adjustmentsAsOf: expect.any(String),
         remaining: "300000.00",
         percentage: 53,
         revisionId: yearlyId,
@@ -222,6 +235,7 @@ describe("ObjectivesService spending progress", () => {
         },
       ],
       asOf: undefined,
+      adjustmentsAsOf: expect.any(String),
     });
   });
 
@@ -270,6 +284,7 @@ describe("ObjectivesService spending progress", () => {
         },
       ],
       asOf: now.toISOString(),
+      adjustmentsAsOf: now.toISOString(),
     });
   });
 });

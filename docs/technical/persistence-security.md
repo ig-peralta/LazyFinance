@@ -136,8 +136,9 @@ middleware receive `RUNTIME_DB`. The proxy permits harmless constructor reflecti
 for NestJS-tRPC provider discovery, not raw connection access.
 
 Normal procedures use read-committed. `income.expectedFacts`, `income.facts`,
-`tagRules.facts`, `tagRules.candidates`, `providerSync.facts`, `objectives.budget`
-and `objectives.budgetHistory` request repeatable-read snapshots.
+`tagRules.facts`, `tagRules.candidates`, `providerSync.facts`, `objectives.budget`,
+`objectives.budgetHistory` and `transactions.expenseAdjustments` request
+repeatable-read snapshots.
 All user mutations acquire the same per-user advisory transaction lock. This
 serializes writes affecting prepared inputs, including rule insertion/removal
 that a row-only lock might miss. It is not a lock around provider network calls
@@ -150,14 +151,15 @@ incorrectly commit. Result-size failures also throw before commit.
 
 ## RLS and related ownership
 
-All 18 sensitive application tables enable **and force** RLS. The nineteenth,
+All 19 sensitive application tables enable **and force** RLS. The twentieth,
 `finance.provider`, is a shared runtime-read-only catalog. Runtime grants and RLS
 are both required: a policy alone is not permission to access a table.
 
 `identity.current_user_id()` returns a UUID only for user context. Finance policies
 use direct owners or indexed parent ownership paths. Writes independently check
 related owners: an owned transaction cannot reference another user's tag/rule,
-a receipt needs both an owned movement and source, and an objective-tag link
+a receipt needs both an owned movement and source, an expense adjustment requires
+both an owned credit and original purchase, and an objective-tag link
 needs both owned ends. FKs alone cannot establish this. Tag decision events allow
 runtime SELECT/INSERT but not UPDATE/DELETE. Budget revisions check a spending
 parent owner and permit runtime updates only to supersession metadata; their tag
@@ -174,7 +176,8 @@ or generic transaction scripts.
 
 | Command | Authoritative persistence work | API work outside SQL |
 | --- | --- | --- |
-| Income confirmation | Lock/check source and eligible movement; upsert one receipt | Calendar/money calculations and response composition |
+| Income confirmation | Lock/check source and eligible movement; reject any retained expense allocation; upsert one receipt | Calendar/money calculations and response composition |
+| Expense adjustment set/remove | Lock both owned movements; check eligibility, income exclusivity and credit/purchase capacity including retained review allocations; atomically upsert/remove one pair | Validate exact positive money and explicit refund/reimbursement intent; interpret gross/net aggregates |
 | Tag decision | Decision and append-only event together | Normalize/rank rules and calculate suggestions |
 | Budget create/edit/archive | Check owned active tags and expected version; save revision/tag links, supersede pending versions or record one archival cutoff atomically | Supported periods, Santiago boundaries, next-period edits and exact remaining/progress arithmetic |
 | Prepared rule application | Re-read candidate fingerprint, check eligibility, persist decisions/events | Match the bounded candidate page |

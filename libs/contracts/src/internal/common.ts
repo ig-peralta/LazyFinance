@@ -19,6 +19,7 @@ export const PeriodInputSchema = z.strictObject({
   start: LocalTimestampSchema,
   end: LocalTimestampSchema,
   asOf: z.iso.datetime().optional(),
+  adjustmentsAsOf: z.iso.datetime().optional(),
 });
 
 export type PeriodInput = z.infer<typeof PeriodInputSchema>;

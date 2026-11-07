@@ -89,6 +89,18 @@ interface FixtureTables {
     effectiveFrom: Date;
   };
   budget_revision_tag: { revisionId: string; tagId: string };
+  expense_adjustment: {
+    id: string;
+    creditTransactionId: string;
+    purchaseTransactionId: string;
+    kind: "refund" | "reimbursement";
+    amount: string;
+    creditAmount: string;
+    purchaseAmount: string;
+    creditBookedAt: Date;
+    purchaseBookedAt: Date;
+    confirmedAt: string;
+  };
   income_source: IncomeSourceRecord;
   income_expectation: IncomeExpectation;
   income_receipt: {
@@ -161,6 +173,7 @@ const schemas = {
   objective_tag: "finance",
   budget_revision: "finance",
   budget_revision_tag: "finance",
+  expense_adjustment: "finance",
   provider_sync_state: "finance",
   provider_movement_removal: "finance",
   provider_movement_conflict: "finance",

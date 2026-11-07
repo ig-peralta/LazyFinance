@@ -190,6 +190,7 @@ export class ObjectivesService {
           end: window.end,
         })),
         asOf: month === santiagoMonth(now) ? now.toISOString() : undefined,
+        adjustmentsAsOf: now.toISOString(),
       });
     const amounts = new Map(totals.map((fact) => [fact.id, fact]));
 
@@ -197,7 +198,10 @@ export class ObjectivesService {
       const fact = amounts.get(objective.id);
       // An objective removed between the two reads is no longer reportable.
       if (!fact || fact.revisionId !== objective.revisionId) return [];
-      const spent = -toCents(fact.amount);
+      const gross = -toCents(fact.amount);
+      const refunds = toCents(fact.refundAmount);
+      const reimbursements = toCents(fact.reimbursementAmount);
+      const spent = gross - refunds - reimbursements;
       const limit = toCents(objective.amount);
 
       return [
@@ -208,6 +212,11 @@ export class ObjectivesService {
           period: window.period,
           limit: fromCents(limit),
           spent: fromCents(spent),
+          grossSpent: fromCents(gross),
+          refunds: fromCents(refunds),
+          reimbursements: fromCents(reimbursements),
+          unresolvedAdjustmentCount: fact.adjustmentReviewCount,
+          adjustmentsAsOf: now.toISOString(),
           remaining: fromCents(limit - spent),
           percentage: Number((spent * 100n) / limit),
           revisionId: fact.revisionId,

@@ -1,4 +1,10 @@
-import type { RecentTransaction } from "@lazyfinance/contracts";
+import type {
+  BudgetProgress,
+  IncomeSummary,
+  MonthlyComparison,
+  MonthlySummary,
+  RecentTransaction,
+} from "@lazyfinance/contracts";
 import { INestApplication, UnauthorizedException } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { MCP_STRATEGY, McpStrategy } from "@rekog/mcp-nest";
@@ -73,41 +79,82 @@ describe("Dashboard MCP tools", () => {
   const transactions = { getRecentForUser: vi.fn(async () => recent) };
   const objectives = {
     getForUser: vi.fn(async () => []),
-    getSpendingProgressForUser: vi.fn(async () => []),
+    getSpendingProgressForUser: vi.fn(
+      async (_userId: string, month: string): Promise<BudgetProgress[]> => [
+        {
+          id: "00000000-0000-4000-8000-000000000041",
+          revisionId: "00000000-0000-4000-8000-000000000042",
+          name: "Budget",
+          month,
+          period: "monthly",
+          limit: "20000.00",
+          grossSpent: "18000.00",
+          refunds: "2000.00",
+          reimbursements: "1000.00",
+          spent: "15000.00",
+          remaining: "5000.00",
+          percentage: 75,
+          unresolvedAdjustmentCount: 0,
+          adjustmentsAsOf: "2026-11-07T15:00:00Z",
+          tracking: {
+            start: "2026-09-01T04:00:00Z",
+            end: "2026-10-01T03:00:00Z",
+            archivedAt: null,
+          },
+        },
+      ],
+    ),
   };
   const summaries = {
-    getMonthlyForUser: vi.fn(async (_userId: string, month: string) => ({
-      month,
-      receivedIncome: "1379000.00",
-      expectedIncome: {
-        amount: "1500000.00",
-        estimatedAmount: "0.00",
-        unknownAmountCount: 0,
-        paymentCount: 1,
-      },
-      unclassifiedCredits: { amount: "0.00", count: 0 },
-      spending: "15000.00",
-      tags: [],
-    })),
-    getComparisonForUser: vi.fn(async (_userId: string, month: string) => ({
-      month,
-      previousMonth: "2026-08",
-      partial: false,
-      receivedIncome: {
-        current: "1379000.00",
-        previous: "1250000.00",
-        change: "129000.00",
-      },
-      spending: {
-        current: "15000.00",
-        previous: "10000.00",
-        change: "5000.00",
-      },
-    })),
+    getMonthlyForUser: vi.fn(
+      async (_userId: string, month: string): Promise<MonthlySummary> => ({
+        month,
+        receivedIncome: "1379000.00",
+        expectedIncome: {
+          amount: "1500000.00",
+          estimatedAmount: "0.00",
+          unknownAmountCount: 0,
+          paymentCount: 1,
+        },
+        unclassifiedCredits: { amount: "0.00", count: 0 },
+        spending: "15000.00",
+        grossSpending: "18000.00",
+        refunds: "2000.00",
+        reimbursements: "1000.00",
+        unresolvedAdjustmentCount: 0,
+        recoveredExpenseCredits: {
+          amount: "4000.00",
+          count: 1,
+          needsReviewCount: 0,
+        },
+        adjustmentsAsOf: "2026-11-07T15:00:00Z",
+        tags: [],
+      }),
+    ),
+    getComparisonForUser: vi.fn(
+      async (_userId: string, month: string): Promise<MonthlyComparison> => ({
+        month,
+        previousMonth: "2026-08",
+        partial: false,
+        receivedIncome: {
+          current: "1379000.00",
+          previous: "1250000.00",
+          change: "129000.00",
+        },
+        spending: {
+          current: "15000.00",
+          previous: "10000.00",
+          change: "5000.00",
+        },
+      }),
+    ),
   };
   const income = {
     getSummaryForUser: vi.fn(
-      async (_userId: string, month = santiagoMonth(new Date())) => ({
+      async (
+        _userId: string,
+        month = santiagoMonth(new Date()),
+      ): Promise<IncomeSummary> => ({
         month,
         currency: "CLP",
         asOf: new Date().toISOString(),
@@ -119,6 +166,11 @@ describe("Dashboard MCP tools", () => {
         },
         receivedIncome: "0.00",
         unclassifiedCredits: { amount: "10000.00", count: 1 },
+        recoveredExpenseCredits: {
+          amount: "4000.00",
+          count: 1,
+          needsReviewCount: 0,
+        },
         expectedPayments: [
           {
             sourceId: "00000000-0000-4000-8000-000000000051",
@@ -242,7 +294,7 @@ describe("Dashboard MCP tools", () => {
       "comparar_gastos_mensuales",
     ]) {
       const tool = tools.find((item) => item.name === name);
-      expect(tool?.description.toLowerCase()).not.toContain("ingreso");
+      expect(tool?.description).toContain("compra original");
       expect(tool?.outputSchema.properties).not.toHaveProperty("income");
       expect(tool?.outputSchema.properties).not.toHaveProperty(
         "receivedIncome",
@@ -251,6 +303,19 @@ describe("Dashboard MCP tools", () => {
         "expectedIncome",
       );
     }
+    const spending = tools.find(
+      ({ name }) => name === "consultar_resumen_gastos_mensuales",
+    );
+    expect(spending?.description).toContain("no son ingresos");
+    for (const field of [
+      "spending",
+      "grossSpending",
+      "refunds",
+      "reimbursements",
+      "recoveredExpenseCredits",
+      "adjustmentsAsOf",
+    ])
+      expect(spending?.outputSchema.properties).toHaveProperty(field);
   });
 
   it("scopes every tool call to the caller and returns validated structured results", async () => {
@@ -292,6 +357,30 @@ describe("Dashboard MCP tools", () => {
         expect(
           response.body.result.structuredContent.unclassifiedCredits.count,
         ).toBe(1);
+        expect(
+          response.body.result.structuredContent.recoveredExpenseCredits,
+        ).toEqual({ amount: "4000.00", count: 1, needsReviewCount: 0 });
+      }
+
+      if (name === "consultar_avance_presupuestos") {
+        expect(response.body.result.structuredContent.budgets[0]).toMatchObject(
+          {
+            grossSpent: "18000.00",
+            refunds: "2000.00",
+            reimbursements: "1000.00",
+            spent: "15000.00",
+          },
+        );
+      }
+
+      if (name === "consultar_resumen_gastos_mensuales") {
+        expect(response.body.result.structuredContent).toMatchObject({
+          grossSpending: "18000.00",
+          refunds: "2000.00",
+          reimbursements: "1000.00",
+          spending: "15000.00",
+          recoveredExpenseCredits: { amount: "4000.00", count: 1 },
+        });
       }
 
       if (

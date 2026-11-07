@@ -44,13 +44,13 @@ inferred Promises; there is no cross-app source import or HTTP/Observable adapte
 ## Public surface
 
 The [generated public router](../../libs/rpc-api/src/generated/server.ts) currently
-contains **39 procedures**. Prefix each method below with its router name.
+contains **42 procedures**. Prefix each method below with its router name.
 
 | Router | Methods | Responsibility |
 | --- | --- | --- |
 | `auth` | `config`, `loginMock`, `principal` | Provider selection, local mock login, verified principal |
 | `accounts` | `list` | Active accounts, balances and freshness |
-| `transactions` | `recent`, `list` | Ten-movement preview and cursor-paginated history with tag/review provenance |
+| `transactions` | `recent`, `list`, `expenseAdjustments`, `setExpenseAdjustment`, `removeExpenseAdjustment` | Ten-movement preview, cursor-paginated history and explicit purchase-attributed refunds/reimbursements |
 | `objectives` | `list`, `progress`, `budget`, `budgetHistory`, `createBudget`, `updateBudget`, `archiveBudget` | Effective objectives, revisioned spending-budget management/history and progress |
 | `summaries` | `monthly`, `comparison` | Financial summary and equivalent-period comparison |
 | `income` | `sources`, `source`, `createSource`, `updateSource`, `archiveSource`, `expectations`, `createExpectation`, `updateExpectation`, `removeExpectation`, `expected`, `receipts`, `confirm`, `clear`, `summary` | Declarations, dated expectations, explicit receipts and calculated summaries |
@@ -74,14 +74,14 @@ are not implemented by this RPC cutover.
 ## Private surface
 
 The [generated private router](../../libs/rpc-persistence/src/generated/server.ts)
-currently contains **44 procedures**. They expose owned facts and authoritative
+currently contains **47 procedures**. They expose owned facts and authoritative
 commands rather than copying public screen calculations into persistence.
 
 | Router | Methods |
 | --- | --- |
 | `identity` | `resolve` (bootstrap only) |
 | `accounts` | `listActive` |
-| `transactions` | `recent`, `list`, `aggregates`, `taggedAggregates` |
+| `transactions` | `recent`, `list`, `aggregates`, `taggedAggregates`, `expenseAdjustments`, `setExpenseAdjustment`, `removeExpenseAdjustment` |
 | `objectives` | `list` (effective definitions/nested tags), `forPeriod`, `spending` (revision-pinned sums/windows), `budget`, `budgetHistory`, `createBudget`, `updateBudget`, `archiveBudget` |
 | `income` | `sources`, `source`, `createSource`, `updateSource`, `archiveSource`, `expectedFacts`, `receipts`, `facts` |
 | `incomeExpectations` | `list`, `create`, `update`, `remove` |
@@ -109,8 +109,9 @@ version. Details separate effective and pending definitions; `budgetHistory` use
 the shared cursor envelope, bound to the budget ID. Archive is server-timed and
 idempotent, cancels pending revisions and preserves historical configuration.
 Progress includes its revision ID and exact tracking bounds/archival state; late
-eligible financial facts may still reconcile earlier totals. No MCP write tools
-or management screen are added by these operations.
+eligible financial facts and confirmed recoveries can reconcile earlier purchases,
+including in archived budgets. No purchase booked at or after archival is admitted.
+No MCP write tools or management screen are added by these operations.
 
 - Money is an exact decimal string, not a floating-point JSON number. Nullable
   balances stay nullable; unknown is not zero. PostgreSQL numeric/int8 parsers
@@ -131,6 +132,47 @@ or management screen are added by these operations.
 - UI code consumes tRPC errors through `core/rpc/rpc-error.ts`, not fabricated
   `HttpErrorResponse` objects. Private SQL errors are sanitized before crossing
   boundaries. Ambiguous command failures are never automatically replayed.
+
+### Expense recovery semantics
+
+`transactions.setExpenseAdjustment` explicitly confirms an amount and kind
+(`refund` or expense `reimbursement`) between an owned external credit and an
+owned eligible purchase. Both must be booked, clear and nonremoved; the credit
+cannot precede the purchase. A provider reversal hint alone does not allocate it.
+Partial recoveries, several credits per purchase and one credit split across
+purchases are supported. Total allocation cannot exceed either the credit value
+or remaining purchase cost, including retained decisions awaiting review.
+
+- `grossSpending`/`grossSpent` retain purchase cost. `refunds` and `reimbursements`
+  reduce `spending`/`spent` in the **original purchase period**, with the purchase's
+  current tag and that budget period's revision-specific selection. Retagging the
+  purchase moves its cost and recoveries together; the credit's tag does not choose
+  attribution. Archived budgets accept corrections to previously tracked purchases,
+  not purchases booked at or after the archival cutoff.
+- `recoveredExpenseCredits` separately reports applied cash recovered in the
+  credit's actual booking period, with distinct credit counts and review counts.
+  It is not received income and does not offset unrelated credit-period purchases.
+  Example: an October purchase of 100 and a November refund of 30 leave October
+  gross 100/net 70; November reports recovered cash 30, not earned income 30.
+- Any retained allocation prevents confirming that credit as income, even if part
+  remains unallocated or a link needs review. An existing income receipt must be
+  cleared before allocating a recovery. Only the unallocated credit remainder is
+  unclassified; invalid allocations remain reserved rather than silently becoming
+  income/unclassified cash. All links must be removed to confirm the credit as income.
+- Corrected amounts or exact booking instants, removed/internal/review-pending
+  movements, or invalid combined capacity produce `needs_review` and stop the
+  affected reduction. The link remains available for explicit reconfirmation,
+  resizing or removal; neither command rewrites bank amounts, dates or balances.
+  Repeating an unchanged set preserves its confirmation time; removal is idempotent
+  while both selected movements remain owned.
+- Summary/progress `adjustmentsAsOf` records the observation cutoff independently
+  of the purchase window. Later known refunds can restate closed periods. These
+  reads use current stored facts/decisions, not a reconstruction of all previously
+  edited/removed decisions or bank corrections. Comparisons use the same recovery
+  observation time for both purchase windows. Income keeps its existing `asOf`.
+
+These fields are shared by public summaries, progress and their MCP tools.
+There is no refund-management screen or MCP write tool in this slice.
 
 ## Cursor-paginated browsing
 
@@ -171,6 +213,12 @@ corrections can move rows across boundaries. Restart to reconcile current histor
 Do not compute financial totals from a page or paginate complete calculation
 snapshots. `transactions.recent` and its MCP tool remain ten-item previews; the
 dashboard requests only the first page with `limit: 10` and has no continuation UI.
+
+`transactions.expenseAdjustments` uses the same page envelope for either selected
+movement, including links awaiting review. Its UUID-ascending cursor is bound to
+`transactionId`; ownership is independently checked on each page. This is browsing,
+not the source of financial totals, and later inserts/removals are not frozen by a
+continuation token. Adjustment timestamps retain SQL microseconds across RPC.
 
 ## Changing a contract or procedure
 

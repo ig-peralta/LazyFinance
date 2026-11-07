@@ -1,5 +1,6 @@
 import type { TaggedMovementAggregate } from "@lazyfinance/contracts/internal";
 import { describe, expect, it, vi } from "vitest";
+import { movementAggregate } from "../../tests/fixtures/movement-aggregate";
 import type { RpcStubs } from "../../tests/fixtures/rpc-stubs";
 import type { IncomeService } from "../income/income.service";
 import type { PersistenceClient } from "../persistence/persistence.client";
@@ -20,6 +21,7 @@ function group(
   update: Partial<TaggedMovementAggregate>,
 ): TaggedMovementAggregate {
   return {
+    ...movementAggregate(update),
     type: "debit",
     isInternalMovement: false,
     reviewStatus: "clear",
@@ -103,13 +105,32 @@ describe("SummariesService", () => {
       unresolvedMovementCount: 0,
     });
     expect(summary.tags).toEqual([
-      { id: leisure, name: "Ocio", color: null, amount: "5000.00", count: 1 },
-      { id: food, name: "Comida", color: null, amount: "4000.00", count: 1 },
+      {
+        id: leisure,
+        name: "Ocio",
+        color: null,
+        amount: "5000.00",
+        grossAmount: "5000.00",
+        refunds: "0.00",
+        reimbursements: "0.00",
+        count: 1,
+      },
+      {
+        id: food,
+        name: "Comida",
+        color: null,
+        amount: "4000.00",
+        grossAmount: "4000.00",
+        refunds: "0.00",
+        reimbursements: "0.00",
+        count: 1,
+      },
     ]);
     expect(taggedAggregates).toHaveBeenCalledExactlyOnceWith({
       start: "2026-09-01 00:00:00",
       end: "2026-10-01 00:00:00",
       asOf: undefined,
+      adjustmentsAsOf: expect.any(String),
     });
   });
 
@@ -139,6 +160,7 @@ describe("SummariesService", () => {
     expect(aggregates).toHaveBeenCalledWith({
       start: "2025-12-01 00:00:00",
       end: "2026-01-01 00:00:00",
+      adjustmentsAsOf: expect.any(String),
     });
   });
 
@@ -160,6 +182,7 @@ describe("SummariesService", () => {
       start: "2026-10-01 00:00:00",
       end: "2026-11-01 00:00:00",
       asOf: now.toISOString(),
+      adjustmentsAsOf: now.toISOString(),
     });
 
     const comparison = await service.getComparisonForUser(
@@ -176,6 +199,7 @@ describe("SummariesService", () => {
     expect(aggregates).toHaveBeenCalledWith({
       start: "2026-09-01 00:00:00",
       end: "2026-09-16 12:30:45",
+      adjustmentsAsOf: now.toISOString(),
     });
   });
 
@@ -189,6 +213,7 @@ describe("SummariesService", () => {
     expect(aggregates).toHaveBeenCalledWith({
       start: "2026-02-01 00:00:00",
       end: "2026-03-01 00:00:00",
+      adjustmentsAsOf: expect.any(String),
     });
   });
 
@@ -215,6 +240,9 @@ describe("SummariesService", () => {
         name: "Archived",
         color: null,
         amount: "9007199254740.99",
+        grossAmount: "9007199254740.99",
+        refunds: "0.00",
+        reimbursements: "0.00",
         count: 2,
       },
       {
@@ -222,6 +250,9 @@ describe("SummariesService", () => {
         name: "Other",
         color: null,
         amount: "9007199254740.98",
+        grossAmount: "9007199254740.98",
+        refunds: "0.00",
+        reimbursements: "0.00",
         count: 1,
       },
     ]);

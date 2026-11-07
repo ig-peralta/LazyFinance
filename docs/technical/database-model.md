@@ -1,8 +1,8 @@
 # Implemented database model
 
 This reference describes the checked-in Kysely migrations, not a conceptual
-product model. PostgreSQL 18 holds **19 application tables** in fixed `identity`
-and `finance` schemas. Eighteen sensitive tables force user/identity RLS;
+product model. PostgreSQL 18 holds **20 application tables** in fixed `identity`
+and `finance` schemas. Nineteen sensitive tables force user/identity RLS;
 `finance.provider` is the shared read-only catalog exception. There is no tenancy,
 membership or account-sharing model. See [security and RLS](persistence-security.md)
 for policy/grant details.
@@ -38,6 +38,7 @@ All unqualified table names in the finance section below belong to `finance`.
 | `income_source` | `id`; `user_id` | Regularity, amount behavior, schedule and effective dates |
 | `income_expectation` | `id` → source | Source-owned dated expectation for irregular income |
 | `income_receipt` | PK `transaction_id`; `source_id` | At most one confirmed source per movement; both ends owned |
+| `expense_adjustment` | `id`; unique `(credit_transaction_id, purchase_transaction_id)` | Both movements owned; explicit partial refund/reimbursement with confirmed amount/booking snapshots |
 | `provider_sync_state` | PK `provider_connection_id` | Connection-owned checkpoint, revision, success/failure and review metadata |
 | `provider_movement_removal` | PK `(provider_connection_id, account_external_id, movement_external_id)` | Connection-owned tombstone, even before the account/movement exists locally |
 | `provider_movement_conflict` | PK `(transaction_id, reason)` | Movement-owned old/incoming factual snapshots and review resolution time |
@@ -87,6 +88,8 @@ erDiagram
     finance_income_source ||--o{ finance_income_expectation : plans
     finance_income_source ||--o{ finance_income_receipt : receives
     finance_transaction ||--o| finance_income_receipt : confirms
+    finance_transaction ||--o{ finance_expense_adjustment : credits
+    finance_transaction ||--o{ finance_expense_adjustment : original_purchase
     finance_transaction ||--o{ finance_provider_movement_conflict : flags
 
     identity_user {
@@ -169,6 +172,13 @@ erDiagram
         uuid transaction_id PK, FK
         uuid source_id FK
     }
+    finance_expense_adjustment {
+        uuid id PK
+        uuid credit_transaction_id FK
+        uuid purchase_transaction_id FK
+        numeric amount
+        string kind
+    }
     finance_provider_sync_state {
         uuid provider_connection_id PK, FK
     }
@@ -222,6 +232,15 @@ evidence, not guaranteed local relational links.
   Archival truncates tracking without prorating the limit or freezing transactions;
   historical tag metadata remains readable. Savings declarations retain their
   existing model. Budget timestamp projections preserve SQL microseconds.
+- Expense adjustments store a positive allocated amount and both confirmed signed
+  movement amounts and exact booking instants. Per-row checks enforce distinct
+  movements, supported kind, capacity against those snapshots and chronological
+  order. The authoritative command checks current eligibility, both aggregate
+  capacities and income exclusivity under the common user write lock. Changed
+  amounts/instants, removals or incompatible eligibility suspend application without
+  deleting the decision. Allocations follow the purchase period/tag, not the credit
+  tag/date; later recoveries can correct archived budget purchases without admitting
+  purchases booked at or after archival. See [recovery semantics](rpc-contracts.md#expense-recovery-semantics).
 
 SQL checks protect representation and relationships; they do not replace API
 calendar calculations or authoritative command checks. For example, receipt
@@ -233,9 +252,10 @@ non-internal credit. See the [public/private procedure reference](rpc-contracts.
 ## Provider facts, decisions and review
 
 Provider upserts retain local IDs and update source-owned facts. Aliases, manual
-tag/no-tag choices, user internal-status overrides and confirmed receipt links
-are separate user interpretations. Incompatible corrections preserve the bank
-fact and the user's interpretation, record a conflict and mark `needs_review`;
+tag/no-tag choices, user internal-status overrides, confirmed receipt links and
+expense-adjustment allocations are separate user interpretations. Incompatible
+provider corrections preserve the bank fact and the user's interpretation, record
+a movement conflict where applicable and mark `needs_review`;
 removed/unresolved movements cannot silently enter confirmed totals.
 
 Removal tombstones are connection/account/movement scoped, idempotent and can
@@ -247,7 +267,7 @@ workflow has been shipped.
 
 ## Migration and seed lifecycle
 
-Twenty-one migrations are globally ordered across `migrations/identity` and
+Twenty-two migrations are globally ordered across `migrations/identity` and
 `migrations/finance`: schema/bootstrap foundations plus the table migrations.
 Kysely's PostgreSQL migrator owns locking and transactional DDL/ledger updates.
 Each new sensitive table brings its constraints, indexes, grants and RLS together;

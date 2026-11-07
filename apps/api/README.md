@@ -67,6 +67,12 @@ joined objective/tag reads, SQL sums for API-computed budget windows, narrow
 income reads and snapshot-local rule/expectation indexes. Do not fetch full
 collections just to join IDs or sum raw movements in a feature service.
 
+Explicit refunds and expense reimbursements reduce the original purchase period's
+net spending/budget cost; recovered credit-period cash is separate from earned
+income. Bank facts and balances are unchanged. See the shared
+[recovery semantics](../../docs/technical/rpc-contracts.md#expense-recovery-semantics)
+for partial/split allocations, archived budgets, income conflicts and review states.
+
 Public bodies are limited to 1 MiB and batches to 10 procedures. Private provider
 runs are bounded by 100 pages, 50,000 records, 32 MiB normalized JSON and 64 MiB
 prepared JSON/results. Oversized runs fail without partial writes/checkpoint

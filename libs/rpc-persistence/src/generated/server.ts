@@ -14,7 +14,7 @@ import { z } from "zod";
 const t = initTRPC.create();
 const publicProcedure = t.procedure;
 import { EmptyInputSchema, AccountRecordsSchema, IdInputSchema, ExpectationRecordsSchema, ExpectationCreateSchema, ExpectationRecordSchema, ExpectationUpdateSchema, VoidResultSchema, ReceiptConfirmSchema, ReceiptFactSchema, IncomeSourceRecordsSchema, IncomeSourceRecordSchema, IncomeSourceCreateSchema, IncomeSourceUpdateSchema, AtIdInputSchema, PeriodInputSchema, ExpectedIncomeFactsSchema, ReceiptFactsSchema, IncomeFactsSchema, ObjectiveRecordsSchema, BudgetPeriodInputSchema, BudgetPeriodRecordsSchema, CreateBudgetCommandSchema, UpdateBudgetCommandSchema, ObjectiveSpendingInputSchema, ObjectiveSpendingFactsSchema, BeginProviderSyncSchema, ProviderSyncStateSchema, ProviderSyncScopeSchema, ProviderSyncFactsSchema, CommitProviderSyncSchema, ProviderSyncOutcomeSchema, RecordProviderFailureSchema, ProviderReviewRecordsSchema, TagRecordsSchema, TagCreateSchema, TagRecordSchema, TagRuleRecordsSchema, TagRuleCreateSchema, TagRuleRecordSchema, TagRuleReplaceSchema, TaggingFactsSchema, ManualTagCommandSchema, RuleCandidatesInputSchema, RuleCandidatesSchema, CommitRuleDecisionsSchema, ChangedCountSchema, RecentTransactionRecordsSchema, TransactionRecordsPageSchema, MovementAggregatesSchema, TaggedMovementAggregatesSchema, IdentityResolutionInputSchema } from "@lazyfinance/contracts/internal";
-import { BudgetDetailSchema, BudgetHistoryInputSchema, BudgetHistoryPageSchema, BudgetVersionInputSchema, TagDecisionSchema, TransactionsInputSchema, AuthPrincipalSchema } from "@lazyfinance/contracts";
+import { BudgetDetailSchema, BudgetHistoryInputSchema, BudgetHistoryPageSchema, BudgetVersionInputSchema, TagDecisionSchema, ExpenseAdjustmentsInputSchema, ExpenseAdjustmentsPageSchema, SetExpenseAdjustmentSchema, ExpenseAdjustmentSchema, ExpenseAdjustmentPairSchema, TransactionsInputSchema, AuthPrincipalSchema } from "@lazyfinance/contracts";
 
 const appRouter = t.router({
   accounts: t.router({
@@ -190,6 +190,18 @@ const appRouter = t.router({
       .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
     }),
   transactions: t.router({
+    expenseAdjustments: publicProcedure
+      .input(ExpenseAdjustmentsInputSchema)
+      .output(ExpenseAdjustmentsPageSchema)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    setExpenseAdjustment: publicProcedure
+      .input(SetExpenseAdjustmentSchema)
+      .output(ExpenseAdjustmentSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    removeExpenseAdjustment: publicProcedure
+      .input(ExpenseAdjustmentPairSchema)
+      .output(VoidResultSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
     recent: publicProcedure
       .input(EmptyInputSchema)
       .output(RecentTransactionRecordsSchema)

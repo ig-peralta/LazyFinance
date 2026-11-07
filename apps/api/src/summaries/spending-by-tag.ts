@@ -9,6 +9,8 @@ export function spendingByTag(groups: TaggedMovementAggregate[]) {
       name: string;
       color: string | null;
       cents: bigint;
+      refunds: bigint;
+      reimbursements: bigint;
       count: number;
     }
   >();
@@ -25,15 +27,25 @@ export function spendingByTag(groups: TaggedMovementAggregate[]) {
     const total = amounts.get(row.tag.id) ?? {
       ...row.tag,
       cents: 0n,
+      refunds: 0n,
+      reimbursements: 0n,
       count: 0,
     };
     total.cents -= toCents(row.amount);
+    total.refunds += toCents(row.refundAmount);
+    total.reimbursements += toCents(row.reimbursementAmount);
     total.count += row.count;
     amounts.set(row.tag.id, total);
   }
 
   return [...amounts.values()]
-    .map(({ cents, ...tag }) => ({ ...tag, amount: fromCents(cents) }))
+    .map(({ cents, refunds, reimbursements, ...tag }) => ({
+      ...tag,
+      amount: fromCents(cents - refunds - reimbursements),
+      grossAmount: fromCents(cents),
+      refunds: fromCents(refunds),
+      reimbursements: fromCents(reimbursements),
+    }))
     .sort((left, right) => {
       const difference = toCents(right.amount) - toCents(left.amount);
       return difference === 0n

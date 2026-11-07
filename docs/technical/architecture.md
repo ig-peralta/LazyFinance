@@ -33,8 +33,8 @@ code cannot import private schemas, signing code, Nest or database implementatio
 | PostgreSQL | Exact stored facts, constraints/keys, related-owner RLS and transaction atomicity | Firebase verification, product authorization for external MCP clients |
 
 Public/private tRPC are separate surfaces, not two routes to the same router.
-The public generated library contains 39 procedures; the private library contains
-44, including bootstrap-only `identity.resolve`. `/mcp` exposes seven authenticated
+The public generated library contains 42 procedures; the private library contains
+47, including bootstrap-only `identity.resolve`. `/mcp` exposes seven authenticated
 read-only tools through the API's domain services, not direct persistence queries.
 Ordinary HTTP remains only for API `GET /`, persistence `GET /health` and MCP
 transport. Inventories and schema-change rules live in the
@@ -92,6 +92,14 @@ All user writes share a short advisory transaction lock so rule additions/remova
 also invalidate stale work. Failed resolvers/output validation roll back. Network
 ambiguity never triggers an automatic mutation replay.
 
+Explicit refund/reimbursement allocations link owned credits to original purchases
+without changing either booking date, tag or bank balance. Gross spending, applied
+recoveries and net purchase cost stay separate from credit-period recovered cash;
+recovered cash is not earned income. Budgets use the purchase's tag and applicable
+revision, including later corrections to purchases tracked before archival.
+Incompatible corrected facts retain the allocation as `needs_review` without
+reducing spending. See the [recovery rules](rpc-contracts.md#expense-recovery-semantics).
+
 Money remains exact decimal strings; calendar dates remain strings. Checking/savings
 cash and credit-card liabilities retain their existing meanings. Confirmed internal
 transfers/card payments do not count as spending/income. Unknown/review/removed
@@ -100,7 +108,7 @@ belongs to each transaction; expectations, receipts and balances remain distinct
 
 The UI has a working dashboard; tags/objective management destinations remain
 labelled placeholders. Provider linking/Fintoc mapping, conversational agents,
-external MCP authorization and unagreed savings/refund policies are not delivered
+external MCP authorization and unagreed savings-progress policies are not delivered
 by this infrastructure refactor.
 
 ## Operations

@@ -5,6 +5,10 @@ import { type Kysely, sql } from "kysely";
 import { RLS_DB } from "../../database/tokens";
 import { toCursorPage } from "../../pagination/cursor-page";
 import type { AccountTables } from "../account/account.tables";
+import {
+  creditRecovery,
+  purchaseRecovery,
+} from "../expense-adjustment/expense-adjustment-sql";
 import type { IncomeReceiptTables } from "../income-receipt/income-receipt.tables";
 import { movementPeriod } from "../query-period";
 import type { TagTables } from "../tag/tag.tables";
@@ -113,20 +117,52 @@ export class TransactionRepository {
   }
 
   private aggregateQuery(period: PeriodInput) {
+    const hasReceipt = sql<boolean>`r.transaction_id IS NOT NULL AND ca.reserved_credit_amount::numeric = 0`;
     return this.db
       .selectFrom("finance.transaction as m")
       .leftJoin("finance.income_receipt as r", "r.transactionId", "m.id")
+      .leftJoinLateral(
+        purchaseRecovery(period.adjustmentsAsOf).as("pa"),
+        (join) => join.onTrue(),
+      )
+      .leftJoinLateral(
+        creditRecovery(period.adjustmentsAsOf).as("ca"),
+        (join) => join.onTrue(),
+      )
       .select([
         "m.type",
         "m.isInternalMovement",
         "m.reviewStatus",
-        sql<boolean>`r.transaction_id IS NOT NULL`.as("hasReceipt"),
+        hasReceipt.as("hasReceipt"),
         sql<string>`sum(m.amount)::text`.as("amount"),
         sql<number>`count(*)::int`.as("count"),
+        sql<string>`sum(pa.refund_amount::numeric)::text`.as("refundAmount"),
+        sql<string>`sum(pa.reimbursement_amount::numeric)::text`.as(
+          "reimbursementAmount",
+        ),
+        sql<number>`sum(pa.adjustment_review_count)::int`.as(
+          "purchaseAdjustmentReviewCount",
+        ),
+        sql<string>`sum(ca.reserved_credit_amount::numeric)::text`.as(
+          "reservedCreditAmount",
+        ),
+        sql<string>`sum(ca.expense_credit_amount::numeric)::text`.as(
+          "expenseCreditAmount",
+        ),
+        sql<number>`count(*) FILTER (WHERE ca.expense_credit_amount::numeric > 0)::int`.as(
+          "expenseCreditCount",
+        ),
+        sql<number>`sum(ca.adjustment_review_count)::int`.as(
+          "creditAdjustmentReviewCount",
+        ),
+        sql<number>`count(*) FILTER (WHERE m.type = 'credit' AND NOT (${hasReceipt})
+          AND m.amount > ca.reserved_credit_amount::numeric)::int`.as(
+          "unclassifiedCreditCount",
+        ),
       ])
       .where(movementPeriod(period))
       .where("m.removedAt", "is", null)
       .groupBy(["m.type", "m.isInternalMovement", "m.reviewStatus"])
-      .groupBy(sql`r.transaction_id IS NOT NULL`);
+      .groupBy(hasReceipt);
   }
 }

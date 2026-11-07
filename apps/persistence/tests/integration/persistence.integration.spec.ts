@@ -269,7 +269,7 @@ describe.skipIf(!ownerUrl)(
           .filter((name) => !name.startsWith("failure."))
           .sort(),
       ).toEqual(expected.sort());
-      expect(expected).toHaveLength(44);
+      expect(expected).toHaveLength(47);
 
       for (const name of expected)
         expect(procedures[name]._def.meta).toMatchObject({
@@ -277,7 +277,7 @@ describe.skipIf(!ownerUrl)(
         });
     });
 
-    it("migrates idempotently and enables/forces RLS on all 18 sensitive tables", async () => {
+    it("migrates idempotently and enables/forces RLS on all 19 sensitive tables", async () => {
       expect(await migrate(owner, migrationProvider())).toEqual([]);
       const { rows } = await sql<{
         relrowsecurity: boolean;
@@ -286,7 +286,7 @@ describe.skipIf(!ownerUrl)(
       from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname in ('identity','finance') and c.relkind='r' and c.relname != 'provider'`.execute(
         owner,
       );
-      expect(rows).toHaveLength(18);
+      expect(rows).toHaveLength(19);
       expect(
         rows.every((row) => row.relrowsecurity && row.relforcerowsecurity),
       ).toBe(true);
@@ -321,7 +321,7 @@ describe.skipIf(!ownerUrl)(
       expect(row.name).toBeNull();
     });
 
-    it("protects every financial table without user WHERE predicates", async () => {
+    it("protects parent, decision and provider tables without user WHERE predicates", async () => {
       const tables = [
         "provider_connection",
         "account",
@@ -498,6 +498,121 @@ describe.skipIf(!ownerUrl)(
         await expect(
           withRequestContext(runtime, ctx(a), work),
         ).rejects.toThrow();
+    });
+
+    it("protects both expense-adjustment owners on reads, writes, reassignment and upserts", async () => {
+      const users = [randomUUID(), randomUUID()];
+      const connections = [randomUUID(), randomUUID()];
+      const accounts = [randomUUID(), randomUUID()];
+      const credits = [randomUUID(), randomUUID()];
+      const purchases = [randomUUID(), randomUUID()];
+      const adjustments = [randomUUID(), randomUUID()];
+
+      for (const i of [0, 1]) {
+        await sql`insert into identity."user"(id,email,name) values (${users[i]},${users[i] + "@example.test"},'Adjustment owner')`.execute(
+          owner,
+        );
+        await sql`insert into finance.provider_connection(id,user_id,provider_id)
+          select ${connections[i]},${users[i]},provider_id from finance.provider_connection where id=${connectionA}`.execute(
+          owner,
+        );
+        await sql`insert into finance.account(id,user_id,provider_connection_id,type)
+          values (${accounts[i]},${users[i]},${connections[i]},'checking')`.execute(
+          owner,
+        );
+        await sql`insert into finance."transaction"(id,account_id,booked_at,amount,type,is_internal_movement) values
+          (${purchases[i]},${accounts[i]},'2026-10-01T15:00:00Z',-10,'debit',false),
+          (${credits[i]},${accounts[i]},'2026-11-01T15:00:00Z',10,'credit',false)`.execute(
+          owner,
+        );
+        await withRequestContext(runtime, ctx(users[i]), (db) =>
+          sql`insert into finance.expense_adjustment(id,credit_transaction_id,purchase_transaction_id,kind,amount,
+            credit_amount,purchase_amount,credit_booked_at,purchase_booked_at)
+          values (${adjustments[i]},${credits[i]},${purchases[i]},'refund',1,10,-10,'2026-11-01T15:00:00Z','2026-10-01T15:00:00Z')`.execute(
+            db,
+          ),
+        );
+        await withRequestContext(runtime, ctx(users[i]), async (db) => {
+          const { rows } = await sql<{
+            id: string;
+          }>`select id from finance.expense_adjustment`.execute(db);
+          expect(rows.map(({ id }) => id)).toEqual([adjustments[i]]);
+        });
+      }
+
+      expect(
+        (await sql`select * from finance.expense_adjustment`.execute(runtime))
+          .rows,
+      ).toEqual([]);
+      for (const work of [
+        (db: QueryExecutorProvider) =>
+          sql`insert into finance.expense_adjustment(credit_transaction_id,purchase_transaction_id,kind,amount,
+          credit_amount,purchase_amount,credit_booked_at,purchase_booked_at)
+          values (${credits[0]},${purchases[1]},'refund',1,10,-10,'2026-11-01T15:00:00Z','2026-10-01T15:00:00Z')`.execute(
+            db,
+          ),
+        (db: QueryExecutorProvider) =>
+          sql`insert into finance.expense_adjustment(credit_transaction_id,purchase_transaction_id,kind,amount,
+          credit_amount,purchase_amount,credit_booked_at,purchase_booked_at)
+          values (${credits[1]},${purchases[0]},'refund',1,10,-10,'2026-11-01T15:00:00Z','2026-10-01T15:00:00Z')`.execute(
+            db,
+          ),
+        (db: QueryExecutorProvider) =>
+          sql`update finance.expense_adjustment set credit_transaction_id=${credits[1]} where id=${adjustments[0]}`.execute(
+            db,
+          ),
+        (db: QueryExecutorProvider) =>
+          sql`update finance.expense_adjustment set purchase_transaction_id=${purchases[1]} where id=${adjustments[0]}`.execute(
+            db,
+          ),
+        (db: QueryExecutorProvider) =>
+          sql`insert into finance.expense_adjustment(credit_transaction_id,purchase_transaction_id,kind,amount,
+          credit_amount,purchase_amount,credit_booked_at,purchase_booked_at)
+          values (${credits[1]},${purchases[1]},'refund',2,10,-10,'2026-11-01T15:00:00Z','2026-10-01T15:00:00Z')
+          on conflict(credit_transaction_id,purchase_transaction_id) do update set amount=excluded.amount`.execute(
+            db,
+          ),
+      ])
+        await expect(
+          withRequestContext(runtime, ctx(users[0]), work),
+        ).rejects.toThrow(/row-level security/);
+
+      await withRequestContext(runtime, ctx(users[0]), async (db) => {
+        expect(
+          (
+            await sql`update finance.expense_adjustment set amount=2 where id=${adjustments[1]} returning id`.execute(
+              db,
+            )
+          ).rows,
+        ).toEqual([]);
+        expect(
+          (
+            await sql`delete from finance.expense_adjustment where id=${adjustments[1]} returning id`.execute(
+              db,
+            )
+          ).rows,
+        ).toEqual([]);
+        expect(
+          (
+            await sql`update finance.expense_adjustment set amount=2 where id=${adjustments[0]} returning id`.execute(
+              db,
+            )
+          ).rows,
+        ).toHaveLength(1);
+        expect(
+          (
+            await sql`delete from finance.expense_adjustment where id=${adjustments[0]} returning id`.execute(
+              db,
+            )
+          ).rows,
+        ).toHaveLength(1);
+      });
+      const retained = await sql<{
+        amount: string;
+      }>`select amount from finance.expense_adjustment where id=${adjustments[1]}`.execute(
+        owner,
+      );
+      expect(retained.rows).toEqual([{ amount: "1.00" }]);
     });
 
     it("isolates concurrent users and clears pooled identity after both commit and rollback", async () => {

@@ -1,17 +1,62 @@
 import {
+  type ExpenseAdjustmentPair,
+  ExpenseAdjustmentPairSchema,
+  ExpenseAdjustmentSchema,
+  type ExpenseAdjustmentsInput,
+  ExpenseAdjustmentsInputSchema,
+  ExpenseAdjustmentsPageSchema,
   RecentTransactionsResultSchema,
   RpcEmptySchema,
+  RpcVoidSchema,
+  type SetExpenseAdjustment,
+  SetExpenseAdjustmentSchema,
   type TransactionsInput,
   TransactionsInputSchema,
   TransactionsPageSchema,
 } from "@lazyfinance/contracts";
-import { Ctx, Input, Query, Router } from "nestjs-trpc";
+import { Ctx, Input, Mutation, Query, Router } from "nestjs-trpc";
 import { type ApiRequestContext, rpcUser } from "../rpc/context";
 import { TransactionsService } from "./transactions.service";
 
 @Router({ alias: "transactions" })
 export class TransactionsRpc {
   constructor(private readonly service: TransactionsService) {}
+
+  @Query({
+    input: ExpenseAdjustmentsInputSchema,
+    output: ExpenseAdjustmentsPageSchema,
+    meta: { auth: "user" },
+  })
+  expenseAdjustments(
+    @Ctx() ctx: ApiRequestContext,
+    @Input() input: ExpenseAdjustmentsInput,
+  ) {
+    return this.service.expenseAdjustmentsForUser(rpcUser(ctx), input);
+  }
+
+  @Mutation({
+    input: SetExpenseAdjustmentSchema,
+    output: ExpenseAdjustmentSchema,
+    meta: { auth: "user" },
+  })
+  setExpenseAdjustment(
+    @Ctx() ctx: ApiRequestContext,
+    @Input() input: SetExpenseAdjustment,
+  ) {
+    return this.service.setExpenseAdjustmentForUser(rpcUser(ctx), input);
+  }
+
+  @Mutation({
+    input: ExpenseAdjustmentPairSchema,
+    output: RpcVoidSchema,
+    meta: { auth: "user" },
+  })
+  removeExpenseAdjustment(
+    @Ctx() ctx: ApiRequestContext,
+    @Input() input: ExpenseAdjustmentPair,
+  ) {
+    return this.service.removeExpenseAdjustmentForUser(rpcUser(ctx), input);
+  }
 
   @Query({
     input: RpcEmptySchema,

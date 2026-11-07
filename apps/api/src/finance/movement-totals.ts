@@ -5,10 +5,18 @@ export function movementTotals(groups: MovementAggregate[]) {
   let received = 0n,
     unclassified = 0n,
     spending = 0n,
+    refunds = 0n,
+    reimbursements = 0n,
+    recoveredCredits = 0n,
+    recoveredCreditCount = 0,
+    creditReviewCount = 0,
+    adjustmentReviewCount = 0,
     unclassifiedCount = 0,
     unresolved = 0;
 
   for (const group of groups) {
+    adjustmentReviewCount += group.purchaseAdjustmentReviewCount;
+    creditReviewCount += group.creditAdjustmentReviewCount;
     if (
       group.isInternalMovement === null ||
       group.reviewStatus === "needs_review"
@@ -18,11 +26,17 @@ export function movementTotals(groups: MovementAggregate[]) {
     if (group.isInternalMovement !== false || group.reviewStatus !== "clear")
       continue;
 
-    if (group.type === "debit") spending -= toCents(group.amount);
-    else if (group.hasReceipt) received += toCents(group.amount);
+    if (group.type === "debit") {
+      spending -= toCents(group.amount);
+      refunds += toCents(group.refundAmount);
+      reimbursements += toCents(group.reimbursementAmount);
+    } else if (group.hasReceipt) received += toCents(group.amount);
     else {
-      unclassified += toCents(group.amount);
-      unclassifiedCount += group.count;
+      unclassified +=
+        toCents(group.amount) - toCents(group.reservedCreditAmount);
+      unclassifiedCount += group.unclassifiedCreditCount;
+      recoveredCredits += toCents(group.expenseCreditAmount);
+      recoveredCreditCount += group.expenseCreditCount;
     }
   }
 
@@ -32,7 +46,16 @@ export function movementTotals(groups: MovementAggregate[]) {
       amount: fromCents(unclassified),
       count: unclassifiedCount,
     },
-    spending: fromCents(spending),
+    spending: fromCents(spending - refunds - reimbursements),
+    grossSpending: fromCents(spending),
+    refunds: fromCents(refunds),
+    reimbursements: fromCents(reimbursements),
+    unresolvedAdjustmentCount: adjustmentReviewCount,
+    recoveredExpenseCredits: {
+      amount: fromCents(recoveredCredits),
+      count: recoveredCreditCount,
+      needsReviewCount: creditReviewCount,
+    },
     unresolvedMovementCount: unresolved,
   };
 }

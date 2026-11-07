@@ -1,7 +1,8 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { TRPCError } from "@trpc/server";
-import type { Kysely } from "kysely";
+import { type Kysely, sql } from "kysely";
 import { RLS_DB } from "../../database/tokens";
+import type { ExpenseAdjustmentTables } from "../expense-adjustment/expense-adjustment.tables";
 import { IncomeSourceRepository } from "../income-source/income-source.repository";
 import type { IncomeSourceTables } from "../income-source/income-source.tables";
 import type { TransactionTables } from "../transaction/transaction.tables";
@@ -12,7 +13,10 @@ export class IncomeReceiptRepository {
   constructor(
     @Inject(RLS_DB)
     private readonly db: Kysely<
-      IncomeReceiptTables & IncomeSourceTables & TransactionTables
+      IncomeReceiptTables &
+        IncomeSourceTables &
+        TransactionTables &
+        ExpenseAdjustmentTables
     >,
     private readonly sources: IncomeSourceRepository,
   ) {}
@@ -20,6 +24,18 @@ export class IncomeReceiptRepository {
   async confirm(transactionId: string, sourceId: string, at: string) {
     await this.sources.source(sourceId, true);
     const movement = await this.movement(transactionId);
+    const adjustment = await this.db
+      .selectFrom("finance.expense_adjustment")
+      .select("id")
+      .where("creditTransactionId", "=", transactionId)
+      .limit(1)
+      .executeTakeFirst();
+    if (adjustment)
+      throw new TRPCError({
+        code: "CONFLICT",
+        message:
+          "Remove expense adjustments before confirming this credit as income",
+      });
     if (
       movement.type !== "credit" ||
       movement.isInternalMovement !== false ||
@@ -67,6 +83,7 @@ export class IncomeReceiptRepository {
         "m.isInternalMovement",
         "m.reviewStatus",
         "m.removedAt",
+        sql<boolean>`false`.as("hasExpenseAdjustments"),
       ])
       .where("r.transactionId", "=", transactionId)
       .executeTakeFirstOrThrow();
