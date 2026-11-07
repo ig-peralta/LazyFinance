@@ -159,7 +159,8 @@ Pages use separate statement snapshots, not a frozen history. Newer inserts do
 not shift unchanged older rows through offset positions, but booking-date
 corrections can move rows across boundaries. Restart to reconcile current history.
 Do not compute financial totals from a page or paginate complete calculation
-snapshots. `transactions.recent` and its MCP tool remain ten-item previews.
+snapshots. `transactions.recent` and its MCP tool remain ten-item previews; the
+dashboard requests only the first page with `limit: 10` and has no continuation UI.
 
 ## Changing a contract or procedure
 

@@ -11,9 +11,12 @@ export class TransactionsData {
     params: () => this.rpc.authenticatedScope(),
     loader: async ({ params: scope, abortSignal }) => {
       const decisionVersion = this.tagging.changed()?.version ?? 0;
-      const items = await scope.client.transactions.recent.query(undefined, {
-        signal: abortSignal,
-      });
+      // The activity preview deliberately renders only the first ten-item page.
+      // Continuation controls belong to a future UI change.
+      const { items } = await scope.client.transactions.list.query(
+        { limit: 10 },
+        { signal: abortSignal },
+      );
 
       return { items, decisionVersion };
     },

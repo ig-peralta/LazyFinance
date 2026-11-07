@@ -1,7 +1,7 @@
 import { TransferState } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
 import { afterEach, describe, expect, it } from "vitest";
-import { movement, setupRpc, tag } from "../../../testing/rpc";
+import { movement, setupRpc, tag, transactionPage } from "../../../testing/rpc";
 import { TaggingData } from "../../features/tagging/tagging.data";
 import { DashboardPage } from "./dashboard.page";
 
@@ -9,7 +9,9 @@ describe("DashboardPage data ownership", () => {
   afterEach(() => TestBed.resetTestingModule());
 
   it("loads each view once and refreshes only tag-dependent reads after a decision", async () => {
-    const { callsTo } = setupRpc({ "transactions.recent": () => [movement] });
+    const { callsTo } = setupRpc({
+      "transactions.list": () => transactionPage([movement]),
+    });
     const fixture = TestBed.createComponent(DashboardPage);
     fixture.detectChanges();
     await fixture.whenStable();
@@ -31,7 +33,7 @@ describe("DashboardPage data ownership", () => {
 
     for (const procedure of [
       "accounts.list",
-      "transactions.recent",
+      "transactions.list",
       "objectives.list",
       "summaries.monthly",
       "summaries.comparison",
@@ -49,7 +51,7 @@ describe("DashboardPage data ownership", () => {
 
     for (const procedure of [
       "accounts.list",
-      "transactions.recent",
+      "transactions.list",
       "objectives.list",
       "summaries.comparison",
     ] as const)

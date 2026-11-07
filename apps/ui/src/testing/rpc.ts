@@ -101,6 +101,14 @@ export const movement = {
   reviewStatus: "clear" as const,
 } satisfies RpcOutput<"transactions.recent">[number];
 
+export const transactionPage = (
+  items: RpcOutput<"transactions.list">["items"] = [],
+  nextCursor: string | null = null,
+): RpcOutput<"transactions.list"> => ({
+  items,
+  pageInfo: { nextCursor, hasMore: nextCursor !== null },
+});
+
 export const manualDecision = (
   transactionId = movement.id,
   tagId: string | null = tag.id,
@@ -157,6 +165,7 @@ export function createRpcFetch(overrides: RpcHandlers = {}) {
     "auth.loginMock": () => ({ token: "mock-token" }),
     "accounts.list": () => [],
     "transactions.recent": () => [],
+    "transactions.list": () => transactionPage(),
     "objectives.list": () => [],
     "objectives.progress": () => [],
     "summaries.monthly": () => emptySummary,

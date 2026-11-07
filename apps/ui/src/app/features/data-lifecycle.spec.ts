@@ -9,6 +9,7 @@ import {
   type RpcOutput,
   setupRpc,
   tag,
+  transactionPage,
 } from "../../testing/rpc";
 import { isCancelled } from "../core/rpc/rpc-error";
 import { Account } from "../pages/dashboard/account/account";
@@ -109,24 +110,58 @@ describe("feature resource and command lifetimes", () => {
     });
   });
 
+  it("cancels the old transaction page on owner changes without following continuations", async () => {
+    const old = deferred<RpcOutput<"transactions.list">>();
+    const { credentials, callsTo } = setupRpc({
+      "transactions.list": (_input, call) =>
+        call.authorization === "Bearer alice"
+          ? old.promise
+          : transactionPage(
+              [{ ...movement, merchant: "Current owner" }],
+              "next-page",
+            ),
+    });
+    const data = TestBed.inject(TransactionsData);
+    TestBed.tick();
+    await vi.waitFor(() =>
+      expect(callsTo("transactions.list")).toHaveLength(1),
+    );
+    credentials.accept({ ...principal, userId: "owner-b" }, "bob");
+    TestBed.tick();
+    expect(data.items()).toEqual([]);
+    await stable();
+    expect(data.items()[0].merchant).toBe("Current owner");
+    expect(callsTo("transactions.list")[0].options?.signal?.aborted).toBe(true);
+    old.resolve(
+      transactionPage([{ ...movement, merchant: "Old secret" }], "old-next"),
+    );
+    await Promise.resolve();
+    TestBed.tick();
+    expect(data.items()[0].merchant).toBe("Current owner");
+    expect(callsTo("transactions.list").map((call) => call.input)).toEqual([
+      { limit: 10 },
+      { limit: 10 },
+    ]);
+  });
+
   it("preserves confirmed decisions when an older read finishes, but lets a later reload reconcile server changes", async () => {
-    const old = deferred<RpcOutput<"transactions.recent">>();
+    const old = deferred<RpcOutput<"transactions.list">>();
     const { callsTo, handlers } = setupRpc({
-      "transactions.recent": () => old.promise,
+      "transactions.list": () => old.promise,
     });
     const transactions = TestBed.inject(TransactionsData),
       tagging = TestBed.inject(TaggingData);
     TestBed.tick();
     await vi.waitFor(() =>
-      expect(callsTo("transactions.recent")).toHaveLength(1),
+      expect(callsTo("transactions.list")).toHaveLength(1),
     );
     const second = { ...movement, id: "second-movement" };
     await tagging.choose(movement, tag, false, new AbortController().signal);
     await tagging.choose(second, null, false, new AbortController().signal);
-    expect(callsTo("transactions.recent")[0].options?.signal?.aborted).toBe(
+    expect(callsTo("transactions.list")[0].options?.signal?.aborted).toBe(
       false,
     );
-    old.resolve([movement, second]);
+    old.resolve(transactionPage([movement, second]));
     await stable();
     expect(
       transactions
@@ -136,13 +171,14 @@ describe("feature resource and command lifetimes", () => {
       ["Comida", "manual"],
       [null, "manual"],
     ]);
-    handlers["transactions.recent"] = () => [
-      {
-        ...movement,
-        tag: { ...tag, name: "Changed elsewhere" },
-        tagDecisionOrigin: "manual",
-      },
-    ];
+    handlers["transactions.list"] = () =>
+      transactionPage([
+        {
+          ...movement,
+          tag: { ...tag, name: "Changed elsewhere" },
+          tagDecisionOrigin: "manual",
+        },
+      ]);
     transactions.recent.reload();
     TestBed.tick();
     await stable();
