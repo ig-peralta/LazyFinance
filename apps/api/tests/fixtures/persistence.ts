@@ -7,6 +7,7 @@ import { MCP_STRATEGY, type McpStrategy } from "@rekog/mcp-nest";
 import { createTRPCClient, httpLink } from "@trpc/client";
 import { AppModule } from "../../src/app.module";
 import { MockAuthService } from "../../src/auth/mock/mock-auth.service";
+import { FINTOC_FETCH } from "../../src/banking/fintoc/fintoc-client";
 import { EnvironmentService } from "../../src/environment/environment.service";
 import { PersistenceClient } from "../../src/persistence/persistence.client";
 import { testMockAuth } from "./auth/mock-auth";
@@ -94,7 +95,11 @@ export async function fixture(withAccounts = false) {
 
 export type Fixture = Awaited<ReturnType<typeof fixture>>;
 
-export async function startApi(f: Fixture, mcp = false) {
+export async function startApi(
+  f: Fixture,
+  mcp = false,
+  fintocFetch?: typeof fetch,
+) {
   const { verifier } = testMockAuth({
     [f.token]: {
       userId: f.userId,
@@ -107,12 +112,13 @@ export async function startApi(f: Fixture, mcp = false) {
       name: "Other",
     },
   });
-  const module = await Test.createTestingModule({ imports: [AppModule] })
+  const builder = Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(EnvironmentService)
     .useValue(f.environment)
     .overrideProvider(MockAuthService)
-    .useValue(verifier)
-    .compile();
+    .useValue(verifier);
+  if (fintocFetch) builder.overrideProvider(FINTOC_FETCH).useValue(fintocFetch);
+  const module = await builder.compile();
   const app: INestApplication = module.createNestApplication({ logger: false });
 
   if (mcp) {
@@ -124,7 +130,7 @@ export async function startApi(f: Fixture, mcp = false) {
 
   await app.listen(0, "127.0.0.1");
   const url = await app.getUrl();
-  const client = (token = f.token) =>
+  const client = (token: string = f.token) =>
     createTRPCClient<ApiRouter>({
       links: [
         httpLink({

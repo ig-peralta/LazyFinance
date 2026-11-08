@@ -13,7 +13,7 @@ import { z } from "zod";
 
 const t = initTRPC.create();
 const publicProcedure = t.procedure;
-import { RpcEmptySchema, AccountsResultSchema, AuthConfigSchema, MockLoginInputSchema, MockLoginResultSchema, AuthPrincipalSchema, IncomeSourcesResultSchema, RpcIdSchema, IncomeSourceSchema, IncomeSourceInputSchema, ReplaceIncomeSourceSchema, IncomeExpectationsResultSchema, CreateIncomeExpectationSchema, IncomeExpectationSchema, ReplaceIncomeExpectationSchema, RpcVoidSchema, RpcMonthSchema, ExpectedIncomeSchema, IncomeReceiptsResultSchema, ConfirmIncomeReceiptSchema, IncomeReceiptSchema, IncomeSummarySchema, BudgetContributionsInputSchema, SpendingContributionsPageSchema, SavingsProgressInputSchema, SavingsProgressSchema, SavingsEvidenceInputSchema, SavingsEvidencePageSchema, SavingsGoalSchema, SavingsHistoryInputSchema, SavingsHistoryPageSchema, CreateSavingsGoalSchema, UpdateSavingsGoalSchema, SavingsGoalVersionSchema, ObjectivesResultSchema, BudgetDetailSchema, BudgetHistoryInputSchema, BudgetHistoryPageSchema, CreateBudgetInputSchema, UpdateBudgetInputSchema, BudgetVersionInputSchema, BudgetProgressResultSchema, OnboardingStateSchema, FinishOnboardingSchema, SpendingContributionsInputSchema, MonthlySummarySchema, MonthlyComparisonSchema, UpdateTagSchema, ManagedTagSchema, TagsResultSchema, TagCreateInputSchema, TagSummarySchema, SuggestionsResultSchema, SetTagSchema, TagDecisionSchema, TagRulesResultSchema, TagRuleInputSchema, TagRuleResultSchema, ReplaceTagRuleSchema, ApplyTagRuleSchema, AppliedTagRuleSchema, TransactionDetailSchema, SetInternalMovementSchema, InternalMovementDecisionSchema, ExpenseAdjustmentsInputSchema, ExpenseAdjustmentsPageSchema, SetExpenseAdjustmentSchema, ExpenseAdjustmentSchema, ExpenseAdjustmentPairSchema, RecentTransactionsResultSchema, TransactionsInputSchema, TransactionsPageSchema } from "@lazyfinance/contracts";
+import { RpcEmptySchema, AccountsResultSchema, AuthConfigSchema, MockLoginInputSchema, MockLoginResultSchema, AuthPrincipalSchema, BankingConfigurationSchema, BankingConnectionsSchema, CreateBankingIntentSchema, BankingIntentSchema, CompleteBankingIntentSchema, BankingConnectionSchema, RpcIdSchema, IncomeSourcesResultSchema, IncomeSourceSchema, IncomeSourceInputSchema, ReplaceIncomeSourceSchema, IncomeExpectationsResultSchema, CreateIncomeExpectationSchema, IncomeExpectationSchema, ReplaceIncomeExpectationSchema, RpcVoidSchema, RpcMonthSchema, ExpectedIncomeSchema, IncomeReceiptsResultSchema, ConfirmIncomeReceiptSchema, IncomeReceiptSchema, IncomeSummarySchema, BudgetContributionsInputSchema, SpendingContributionsPageSchema, SavingsProgressInputSchema, SavingsProgressSchema, SavingsEvidenceInputSchema, SavingsEvidencePageSchema, SavingsGoalSchema, SavingsHistoryInputSchema, SavingsHistoryPageSchema, CreateSavingsGoalSchema, UpdateSavingsGoalSchema, SavingsGoalVersionSchema, ObjectivesResultSchema, BudgetDetailSchema, BudgetHistoryInputSchema, BudgetHistoryPageSchema, CreateBudgetInputSchema, UpdateBudgetInputSchema, BudgetVersionInputSchema, BudgetProgressResultSchema, OnboardingStateSchema, FinishOnboardingSchema, SpendingContributionsInputSchema, MonthlySummarySchema, MonthlyComparisonSchema, UpdateTagSchema, ManagedTagSchema, TagsResultSchema, TagCreateInputSchema, TagSummarySchema, SuggestionsResultSchema, SetTagSchema, TagDecisionSchema, TagRulesResultSchema, TagRuleInputSchema, TagRuleResultSchema, ReplaceTagRuleSchema, ApplyTagRuleSchema, AppliedTagRuleSchema, TransactionDetailSchema, SetInternalMovementSchema, InternalMovementDecisionSchema, ExpenseAdjustmentsInputSchema, ExpenseAdjustmentsPageSchema, SetExpenseAdjustmentSchema, ExpenseAdjustmentSchema, ExpenseAdjustmentPairSchema, RecentTransactionsResultSchema, TransactionsInputSchema, TransactionsPageSchema } from "@lazyfinance/contracts";
 
 const appRouter = t.router({
   accounts: t.router({
@@ -35,6 +35,32 @@ const appRouter = t.router({
       .input(RpcEmptySchema)
       .output(AuthPrincipalSchema)
       .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
+    }),
+  banking: t.router({
+    configuration: publicProcedure
+      .input(RpcEmptySchema)
+      .output(BankingConfigurationSchema)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    connections: publicProcedure
+      .input(RpcEmptySchema)
+      .output(BankingConnectionsSchema)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    createLinkIntent: publicProcedure
+      .input(CreateBankingIntentSchema)
+      .output(BankingIntentSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    completeLink: publicProcedure
+      .input(CompleteBankingIntentSchema)
+      .output(BankingConnectionSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    checkConnection: publicProcedure
+      .input(RpcIdSchema)
+      .output(BankingConnectionSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    disconnect: publicProcedure
+      .input(RpcIdSchema)
+      .output(BankingConnectionSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
     }),
   income: t.router({
     sources: publicProcedure

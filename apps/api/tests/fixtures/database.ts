@@ -43,8 +43,30 @@ interface FixtureTables {
     metadata: Record<string, unknown>;
     status: "active" | "revoked" | "expired";
     mode: "test" | "live" | null;
+    externalId: string | null;
+    encryptedCredential: string | null;
+    credentialVersion: number;
+    holderType: "individual" | "business" | null;
+    institutionId: string | null;
+    institutionName: string | null;
+    disconnectedAt: string | null;
+    disconnectPending: boolean;
     createdAt: string;
     updatedAt: string;
+  };
+  provider_link_intent: {
+    id: string;
+    userId: string;
+    providerIntentId: string;
+    mode: "test" | "live";
+    holderType: "individual" | "business";
+    connectionId: string | null;
+    expectedVersion: number | null;
+    state: "pending" | "processing" | "completed" | "failed";
+    exchangeTokenHash: string | null;
+    completedConnectionId: string | null;
+    createdAt: string;
+    expiresAt: string;
   };
   account: ProviderAccountRecord;
   transaction: TransactionRecord;
@@ -168,6 +190,7 @@ const schemas = {
   external_identity: "identity",
   provider: "finance",
   provider_connection: "finance",
+  provider_link_intent: "finance",
   account: "finance",
   transaction: "finance",
   tag: "finance",

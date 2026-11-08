@@ -76,6 +76,9 @@ services:
       FIREBASE_PROJECT_ID:
       FIREBASE_CLIENT_EMAIL:
       FIREBASE_PRIVATE_KEY:
+      FINTOC_PUBLIC_KEY:
+      FINTOC_SECRET_KEY:
+      FINTOC_TOKEN_ENCRYPTION_KEY:
     ports:
       - '${API_PORT:-3000}:3000'
     depends_on:
