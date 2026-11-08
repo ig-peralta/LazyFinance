@@ -161,7 +161,7 @@ idempotent, cancels pending revisions and preserves historical configuration.
 Progress includes its revision ID and exact tracking bounds/archival state; late
 eligible financial facts and confirmed recoveries can reconcile earlier purchases,
 including in archived budgets. No purchase booked at or after archival is admitted.
-No MCP write tools or management screen are added by these operations.
+The web app exposes this management policy; no MCP write tools are added.
 
 - Money is an exact decimal string, not a floating-point JSON number. Nullable
   balances stay nullable; unknown is not zero. PostgreSQL numeric/int8 parsers

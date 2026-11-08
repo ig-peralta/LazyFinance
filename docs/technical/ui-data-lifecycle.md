@@ -125,7 +125,8 @@ default or is in an error state.
 
 The activity resource requests `transactions.list` with `{ limit: 10 }` and renders
 only that first page. It deliberately does not follow `pageInfo.nextCursor`,
-accumulate pages or expose pagination controls yet. Its existing scope cancellation,
+accumulate pages or expose pagination controls. The full history page owns a separate
+URL-filtered cursor trail. Its scope cancellation,
 retry and confirmed-decision overlay apply to the page's items unchanged.
 
 The tag catalog is lazy: first interaction requests it, and all movements share
@@ -144,6 +145,7 @@ A saved tag/no-tag/reset:
 
 - Updates page-local recent-movement projections from the confirmed decision.
 - Invalidates the monthly summary and budget progress, which depend on tags.
+- Invalidates the one featured goal's measured savings allocation, also tag-dependent.
 - Does not refetch balances, objective declarations, or the tag-independent
   monthly comparison just because a tag changed.
 
@@ -161,6 +163,29 @@ it is likewise not one distributed transaction; an already-created tag is not
 silently deleted if a later command fails. Do not replay the saved command or
 pretend it rolled back. Authentication/cancellation errors follow session policy
 rather than being shown as a misleading successful rule operation.
+
+## Management command owners
+
+`createScopedCommand()` owns explicit management writes for one component,
+registers pending tasks, prevents duplicate submissions, and hides notices/errors
+outside the accepted scope and optional record-selection key. It composes a
+component lifetime with operation cancellation, suppresses obsolete completions,
+and never automatically retries an ambiguous mutation. Record editors are keyed
+to their selected ID/write version; owner changes clear drafts and confirmation
+targets. Confirmed commands reload their dependent detail/list/summary resources.
+Other financial pages refetch when revisited instead of sharing a root cache.
+
+Cursor trails for budget/savings history and evidence are selection-bound. Evidence
+continuation retains backend observation cutoffs, not totals summed from pages.
+Savings evidence compares the returned goal version with its measurement; changed
+versions require a fresh read. The dashboard measures only one featured goal;
+lists do not issue an unbounded per-goal measurement/suggestion fan-out during SSR.
+
+Optional setup progress is derived from owned account/source/objective reads.
+Only `active`/`skipped`/`completed` guide preferences live in owner-keyed localStorage,
+loaded after browser rendering to avoid changing the hydration DOM. SSR does not
+read them, and unavailable storage is disclosed. Closing the guide does not claim
+that optional financial steps or unavailable bank linking are complete.
 
 ## SSR and hydration isolation
 
@@ -218,5 +243,6 @@ When adding a feature, keep its resource/command owner explicit, include accepte
 scope in protected query params, forward abort signals, avoid protected hydration
 IDs, invalidate only actual dependencies, and test out-of-order completions. Do
 not restore the removed catch-all API service, RxJS compatibility facade or fake
-HTTP errors. Financial-management placeholders and absent conversational/banking-
-provider-linking features remain product limitations, not missing client aliases.
+HTTP errors. Delivered management workflows are indexed in the UI README;
+conversational features and live banking-provider linking remain unavailable,
+not missing client aliases or simulated success paths.

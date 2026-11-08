@@ -53,6 +53,9 @@ provider pages and generated recurrence dates are not persisted relations.
   History applies owned account, Santiago date, nullable tag/internal state,
   direction and escaped literal-merchant filters in SQL before pagination. The
   normalized selection, not the page size, is bound into each cursor.
+  `transactions.detail` separately joins one owned movement's account/tag,
+  classification/source precision, retained receipt reference and recovery flag;
+  these fields do not inflate every history row or prove current income eligibility.
 - **Existence and keys already joined:** project them in the same query.
   Provider movement facts include `accountExternalId` and `hasReceipt`, rather
   than requiring another account lookup and a separate receipt scan/set. Those
