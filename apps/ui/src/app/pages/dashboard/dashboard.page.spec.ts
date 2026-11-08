@@ -29,7 +29,8 @@ describe("DashboardPage data ownership", () => {
     ])
       expect(text).toContain(value);
 
-    expect(text).not.toContain("Ingresos");
+    expect(text).toContain("Ingresos recibidos");
+    expect(text).toContain("no es dinero disponible");
 
     for (const procedure of [
       "accounts.list",

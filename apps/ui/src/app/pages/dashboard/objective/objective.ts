@@ -21,7 +21,7 @@ export class Objective {
   );
 
   protected target(amount: string): string {
-    return formatClp(Number(amount));
+    return formatClp(amount);
   }
 
   protected periodLabel(item: ObjectiveSummary): string {

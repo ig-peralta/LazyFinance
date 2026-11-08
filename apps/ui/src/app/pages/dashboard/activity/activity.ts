@@ -34,6 +34,6 @@ export class Activity {
   }
 
   protected formattedAmount(amount: string): string {
-    return formatClp(Number(amount));
+    return formatClp(amount);
   }
 }

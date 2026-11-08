@@ -7,13 +7,19 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { SessionService } from "../../core/auth/session.service";
 import { AppShell } from "./app-shell";
 
-@Component({ template: "<h1>Etiquetas</h1>" })
+@Component({ selector: "tags-stub", template: "<h1>Etiquetas</h1>" })
 class TagsStub {}
 
-@Component({ template: "<h1>Presupuestos y metas</h1>" })
+@Component({
+  selector: "objectives-stub",
+  template: "<h1>Presupuestos y metas</h1>",
+})
 class ObjectivesStub {}
 
-@Component({ template: "<h1>Acceso y seguridad</h1>" })
+@Component({
+  selector: "security-stub",
+  template: "<h1>Acceso y seguridad</h1>",
+})
 class SecurityStub {}
 
 describe("AppShell", () => {
@@ -45,6 +51,13 @@ describe("AppShell", () => {
     });
     const harness = await RouterTestingHarness.create("/etiquetas");
     const root = harness.fixture.nativeElement as HTMLElement;
+    const dialog = root.querySelector("dialog") as HTMLDialogElement;
+    dialog.showModal = () => {
+      dialog.open = true;
+    };
+    dialog.close = () => {
+      dialog.open = false;
+    };
 
     return { harness, clear, logout, root };
   }
@@ -52,7 +65,9 @@ describe("AppShell", () => {
   it("links to financial and account-security destinations and marks the active one", async () => {
     const { root } = await setup();
     const links = Array.from(
-      root.querySelectorAll('nav[aria-label="Navegación principal"] a'),
+      root.querySelectorAll(
+        'nav[aria-label="Navegación principal"] .workspace-links a',
+      ),
     );
 
     expect(links.map((a) => a.textContent?.trim())).toEqual([
@@ -79,7 +94,9 @@ describe("AppShell", () => {
     toggle.click();
     harness.detectChanges();
     expect(toggle.getAttribute("aria-expanded")).toBe("true");
-    const mobileLinks = root.querySelectorAll("#mobile-menu a");
+    const mobileLinks = root.querySelectorAll(
+      "#mobile-menu .workspace-links a",
+    );
     expect(mobileLinks).toHaveLength(4);
 
     (mobileLinks[2] as HTMLAnchorElement).click();

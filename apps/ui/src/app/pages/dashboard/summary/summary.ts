@@ -1,5 +1,9 @@
 import { Component, computed, inject } from "@angular/core";
-import { formatClp } from "../../../../utils/currency";
+import {
+  formatClp,
+  moneyCents,
+  progressWidth,
+} from "../../../../utils/currency";
 import { monthLabel } from "../../../../utils/month";
 import { SummariesData } from "../../../features/summaries/summaries.data";
 
@@ -13,21 +17,21 @@ export class Summary {
     const tags = this.summary.hasValue() ? [...this.summary.value().tags] : [];
     tags.sort(
       (left, right) =>
-        Number(right.amount) - Number(left.amount) ||
-        left.name.localeCompare(right.name),
+        (moneyCents(right.amount) > moneyCents(left.amount)
+          ? 1
+          : moneyCents(right.amount) < moneyCents(left.amount)
+            ? -1
+            : 0) || left.name.localeCompare(right.name),
     );
-    const maximum = Number(tags[0]?.amount ?? 0);
+    const maximum = tags[0]?.amount ?? "0.00";
 
     return tags.map((tag) => ({
       ...tag,
-      width:
-        maximum > 0 && Number.isFinite(Number(tag.amount))
-          ? Math.max(0, Math.min(100, (Number(tag.amount) / maximum) * 100))
-          : 0,
+      width: progressWidth(tag.amount, maximum),
     }));
   });
 
   protected money(value: string): string {
-    return formatClp(Number(value));
+    return formatClp(value);
   }
 }

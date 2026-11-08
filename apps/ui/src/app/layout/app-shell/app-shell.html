@@ -1,125 +1,37 @@
-<div class="min-h-screen bg-surface-50 text-color dark:bg-surface-950">
-  <header
-    class="border-b border-surface bg-surface-0 dark:border-surface-700 dark:bg-surface-950"
-    (keydown.escape)="closeMenu()"
-  >
-    <div
-      class="mx-auto flex h-[76px] max-w-7xl items-center justify-between gap-6 px-5 sm:px-8 lg:px-12"
-    >
-      <a
-        routerLink="/"
-        class="flex items-center gap-3 rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
-        aria-label="Inicio de LazyFinance"
-      >
-        <span
-          class="flex size-10 items-center justify-center rounded-2xl bg-primary text-primary-contrast"
-        >
-          <svg aria-hidden="true" viewBox="0 0 24 24" class="size-5" fill="none">
-            <path
-              d="M4 17.5 9 12l3.2 3.2L20 7"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-            <path
-              d="M14.8 7H20v5.2"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-          </svg>
-        </span>
-        <span class="text-lg font-semibold tracking-[-0.04em]"
-          >Lazy<span class="font-normal">Finance</span></span
-        >
-      </a>
+<div class="workspace">
+  <a class="skip-link" href="#workspace-content">Saltar al contenido</a>
+  <ng-template #navigation>
+    <a routerLink="/dashboard" class="workspace-brand" aria-label="Inicio de LazyFinance" (click)="closeMenu()">
+      <span class="brand-mark"><app-icon name="spark" /></span><span>lazy<span class="brand-light">finance</span><span class="brand-dot">.</span></span>
+    </a>
+    <p class="nav-caption">TU ESPACIO PERSONAL</p>
+    <ul class="workspace-links">
+      @for (link of links; track link.path) {
+        <li><a [routerLink]="link.path" routerLinkActive="nav-active" [routerLinkActiveOptions]="{ exact: true }" ariaCurrentWhenActive="page" [attr.aria-label]="link.description" (click)="closeMenu()"><app-icon [name]="link.icon" /><span>{{ link.label }}</span><span class="nav-dot"></span></a></li>
+      }
+    </ul>
+    <div class="sidebar-note"><span class="note-orbit"><app-icon name="spark" /></span><strong>Menos enredos.<br>Más tranquilidad.</strong><p>Un espacio para entender tu dinero y avanzar a tu ritmo.</p></div>
+    <div class="sidebar-person"><span class="avatar">{{ initials() }}</span><div><strong>{{ person() }}</strong><small>Mi cuenta personal</small></div></div>
+    <button class="sidebar-logout" type="button" (click)="logout()"><app-icon name="logout" /> Cerrar sesión</button>
+  </ng-template>
 
-      <nav aria-label="Navegación principal" class="hidden flex-1 md:block">
-        <ul class="flex items-center gap-1">
-          @for (link of links; track link.path) {
-            <li>
-              <a
-                [routerLink]="link.path"
-                routerLinkActive="bg-surface-100 text-primary dark:bg-surface-800"
-                [routerLinkActiveOptions]="{ exact: true }"
-                ariaCurrentWhenActive="page"
-                [attr.aria-label]="link.description"
-                class="block rounded-xl px-4 py-2 text-sm font-semibold text-muted-color hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-              >
-                {{ link.label }}
-              </a>
-            </li>
-          }
-        </ul>
-      </nav>
-
-      <div class="flex items-center gap-2">
-        <button
-          type="button"
-          class="hidden rounded-xl px-3 py-2 text-sm font-semibold text-muted-color hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary md:block"
-          (click)="logout()"
-        >
-          Cerrar sesión
-        </button>
-        <button
-          type="button"
-          class="rounded-xl px-3 py-2 text-sm font-semibold text-muted-color hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary md:hidden"
-          aria-controls="mobile-menu"
-          [attr.aria-expanded]="menuOpen()"
-          (click)="toggleMenu()"
-        >
-          {{ menuOpen() ? 'Cerrar menú' : 'Abrir menú' }}
-        </button>
-      </div>
-    </div>
-
-    @if (logoutError()) {
-      <p role="alert" class="mx-auto max-w-7xl px-5 pb-3 text-sm text-red-600 sm:px-8 lg:px-12">
-        {{ logoutError() }}
-      </p>
-    }
-
+  <aside class="workspace-sidebar"><nav aria-label="Navegación principal"><ng-container *ngTemplateOutlet="navigation" /></nav></aside>
+  <dialog #menuDialog class="mobile-drawer" (cancel)="closeMenu()" (close)="menuOpen.set(false)">
     @if (menuOpen()) {
-      <nav
-        id="mobile-menu"
-        aria-label="Navegación principal móvil"
-        class="border-t border-surface px-5 py-3 dark:border-surface-700 sm:px-8 md:hidden"
-      >
-        <ul class="flex flex-col gap-1">
-          @for (link of links; track link.path) {
-            <li>
-              <a
-                [routerLink]="link.path"
-                routerLinkActive="bg-surface-100 text-primary dark:bg-surface-800"
-                [routerLinkActiveOptions]="{ exact: true }"
-                ariaCurrentWhenActive="page"
-                [attr.aria-label]="link.description"
-                class="block rounded-xl px-4 py-3 text-sm font-semibold text-muted-color hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                (click)="closeMenu()"
-              >
-                {{ link.label }}
-              </a>
-            </li>
-          }
-          <li>
-            <button
-              type="button"
-              class="block w-full rounded-xl px-4 py-3 text-left text-sm font-semibold text-muted-color hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-              (click)="logout()"
-            >
-              Cerrar sesión
-            </button>
-          </li>
-        </ul>
-      </nav>
+      <button class="drawer-close" type="button" aria-label="Cerrar menú" (click)="closeMenu()"><app-icon name="close" /></button>
+      <nav id="mobile-menu" aria-label="Navegación principal móvil"><ng-container *ngTemplateOutlet="navigation" /></nav>
     }
-  </header>
+  </dialog>
 
-  <main class="mx-auto max-w-7xl px-5 py-10 sm:px-8 sm:py-14 lg:px-12">
-    @if (!logoutError()) {
-      <router-outlet />
-    }
-  </main>
+  <div class="workspace-body">
+    <header class="workspace-topbar">
+      <div class="topbar-location"><button type="button" class="icon-button menu-toggle" aria-controls="mobile-menu" [attr.aria-expanded]="menuOpen()" (click)="toggleMenu()"><app-icon name="menu" /><span class="sr-only">{{ menuOpen() ? 'Cerrar menú' : 'Abrir menú' }}</span></button><span>Mi espacio <span class="breadcrumb-divider">/</span> <strong>Finanzas personales</strong></span></div>
+      <div class="topbar-right"><span class="currency-label"><span></span> CLP · Chile</span><span class="topbar-avatar" aria-hidden="true">{{ initials() }}</span></div>
+    </header>
+    <main id="workspace-content" tabindex="-1" class="workspace-content">
+      @if (logoutError()) { <div class="notice danger" role="alert">{{ logoutError() }}</div> }
+      @else { <router-outlet /> }
+    </main>
+    <footer class="workspace-footer"><span>Hecho para mirar tus finanzas con calma.</span><span>LazyFinance <span aria-hidden="true">✳</span></span></footer>
+  </div>
 </div>

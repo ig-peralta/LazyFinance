@@ -4,6 +4,14 @@ The UI is an Angular/TypeScript app with routing, server-side rendering (SSR), a
 
 The interface uses PrimeNG components with an Aura-based emerald theme, Tailwind CSS v4 through PostCSS, and `tailwindcss-primeui` for styling utilities. Production builds include a browser bundle and a Node/Express SSR server.
 
+The authenticated workspace has an ink/emerald sidebar, warm light surfaces and
+an adaptive overview grid; the public landing retains its existing design.
+Mobile navigation uses a native modal dialog for focus containment/Escape handling,
+with a skip link and keyboard-visible focus. Financial display formats decimal
+strings through bigint cents, retaining nonzero cents and large values without
+floating-point rounding. Dashboard income cards distinguish received amounts
+from the full-month plan and never describe either as available cash.
+
 Detailed references: [session/resource lifetimes](../../docs/technical/ui-data-lifecycle.md),
 [provider-neutral identity](../../docs/technical/identity.md),
 [RPC contracts](../../docs/technical/rpc-contracts.md) and

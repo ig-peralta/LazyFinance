@@ -1,18 +1,24 @@
-<div class="max-w-2xl">
-  <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-    Hola, {{ session.user()?.name }}
-  </p>
-  <h1 class="mt-4 text-4xl font-semibold tracking-[-0.05em] text-color-emphasis sm:text-5xl">
-    Tu dinero, más claro.
-  </h1>
-  <p class="mt-4 text-base leading-7 text-muted-color">
-    Un vistazo a tus finanzas.
-  </p>
-</div>
+<header class="page-header">
+  <div><p class="eyebrow">Hola, {{ session.user()?.name }}</p><h1>Tu dinero, en perspectiva<span style="color:#91a574">.</span></h1><p class="page-description">Menos dudas, mejores decisiones. Este es el panorama de tus finanzas.</p></div>
+  <div class="page-actions"><label class="button"><app-icon name="calendar" /><span class="sr-only">Mes del resumen</span><input #monthPicker type="month" [value]="summaries.month()" [max]="maxMonth" (change)="selectMonth(monthPicker.value)" style="border:0;background:transparent;max-width:155px;font-size:12px" /></label></div>
+</header>
 
-<dashboard-account class="block" />
-<dashboard-summary class="block" />
-<dashboard-comparison class="block" />
-<dashboard-objective class="block" />
-<dashboard-budget-progress class="block" />
-<dashboard-activity class="block" />
+@if (summaries.monthly.hasValue()) {
+  @let data = summaries.monthly.value();
+  <section class="metric-grid" aria-label="Las cifras de tu mes">
+    <article class="metric-card accent"><span class="metric-label">Gastos netos del mes</span><span class="metric-symbol"><app-icon name="wallet" /></span><strong class="metric-value">{{ money(data.spending) }}</strong><p class="metric-note">Compras menos devoluciones y reembolsos confirmados.</p></article>
+    <article class="metric-card"><span class="metric-label">Ingresos recibidos</span><span class="metric-symbol"><app-icon name="income" /></span><strong class="metric-value">{{ money(data.receivedIncome) }}</strong><p class="metric-note">Solo abonos confirmados como ingresos. No es tu saldo.</p></article>
+    <article class="metric-card"><span class="metric-label">Ingresos esperados</span><span class="metric-symbol"><app-icon name="calendar" /></span><strong class="metric-value">{{ money(data.expectedIncome.amount) }}</strong><p class="metric-note">Plan del mes completo · no es dinero disponible.@if (data.expectedIncome.estimatedAmount !== '0.00') { Incluye estimaciones. } @if (data.expectedIncome.unknownAmountCount) { {{ data.expectedIncome.unknownAmountCount }} importes por definir. }</p></article>
+  </section>
+} @else if (summaries.monthly.isLoading()) {
+  <div class="metric-grid" role="status" aria-label="Cargando cifras del mes">@for (item of [1,2,3]; track item) { <div class="metric-card"><div class="skeleton" style="width:45%"></div><div class="skeleton big"></div><div class="skeleton" style="width:75%"></div></div> }</div>
+}
+
+<div class="dashboard-grid">
+  <dashboard-account />
+  <dashboard-summary />
+  <dashboard-comparison />
+  <dashboard-budget-progress />
+  <dashboard-activity />
+  <dashboard-objective />
+</div>

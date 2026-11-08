@@ -23,7 +23,7 @@ export class BudgetProgressView {
   }
 
   protected money(value: string): string {
-    return formatClp(Number(value));
+    return formatClp(value);
   }
 
   protected barWidth(value: number): number {

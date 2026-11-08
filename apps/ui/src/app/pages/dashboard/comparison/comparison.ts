@@ -1,5 +1,5 @@
 import { Component, inject } from "@angular/core";
-import { formatClp } from "../../../../utils/currency";
+import { formatClp, moneyCents } from "../../../../utils/currency";
 import { monthLabel } from "../../../../utils/month";
 import { SummariesData } from "../../../features/summaries/summaries.data";
 
@@ -15,13 +15,13 @@ export class Comparison {
   }
 
   protected money(amount: string): string {
-    return formatClp(Number(amount));
+    return formatClp(amount);
   }
 
   protected change(amount: string, noun: string): string {
-    const value = Number(amount);
-    if (value === 0) return `${noun} sin cambios`;
+    const value = moneyCents(amount);
+    if (value === 0n) return `${noun} sin cambios`;
 
-    return `${formatClp(Math.abs(value))} ${value > 0 ? "más" : "menos"}`;
+    return `${formatClp(amount.replace(/^-/, ""))} ${value > 0n ? "más" : "menos"}`;
   }
 }
