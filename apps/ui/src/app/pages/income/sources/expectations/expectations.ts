@@ -93,7 +93,7 @@ export class Expectations {
         this.reset();
         this.entries.reload();
       },
-      "Pago esperado eliminado. Los cobros confirmados no se modificaron.",
+      "Pago esperado eliminado. Los ingresos recibidos no se modificaron.",
     );
   }
 }

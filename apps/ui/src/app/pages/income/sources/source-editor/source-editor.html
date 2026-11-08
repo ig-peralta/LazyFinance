@@ -1,4 +1,4 @@
-<section class="editor-form"><p class="panel-subtitle">Un plan de cobro, no dinero ya recibido.</p>
+<section class="editor-form"><p class="panel-subtitle">Un plan de ingresos, no dinero ya recibido.</p>
 @if (source()?.archivedAt) { <p class="notice warning">Fuente archivada: su declaración se conserva y no admite nuevas ediciones.</p> }
 @if (command.error()) { <p class="notice danger" role="alert">{{ command.error() }}</p> }
 <form (ngSubmit)="save()"><fieldset [disabled]="command.pending() || !!source()?.archivedAt" style="border:0;padding:0;margin:0"><div class="form-grid">

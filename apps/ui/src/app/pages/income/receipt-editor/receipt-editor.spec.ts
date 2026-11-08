@@ -63,6 +63,9 @@ describe("received income decisions", () => {
     await fixture.whenStable();
     const root: HTMLElement = fixture.nativeElement;
     const event = eventsIn(root);
+    expect(root.querySelector('label[for="receipt-source"]')?.textContent).toBe(
+      "Fuente del ingreso",
+    );
     const select = root.querySelector<HTMLSelectElement>("#receipt-source");
     if (!select) throw new Error("Missing source");
     select.value = incomeSource.id;
@@ -81,6 +84,10 @@ describe("received income decisions", () => {
     await reassigned.whenStable();
     reassigned.detectChanges();
     const nextRoot: HTMLElement = reassigned.nativeElement;
+    expect(nextRoot.textContent).toContain("sin duplicar el ingreso");
+    expect(nextRoot.querySelector('button[type="submit"]')?.textContent).toBe(
+      "Reasignar ingreso",
+    );
     const nextEvent = eventsIn(nextRoot),
       nextSelect = nextRoot.querySelector<HTMLSelectElement>("#receipt-source");
     if (!nextSelect) throw new Error("Missing reassign source");
@@ -169,6 +176,17 @@ describe("received income decisions", () => {
     expect(root.textContent).toContain("$1.700.000");
     expect(root.textContent).toContain("$200.000 estimados");
     expect(root.textContent).toContain("1 montos desconocidos");
+    expect(
+      root.querySelector(
+        'section[aria-label="Ingresos esperados y recibidos por separado"]',
+      ),
+    ).not.toBeNull();
+    expect(
+      [...root.querySelectorAll("h2")].map((heading) => heading.textContent),
+    ).toContain("Ingresos recibidos");
+    expect(root.textContent).toContain(
+      "No hay ingresos recibidos confirmados que cuenten en este mes.",
+    );
     [...root.querySelectorAll("button")]
       .find((button) => button.textContent?.includes("Revisar este abono"))
       ?.click();
@@ -176,6 +194,9 @@ describe("received income decisions", () => {
     await fixture.whenStable();
     fixture.detectChanges();
     const select = root.querySelector<HTMLSelectElement>("#receipt-source");
+    expect(root.querySelector("dialog")?.getAttribute("aria-label")).toBe(
+      "Confirmar un ingreso recibido",
+    );
     if (!select) throw new Error("Missing receipt selector");
     select.value = incomeSource.id;
     select.dispatchEvent(event("change"));
@@ -183,7 +204,7 @@ describe("received income decisions", () => {
     await fixture.whenStable();
     fixture.detectChanges();
     expect(mock.callsTo("income.summary")).toHaveLength(2);
-    expect(root.textContent).toContain("Cobro confirmado");
+    expect(root.textContent).toContain("Ingreso confirmado");
     expect(root.textContent).toContain("$1.500.000");
   });
 

@@ -74,7 +74,7 @@ export class SourcesPage {
   protected saved(source: IncomeSource) {
     this.closeEditor();
     this.message.set(
-      "Fuente guardada. Los cobros recibidos no se modificaron.",
+      "Fuente guardada. Los ingresos recibidos no se modificaron.",
     );
     this.planningId.set(source.regularity === "irregular" ? source.id : null);
     this.sources.reload();
@@ -92,7 +92,7 @@ export class SourcesPage {
         this.closeEditor();
         this.sources.reload();
       },
-      "Fuente archivada. Los cobros e historial anteriores se conservan.",
+      "Fuente archivada. Los ingresos recibidos y el historial anterior se conservan.",
     );
   }
 }

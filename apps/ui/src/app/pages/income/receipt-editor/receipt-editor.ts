@@ -82,7 +82,7 @@ export class ReceiptEditor {
         scope.client.income.confirm.mutate(parsed.data, { signal }),
       () =>
         this.saved.emit(
-          "Cobro confirmado. Se recalcularon los ingresos; el importe y la fecha del banco no cambiaron.",
+          "Ingreso confirmado. Se recalcularon los ingresos; el importe y la fecha del banco no cambiaron.",
         ),
     );
   }

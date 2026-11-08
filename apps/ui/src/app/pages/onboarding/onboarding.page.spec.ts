@@ -63,6 +63,9 @@ describe("optional account-persisted onboarding", () => {
     const root: HTMLElement = fixture.nativeElement;
     expect(root.textContent).toContain("3 de 4 con registros");
     expect(root.textContent).toContain("Vinculación no disponible");
+    expect(root.textContent).toContain(
+      "Planificar no confirma ingresos recibidos.",
+    );
     button(root, "Saltar por ahora").click();
     await fixture.whenStable();
     fixture.detectChanges();

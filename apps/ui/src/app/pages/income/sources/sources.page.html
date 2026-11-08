@@ -1,12 +1,12 @@
 <header class="page-header">
-  <div><p class="eyebrow">PLANIFICA LO QUE VIENE</p><h1>Fuentes de ingreso<span class="accent-text">.</span></h1><p class="page-description">Sueldo, proyectos, rentas. Define cuándo esperas cobrar sin confundirlo con lo que ya llegó.</p></div>
+  <div><p class="eyebrow">PLANIFICA LO QUE VIENE</p><h1>Fuentes de ingreso<span class="accent-text">.</span></h1><p class="page-description">Sueldo, proyectos, rentas. Planifica tus ingresos esperados sin confundirlos con los ya recibidos.</p></div>
   <button class="button primary" type="button" [disabled]="command.pending()" (click)="fresh()"><app-icon name="plus" /> Nueva fuente</button>
 </header>
 <nav class="section-tabs" aria-label="Secciones de ingresos"><a routerLink="/ingresos">Esperado y recibido</a><a routerLink="/ingresos/fuentes" class="active" aria-current="page">Mis fuentes</a></nav>
 @if (message() || command.success()) { <p class="notice" role="status">{{ message() || command.success() }}</p> }
 @if (command.error()) { <p class="notice danger" role="alert">{{ command.error() }}</p> }
 @if (archiving()) {
-  <div class="notice warning" role="alert"><strong>¿Archivar esta fuente?</strong><p>Detiene su planificación desde el corte del servidor, conserva el historial y no borra cobros. No se podrá editar después.</p><div class="button-row"><button class="button small danger" type="button" [disabled]="command.pending()" (click)="archive()">Confirmar archivo</button><button class="button small" type="button" [disabled]="command.pending()" (click)="archiving.set(null)">Cancelar</button></div></div>
+  <div class="notice warning" role="alert"><strong>¿Archivar esta fuente?</strong><p>Detiene su planificación desde el corte del servidor, conserva el historial y no borra ingresos recibidos. No se podrá editar después.</p><div class="button-row"><button class="button small danger" type="button" [disabled]="command.pending()" (click)="archive()">Confirmar archivo</button><button class="button small" type="button" [disabled]="command.pending()" (click)="archiving.set(null)">Cancelar</button></div></div>
 }
 <section class="panel">
   <div class="panel-heading"><div><h2>De dónde viene tu dinero</h2><p class="panel-subtitle">Declaraciones en pesos chilenos.</p></div><button type="button" class="icon-button" aria-label="Recargar fuentes" [disabled]="sources.isLoading()" (click)="sources.reload()"><app-icon name="refresh" /></button></div>

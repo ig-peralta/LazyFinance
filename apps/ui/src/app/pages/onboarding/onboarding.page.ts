@@ -55,7 +55,7 @@ export class OnboardingPage {
     {
       title: "Dale forma a tus ingresos",
       description:
-        "Declara una fuente y su calendario. Planificar no confirma cobros.",
+        "Declara una fuente y su calendario. Planificar no confirma ingresos recibidos.",
       path: "/ingresos/fuentes",
       icon: "income" as const,
       loading: this.sources.isLoading(),

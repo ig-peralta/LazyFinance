@@ -61,6 +61,9 @@ describe("income source management", () => {
       "1234567.89",
     );
     expect(root.querySelector("dialog")).toBeNull();
+    expect(root.textContent).toContain(
+      "Fuente guardada. Los ingresos recibidos no se modificaron.",
+    );
     [...root.querySelectorAll("button")]
       .find((button) => button.textContent?.includes("Editar fuente"))
       ?.click();
@@ -78,7 +81,7 @@ describe("income source management", () => {
       ?.click();
     fixture.detectChanges();
     await fixture.whenStable();
-    expect(root.textContent).toContain("no borra cobros");
+    expect(root.textContent).toContain("no borra ingresos recibidos");
     [...root.querySelectorAll("button")]
       .find((button) => button.textContent?.includes("Confirmar archivo"))
       ?.click();
@@ -86,6 +89,9 @@ describe("income source management", () => {
     fixture.detectChanges();
     expect(mock.callsTo("income.archiveSource")).toHaveLength(1);
     expect(root.textContent).toContain("Archivada");
+    expect(root.textContent).toContain(
+      "Fuente archivada. Los ingresos recibidos y el historial anterior se conservan.",
+    );
     fixture.destroy();
     const revisit = TestBed.createComponent(SourcesPage);
     revisit.detectChanges();

@@ -84,11 +84,16 @@ describe("dated income expectations", () => {
       .find((button) => button.textContent?.trim() === "Eliminar")
       ?.click();
     fixture.detectChanges();
+    expect(root.textContent).toContain("No borra un ingreso recibido.");
     [...root.querySelectorAll("button")]
       .find((button) => button.textContent?.includes("Confirmar eliminación"))
       ?.click();
     await fixture.whenStable();
+    fixture.detectChanges();
     expect(mock.callsTo("income.removeExpectation")).toHaveLength(1);
     expect(mock.callsTo("income.confirm")).toHaveLength(0);
+    expect(root.textContent).toContain(
+      "Pago esperado eliminado. Los ingresos recibidos no se modificaron.",
+    );
   });
 });
