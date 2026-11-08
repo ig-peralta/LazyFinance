@@ -20,6 +20,14 @@ export const routes: Routes = [
       import("./layout/app-shell/app-shell").then((m) => m.AppShell),
     children: [
       {
+        path: "presupuestos/:id/movimientos",
+        title: "Compras del presupuesto",
+        loadComponent: () =>
+          import("./pages/objectives/budget-evidence.page").then(
+            (m) => m.BudgetEvidencePage,
+          ),
+      },
+      {
         path: "presupuestos/:id",
         title: "Configurar presupuesto",
         loadComponent: () =>

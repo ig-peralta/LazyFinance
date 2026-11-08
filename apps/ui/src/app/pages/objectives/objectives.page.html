@@ -18,6 +18,7 @@
               <div class="progress-track" role="img" [attr.aria-label]="budget.percentage + '% del límite utilizado'"><div class="progress-fill" [style.width.%]="width(budget.spent, budget.limit)"></div></div>
               <div class="record-row"><strong class="record-amount">{{ money(budget.spent) }} <span class="record-meta">de {{ money(budget.limit) }}</span></strong><span class="record-meta">Disponible en el límite: {{ money(budget.remaining) }}</span></div>
               <p class="record-meta">Compras {{ money(budget.grossSpent) }} − devoluciones {{ money(budget.refunds) }} − reembolsos {{ money(budget.reimbursements) }}.</p>
+              <a class="text-link" [routerLink]="['/presupuestos', budget.id, 'movimientos']" [queryParams]="{ revision: budget.revisionId, month: budget.month, asOf: budget.adjustmentsAsOf, adjustmentsAsOf: budget.adjustmentsAsOf, reported: budget.spent }">Ver las compras que explican {{ money(budget.spent) }} →</a>
               @if (budget.unresolvedAdjustmentCount) { <p class="notice warning">{{ budget.unresolvedAdjustmentCount }} ajustes por revisar; no se aplican como reducciones confirmadas.</p> }
             </li>
           } @empty {

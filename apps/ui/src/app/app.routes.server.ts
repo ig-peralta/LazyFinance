@@ -4,6 +4,11 @@ const privateHeaders = { "Cache-Control": "private, no-store" };
 
 export const serverRoutes: ServerRoute[] = [
   {
+    path: "presupuestos/:id/movimientos",
+    renderMode: RenderMode.Server,
+    headers: privateHeaders,
+  },
+  {
     path: "presupuestos/:id",
     renderMode: RenderMode.Server,
     headers: privateHeaders,

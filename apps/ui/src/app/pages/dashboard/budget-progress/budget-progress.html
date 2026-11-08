@@ -51,7 +51,7 @@
             </p>
           }
           <p class="mt-5 text-sm text-muted-color">
-            {{ money(budget.spent) }} de {{ money(budget.limit) }} usados
+            <a class="text-link" [routerLink]="['/presupuestos', budget.id, 'movimientos']" [queryParams]="{ revision: budget.revisionId, month: budget.month, asOf: budget.adjustmentsAsOf, adjustmentsAsOf: budget.adjustmentsAsOf, reported: budget.spent }">{{ money(budget.spent) }}</a> de {{ money(budget.limit) }} usados
           </p>
           <p class="mt-2 text-xs text-muted-color">
             Compras {{ money(budget.grossSpent) }} · devoluciones {{ money(budget.refunds) }} ·

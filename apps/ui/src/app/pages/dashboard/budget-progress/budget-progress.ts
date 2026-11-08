@@ -1,4 +1,5 @@
 import { Component, computed, inject } from "@angular/core";
+import { RouterLink } from "@angular/router";
 import type { BudgetProgress } from "@lazyfinance/contracts";
 import { formatClp } from "../../../../utils/currency";
 import { monthLabel } from "../../../../utils/month";
@@ -6,6 +7,7 @@ import { ObjectivesData } from "../../../features/objectives/objectives.data";
 
 @Component({
   selector: "dashboard-budget-progress",
+  imports: [RouterLink],
   templateUrl: "./budget-progress.html",
 })
 export class BudgetProgressView {

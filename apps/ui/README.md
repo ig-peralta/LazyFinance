@@ -45,6 +45,11 @@ version-checked edit/archive. Started recurring edits apply next month/year;
 started fixed budgets are read-only apart from archival. New schedules use aligned
 monthly/yearly starts or inclusive fixed dates. Overlapping budgets are not summed
 as a combined allowance, and no command reserves cash or changes banking facts.
+Budget figures open `/presupuestos/:id/movimientos` with the report's revision,
+month and observation cutoffs. Its complete backend totals (not page sums)
+separate original purchases, refunds, reimbursements and net spending. Continuation
+retains returned cutoffs, explains current-fact drift and never claims complete
+bank coverage. Changed revisions require reopening the current progress selection.
 
 Detailed references: [session/resource lifetimes](../../docs/technical/ui-data-lifecycle.md),
 [provider-neutral identity](../../docs/technical/identity.md),
