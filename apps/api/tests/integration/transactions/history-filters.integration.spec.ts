@@ -160,12 +160,10 @@ describe.skipIf(!integration)("filtered owned transaction history", () => {
       ).toEqual(["-9.00"]);
       expect(
         (
-          await api
-            .client(f.otherToken)
-            .transactions.list.query({
-              ...filters,
-              cursor: first.pageInfo.nextCursor,
-            })
+          await api.client(f.otherToken).transactions.list.query({
+            ...filters,
+            cursor: first.pageInfo.nextCursor,
+          })
         ).items,
       ).toEqual([]);
       for (const change of [
