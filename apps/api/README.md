@@ -57,6 +57,12 @@ accepted directly as API authentication.
 to detect drift. Normal application builds need neither generation nor another
 application's source. The browser must never import private contracts/signing code.
 
+`onboarding.state` and `onboarding.finish` persist optional-guide state through
+user-scoped private RPC, not the authentication principal or browser storage.
+Finish accepts only skip/completion; completion is terminal and retains its first
+server timestamp even after delayed skips. It has no financial prerequisites or
+automatic setup writes. See the [wire semantics](../../docs/technical/rpc-contracts.md#wire-semantics-and-transport).
+
 Feature services inject the single `PersistenceClient` and call its inferred
 `user(userId)` RPC surface directly. There are no per-domain persistence adapters
 or database-shaped Date conversions. Financial calculations stay in the owning

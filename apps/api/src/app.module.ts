@@ -10,6 +10,7 @@ import { EnvironmentModule } from "./environment/environment.module";
 import { IncomeModule } from "./income/income.module";
 import { McpModule } from "./mcp/mcp.module";
 import { ObjectivesModule } from "./objectives/objectives.module";
+import { OnboardingModule } from "./onboarding/onboarding.module";
 import { ApiContext } from "./rpc/api.context";
 import { ApiMiddleware } from "./rpc/api.middleware";
 import { SummariesModule } from "./summaries/summaries.module";
@@ -26,6 +27,7 @@ import { TransactionsModule } from "./transactions/transactions.module";
     ObjectivesModule,
     SummariesModule,
     IncomeModule,
+    OnboardingModule,
     BankingIngestionModule,
     TaggingModule,
     TRPCModule.forRoot({

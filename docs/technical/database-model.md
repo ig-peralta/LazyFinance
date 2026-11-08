@@ -1,8 +1,8 @@
 # Implemented database model
 
 This reference describes the checked-in Kysely migrations, not a conceptual
-product model. PostgreSQL 18 holds **22 application tables** in fixed `identity`
-and `finance` schemas. Twenty-one sensitive tables force user/identity RLS;
+product model. PostgreSQL 18 holds **23 application tables** in fixed `identity`
+and `finance` schemas. Twenty-two sensitive tables force user/identity RLS;
 `finance.provider` is the shared read-only catalog exception. There is no tenancy,
 membership or account-sharing model. See [security and RLS](persistence-security.md)
 for policy/grant details.
@@ -24,6 +24,7 @@ All unqualified table names in the finance section below belong to `finance`.
 | --- | --- | --- |
 | `identity.user` | `id`; unique email, including a case-insensitive unique index | Stable financial owner; normal runtime self-read only |
 | `identity.external_identity` | PK `(provider, issuer, provider_subject)`; unique `(user_id, provider, issuer)` | External subject → user; bootstrap-only access, no stored bearer token |
+| `identity.onboarding` | PK `user_id` → user | Optional-guide skip/completion; self-owned read/insert and status/timestamp update, no runtime delete |
 | `provider` | `id`; unique `identifier` | Shared catalog; runtime SELECT only |
 | `provider_connection` | `id` → provider; `user_id` | Owned connection lifecycle (`active`, `revoked`, `expired`) and optional test/live mode |
 | `account` | `id`; unique `(provider_connection_id, external_id)`; `user_id` | Owned account and owned connection must agree; independent nullable source balance |
@@ -60,6 +61,7 @@ source-verified reference, not generated DDL or an ownership-policy diagram.
 ```mermaid
 erDiagram
     identity_user ||--o{ identity_external_identity : maps
+    identity_user ||--o| identity_onboarding : records
     identity_user ||--o{ finance_provider_connection : owns
     identity_user ||--o{ finance_account : owns
     identity_user ||--o{ finance_tag : owns
@@ -106,6 +108,11 @@ erDiagram
         string issuer PK
         string provider_subject PK
         uuid user_id FK
+    }
+    identity_onboarding {
+        uuid user_id PK, FK
+        string status
+        timestamptz completed_at
     }
     finance_provider {
         uuid id PK
@@ -215,6 +222,11 @@ evidence, not guaranteed local relational links.
 
 ## Financial representation and constraints
 
+- Onboarding has no row until an explicit skip/completion. Stored states are
+  `skipped` (null `completed_at`) or `completed` (non-null `completed_at`). The
+  named upsert preserves terminal completion and its first timestamp, including
+  concurrent first writes. No reset/delete RPC exists; financial setup never
+  controls this non-financial preference.
 - Monetary columns use `numeric(15,2)` and cross RPC as decimal strings. CLP is the
   implemented currency. Transaction amounts are nonzero, with negative debits and
   positive credits enforced together. The balance is nullable and independent of
@@ -286,7 +298,7 @@ workflow has been shipped.
 
 ## Migration and seed lifecycle
 
-Twenty-three migrations are globally ordered across `migrations/identity` and
+Twenty-four migrations are globally ordered across `migrations/identity` and
 `migrations/finance`: schema/bootstrap foundations plus the table migrations.
 Kysely's PostgreSQL migrator owns locking and transactional DDL/ledger updates.
 Each new sensitive table brings its constraints, indexes, grants and RLS together;

@@ -2,6 +2,7 @@ export * from "./accounts";
 export * from "./auth";
 export * from "./income";
 export * from "./objectives";
+export * from "./onboarding";
 export * from "./pagination";
 export * from "./rpc";
 export * from "./summaries";
