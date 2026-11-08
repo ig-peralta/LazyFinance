@@ -40,9 +40,14 @@ ignored `apps/api/.env`, and configure:
 | `CORS_ORIGINS` | Allowed browser origins; default local Angular origins. |
 | `FIREBASE_PROJECT_ID` | Required in Firebase mode. |
 | `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` | Optional paired Admin credentials. |
+| `FINTOC_PUBLIC_KEY`, `FINTOC_SECRET_KEY`, `FINTOC_TOKEN_ENCRYPTION_KEY` | Optional matched-mode Movements keys plus a separate 32-byte hex token-encryption key; API-only. |
 
 The API needs the private RPC URL/signing key, not database configuration.
 App-local dotenv files are not the root Compose `.env`.
+The authenticated `banking` RPC supports owner-bound Fintoc linking, access checks,
+relink and disconnect. It does not import or refresh financial data or add the
+bank-management UI. See the [LAZ-49 review contract](src/banking/linking/README.md)
+for migration, Widget handoff, credential storage and ambiguous-error recovery.
 
 `pnpm --filter api dev` starts watch mode. `build`, `typecheck` and `test` are also
 available. Public auth procedures are `auth.config` and `auth.loginMock`; all

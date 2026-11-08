@@ -1,0 +1,133 @@
+<header class="page-header">
+  <div>
+    <p class="eyebrow">TU CUENTA, TUS AUTORIZACIONES</p>
+    <h1>Conexiones bancarias<span class="accent-text">.</span></h1>
+    <p class="page-description">Conecta tus bancos y administra sus permisos de acceso. Esta configuración siempre está disponible en Mi cuenta, aunque hayas saltado la guía inicial.</p>
+  </div>
+  <a class="button" routerLink="/cuentas"><app-icon name="wallet" /> Ver cuentas y saldos</a>
+</header>
+
+<section class="panel" aria-labelledby="banking-title">
+  <div class="panel-heading">
+    <div>
+      <h2 #heading id="banking-title" tabindex="-1">Tus conexiones bancarias</h2>
+      <p class="panel-subtitle">Fintoc · acceso seguro, separado de la actualización de datos.</p>
+    </div>
+    <div class="button-row">
+      <button class="icon-button" type="button" aria-label="Consultar conexiones y disponibilidad"
+        [disabled]="data.connections.isLoading() || data.configuration.isLoading() || busy()"
+        (click)="data.reload()"><app-icon name="refresh" /></button>
+      @if (configuration()) {
+        <button class="button primary" type="button"
+          [disabled]="busy() || data.configuration.isLoading() || data.connections.isLoading() || !!data.connections.error()"
+          (click)="connect()"><app-icon name="plus" /> Conectar banco</button>
+      }
+    </div>
+  </div>
+
+  @if (data.configuration.isLoading()) {
+    <p class="notice" role="status">Consultando disponibilidad de Fintoc…</p>
+  } @else if (data.configuration.error()) {
+    <p class="notice danger" role="alert">No pudimos comprobar la configuración bancaria. No significa que tus conexiones estén revocadas.
+      <button type="button" (click)="data.configuration.reload()">Reintentar disponibilidad</button>
+    </p>
+  } @else if (configuration(); as config) {
+    <p class="notice" [class.warning]="config.mode === 'test'">
+      <strong>{{ config.mode === 'test' ? 'Modo de prueba' : 'Conexiones reales' }}</strong> ·
+      {{ config.mode === 'test' ? 'Fintoc utiliza cuentas simuladas. No ingreses credenciales bancarias reales.' : 'Autoriza solo cuentas que te pertenecen desde la ventana segura de Fintoc.' }}
+    </p>
+  } @else if (data.configuration.hasValue()) {
+    <p class="notice warning">Fintoc no está habilitado en este servidor. Puedes consultar tus registros y solicitar una desconexión; la limpieza remota quedará pendiente hasta que el servidor esté configurado.</p>
+  }
+
+  <div class="notice"><strong>Conectar no es importar ni actualizar.</strong> La importación de cuentas y movimientos y la actualización bancaria todavía no están disponibles. Comprobar el acceso no vuelve actuales los saldos guardados.</div>
+  @if (notice() || command.success()) {
+    <p class="notice" role="status">{{ notice() || command.success() }}</p>
+  }
+  @if (command.pending()) {
+    <p class="notice" role="status">{{ confirming() ? 'Procesando la desconexión…' : 'Comprobando el acceso en Fintoc…' }}</p>
+  }
+  @if (command.error()) {
+    <p class="notice danger" role="alert">{{ command.error() }}
+      <button type="button" (click)="data.connections.reload()">Consultar conexiones guardadas</button>
+    </p>
+  }
+  @if (activeFlow(); as flow) {
+    <bank-link-flow [mode]="flow.mode" [connection]="flow.connection"
+      (completed)="linked($event, flow)" (cancelled)="closeFlow()" (reconcile)="closeFlow()" />
+  }
+
+  @if (data.connections.isLoading() || data.connections.status() === 'idle') {
+    <p class="notice" role="status">Consultando tus conexiones guardadas…</p>
+  } @else if (data.connections.error()) {
+    <p class="notice danger" role="alert">No pudimos consultar tus conexiones. No asumimos que no tengas bancos conectados.
+      <button type="button" (click)="data.connections.reload()">Reintentar conexiones</button>
+    </p>
+  } @else if (!data.connections.value().length) {
+    <div class="connection-empty">
+      <app-icon name="bank" /><h3>Aún no hay conexiones guardadas</h3>
+      <p class="record-meta">Cuando autorices un banco, su acceso aparecerá aquí. Los saldos y movimientos se importarán en una entrega posterior.</p>
+    </div>
+  } @else {
+    <ul class="record-list" aria-label="Conexiones bancarias de tu cuenta">
+      @for (bank of data.connections.value(); track bank.id) {
+        <li class="connection-record">
+          <div class="record-row">
+            <div class="record-identity">
+              <span class="record-icon"><app-icon name="bank" /></span>
+              <div>
+                <h3 class="record-title">{{ bank.institution.name }}</h3>
+                <p class="record-meta">{{ bank.holderType === 'individual' ? 'Persona' : 'Empresa' }} · {{ bank.mode === 'test' ? 'Prueba' : 'Real' }}</p>
+              </div>
+            </div>
+            <span class="badge" [class.warning]="bank.status !== 'active' || bank.disconnectPending"
+              [class.neutral]="!!bank.disconnectedAt && !bank.disconnectPending">{{ state(bank) }}</span>
+          </div>
+          <p class="record-meta connection-description">
+            @if (bank.disconnectedAt) {
+              {{ bank.disconnectPending ? 'Acceso deshabilitado en LazyFinance. Falta confirmar la eliminación en Fintoc; puedes completar la desconexión.' : 'Esta conexión ya no puede sincronizar. Los registros financieros guardados no se borraron.' }}
+            } @else if (bank.status === 'expired') {
+              Fintoc solicita volver a autorizar el acceso con las credenciales vigentes del mismo titular.
+            } @else if (bank.status === 'revoked') {
+              El proveedor informó que el acceso no está disponible. Revisa la conexión antes de intentar usarla.
+            } @else {
+              Último estado de acceso guardado. No garantiza que los saldos o movimientos estén actualizados.
+            }
+          </p>
+          @if (!compatible(bank) && !bank.disconnectedAt) {
+            <p class="field-hint">No podemos comprobar o revincular esta conexión con la configuración disponible. La desconexión local sigue disponible.</p>
+          }
+          <div class="button-row connection-actions">
+            @if (!bank.disconnectedAt) {
+              <button class="button small" type="button" [attr.aria-label]="'Comprobar acceso de ' + bank.institution.name"
+                [disabled]="busy() || !compatible(bank)" (click)="check(bank)">Comprobar acceso</button>
+              <button class="button small" type="button" [attr.aria-label]="'Revincular ' + bank.institution.name"
+                [disabled]="busy() || !compatible(bank)" (click)="connect(bank)">Revincular</button>
+            }
+            @if (!bank.disconnectedAt || bank.disconnectPending) {
+              <button class="button small danger" type="button"
+                [attr.aria-label]="(bank.disconnectPending ? 'Completar desconexión de ' : 'Desconectar ') + bank.institution.name"
+                [disabled]="busy()" (click)="confirmDisconnect(bank, $event)">{{ bank.disconnectPending ? 'Completar desconexión' : 'Desconectar' }}</button>
+            }
+          </div>
+          @if (confirming()?.id === bank.id) {
+            <div class="notice warning" role="alert">
+              <strong>¿{{ bank.disconnectPending ? 'Completar la desconexión de' : 'Desconectar' }} {{ bank.institution.name }}?</strong>
+              <p>Deshabilitaremos la sincronización local y eliminaremos el acceso en Fintoc. No cerramos tu cuenta bancaria ni borramos tu historial guardado. Si Fintoc no responde, la desconexión quedará pendiente.</p>
+              <div class="button-row">
+                <button class="button danger" type="button" [disabled]="command.pending()"
+                  (click)="disconnect(bank)">{{ command.pending() ? 'Procesando desconexión…' : 'Sí, desconectar' }}</button>
+                <button #cancelDisconnect class="button" type="button" [disabled]="command.pending()"
+                  (click)="cancelConfirmation()">Cancelar</button>
+              </div>
+            </div>
+          }
+        </li>
+      }
+    </ul>
+  }
+  <div class="connection-refresh">
+    <button class="button small" type="button" disabled aria-describedby="bank-refresh-unavailable"><app-icon name="refresh" /> Actualizar desde el banco</button>
+    <p id="bank-refresh-unavailable" class="field-hint">No disponible todavía. Consultar datos guardados o comprobar acceso no inicia una actualización bancaria.</p>
+  </div>
+</section>

@@ -53,9 +53,10 @@ export const workspaceNavigation: readonly NavigationArea[] = [
     path: "/seguridad",
     label: "Mi cuenta",
     icon: "security",
-    description: "Tu cuenta y acceso",
+    description: "Tu cuenta, acceso y conexiones bancarias",
     destinations: [
       { path: "/seguridad", label: "Acceso y seguridad" },
+      { path: "/conexiones-bancarias", label: "Conexiones bancarias" },
       { path: "/comenzar", label: "Configuración inicial" },
     ],
   },

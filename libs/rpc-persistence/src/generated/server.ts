@@ -13,8 +13,8 @@ import { z } from "zod";
 
 const t = initTRPC.create();
 const publicProcedure = t.procedure;
-import { EmptyInputSchema, AccountRecordsSchema, IdInputSchema, ExpectationRecordsSchema, ExpectationCreateSchema, ExpectationRecordSchema, ExpectationUpdateSchema, VoidResultSchema, ReceiptConfirmSchema, ReceiptFactSchema, IncomeSourceRecordsSchema, IncomeSourceRecordSchema, IncomeSourceCreateSchema, IncomeSourceUpdateSchema, AtIdInputSchema, PeriodInputSchema, ExpectedIncomeFactsSchema, ReceiptFactsSchema, IncomeFactsSchema, BudgetSpendingEvidenceInputSchema, SpendingEvidenceFactsSchema, SavingsReadSchema, SavingsFactsSchema, SavingsEvidenceReadSchema, SavingsEvidenceRecordsSchema, CreateSavingsCommandSchema, UpdateSavingsCommandSchema, ObjectiveRecordsSchema, BudgetPeriodInputSchema, BudgetPeriodRecordsSchema, CreateBudgetCommandSchema, UpdateBudgetCommandSchema, ObjectiveSpendingInputSchema, ObjectiveSpendingFactsSchema, BeginProviderSyncSchema, ProviderSyncStateSchema, ProviderSyncScopeSchema, ProviderSyncFactsSchema, CommitProviderSyncSchema, ProviderSyncOutcomeSchema, RecordProviderFailureSchema, ProviderReviewRecordsSchema, TagRecordSchema, TagRecordsSchema, TagCreateSchema, TagRuleRecordsSchema, TagRuleCreateSchema, TagRuleRecordSchema, TagRuleReplaceSchema, TaggingFactsSchema, ManualTagCommandSchema, RuleCandidatesInputSchema, RuleCandidatesSchema, CommitRuleDecisionsSchema, ChangedCountSchema, TransactionDetailRecordSchema, SummarySpendingEvidenceInputSchema, RecentTransactionRecordsSchema, TransactionRecordsPageSchema, MovementAggregatesSchema, TaggedMovementAggregatesSchema, IdentityResolutionInputSchema } from "@lazyfinance/contracts/internal";
-import { SavingsGoalSchema, SavingsHistoryInputSchema, SavingsHistoryPageSchema, SavingsGoalVersionSchema, BudgetDetailSchema, BudgetHistoryInputSchema, BudgetHistoryPageSchema, BudgetVersionInputSchema, UpdateTagSchema, TagDecisionSchema, SetInternalMovementSchema, InternalMovementDecisionSchema, ExpenseAdjustmentsInputSchema, ExpenseAdjustmentsPageSchema, SetExpenseAdjustmentSchema, ExpenseAdjustmentSchema, ExpenseAdjustmentPairSchema, TransactionsInputSchema, AuthPrincipalSchema, RpcEmptySchema, OnboardingStateSchema, FinishOnboardingSchema } from "@lazyfinance/contracts";
+import { EmptyInputSchema, AccountRecordsSchema, IdInputSchema, ExpectationRecordsSchema, ExpectationCreateSchema, ExpectationRecordSchema, ExpectationUpdateSchema, VoidResultSchema, ReceiptConfirmSchema, ReceiptFactSchema, IncomeSourceRecordsSchema, IncomeSourceRecordSchema, IncomeSourceCreateSchema, IncomeSourceUpdateSchema, AtIdInputSchema, PeriodInputSchema, ExpectedIncomeFactsSchema, ReceiptFactsSchema, IncomeFactsSchema, BudgetSpendingEvidenceInputSchema, SpendingEvidenceFactsSchema, SavingsReadSchema, SavingsFactsSchema, SavingsEvidenceReadSchema, SavingsEvidenceRecordsSchema, CreateSavingsCommandSchema, UpdateSavingsCommandSchema, ObjectiveRecordsSchema, BudgetPeriodInputSchema, BudgetPeriodRecordsSchema, CreateBudgetCommandSchema, UpdateBudgetCommandSchema, ObjectiveSpendingInputSchema, ObjectiveSpendingFactsSchema, BeginProviderSyncSchema, ProviderSyncStateSchema, ProviderSyncScopeSchema, ProviderSyncFactsSchema, CommitProviderSyncSchema, ProviderSyncOutcomeSchema, RecordProviderFailureSchema, ProviderReviewRecordsSchema, ProviderLinkSecretSchema, SaveProviderIntentSchema, ProviderIntentSavedSchema, ClaimProviderIntentSchema, ProviderIntentClaimSchema, CompleteProviderIntentSchema, FailProviderIntentSchema, ProviderIntentStateSchema, UpdateProviderLinkSchema, FinishProviderDisconnectSchema, TagRecordSchema, TagRecordsSchema, TagCreateSchema, TagRuleRecordsSchema, TagRuleCreateSchema, TagRuleRecordSchema, TagRuleReplaceSchema, TaggingFactsSchema, ManualTagCommandSchema, RuleCandidatesInputSchema, RuleCandidatesSchema, CommitRuleDecisionsSchema, ChangedCountSchema, TransactionDetailRecordSchema, SummarySpendingEvidenceInputSchema, RecentTransactionRecordsSchema, TransactionRecordsPageSchema, MovementAggregatesSchema, TaggedMovementAggregatesSchema, IdentityResolutionInputSchema } from "@lazyfinance/contracts/internal";
+import { SavingsGoalSchema, SavingsHistoryInputSchema, SavingsHistoryPageSchema, SavingsGoalVersionSchema, BudgetDetailSchema, BudgetHistoryInputSchema, BudgetHistoryPageSchema, BudgetVersionInputSchema, BankingConnectionsSchema, BankingConnectionSchema, UpdateTagSchema, TagDecisionSchema, SetInternalMovementSchema, InternalMovementDecisionSchema, ExpenseAdjustmentsInputSchema, ExpenseAdjustmentsPageSchema, SetExpenseAdjustmentSchema, ExpenseAdjustmentSchema, ExpenseAdjustmentPairSchema, TransactionsInputSchema, AuthPrincipalSchema, RpcEmptySchema, OnboardingStateSchema, FinishOnboardingSchema } from "@lazyfinance/contracts";
 
 const appRouter = t.router({
   accounts: t.router({
@@ -172,6 +172,44 @@ const appRouter = t.router({
       .input(EmptyInputSchema)
       .output(ProviderReviewRecordsSchema)
       .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
+    }),
+  providerLinks: t.router({
+    list: publicProcedure
+      .input(EmptyInputSchema)
+      .output(BankingConnectionsSchema)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    connection: publicProcedure
+      .input(IdInputSchema)
+      .output(ProviderLinkSecretSchema)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    createIntent: publicProcedure
+      .input(SaveProviderIntentSchema)
+      .output(ProviderIntentSavedSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    claim: publicProcedure
+      .input(ClaimProviderIntentSchema)
+      .output(ProviderIntentClaimSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    complete: publicProcedure
+      .input(CompleteProviderIntentSchema)
+      .output(BankingConnectionSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    fail: publicProcedure
+      .input(FailProviderIntentSchema)
+      .output(ProviderIntentStateSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    status: publicProcedure
+      .input(UpdateProviderLinkSchema)
+      .output(BankingConnectionSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    beginDisconnect: publicProcedure
+      .input(IdInputSchema)
+      .output(ProviderLinkSecretSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    finishDisconnect: publicProcedure
+      .input(FinishProviderDisconnectSchema)
+      .output(BankingConnectionSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
     }),
   tags: t.router({
     update: publicProcedure

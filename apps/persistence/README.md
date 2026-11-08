@@ -2,10 +2,10 @@
 
 Private NestJS/tRPC service using Kysely, `pg`, `identity`/`finance` schemas and
 PostgreSQL user RLS. The API and UI now use the matching RPC boundaries; no API
-database fallback remains. Its 62 private procedures expose identity resolution,
+database fallback remains. Its 71 private procedures expose identity resolution,
 bounded financial facts, revisioned budget/income commands, expense-adjustment
-allocations, tag decisions/rules, owned onboarding state and prepared atomic provider sync. Product
-calculations remain in the API. Read the
+allocations, tag decisions/rules, owned onboarding/banking lifecycle and prepared
+atomic provider sync. Product calculations remain in the API. Read the
 [private RPC/RLS reference](../../docs/technical/persistence-security.md),
 [implemented schema/ERD](../../docs/technical/database-model.md) and
 [contract workflow](../../docs/technical/rpc-contracts.md).
@@ -58,6 +58,10 @@ protected/TLS service channel in deployment.
 
 ## Boundaries
 
+- Migration 025 adds owned Fintoc Link Intent claims, stable provider references,
+  encrypted credentials and lifecycle versions. Provider calls/encryption remain
+  in the API; disconnect disables access before remote cleanup and preserves
+  financial history. See the [linking guide](../api/src/banking/linking/README.md).
 - `identity.onboarding` stores explicit skip/completion per internal user. Reads
   default to active without inserting; the atomic finish upsert preserves terminal
   completion and its first server timestamp. Self-owned RLS and column-limited

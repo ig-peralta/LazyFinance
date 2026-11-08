@@ -6,6 +6,7 @@ import { AppHttpController } from "./app.http";
 import { AuthModule } from "./auth/auth.module";
 import { HttpAuthGuard } from "./auth/http.guard";
 import { BankingIngestionModule } from "./banking/ingestion/banking-ingestion.module";
+import { BankingLinksModule } from "./banking/linking/banking-links.module";
 import { EnvironmentModule } from "./environment/environment.module";
 import { IncomeModule } from "./income/income.module";
 import { McpModule } from "./mcp/mcp.module";
@@ -29,6 +30,7 @@ import { TransactionsModule } from "./transactions/transactions.module";
     IncomeModule,
     OnboardingModule,
     BankingIngestionModule,
+    BankingLinksModule,
     TaggingModule,
     TRPCModule.forRoot({
       basePath: "/trpc",

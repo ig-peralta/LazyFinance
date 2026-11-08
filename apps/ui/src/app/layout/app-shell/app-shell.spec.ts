@@ -23,6 +23,12 @@ class ObjectivesStub {}
 })
 class SecurityStub {}
 
+@Component({
+  selector: "bank-connections-stub",
+  template: "<h1>Conexiones bancarias</h1>",
+})
+class BankConnectionsStub {}
+
 describe("AppShell", () => {
   afterEach(() => TestBed.resetTestingModule());
 
@@ -58,6 +64,7 @@ describe("AppShell", () => {
               { path: "metas/:id", component: ObjectivesStub },
               { path: "metas", component: ObjectivesStub },
               { path: "seguridad", component: SecurityStub },
+              { path: "conexiones-bancarias", component: BankConnectionsStub },
               { path: "comenzar", component: SecurityStub },
             ],
           },
@@ -186,6 +193,7 @@ describe("AppShell", () => {
       ["/metas/example", "Planificación", "Metas de ahorro"],
       ["/ingresos/fuentes", "Planificación", "Fuentes de ingreso"],
       ["/movimientos/example", "Mi dinero", "Movimientos"],
+      ["/conexiones-bancarias", "Mi cuenta", "Conexiones bancarias"],
       ["/comenzar", "Mi cuenta", "Retomar configuración"],
     ]) {
       await harness.navigateByUrl(path);
@@ -221,8 +229,45 @@ describe("AppShell", () => {
       expect(
         root.querySelector('.workspace-subnav a[href="/comenzar"]'),
       ).toBeNull();
-      expect(root.querySelector(".workspace-subnav")).toBeNull();
+      expect(
+        [...root.querySelectorAll(".workspace-subnav a")].map((link) =>
+          link.getAttribute("href"),
+        ),
+      ).toEqual(["/seguridad", "/conexiones-bancarias"]);
     }
+  });
+
+  it.each([
+    "active",
+    "skipped",
+    "completed",
+    undefined,
+  ] as const)("keeps bank connection settings reachable with onboarding status %s", async (status) => {
+    const { harness, root, onboardingStatus } = await setup();
+    onboardingStatus.set(status);
+    await harness.navigateByUrl("/seguridad");
+    harness.detectChanges();
+    root
+      .querySelector<HTMLAnchorElement>(
+        '.workspace-subnav a[href="/conexiones-bancarias"]',
+      )
+      ?.click();
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    expect(TestBed.inject(Router).url).toBe("/conexiones-bancarias");
+    expect(root.querySelector("h1")?.textContent).toBe("Conexiones bancarias");
+    expect(
+      root.querySelector('.workspace-sidebar a[aria-current="true"]')
+        ?.textContent,
+    ).toContain("Mi cuenta");
+    expect(
+      root
+        .querySelector('.workspace-subnav a[aria-current="page"]')
+        ?.getAttribute("href"),
+    ).toBe("/conexiones-bancarias");
+    expect(
+      root.querySelector('.workspace-subnav a[href="/comenzar"]') !== null,
+    ).toBe(status === "skipped");
   });
 
   it("makes every existing workflow reachable through an area and its submenu", async () => {
@@ -245,6 +290,7 @@ describe("AppShell", () => {
     }
     expect([...destinations].sort()).toEqual([
       "/comenzar",
+      "/conexiones-bancarias",
       "/cuentas",
       "/dashboard",
       "/etiquetas",

@@ -213,7 +213,48 @@ adopt state only after confirmed success for the same lifetime. Setting the
 resource to the confirmed result cancels an older read so it cannot restore a
 prompt. Ambiguous failures remain unconfirmed and offer an explicit state check,
 not automatic mutation replay. Completion closes the optional guide, not a claim
-that optional financial steps or unavailable bank linking are complete.
+that optional financial steps or bank import are complete.
+
+## Explicit banking authorization
+
+`BankConnectionsPage` at `/conexiones-bancarias` (**Mi cuenta → Conexiones bancarias**)
+provides `BankingData` for two credential-scoped resources:
+server banking configuration and owned connection summaries. Both initial reads
+participate in that page's workspace readiness. The separate `/cuentas` page
+reads only stored balances and links to connection settings; it starts no banking
+reads or Widget flow. Onboarding links to the same settings page and never gates
+access to it, whether the guide is active, skipped or completed.
+Loading, unavailable configuration, failed reads and an empty connection list are
+distinct; no provider requests or per-connection status checks run on page entry.
+
+An explicit connect/relink mounts `BankLinkFlow` **outside native modal drawers**:
+Fintoc mounts its iframe under the document body, which a native modal would make
+inert. The flow starts only when the user chooses **Abrir Fintoc**. Its component-
+owned scoped command creates an intent, verifies the mode matches the user's notice,
+opens the hosted Widget and submits the callback's exchange token with that exact
+intent. Duplicate callbacks/submissions cannot create multiple completions. Success
+is displayed only after backend confirmation for the same accepted scope/lifetime.
+
+`FintocWidget` is browser-only and loads the fixed HTTPS script on demand with a
+15-second loading deadline. It shares only the provider script/factory, never an
+instance, token, intent or financial result. One operation owns each Widget and
+destroys it on exit, success, cancellation, navigation or credential replacement.
+Late script loads cannot open an obsolete user's Widget. Bank credentials stay in
+the provider iframe; exchange/Widget tokens are not logged or persisted in browser
+storage/transfer state. Provider errors are sanitized before rendering.
+
+Cancelling or losing a completion response does not undo external authorization or
+a server write. The UI reconciles owned connection reads and requires a fresh
+explicit flow instead of replaying the exchange. Disconnect requires confirmation,
+preserves history, and reconciles failed responses to show locally disabled access
+with pending provider cleanup. Completing cleanup is another explicit command.
+Keyboard focus enters the authorization heading and returns to the connections
+heading on completion/cancellation; disconnect cancellation restores its trigger.
+
+Access status never advances financial freshness. The separate account read has
+no public connection mapping; bank actions do not relabel/refetch balances as
+current. Import and financial refresh are deliberately unavailable until LAZ-51/
+LAZ-48, so this UI subset does not complete all of LAZ-62's acceptance criteria.
 
 ## Public prerendering and browser-owned private rendering
 
@@ -242,6 +283,9 @@ resource status `resolved`, `local` or `error`, not `hasValue()`/default arrays 
 ready instead of waiting on an intentionally idle resource. Security explicitly
 declares no reads. Destroying a widget unregisters its checks.
 
+The accounts screen waits only for stored balances. Bank connection settings wait
+for banking configuration/connections; unopened authorization flows and the provider
+script are not entry dependencies for either page.
 The dashboard waits for both summaries, accounts, objectives/progress, recent
 activity and the conditional featured savings measurement. Income waits for its
 summary and then its visible credit list. Onboarding waits for metadata and only
@@ -303,7 +347,10 @@ every-entry animation, reads during the minimum second, dependent-read readiness
 no reveal-time refetch, delayed imports/deep links, protected transfer-state absence,
 token/UID replacement, stale 401/restoration failures,
 resource/component cancellation, duplicate commands, read/decision ordering and
-partial success. Auth regression cases cover password verification, explicit
+partial success. Banking tests cover lazy script loading, callback validation,
+scope/operation cancellation, backend-confirmed completion, mode changes, same-ID
+relinking and pending disconnect recovery without simulating financial refresh.
+Auth regression cases cover password verification, explicit
 same-owner linking, expired/consumed proof, SDK/API/observer races and cancelled
 credential mutations with mocked SDK operations. These cases must be executed to
 provide runtime evidence; compilation alone is not a passing test run. Run once
@@ -318,5 +365,6 @@ scope in protected query params, forward abort signals, avoid protected hydratio
 IDs, invalidate only actual dependencies, and test out-of-order completions. Do
 not restore the removed catch-all API service, RxJS compatibility facade or fake
 HTTP errors. Delivered management workflows are indexed in the UI README;
-conversational features and live banking-provider linking remain unavailable,
-not missing client aliases or simulated success paths.
+conversational features and financial bank import/refresh remain unavailable,
+not missing client aliases or simulated success paths. Real-provider browser
+verification is separate evidence from mocked UI resource/command tests.

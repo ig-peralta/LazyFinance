@@ -9,6 +9,7 @@ import type { ObjectiveTables } from "./objective/objective.tables";
 import type { ObjectiveTagTables } from "./objective-tag/objective-tag.tables";
 import type { ProviderTables } from "./provider/provider.tables";
 import type { ProviderConnectionTables } from "./provider-connection/provider-connection.tables";
+import type { ProviderLinkTables } from "./provider-link/provider-link.tables";
 import type { ProviderMovementConflictTables } from "./provider-movement-conflict/provider-movement-conflict.tables";
 import type { ProviderMovementRemovalTables } from "./provider-movement-removal/provider-movement-removal.tables";
 import type { ProviderSyncStateTables } from "./provider-sync-state/provider-sync-state.tables";
@@ -25,6 +26,7 @@ export type FinanceTables = AccountTables &
   BudgetRevisionTagTables &
   ProviderTables &
   ProviderConnectionTables &
+  ProviderLinkTables &
   TransactionTables &
   TagTables &
   TagRuleTables &

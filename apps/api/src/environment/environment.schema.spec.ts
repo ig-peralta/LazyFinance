@@ -100,3 +100,31 @@ describe("authentication provider configuration", () => {
     ).toBe("firebase");
   });
 });
+
+describe("Fintoc server credential configuration", () => {
+  const keys = {
+    FINTOC_PUBLIC_KEY: "pk_test_fixture",
+    FINTOC_SECRET_KEY: "sk_test_fixture",
+    FINTOC_TOKEN_ENCRYPTION_KEY: "1".repeat(64),
+  };
+  it("is disabled by default and accepts complete matching test/live keys", () => {
+    expect(ENV_SCHEMA.parse({}).FINTOC_SECRET_KEY).toBeUndefined();
+    expect(ENV_SCHEMA.parse(keys).FINTOC_PUBLIC_KEY).toBe(
+      keys.FINTOC_PUBLIC_KEY,
+    );
+    expect(
+      ENV_SCHEMA.parse({
+        ...keys,
+        FINTOC_PUBLIC_KEY: "pk_live_fixture",
+        FINTOC_SECRET_KEY: "sk_live_fixture",
+      }).FINTOC_PUBLIC_KEY,
+    ).toBe("pk_live_fixture");
+  });
+  it.each([
+    { FINTOC_PUBLIC_KEY: "pk_test_fixture" },
+    { ...keys, FINTOC_SECRET_KEY: "sk_live_fixture" },
+    { ...keys, FINTOC_TOKEN_ENCRYPTION_KEY: "short" },
+  ])("rejects incomplete, mixed-mode or invalid encryption settings", (config) => {
+    expect(ENV_SCHEMA.safeParse(config).success).toBe(false);
+  });
+});

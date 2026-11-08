@@ -1,0 +1,57 @@
+:host {
+  display: block;
+}
+.connection-record {
+  padding-block: 20px;
+  border-bottom: 1px solid var(--line);
+}
+.connection-record:last-child {
+  border-bottom: 0;
+}
+.connection-description {
+  margin-block: 14px;
+}
+.connection-actions {
+  margin-block: 16px;
+}
+.connection-actions .button {
+  min-height: 44px;
+}
+.connection-empty {
+  padding-block: 24px;
+  text-align: center;
+}
+.connection-empty h3 {
+  margin-block: 12px;
+  font-size: 18px;
+}
+.connection-refresh {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+.connection-refresh p {
+  flex: 1 1 240px;
+}
+
+@media (max-width: 600px) {
+  .panel-heading {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .panel-heading .button-row {
+    flex-wrap: nowrap;
+  }
+
+  .panel-heading .button {
+    white-space: nowrap;
+  }
+
+  .panel-heading .icon-button {
+    width: 44px;
+    height: 44px;
+  }
+}

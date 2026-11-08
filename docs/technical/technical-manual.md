@@ -46,6 +46,16 @@ using a database owner when setup fails.
 | UI static host | Nginx on `4000`; no Node rendering environment, database or service-signing credentials |
 | Browser build | `apps/ui/src/environments/environment*.ts`: public API URL and public Firebase Web identifiers, never Admin/signing keys |
 
+Fintoc configuration is optional and API-only: configure matched-mode `FINTOC_PUBLIC_KEY`
+and `FINTOC_SECRET_KEY` together with a stable `FINTOC_TOKEN_ENCRYPTION_KEY` (64 hex
+characters / 32 bytes). Do not put keys or raw Link Tokens in Git, UI builds,
+connection metadata or logs. Apply migration 025 before enabling the lifecycle
+RPC; keep the encryption key separately backed up. Provider financial imports and
+refresh scheduling remain separate slices. **Mi cuenta → Conexiones bancarias**
+(`/conexiones-bancarias`) supports authorization, access checks, relink and disconnect
+without importing financial data. `/cuentas` retains stored balances and links to
+those settings. See the [Fintoc linking guide](../../apps/api/src/banking/linking/README.md).
+
 App-local dotenv files are independent of root Compose `.env`. See
 [`apps/api/.env.example`](../../apps/api/.env.example),
 [`apps/persistence/.env.example`](../../apps/persistence/.env.example), and

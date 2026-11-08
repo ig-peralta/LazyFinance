@@ -24,6 +24,18 @@ export const ENV_SCHEMA = z
     FIREBASE_PROJECT_ID: z.string().trim().min(1).optional(),
     FIREBASE_CLIENT_EMAIL: z.string().trim().pipe(z.email()).optional(),
     FIREBASE_PRIVATE_KEY: z.string().trim().min(1).optional(),
+    FINTOC_PUBLIC_KEY: z
+      .string()
+      .regex(/^pk_(test|live)_[A-Za-z0-9_-]+$/)
+      .optional(),
+    FINTOC_SECRET_KEY: z
+      .string()
+      .regex(/^sk_(test|live)_[A-Za-z0-9_-]+$/)
+      .optional(),
+    FINTOC_TOKEN_ENCRYPTION_KEY: z
+      .string()
+      .regex(/^[a-fA-F0-9]{64}$/)
+      .optional(),
     CORS_ORIGINS: z
       .string()
       .default("http://localhost:4200,http://127.0.0.1:4200")
@@ -31,6 +43,29 @@ export const ENV_SCHEMA = z
       .pipe(z.array(corsOrigin).min(1)),
   })
   .superRefine((values, context) => {
+    const banking = [
+      values.FINTOC_PUBLIC_KEY,
+      values.FINTOC_SECRET_KEY,
+      values.FINTOC_TOKEN_ENCRYPTION_KEY,
+    ];
+    if (banking.some(Boolean) && !banking.every(Boolean))
+      context.addIssue({
+        code: "custom",
+        path: ["FINTOC_SECRET_KEY"],
+        message:
+          "Fintoc public, secret and token encryption keys must be configured together",
+      });
+    if (
+      values.FINTOC_PUBLIC_KEY &&
+      values.FINTOC_SECRET_KEY &&
+      values.FINTOC_PUBLIC_KEY.split("_")[1] !==
+        values.FINTOC_SECRET_KEY.split("_")[1]
+    )
+      context.addIssue({
+        code: "custom",
+        path: ["FINTOC_SECRET_KEY"],
+        message: "Fintoc public and secret key modes must match",
+      });
     if (values.AUTH_PROVIDER === "mock" && values.NODE_ENV === "production") {
       context.addIssue({
         code: "custom",

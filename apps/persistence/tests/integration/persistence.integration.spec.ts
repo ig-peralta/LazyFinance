@@ -269,7 +269,7 @@ describe.skipIf(!ownerUrl)(
           .filter((name) => !name.startsWith("failure."))
           .sort(),
       ).toEqual(expected.sort());
-      expect(expected).toHaveLength(62);
+      expect(expected).toHaveLength(71);
 
       for (const name of expected)
         expect(procedures[name]._def.meta).toMatchObject({
@@ -277,7 +277,7 @@ describe.skipIf(!ownerUrl)(
         });
     });
 
-    it("migrates idempotently and enables/forces RLS on all 22 sensitive tables", async () => {
+    it("migrates idempotently and enables/forces RLS on all 23 sensitive tables", async () => {
       expect(await migrate(owner, migrationProvider())).toEqual([]);
       const { rows } = await sql<{
         relrowsecurity: boolean;
@@ -286,7 +286,7 @@ describe.skipIf(!ownerUrl)(
       from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname in ('identity','finance') and c.relkind='r' and c.relname != 'provider'`.execute(
         owner,
       );
-      expect(rows).toHaveLength(22);
+      expect(rows).toHaveLength(23);
       expect(
         rows.every((row) => row.relrowsecurity && row.relforcerowsecurity),
       ).toBe(true);
@@ -392,6 +392,79 @@ describe.skipIf(!ownerUrl)(
           ),
         ),
       ).rejects.toThrow(/check constraint/);
+    });
+
+    it("isolates Link Intents and enforces both related owners even without repository validation", async () => {
+      const intentA = randomUUID(),
+        intentB = randomUUID();
+      await sql`insert into finance.provider_link_intent
+        (id,user_id,provider_intent_id,mode,holder_type,connection_id,expected_version) values
+        (${intentA},${a},${`li_${intentA}`},'test','individual',${connectionA},0),
+        (${intentB},${b},${`li_${intentB}`},'test','individual',${connectionB},0)`.execute(
+        owner,
+      );
+
+      await withRequestContext(runtime, ctx(a), async (db) => {
+        const { rows } = await sql<{
+          id: string;
+        }>`select id from finance.provider_link_intent`.execute(db);
+        expect(rows.map(({ id }) => id)).toEqual([intentA]);
+        expect(
+          (
+            await sql`update finance.provider_link_intent set state='failed' where id=${intentB} returning id`.execute(
+              db,
+            )
+          ).rows,
+        ).toEqual([]);
+      });
+      expect(
+        (await sql`select * from finance.provider_link_intent`.execute(runtime))
+          .rows,
+      ).toEqual([]);
+
+      for (const work of [
+        (db: QueryExecutorProvider) =>
+          sql`insert into finance.provider_link_intent
+          (id,user_id,provider_intent_id,mode,holder_type) values
+          (${randomUUID()},${b},${`li_${randomUUID()}`},'test','individual')`.execute(
+            db,
+          ),
+        (db: QueryExecutorProvider) =>
+          sql`insert into finance.provider_link_intent
+          (id,user_id,provider_intent_id,mode,holder_type,connection_id,expected_version) values
+          (${randomUUID()},${a},${`li_${randomUUID()}`},'test','individual',${connectionB},0)`.execute(
+            db,
+          ),
+        (db: QueryExecutorProvider) =>
+          sql`insert into finance.provider_link_intent
+          (id,user_id,provider_intent_id,mode,holder_type,state,completed_connection_id) values
+          (${randomUUID()},${a},${`li_${randomUUID()}`},'test','individual','completed',${connectionB})`.execute(
+            db,
+          ),
+        (db: QueryExecutorProvider) =>
+          sql`update finance.provider_link_intent set connection_id=${connectionB} where id=${intentA}`.execute(
+            db,
+          ),
+        (db: QueryExecutorProvider) =>
+          sql`update finance.provider_link_intent set state='completed',completed_connection_id=${connectionB} where id=${intentA}`.execute(
+            db,
+          ),
+        (db: QueryExecutorProvider) =>
+          sql`update finance.provider_link_intent set user_id=${b} where id=${intentA}`.execute(
+            db,
+          ),
+      ])
+        await expect(withRequestContext(runtime, ctx(a), work)).rejects.toThrow(
+          /row-level security/,
+        );
+
+      await expect(
+        withRequestContext(runtime, ctx(a), (db) =>
+          sql`delete from finance.provider_link_intent where id=${intentA}`.execute(
+            db,
+          ),
+        ),
+      ).rejects.toThrow(/permission denied/);
     });
 
     it("rolls back an unsuccessful migration without recording it", async () => {

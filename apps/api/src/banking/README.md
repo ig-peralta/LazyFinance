@@ -1,7 +1,9 @@
 # Banking connector boundary (LAZ-47)
 
-Current implementation: provider-neutral contracts and owned ingestion, not a
-shipped Fintoc adapter/linking flow. See the [database model](../../../../docs/technical/database-model.md),
+Current implementation: provider-neutral contracts, owned ingestion and the
+[Fintoc linking/lifecycle backend](linking/README.md) (LAZ-49). Financial mapping,
+first import and refresh orchestration remain separate unfinished slices.
+See the [database model](../../../../docs/technical/database-model.md),
 [private RPC/RLS](../../../../docs/technical/persistence-security.md) and
 [RPC inventories](../../../../docs/technical/rpc-contracts.md).
 
@@ -80,9 +82,10 @@ financial import. Begin/failure attempt metadata is separate from the atomic
 financial commit, so "no partial writes" does not mean no attempt was recorded.
 
 Connector retryability and `retryAfter` are reported facts, not an implemented
-background scheduler. Provider synchronization has no public RPC or scheduled
-refresh trigger in this cutover. A `fintoc` catalog row or fixture is not a live
-adapter, and a private review read is not a delivered review-resolution UI.
+background scheduler. Synchronization still has no public/scheduled refresh trigger.
+The separate authenticated `banking` lifecycle RPC never starts financial imports
+or refreshes. A `fintoc` catalog row or fixture is not a financial adapter, and a
+private review read is not a delivered review-resolution UI.
 
 ### Verification scope
 
