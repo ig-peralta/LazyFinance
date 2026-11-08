@@ -3,7 +3,8 @@ export interface ProviderMovementConflictTable {
   reason:
     | "receipt_incompatible"
     | "internal_override_disagrees"
-    | "removed_confirmed_income";
+    | "removed_confirmed_income"
+    | "provider_unbooked";
   previousFacts: Record<string, unknown>;
   incomingFacts: Record<string, unknown>;
   observedAt: Date;

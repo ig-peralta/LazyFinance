@@ -18,7 +18,7 @@ export class FintocImportService {
   ) {}
 
   /** Current accounts and bounded partial history; not a bank refresh/job. */
-  async importInitial(
+  async importSnapshot(
     userId: string,
     connectionId: string,
   ): Promise<BankingImportResult> {
@@ -58,7 +58,12 @@ export class FintocImportService {
       connector,
       owned.version,
     );
-    if (outcome.status === "failed" || outcome.status === "superseded")
+    if (
+      outcome.status === "failed" ||
+      outcome.status === "superseded" ||
+      outcome.status === "in_progress" ||
+      outcome.status === "retry_later"
+    )
       return outcome;
     return {
       status: outcome.status,

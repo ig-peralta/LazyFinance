@@ -102,10 +102,10 @@ export class FintocClient {
     return parsed.data;
   }
 
-  async link(token: string) {
+  async link(token: string, signal?: AbortSignal) {
     const data = await this.request(
       `/v1/links/${encodeURIComponent(token)}`,
-      undefined,
+      { signal },
       "link",
     );
     const parsed = linkSchema.safeParse(data);
@@ -121,8 +121,15 @@ export class FintocClient {
     );
   }
 
-  accounts(token: string, page: number) {
-    return this.collection("/v1/accounts", token, page, FintocAccountSchema);
+  accounts(token: string, page: number, signal?: AbortSignal) {
+    return this.collection(
+      "/v1/accounts",
+      token,
+      page,
+      FintocAccountSchema,
+      undefined,
+      signal,
+    );
   }
 
   movements(
@@ -130,6 +137,7 @@ export class FintocClient {
     accountId: string,
     page: number,
     window: BankingImportReport["requestedHistory"],
+    signal?: AbortSignal,
   ) {
     return this.collection(
       `/v1/accounts/${encodeURIComponent(accountId)}/movements`,
@@ -137,6 +145,7 @@ export class FintocClient {
       page,
       FintocMovementSchema,
       window,
+      signal,
     );
   }
 
@@ -146,6 +155,7 @@ export class FintocClient {
     page: number,
     schema: z.ZodType<T>,
     window?: BankingImportReport["requestedHistory"],
+    signal?: AbortSignal,
   ) {
     const query = new URLSearchParams({
       link_token: token,
@@ -156,7 +166,7 @@ export class FintocClient {
     });
     const { data, headers } = await this.response(
       `${path}?${query}`,
-      undefined,
+      { signal },
       "snapshot",
     );
     const parsed = z.array(schema).max(FINTOC_PAGE_SIZE).safeParse(data);
@@ -247,7 +257,10 @@ export class FintocClient {
         },
         redirect: "error",
         cache: "no-store",
-        signal: AbortSignal.timeout(20_000),
+        signal: AbortSignal.any([
+          AbortSignal.timeout(20_000),
+          ...(options?.signal ? [options.signal] : []),
+        ]),
       });
       if (
         operation === "disconnect" &&
@@ -274,7 +287,7 @@ export class FintocClient {
           "unavailable",
           Number.isFinite(retryTime) &&
             retryTime > Date.now() &&
-            retryTime < 8.64e15
+            retryTime <= 253_402_300_799_999
             ? new Date(retryTime).toISOString()
             : null,
         );

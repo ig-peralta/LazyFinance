@@ -31,6 +31,7 @@ vi.mock("@lazyfinance/contracts/internal", async (importOriginal) => ({
 afterEach(() => {
   limits.normalized = 32 * 1024 * 1024;
   limits.prepared = 64 * 1024 * 1024;
+  vi.restoreAllMocks();
 });
 
 const page = (): ConnectorPage => ({
@@ -61,6 +62,7 @@ function setup(pages = [page()]) {
       lastFailureAt: null,
       lastFailureReason: null,
       retryAfter: null,
+      leaseExpiresAt: null,
     },
     accounts: [],
     movements: [],
@@ -70,9 +72,10 @@ function setup(pages = [page()]) {
   };
   const rpc = {
     begin: {
-      mutate: vi.fn<ProviderSyncClient["begin"]["mutate"]>(
-        async () => facts.state,
-      ),
+      mutate: vi.fn<ProviderSyncClient["begin"]["mutate"]>(async () => ({
+        ...facts.state,
+        acquired: true,
+      })),
     },
     facts: {
       query: vi.fn<ProviderSyncClient["facts"]["query"]>(async () => facts),
@@ -85,10 +88,10 @@ function setup(pages = [page()]) {
       })),
     },
     failure: {
-      mutate: vi.fn<ProviderSyncClient["failure"]["mutate"]>(async () => ({
+      mutate: vi.fn<ProviderSyncClient["failure"]["mutate"]>(async (input) => ({
         status: "failed",
-        reason: "invalid_data",
-        retryAfter: null,
+        reason: input.reason,
+        retryAfter: input.retryAfter,
       })),
     },
   } satisfies Pick<
@@ -125,6 +128,88 @@ function pagination(count: number): ConnectorPage[] {
 }
 
 describe("provider run budgets and retry safety", () => {
+  it("coalesces an active lease without fetching or overwriting its attempt", async () => {
+    const f = setup();
+    const until = new Date(Date.now() + 60_000).toISOString();
+    f.rpc.begin.mutate.mockResolvedValueOnce({
+      ...f.facts.state,
+      acquired: false,
+      leaseExpiresAt: until,
+    });
+    expect(await f.run()).toEqual({ status: "in_progress", until });
+    expect(f.fetchPage).not.toHaveBeenCalled();
+    expect(f.rpc.facts.query).not.toHaveBeenCalled();
+    expect(f.rpc.failure.mutate).not.toHaveBeenCalled();
+  });
+
+  it("honors persisted retry timing without another provider attempt", async () => {
+    const f = setup();
+    const retryAfter = new Date(Date.now() + 60_000).toISOString();
+    f.rpc.begin.mutate.mockResolvedValueOnce({
+      ...f.facts.state,
+      acquired: false,
+      retryAfter,
+    });
+    expect(await f.run()).toEqual({ status: "retry_later", retryAfter });
+    expect(f.fetchPage).not.toHaveBeenCalled();
+    expect(f.rpc.failure.mutate).not.toHaveBeenCalled();
+  });
+
+  it("aborts a fetch budget without writing any financial facts", async () => {
+    const f = setup();
+    vi.spyOn(AbortSignal, "timeout").mockReturnValueOnce(AbortSignal.abort());
+    expect(await f.run()).toMatchObject({
+      status: "failed",
+      reason: "retryable",
+    });
+    expect(f.fetchPage).not.toHaveBeenCalled();
+    expect(f.rpc.commit.mutate).not.toHaveBeenCalled();
+  });
+
+  it("counts temporary suspensions in the same atomic record budget", async () => {
+    const value = page();
+    value.movements = [];
+    value.suspendedMovements = Array.from({ length: 50_000 }, (_, index) => ({
+      accountExternalId: value.accounts[0].externalId,
+      externalId: `pending-${index}`,
+      reason: "pending",
+      providerUpdatedAt: null,
+    }));
+    const f = setup([value]);
+    expect(await f.run()).toMatchObject({
+      status: "failed",
+      reason: "invalid_data",
+    });
+    expect(f.rpc.facts.query).not.toHaveBeenCalled();
+  });
+
+  it("rejects ambiguous booked/pending versions across pages instead of dropping a decision", async () => {
+    const first = {
+      ...page(),
+      complete: false,
+      checkpoint: null,
+      nextCursor: "pending-page",
+    };
+    const second = {
+      ...page(),
+      movements: [],
+      accounts: [],
+      suspendedMovements: [
+        {
+          accountExternalId: first.movements[0].accountExternalId,
+          externalId: first.movements[0].externalId,
+          reason: "pending" as const,
+          providerUpdatedAt: null,
+        },
+      ],
+    };
+    const f = setup([first, second]);
+    expect(await f.run()).toMatchObject({
+      status: "failed",
+      reason: "invalid_data",
+    });
+    expect(f.rpc.commit.mutate).not.toHaveBeenCalled();
+  });
   it("accepts the normalized/prepared byte boundaries without splitting a commit", async () => {
     const value = ConnectorPageSchema.parse(page()),
       f = setup([value]);

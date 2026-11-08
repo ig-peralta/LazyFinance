@@ -15,6 +15,10 @@ import { wireValue } from "../../serialization";
 import type { FinanceTables } from "../finance.tables";
 import type { ProviderMovementConflictTable } from "../provider-movement-conflict/provider-movement-conflict.tables";
 import { TagRuleRepository } from "../tag-rule/tag-rule.repository";
+import {
+  applyProviderSuspensions,
+  resolveProviderSuspension,
+} from "./provider-suspension";
 
 const keyOf = (account: string, movement: string) =>
   JSON.stringify([account, movement]);
@@ -42,6 +46,7 @@ export class ProviderConnectionRepository {
         "c.status",
         "c.credentialVersion",
         "c.disconnectedAt",
+        "c.disconnectPending",
         "p.identifier",
       ])
       .select(
@@ -98,19 +103,86 @@ export class ProviderConnectionRepository {
     if (connection.status !== "active")
       invalid("Banking connection needs relinking");
 
-    return this.db
+    const current = await this.db
+      .selectFrom("finance.provider_sync_state")
+      .selectAll()
+      .where("providerConnectionId", "=", connectionId)
+      .executeTakeFirst();
+    const now = Date.now();
+    if (
+      current &&
+      ((current.leaseExpiresAt && current.leaseExpiresAt.getTime() > now) ||
+        (current.retryAfter && current.retryAfter.getTime() > now))
+    )
+      return { ...current, acquired: false };
+
+    const leaseExpiresAt = new Date(now + 5 * 60_000);
+    const state = await this.db
       .insertInto("finance.provider_sync_state")
       .values({
         providerConnectionId: connectionId,
         lastAttemptAt: sql<Date>`now()`,
+        leaseExpiresAt,
       })
       .onConflict((oc) =>
-        oc
-          .column("providerConnectionId")
-          .doUpdateSet({ lastAttemptAt: sql<Date>`now()` }),
+        oc.column("providerConnectionId").doUpdateSet({
+          lastAttemptAt: sql<Date>`now()`,
+          leaseExpiresAt,
+          revision: sql<number>`finance.provider_sync_state.revision + 1`,
+        }),
       )
       .returningAll()
       .executeTakeFirstOrThrow();
+    return { ...state, acquired: true };
+  }
+
+  async status(id: string) {
+    const connection = await this.connection(id);
+    const state = await this.db
+      .selectFrom("finance.provider_sync_state")
+      .selectAll()
+      .where("providerConnectionId", "=", id)
+      .executeTakeFirst();
+    const accounts = await this.db
+      .selectFrom("finance.account as a")
+      .select([
+        "a.id",
+        "a.type",
+        "a.lastSyncedAt",
+        "a.historyCompleteness",
+        "a.historyFrom",
+        "a.historyThrough",
+      ])
+      .select(
+        sql<boolean>`${sql.ref("a.balance")} is not null`.as(
+          "hasReportedBalance",
+        ),
+      )
+      .where("a.providerConnectionId", "=", id)
+      .where("a.active", "=", true)
+      .orderBy("a.id")
+      .limit(1001)
+      .execute();
+    const pending = await this.db
+      .selectFrom("finance.provider_movement_conflict as c")
+      .innerJoin("finance.transaction as m", "m.id", "c.transactionId")
+      .innerJoin("finance.account as a", "a.id", "m.accountId")
+      .select(sql<number>`count(*)::int`.as("count"))
+      .where("a.providerConnectionId", "=", id)
+      .where("c.reason", "=", "provider_unbooked")
+      .where("c.resolvedAt", "is", null)
+      .executeTakeFirstOrThrow();
+    return {
+      connection: {
+        id,
+        status: connection.status,
+        disconnectedAt: connection.disconnectedAt,
+        disconnectPending: connection.disconnectPending,
+      },
+      state: state ?? null,
+      providerSuspensionCount: pending.count,
+      accounts,
+    };
   }
 
   async facts(scope: ProviderSyncScope) {
@@ -140,6 +212,14 @@ export class ProviderConnectionRepository {
           WHERE c.transaction_id=m.id AND c.reason='internal_override_disagrees' AND c.resolved_at IS NOT NULL
           AND c.incoming_facts->>'providerInternalAssessment'=m.provider_internal_assessment::text)`.as(
           "internalOverrideAcknowledged",
+        ),
+        sql<boolean>`EXISTS (SELECT 1 FROM finance.provider_movement_conflict c WHERE c.transaction_id=m.id
+          AND c.reason='provider_unbooked' AND c.resolved_at IS NULL)`.as(
+          "providerSuspended",
+        ),
+        sql<boolean>`EXISTS (SELECT 1 FROM finance.provider_movement_conflict c WHERE c.transaction_id=m.id
+          AND c.reason!='provider_unbooked' AND c.resolved_at IS NULL)`.as(
+          "hasOtherConflicts",
         ),
       ])
       .where("a.providerConnectionId", "=", scope.connectionId)
@@ -177,7 +257,12 @@ export class ProviderConnectionRepository {
     const { scope } = input;
     const connection = await this.connection(scope.connectionId);
     const state = await this.state(scope.connectionId);
-    if (connection.status !== "active" || state.revision !== scope.revision)
+    if (
+      connection.status !== "active" ||
+      state.revision !== scope.revision ||
+      !state.leaseExpiresAt ||
+      state.leaseExpiresAt.getTime() <= Date.now()
+    )
       return { status: "superseded" as const };
 
     const facts = await this.facts(scope);
@@ -352,10 +437,14 @@ export class ProviderConnectionRepository {
         providerUpdatedAt: date(rest.providerUpdatedAt),
         isInternalMovement: effective,
         reviewStatus:
-          previous?.reviewStatus === "needs_review" || reasons.length
+          (previous?.reviewStatus === "needs_review" &&
+            (!previous.providerSuspended || previous.hasOtherConflicts)) ||
+          reasons.length
             ? ("needs_review" as const)
             : ("clear" as const),
       };
+      if (previous?.providerSuspended)
+        await resolveProviderSuspension(this.db, id);
       const saved = previous
         ? await this.db
             .updateTable("finance.transaction")
@@ -399,6 +488,15 @@ export class ProviderConnectionRepository {
       if (decision) await this.tagging.applyPrepared(saved, decision, rules);
     }
 
+    await applyProviderSuspensions(
+      this.db,
+      input,
+      new Set(accounts.keys()),
+      movements,
+      new Set(tombstones.keys()),
+      keys,
+    );
+
     for (const removal of input.removals) {
       const key = keyOf(removal.accountExternalId, removal.externalId);
 
@@ -436,14 +534,20 @@ export class ProviderConnectionRepository {
       if (previous.source !== "provider")
         invalid("Provider removal targets a manual movement");
 
+      if (previous.providerSuspended)
+        await resolveProviderSuspension(this.db, previous.id);
+
       await this.db
         .updateTable("finance.transaction")
         .set({
           removedAt: new Date(tombstone?.observedAt ?? removal.observedAt),
           removalReason: removal.reason,
-          reviewStatus: previous.hasReceipt
-            ? "needs_review"
-            : previous.reviewStatus,
+          reviewStatus:
+            previous.hasReceipt ||
+            (previous.reviewStatus === "needs_review" &&
+              (!previous.providerSuspended || previous.hasOtherConflicts))
+              ? "needs_review"
+              : "clear",
         })
         .where("id", "=", previous.id)
         .execute();
@@ -480,6 +584,7 @@ export class ProviderConnectionRepository {
         unresolvedConflictCount: count.count,
         lastFailureReason: null,
         retryAfter: null,
+        leaseExpiresAt: null,
       })
       .where("providerConnectionId", "=", scope.connectionId)
       .execute();
@@ -499,6 +604,8 @@ export class ProviderConnectionRepository {
         lastFailureAt: new Date(input.observedAt),
         lastFailureReason: input.reason,
         retryAfter: date(input.retryAfter),
+        leaseExpiresAt: null,
+        revision: input.revision + 1,
       })
       .where("providerConnectionId", "=", input.connectionId)
       .execute();
@@ -506,7 +613,11 @@ export class ProviderConnectionRepository {
     if (input.reason === "revoked" || input.reason === "expired")
       await this.db
         .updateTable("finance.provider_connection")
-        .set({ status: input.reason, updatedAt: sql<Date>`now()` })
+        .set({
+          status: input.reason,
+          credentialVersion: sql<number>`credential_version + 1`,
+          updatedAt: sql<Date>`now()`,
+        })
         .where("id", "=", input.connectionId)
         .execute();
 

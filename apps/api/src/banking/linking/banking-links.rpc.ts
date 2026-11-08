@@ -4,6 +4,7 @@ import {
   BankingConnectionsSchema,
   BankingImportResultSchema,
   BankingIntentSchema,
+  BankingSyncStatusSchema,
   type CompleteBankingIntent,
   CompleteBankingIntentSchema,
   type CreateBankingIntent,
@@ -14,6 +15,7 @@ import {
 import { Ctx, Input, Mutation, Query, Router } from "nestjs-trpc";
 import { type ApiRequestContext, rpcUser } from "../../rpc/context";
 import { FintocImportService } from "../fintoc/import/fintoc-import.service";
+import { BankingSyncStatusService } from "../status/banking-sync-status.service";
 import { BankingLinksService } from "./banking-links.service";
 
 @Router({ alias: "banking" })
@@ -21,6 +23,7 @@ export class BankingLinksRpc {
   constructor(
     private readonly service: BankingLinksService,
     private readonly imports: FintocImportService,
+    private readonly status: BankingSyncStatusService,
   ) {}
 
   @Query({
@@ -92,6 +95,24 @@ export class BankingLinksRpc {
     meta: { auth: "user" },
   })
   importInitial(@Ctx() ctx: ApiRequestContext, @Input() input: { id: string }) {
-    return this.imports.importInitial(rpcUser(ctx), input.id);
+    return this.imports.importSnapshot(rpcUser(ctx), input.id);
+  }
+
+  @Mutation({
+    input: RpcIdSchema,
+    output: BankingImportResultSchema,
+    meta: { auth: "user" },
+  })
+  refresh(@Ctx() ctx: ApiRequestContext, @Input() input: { id: string }) {
+    return this.imports.importSnapshot(rpcUser(ctx), input.id);
+  }
+
+  @Query({
+    input: RpcIdSchema,
+    output: BankingSyncStatusSchema,
+    meta: { auth: "user" },
+  })
+  syncStatus(@Ctx() ctx: ApiRequestContext, @Input() input: { id: string }) {
+    return this.status.forUser(rpcUser(ctx), input.id);
   }
 }

@@ -17,6 +17,7 @@ export interface ProviderSyncStateTable {
     | "invalid_data"
     | null;
   retryAfter: Date | null;
+  leaseExpiresAt: Date | null;
 }
 
 export type ProviderSyncStateTables = {

@@ -10,6 +10,7 @@ export interface BankingConnector {
       connectionId: string;
       checkpoint: string | null;
       pageCursor: string | null;
+      signal?: AbortSignal;
     }>,
   ): Promise<ConnectorResult>;
 }

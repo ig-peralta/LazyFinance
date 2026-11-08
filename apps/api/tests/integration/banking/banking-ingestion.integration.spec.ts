@@ -638,7 +638,7 @@ describe.skipIf(!integration)(
           )[0],
         ).toMatchObject({
           checkpoint: null,
-          revision: 0,
+          revision: 1,
           last_failure_reason: "invalid_data",
         });
       });

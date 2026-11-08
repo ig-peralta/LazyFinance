@@ -1,3 +1,4 @@
+import { RpcIdSchema } from "@lazyfinance/contracts";
 import {
   type BeginProviderSync,
   BeginProviderSyncSchema,
@@ -5,11 +6,12 @@ import {
   CommitProviderSyncSchema,
   EmptyInputSchema,
   ProviderReviewRecordsSchema,
+  ProviderSyncBeginSchema,
   ProviderSyncFactsSchema,
   ProviderSyncOutcomeSchema,
   type ProviderSyncScope,
   ProviderSyncScopeSchema,
-  ProviderSyncStateSchema,
+  ProviderSyncStatusFactsSchema,
   type RecordProviderFailure,
   RecordProviderFailureSchema,
 } from "@lazyfinance/contracts/internal";
@@ -23,11 +25,20 @@ export class ProviderConnectionRpc {
 
   @Mutation({
     input: BeginProviderSyncSchema,
-    output: ProviderSyncStateSchema,
+    output: ProviderSyncBeginSchema,
     meta: { context: "user" },
   })
   async begin(@Input() input: BeginProviderSync) {
     return wireValue(await this.repository.begin(input));
+  }
+
+  @Query({
+    input: RpcIdSchema,
+    output: ProviderSyncStatusFactsSchema,
+    meta: { context: "user", snapshot: true },
+  })
+  async status(@Input() input: { id: string }) {
+    return wireValue(await this.repository.status(input.id));
   }
 
   @Query({

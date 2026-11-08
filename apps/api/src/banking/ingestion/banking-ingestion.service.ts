@@ -2,9 +2,9 @@ import {
   MAX_NORMALIZED_SYNC_BYTES,
   MAX_PERSISTENCE_RPC_BYTES,
   MAX_SYNC_RECORDS,
+  type ProviderSyncBegin,
   type ProviderSyncFacts,
   type ProviderSyncOutcome,
-  type ProviderSyncState,
 } from "@lazyfinance/contracts/internal";
 import { Injectable } from "@nestjs/common";
 import { PersistenceClient } from "../../persistence/persistence.client";
@@ -31,7 +31,7 @@ export class BankingIngestionService {
     expectedCredentialVersion?: number,
   ): Promise<ProviderSyncOutcome> {
     const client = this.persistence.user(userId);
-    let state: ProviderSyncState;
+    let state: ProviderSyncBegin;
     try {
       state = await client.providerSync.begin.mutate({
         connectionId,
@@ -44,6 +44,16 @@ export class BankingIngestionService {
       if (persistenceException(error)?.getStatus() === 409)
         return { status: "superseded" };
       throw error;
+    }
+    if (!state.acquired) {
+      if (
+        state.leaseExpiresAt &&
+        new Date(state.leaseExpiresAt).getTime() > Date.now()
+      )
+        return { status: "in_progress", until: state.leaseExpiresAt };
+      if (state.retryAfter && new Date(state.retryAfter).getTime() > Date.now())
+        return { status: "retry_later", retryAfter: state.retryAfter };
+      return { status: "superseded" };
     }
     const fetched = await this.fetchPages(
       connector,
@@ -117,15 +127,23 @@ export class BankingIngestionService {
   ): Promise<{ pages: ConnectorPage[] } | { failure: ConnectorFailure }> {
     const pages: ConnectorPage[] = [],
       seen = new Set<string>();
+    const signal = AbortSignal.timeout(60_000);
     let pageCursor: string | null = null,
       records = 0,
       bytes = 0;
 
     for (let i = 0; i < MAX_PAGES; i++) {
       try {
+        signal.throwIfAborted();
         const parsed = ConnectorResultSchema.safeParse(
-          await connector.fetchPage({ connectionId, checkpoint, pageCursor }),
+          await connector.fetchPage({
+            connectionId,
+            checkpoint,
+            pageCursor,
+            signal,
+          }),
         );
+        signal.throwIfAborted();
         if (!parsed.success) return { failure: this.invalidData() };
         if (parsed.data.kind === "failure") return { failure: parsed.data };
 
@@ -139,7 +157,8 @@ export class BankingIngestionService {
         records +=
           page.accounts.length +
           page.movements.length +
-          page.removedMovements.length;
+          page.removedMovements.length +
+          (page.suspendedMovements?.length ?? 0);
         bytes += Buffer.byteLength(JSON.stringify(page));
         if (records > MAX_SYNC_RECORDS || bytes > MAX_NORMALIZED_SYNC_BYTES)
           return { failure: this.invalidData() };

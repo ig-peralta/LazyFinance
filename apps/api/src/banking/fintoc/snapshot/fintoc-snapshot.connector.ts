@@ -67,12 +67,13 @@ export class FintocSnapshotConnector implements BankingConnector {
         accounts: [],
         movements: [],
         removedMovements: [],
+        suspendedMovements: [],
         nextCursor: null,
         checkpoint: null,
         complete: false,
       };
       if (this.phase === "link") {
-        const link = await this.fintoc.link(this.token);
+        const link = await this.fintoc.link(this.token, input.signal);
         if (
           link.id !== this.owned.externalId ||
           link.mode !== this.owned.connection.mode ||
@@ -84,7 +85,11 @@ export class FintocSnapshotConnector implements BankingConnector {
         if (link.status === "login_required") return this.failure("expired");
         this.phase = "accounts";
       } else if (this.phase === "accounts") {
-        const data = await this.fintoc.accounts(this.token, this.page);
+        const data = await this.fintoc.accounts(
+          this.token,
+          this.page,
+          input.signal,
+        );
         this.checkTotal(data.total);
         for (const raw of data.items) {
           if (this.seenAccounts.has(raw.id) || this.seenAccounts.size >= 1000)
@@ -115,6 +120,7 @@ export class FintocSnapshotConnector implements BankingConnector {
           account.externalId,
           this.page,
           this.window,
+          input.signal,
         );
         this.checkTotal(data.total);
         for (const raw of data.items) {
@@ -132,10 +138,16 @@ export class FintocSnapshotConnector implements BankingConnector {
               providerUpdatedAt: null,
             });
             this.report.reversedMovements++;
-          } else if (raw.pending) this.report.ignoredPendingMovements++;
-          else if (raw.status === "processing")
-            this.report.ignoredProcessingMovements++;
-          else {
+          } else if (raw.pending || raw.status === "processing") {
+            if (raw.pending) this.report.ignoredPendingMovements++;
+            else this.report.ignoredProcessingMovements++;
+            result.suspendedMovements?.push({
+              accountExternalId: account.externalId,
+              externalId: raw.id,
+              reason: raw.pending ? "pending" : "processing",
+              providerUpdatedAt: null,
+            });
+          } else {
             const movement = normalizeFintocMovement(account.externalId, raw);
             result.movements.push(movement);
             this.report.bookedMovements++;
