@@ -98,7 +98,13 @@ and no financial record is cached in browser storage or hydration transfer state
 `/movimientos` is a URL-filtered cursor ledger (account, Santiago dates, nullable
 tag/internal status, direction and literal merchant substring). Previous/next
 controls keep a page-local cursor trail, reset on filter/scope changes, and never
-sum pages into financial totals. `/movimientos/:id` reads owned source and
+sum pages into financial totals. Inline search, charge/credit shortcuts and removable
+chips expose applied filters. Advanced filters expand within the ledger and keep
+drafts separate until confirmation, with current/previous-month presets. Search
+and direction confirmations include any staged filters; collapsing or Escape
+discards that draft and restores focus. Catalog failures preserve selected IDs,
+and owner changes clear unsubmitted drafts.
+`/movimientos/:id` reads owned source and
 classification detail without changing the original banking facts.
 The detail view supports explicit tag/no-tag/reset and nullable internal-status
 corrections. A saved command reloads detail; history, summaries and budget pages

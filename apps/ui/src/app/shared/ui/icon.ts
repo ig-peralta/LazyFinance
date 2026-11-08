@@ -17,6 +17,8 @@ const paths = {
   check: "M5 12l4 4L19 6",
   logout: "M9 3H4v18h5 M9 12h12 M16 7l5 5-5 5",
   search: "M20 20l-5-5 M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0",
+  filter: "M4 7h16 M4 17h16 M9 4v6 M15 14v6",
+  chevron: "M6 9l6 6 6-6",
   calendar: "M4 5h16v16H4z M8 3v4 M16 3v4 M4 10h16",
   refresh:
     "M20 10a8 8 0 0 0-14-5L3 8 M3 3v5h5 M4 14a8 8 0 0 0 14 5l3-3 M21 21v-5h-5",
