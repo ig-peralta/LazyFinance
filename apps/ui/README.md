@@ -71,6 +71,13 @@ are explicitly unavailable. A timestamp older than 24 hours is labelled by age,
 not treated as proof of a connection state. **LAZ-62 remains blocked/open** until
 the separate banking backend and live verification exist.
 
+`/comenzar` is optional setup navigation: open, skip, finish or resume without
+automatic financial writes. Checklist progress is derived from persisted owned
+accounts, sources and objectives; failed reads are unverified, not completed or
+empty imports. Only an owner-keyed guide preference is stored in this browser,
+after hydration, never amounts or financial records. Closing the guide does not
+claim that its optional financial setup steps or banking integration are complete.
+
 Detailed references: [session/resource lifetimes](../../docs/technical/ui-data-lifecycle.md),
 [provider-neutral identity](../../docs/technical/identity.md),
 [RPC contracts](../../docs/technical/rpc-contracts.md) and

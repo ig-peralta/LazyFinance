@@ -2,6 +2,7 @@
   <div><p class="eyebrow">Hola, {{ session.user()?.name }}</p><h1>Tu dinero, en perspectiva<span style="color:#91a574">.</span></h1><p class="page-description">Menos dudas, mejores decisiones. Este es el panorama de tus finanzas.</p></div>
   <div class="page-actions"><label class="button"><app-icon name="calendar" /><span class="sr-only">Mes del resumen</span><input #monthPicker type="month" [value]="summaries.month()" [max]="maxMonth" (change)="selectMonth(monthPicker.value)" style="border:0;background:transparent;max-width:155px;font-size:12px" /></label></div>
 </header>
+<onboarding-hint />
 
 @if (summaries.monthly.hasValue()) {
   @let data = summaries.monthly.value();

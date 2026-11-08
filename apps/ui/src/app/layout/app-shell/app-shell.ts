@@ -85,6 +85,12 @@ export class AppShell {
       label: "Acceso y seguridad",
       description: "Gestionar métodos de acceso",
     },
+    {
+      path: "/comenzar",
+      icon: "spark",
+      label: "Primeros pasos",
+      description: "Configurar tu espacio a tu ritmo",
+    },
   ] as const;
 
   protected toggleMenu(): void {

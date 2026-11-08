@@ -20,6 +20,14 @@ export const routes: Routes = [
       import("./layout/app-shell/app-shell").then((m) => m.AppShell),
     children: [
       {
+        path: "comenzar",
+        title: "Primeros pasos",
+        loadComponent: () =>
+          import("./pages/onboarding/onboarding.page").then(
+            (m) => m.OnboardingPage,
+          ),
+      },
+      {
         path: "cuentas",
         title: "Cuentas y sincronización",
         loadComponent: () =>

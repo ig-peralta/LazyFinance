@@ -7,6 +7,7 @@ import { SessionService } from "../../core/auth/session.service";
 import { AccountsData } from "../../features/accounts/accounts.data";
 import { ObjectivesData } from "../../features/objectives/objectives.data";
 import { SavingsMeasure } from "../../features/objectives/savings-measure";
+import { OnboardingHint } from "../../features/onboarding/onboarding-hint";
 import { SummariesData } from "../../features/summaries/summaries.data";
 import { TaggingData } from "../../features/tagging/tagging.data";
 import { TransactionsData } from "../../features/transactions/transactions.data";
@@ -23,6 +24,7 @@ import { Summary } from "./summary/summary";
     Account,
     Activity,
     SavingsMeasure,
+    OnboardingHint,
     RouterLink,
     Summary,
     Comparison,
