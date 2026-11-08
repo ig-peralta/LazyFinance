@@ -1,6 +1,10 @@
 import { Component, computed, effect, inject, resource } from "@angular/core";
 import { Router, RouterLink } from "@angular/router";
 import type { FinishOnboarding } from "@lazyfinance/contracts";
+import {
+  initialReadSettled,
+  reportWorkspaceReadiness,
+} from "../../core/rendering/workspace-preparation";
 import { RpcClient } from "../../core/rpc/rpc-client";
 import { createScopedCommand } from "../../core/rpc/scoped-command";
 import { OnboardingData } from "../../features/onboarding/onboarding.data";
@@ -99,6 +103,14 @@ export class OnboardingPage {
   );
 
   constructor() {
+    reportWorkspaceReadiness(
+      this.onboarding.state,
+      () =>
+        !this.scope() ||
+        [this.accounts, this.sources, this.objectives].every(
+          initialReadSettled,
+        ),
+    );
     // Reconcile other devices or a command whose response was lost on a prior visit.
     if (this.onboarding.status() !== "completed")
       this.onboarding.state.reload();

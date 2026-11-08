@@ -1,6 +1,7 @@
 import { Component, computed, DestroyRef, inject, signal } from "@angular/core";
 import { type AuthAction, authErrorMessage } from "../../core/auth/auth-error";
 import { SessionService } from "../../core/auth/session.service";
+import { reportWorkspaceReadiness } from "../../core/rendering/workspace-preparation";
 
 @Component({
   selector: "security-page",
@@ -36,6 +37,7 @@ export class SecurityPage {
   readonly notice = computed(() => this.current()?.notice ?? null);
 
   constructor() {
+    reportWorkspaceReadiness();
     inject(DestroyRef).onDestroy(() => this.lifetime.abort());
   }
 

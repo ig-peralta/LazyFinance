@@ -4,6 +4,7 @@ import { MonthSchema } from "@lazyfinance/contracts";
 import { formatClp } from "../../../utils/currency";
 import { formatDate } from "../../../utils/date";
 import { AuthCredentials } from "../../core/auth/auth-credentials";
+import { reportWorkspaceReadiness } from "../../core/rendering/workspace-preparation";
 import { IncomeData } from "../../features/income/income.data";
 import { EditorDrawer } from "../../shared/ui/editor-drawer";
 import { Icon } from "../../shared/ui/icon";
@@ -24,6 +25,7 @@ export class IncomePage {
   protected readonly date = (value: string) => formatDate(new Date(value));
 
   constructor() {
+    reportWorkspaceReadiness(this.data.summary);
     const credentials = inject(AuthCredentials),
       owner = computed(() => credentials.current()?.principal.userId);
     effect(() => {

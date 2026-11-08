@@ -1,5 +1,6 @@
 import { Component, inject } from "@angular/core";
 import { RouterLink } from "@angular/router";
+import { reportWorkspaceReadiness } from "../../core/rendering/workspace-preparation";
 import {
   accountBalanceLabel,
   accountTypeLabel,
@@ -29,4 +30,8 @@ export class AccountsPage {
     timestamp.format(new Date(value));
   protected readonly old = (value: string | null) =>
     !!value && Date.now() - Date.parse(value) > 24 * 60 * 60 * 1000;
+
+  constructor() {
+    reportWorkspaceReadiness(this.accounts);
+  }
 }

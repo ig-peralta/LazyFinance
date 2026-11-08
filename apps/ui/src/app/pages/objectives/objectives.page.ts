@@ -4,6 +4,7 @@ import { MonthSchema } from "@lazyfinance/contracts";
 import { formatClp, progressWidth } from "../../../utils/currency";
 import { currentMonth } from "../../../utils/month";
 import { AuthCredentials } from "../../core/auth/auth-credentials";
+import { reportWorkspaceReadiness } from "../../core/rendering/workspace-preparation";
 import { ObjectivesData } from "../../features/objectives/objectives.data";
 import { TaggingData } from "../../features/tagging/tagging.data";
 import { EditorDrawer } from "../../shared/ui/editor-drawer";
@@ -33,6 +34,7 @@ export class ObjectivesPage {
   protected readonly maxMonth = currentMonth();
 
   constructor() {
+    reportWorkspaceReadiness(this.data.objectives, this.data.progress);
     const credentials = inject(AuthCredentials),
       owner = computed(() => credentials.current()?.principal.userId);
     effect(() => {

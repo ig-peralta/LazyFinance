@@ -153,6 +153,22 @@ describe("Firebase credential operations (mocked SDK)", () => {
     );
   });
 
+  it("shares initialization while browser persistence is still pending", async () => {
+    const pending = deferred<void>();
+    const initializing = setup();
+    sdk.setPersistence.mockReturnValueOnce(pending.promise);
+    const service = TestBed.inject(FirebaseService);
+    const first = service.init();
+    expect(service.init()).toBe(first);
+    await vitest.waitFor(() =>
+      expect(sdk.setPersistence).toHaveBeenCalledOnce(),
+    );
+    pending.resolve();
+    const { auth } = await initializing;
+    await expect(first).resolves.toBe(auth);
+    expect(sdk.getAuth).toHaveBeenCalledOnce();
+  });
+
   it("delegates password login and registration directly to Firebase, trimming only the email", async () => {
     const { service, auth, user } = await setup();
     await expect(

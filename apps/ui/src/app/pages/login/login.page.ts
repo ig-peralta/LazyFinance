@@ -4,7 +4,6 @@ import {
   DestroyRef,
   effect,
   inject,
-  resource,
   signal,
 } from "@angular/core";
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
@@ -25,15 +24,10 @@ export class LoginPage {
   private readonly lifetime = new AbortController();
   private leaving = false;
 
-  readonly config = resource({
-    loader: ({ abortSignal }) => this.api.config(abortSignal),
-  });
-
-  readonly provider = computed(() =>
-    this.config.hasValue() ? this.config.value().provider : null,
+  readonly provider = this.session.provider;
+  readonly loadingConfig = computed(
+    () => !this.provider() && this.session.isResolving(),
   );
-
-  readonly loadingConfig = this.config.isLoading;
   readonly loading = signal(false);
   readonly busy = computed(() => this.loading() || this.session.isResolving());
   readonly passwordMode = signal<"signin" | "register">("signin");
@@ -46,15 +40,10 @@ export class LoginPage {
   );
   private readonly commandError = signal<string | null>(null);
 
-  readonly error = computed(
-    () =>
-      this.commandError() ??
-      (this.config.error()
-        ? "No se pudieron cargar las opciones de acceso. Inténtalo de nuevo."
-        : null),
-  );
+  readonly error = computed(() => this.commandError() ?? this.session.error());
 
   constructor() {
+    void this.session.start();
     inject(DestroyRef).onDestroy(() => this.lifetime.abort());
     effect(() => {
       if (
@@ -70,12 +59,20 @@ export class LoginPage {
     });
   }
 
+  retry(): void {
+    void this.session.retry();
+  }
+
   async loginWithMock(email: string, password: string): Promise<void> {
     if (this.provider() !== "mock") return;
     await this.execute("signin", async () => {
-      const { token } = await this.api.loginMock(email, password);
+      const { token } = await this.api.loginMock(
+        email,
+        password,
+        this.lifetime.signal,
+      );
       this.lifetime.signal.throwIfAborted();
-      await this.session.loginWithToken(token);
+      await this.session.loginWithToken(token, this.lifetime.signal);
       await this.completeLogin();
     });
   }

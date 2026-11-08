@@ -1,6 +1,7 @@
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import type { TagSummary } from "@lazyfinance/contracts";
 import { AuthCredentials } from "../../core/auth/auth-credentials";
+import { reportWorkspaceReadiness } from "../../core/rendering/workspace-preparation";
 import { createScopedCommand } from "../../core/rpc/scoped-command";
 import { TagsData } from "../../features/tags/tags.data";
 import { EditorDrawer } from "../../shared/ui/editor-drawer";
@@ -30,6 +31,7 @@ export class TagsPage {
   );
 
   constructor() {
+    reportWorkspaceReadiness(this.data.tags);
     const credentials = inject(AuthCredentials);
     const owner = computed(() => credentials.current()?.principal.userId);
     effect(() => {

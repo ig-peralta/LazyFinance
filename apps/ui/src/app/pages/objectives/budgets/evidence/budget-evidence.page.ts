@@ -4,6 +4,10 @@ import { ActivatedRoute, RouterLink } from "@angular/router";
 import { BudgetContributionsInputSchema } from "@lazyfinance/contracts";
 import { formatClp, moneyCents } from "../../../../../utils/currency";
 import { formatDate } from "../../../../../utils/date";
+import {
+  initialReadSettled,
+  reportWorkspaceReadiness,
+} from "../../../../core/rendering/workspace-preparation";
 import { RpcClient } from "../../../../core/rpc/rpc-client";
 import { createCursorTrail } from "../../../../features/pagination/cursor-trail";
 import { Icon } from "../../../../shared/ui/icon";
@@ -80,6 +84,12 @@ export class BudgetEvidencePage {
   );
   protected readonly money = formatClp;
   protected readonly date = (value: string) => formatDate(new Date(value));
+
+  constructor() {
+    reportWorkspaceReadiness(
+      () => !this.valid() || initialReadSettled(this.page),
+    );
+  }
 
   protected next() {
     if (!this.page.hasValue() || this.page.isLoading()) return;

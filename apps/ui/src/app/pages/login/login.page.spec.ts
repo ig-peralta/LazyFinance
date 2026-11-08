@@ -100,6 +100,18 @@ function setup(
 
     return { provider };
   });
+  const selectedProvider = signal<"firebase" | "mock" | null>(null);
+  const sessionError = signal<string | null>(null);
+  const start = vi.fn(async () => {
+    isResolving.set(true);
+    try {
+      selectedProvider.set((await getAuthConfig()).provider);
+    } catch {
+      sessionError.set("No se pudieron cargar las opciones de acceso.");
+    } finally {
+      isResolving.set(false);
+    }
+  });
   const loginMock = vi.fn(async () => ({ token: "mock-session-token" }));
   TestBed.configureTestingModule({
     providers: [
@@ -119,6 +131,10 @@ function setup(
           user,
           firebaseAccount,
           isResolving,
+          provider: selectedProvider,
+          error: sessionError,
+          start,
+          retry: start,
           loginWithToken,
           loginWithGoogle,
           loginWithPassword,
@@ -188,9 +204,14 @@ describe("LoginPage", () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(loginMock).toHaveBeenCalledWith(email.value, "password");
+    expect(loginMock).toHaveBeenCalledWith(
+      email.value,
+      "password",
+      expect.any(AbortSignal),
+    );
     expect(loginWithToken).toHaveBeenCalledExactlyOnceWith(
       "mock-session-token",
+      expect.any(AbortSignal),
     );
     expect(navigate).toHaveBeenCalledWith("/dashboard");
     expect(fixture.nativeElement.textContent).toContain(principal.name);
@@ -248,8 +269,10 @@ describe("LoginPage", () => {
 
   it("returns a restored Firebase user to a protected deep link", async () => {
     const { fixture, navigate } = setup("firebase", false, true, "/etiquetas");
-    await fixture.whenStable();
-    expect(navigate).toHaveBeenCalledWith("/etiquetas");
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(navigate).toHaveBeenCalledWith("/etiquetas");
+    });
   });
 
   it("does not establish a session when mock login is rejected", async () => {

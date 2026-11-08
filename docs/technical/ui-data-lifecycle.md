@@ -1,4 +1,4 @@
-# UI data, session and SSR lifetimes
+# UI data, browser session and rendering lifetimes
 
 The UI uses native tRPC Promises, Angular signals/resources and page-owned feature
 services. This reference explains why the lifetimes matter; the
@@ -18,7 +18,7 @@ DashboardPage → feature data services → resources / explicit commands
 | `core/auth/auth-credentials.ts` | Accepted principal/token snapshot and its abort lifetime | HTTP, Firebase, cookies or navigation |
 | `core/rpc/rpc-client.ts` | Anonymous/candidate/scoped clients, cancellation and transport error policy | Session restoration or router navigation |
 | `core/auth/auth-api.ts` | Anonymous config/mock login and candidate `auth.principal` verification | Installing or expiring accepted credentials |
-| `core/auth/session.service.ts` | Restoration, Firebase commands/observer, cookie handoff, revision/owner checks and expiry navigation | Financial resource state |
+| `core/auth/session.service.ts` | Shared browser restoration/retry, Firebase commands/observer, revision/owner checks and expiry | Financial resource state or rendering-blocking guards |
 | `features/*/*.data.ts` | Feature reads, query inputs, explicit commands and confirmed page-local updates | A second catalog of generic endpoint aliases |
 | Components / `createTagDecision` | Presentation and component-lifetime command/suggestion state | A global financial response cache |
 
@@ -74,7 +74,7 @@ recovery queue. Only a five-minute, owner-bound, single-use Google-link readines
 proof survives between the password confirmation and the popup button.
 
 An unverified password registration deliberately has a Firebase account snapshot
-but no accepted application credentials or SSR cookie. Verification reloads and
+but no accepted application credentials. Verification reloads and
 refreshes the token before API acceptance. Browser account metadata is a UI hint,
 not evidence that can authorize financial requests. See the complete
 [sign-in/linking policy](identity.md#firebase-sign-in-and-credential-linking).
@@ -131,8 +131,8 @@ retry and confirmed-decision overlay apply to the page's items unchanged.
 
 The tag catalog is lazy: first interaction requests it, and all movements share
 it only within that page. Per-movement suggestions are browser-only and requested
-for unreviewed, untagged movements. They do not make SSR run an N+1 suggestion
-query for every row.
+for unreviewed, untagged movements. Private pages are browser-only; suggestions
+are not part of public prerendering.
 
 ## Explicit commands and causal read updates
 
@@ -192,7 +192,7 @@ Cursor trails for budget/savings history and evidence are selection-bound. Evide
 continuation retains backend observation cutoffs, not totals summed from pages.
 Savings evidence compares the returned goal version with its measurement; changed
 versions require a fresh read. The dashboard measures only one featured goal;
-lists do not issue an unbounded per-goal measurement/suggestion fan-out during SSR.
+lists do not issue an unbounded per-goal measurement/suggestion fan-out on entry.
 
 Optional setup progress is derived from owned account/source/objective reads.
 `OnboardingData` is a deliberate application/render-local exception for small
@@ -215,47 +215,93 @@ prompt. Ambiguous failures remain unconfirmed and offer an explicit state check,
 not automatic mutation replay. Completion closes the optional guide, not a claim
 that optional financial steps or unavailable bank linking are complete.
 
-## SSR and hydration isolation
+## Public prerendering and browser-owned private rendering
 
-1. The initializer gets public `auth.config`; Firebase Web initializes only in
-   the browser when selected.
-2. Browser mock/Firebase authentication is verified by `auth.principal` before
-   accepting credentials. The browser writes `lazyfinance-session` containing
-   only `{ token }`, never a trusted principal.
-3. Every SSR request has its own Angular DI/auth/client state. It reads the cookie
-   and calls `auth.principal` before protected rendering. A forged/expired cookie
-   cannot supply an application user.
-4. Browser initialization verifies its own current identity and refetches protected
-   resources after hydration rather than inheriting serialized financial results.
+Only `/` is prerendered/hydrated. Login and every protected path use CSR; there is
+no request-time Angular/Express server or authenticated HTML. Public rendering does
+not initialize Firebase, discover the auth provider, verify a principal or read
+financial resources. Angular's server entry/configuration remain build-time tools.
 
-The cookie is JavaScript-readable, SameSite=Lax and Secure on HTTPS; it is not an
-HttpOnly server-managed session or a Firebase session cookie. Treat it as a bearer
-transport with the same XSS/expiry risks as the token. Logout is local clearance,
-not immediate server-side token revocation.
+`WorkspaceBoundary` is eager and database-independent. Static `index.csr.html`
+contains the same branded loading frame as the Angular component. The boundary
+calls shared `SessionService.start()` without blocking rendering. Every workspace
+entry (reload or return from public/login routes, even with accepted credentials)
+holds the frame for at least one second. Authentication and destination-code
+loading run concurrently. Once verified, the outlet mounts immediately in a
+concealed, inert, `aria-hidden` wrapper with usable layout dimensions: page-owned
+reads start during the animation, never before principal verification. Guest
+redirects retain the full path, query and fragment. Startup failures remain on the
+requested destination with explicit retry instead of being mistaken for sign-out.
 
-The protections against cross-identity hydration are deliberately layered:
+`WorkspaceEntry` shares only screen-import promises, not financial responses.
+Each eager `WorkspaceRoutePage` provides a `WorkspacePagePreparation`; the mounted
+screen/widgets declare initial visible dependencies with
+`reportWorkspaceReadiness(...)`. Readiness requires an explicit declaration and
+resource status `resolved`, `local` or `error`, not `hasValue()`/default arrays or
+`!isLoading()`. Conditional invalid selections may declare their rendered error
+ready instead of waiting on an intentionally idle resource. Security explicitly
+declares no reads. Destroying a widget unregisters its checks.
 
-- Vanilla tRPC fetches use `cache: "no-store"`; both tRPC servers return private,
-  no-store headers. Rendered HTML is private/no-store, while static assets retain
-  their separate long-lived caching policy.
-- Angular HTTP transfer cache is disabled, **and** protected resources have no
-  transfer-cache `id`, **and** components do not manually write financial
-  `TransferState`. Disabling HttpClient transfer caching alone does not cover
-  Angular resource/manual transfer state or vanilla fetch.
-- No module-global authenticated client, batch queue or response cache is used.
+The dashboard waits for both summaries, accounts, objectives/progress, recent
+activity and the conditional featured savings measurement. Income waits for its
+summary and then its visible credit list. Onboarding waits for metadata and only
+then eligible checklist reads; completed metadata may redirect to the dashboard.
+History includes account/tag catalogs and the initial page, or its invalid-filter
+error. Unopened editors, optional suggestions, expanded history/evidence and
+additional pages are not entry dependencies. No unbounded fan-out is introduced.
 
-SSR can render authenticated financial HTML; the absence of transfer-state JSON
-does not mean no private content is present in that HTML. Keep shared proxies/CDNs
-from caching it. `API_INTERNAL_URL` changes only the SSR transport destination
-(Compose: `http://api:3000`); browser API/Firebase identifiers remain build-time
-environment configuration and must be deployed consistently.
+Readiness is confirmed after rendering, so conditional children can register
+before a parent's settled read reveals the screen, and is bound to the exact
+accepted credential snapshot. Reveal requires both that confirmation and the
+minimum second. Slow reads extend preparation; failures reveal usable error/retry
+states, including failed imports. After 15 seconds a reload fallback replaces an
+indefinite busy animation; later completed preparation can still reveal normally.
+The **same mounted page** is revealed, with no second fetch or financial cache.
+Focus transfers only after inertness is removed, not on later reloads/navigation.
+Owner changes destroy old pages and restart the entrance; credential replacement
+cancels obsolete reads. Token refresh, filters and internal navigation do not
+replay the entrance once revealed.
+
+The screen inherits the actual `ActivatedRoute`, reactive params, relative links
+and page provider lifetimes. Ordinary internal destinations retain heading/skeleton
+frames during imports; failed imports have retry, and destroyed hosts cannot adopt
+late imports. Screens still own resource loading/empty/error/populated states,
+not `@defer` data-readiness wrappers.
+
+Browser startup shares `auth.config`, lazy SDK initialization and restoration.
+Firebase owns its persisted identity and refresh. Accepted credentials/principals
+stay in memory, never an application cookie or browser permission snapshot. The
+legacy `lazyfinance-session` bearer cookie is expired without reading it. Mock
+mode alone uses a tab-session demo token, verified again after reload; no principal
+or financial data enters that store. Logout clears local access/storage, not
+immediate upstream token revocation. Password/linking SDK barriers remain unchanged.
+Same-account transient revalidation errors preserve established access with a
+warning; identity transitions and rejected credentials conceal the old owner.
+
+Protected tRPC fetches use `cache: "no-store"`; both servers retain private/no-store
+headers. Angular HTTP transfer caching remains disabled, protected resources have
+no transfer-cache `id`, and components never write financial `TransferState`.
+No module-global authenticated client, batch queue or financial response cache is
+used. Static HTML is non-personalized/revalidated; only fingerprinted assets are
+immutable. Both environments call their explicit API base URL directly:
+`http://localhost:3000` in development and `https://api.lazyfinance.cl` in production.
+`RpcClient` appends `/trpc`; Nginx does no API proxying or prefix rewriting. API CORS
+must allow the UI origin, and browser API/Firebase build identifiers must match deployment.
+
+Editor drawers use native dialogs with immediate component teardown on dismissal,
+not retained live forms awaiting an exit animation. Mobile menus close on route
+changes as well as link clicks. Tag pickers drop their drafts/overlay on scope or
+movement changes, cancel deferred positioning and return action focus to the
+trigger. Do not copy PrimeNG exit-snapshot workarounds into these native lifetimes.
 
 ## Tests and extension rules
 
 UI tests inject `RPC_FETCH` and exercise real vanilla clients/resources with
 in-memory responses. Angular HttpClient interceptors/testing controllers do not
-intercept this transport. Tests cover concurrent SSR identities, protected
-transfer-state absence, token/UID replacement, stale 401/restoration failures,
+intercept this transport. Tests cover public-only prerendering, neutral first paint,
+every-entry animation, reads during the minimum second, dependent-read readiness,
+no reveal-time refetch, delayed imports/deep links, protected transfer-state absence,
+token/UID replacement, stale 401/restoration failures,
 resource/component cancellation, duplicate commands, read/decision ordering and
 partial success. Auth regression cases cover password verification, explicit
 same-owner linking, expired/consumed proof, SDK/API/observer races and cancelled

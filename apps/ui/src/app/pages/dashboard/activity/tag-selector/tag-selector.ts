@@ -1,11 +1,14 @@
 import {
   Component,
   computed,
+  DestroyRef,
   ElementRef,
+  effect,
   HostListener,
   inject,
   input,
   signal,
+  untracked,
   viewChild,
 } from "@angular/core";
 import type { RecentTransaction, TagSummary } from "@lazyfinance/contracts";
@@ -13,6 +16,7 @@ import { ButtonDirective } from "primeng/button";
 import { Card } from "primeng/card";
 import { InputText } from "primeng/inputtext";
 import { Tag } from "primeng/tag";
+import { RpcClient } from "../../../../core/rpc/rpc-client";
 import { createTagDecision } from "../../../../features/tagging/tag-decision";
 import { TaggingData } from "../../../../features/tagging/tagging.data";
 
@@ -32,6 +36,8 @@ export class TransactionTagSelector {
   private readonly panel = viewChild<ElementRef<HTMLDivElement>>("panel");
   private readonly tagging = inject(TaggingData);
   private readonly decision = createTagDecision(this.transaction);
+  private readonly scope = inject(RpcClient).authenticatedScope;
+  private revealTimer?: ReturnType<typeof setTimeout>;
 
   protected readonly opened = signal(false);
   protected readonly horizontalOffset = signal(0);
@@ -73,6 +79,18 @@ export class TransactionTagSelector {
     );
   });
 
+  constructor() {
+    effect(() => {
+      this.scope();
+      this.transaction().id;
+      untracked(() => {
+        this.close();
+        this.searchTerm.set("");
+      });
+    });
+    inject(DestroyRef).onDestroy(() => clearTimeout(this.revealTimer));
+  }
+
   @HostListener("document:pointerdown", ["$event"])
   protected onOutsidePointerDown(event: PointerEvent): void {
     if (
@@ -102,7 +120,7 @@ export class TransactionTagSelector {
     this.autoForMerchant.set(false);
     this.decision.clearError();
     this.tagging.requestTags();
-    setTimeout(() => this.revealBelow(), 0);
+    this.revealTimer = setTimeout(() => this.revealBelow(), 0);
   }
 
   protected searchTags(event: Event): void {
@@ -173,7 +191,12 @@ export class TransactionTagSelector {
   }
 
   private close(): void {
+    clearTimeout(this.revealTimer);
+    const panel = this.panel()?.nativeElement;
+    const restoreFocus = panel?.contains(panel.ownerDocument.activeElement);
     this.opened.set(false);
     this.autoForMerchant.set(false);
+    if (restoreFocus)
+      this.trigger()?.nativeElement.focus({ preventScroll: true });
   }
 }

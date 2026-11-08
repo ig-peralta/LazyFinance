@@ -2,9 +2,12 @@ import { NgTemplateOutlet } from "@angular/common";
 import {
   Component,
   computed,
+  DestroyRef,
   ElementRef,
+  effect,
   inject,
   signal,
+  untracked,
   viewChild,
 } from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
@@ -27,7 +30,7 @@ import { workspaceLocation, workspaceNavigation } from "./workspace-navigation";
   templateUrl: "./app-shell.html",
 })
 export class AppShell {
-  private readonly session = inject(SessionService);
+  protected readonly session = inject(SessionService);
   private readonly router = inject(Router);
   private readonly credentials = inject(AuthCredentials);
   private readonly url = toSignal(
@@ -63,6 +66,19 @@ export class AppShell {
 
   protected readonly menuOpen = signal(false);
   protected readonly logoutError = signal<string | null>(null);
+
+  constructor() {
+    effect(() => {
+      this.url();
+      // Programmatic navigation/back/forward must dismiss the native modal too.
+      untracked(() => this.closeMenu());
+    });
+    inject(DestroyRef).onDestroy(() => this.closeMenu());
+  }
+
+  protected retrySession(): void {
+    void this.session.retry();
+  }
 
   protected toggleMenu(): void {
     if (this.menuOpen()) {

@@ -1,47 +1,6 @@
-import { RenderMode, ServerRoute } from "@angular/ssr";
-
-const privateHeaders = { "Cache-Control": "private, no-store" };
+import { RenderMode, type ServerRoute } from "@angular/ssr";
 
 export const serverRoutes: ServerRoute[] = [
-  { path: "comenzar", renderMode: RenderMode.Server, headers: privateHeaders },
-  { path: "cuentas", renderMode: RenderMode.Server, headers: privateHeaders },
-  { path: "metas", renderMode: RenderMode.Server, headers: privateHeaders },
-  { path: "metas/:id", renderMode: RenderMode.Server, headers: privateHeaders },
-  {
-    path: "presupuestos/:id/movimientos",
-    renderMode: RenderMode.Server,
-    headers: privateHeaders,
-  },
-  {
-    path: "presupuestos/:id",
-    renderMode: RenderMode.Server,
-    headers: privateHeaders,
-  },
-  { path: "ingresos", renderMode: RenderMode.Server, headers: privateHeaders },
-  {
-    path: "ingresos/fuentes",
-    renderMode: RenderMode.Server,
-    headers: privateHeaders,
-  },
-  { path: "dashboard", renderMode: RenderMode.Server, headers: privateHeaders },
-  { path: "etiquetas", renderMode: RenderMode.Server, headers: privateHeaders },
-  {
-    path: "movimientos",
-    renderMode: RenderMode.Server,
-    headers: privateHeaders,
-  },
-  {
-    path: "movimientos/:id",
-    renderMode: RenderMode.Server,
-    headers: privateHeaders,
-  },
-  {
-    path: "presupuestos-y-metas",
-    renderMode: RenderMode.Server,
-    headers: privateHeaders,
-  },
-  {
-    path: "**",
-    renderMode: RenderMode.Server,
-  },
+  { path: "", renderMode: RenderMode.Prerender },
+  { path: "**", renderMode: RenderMode.Client },
 ];

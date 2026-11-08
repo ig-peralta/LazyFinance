@@ -12,6 +12,7 @@ import { MonthSchema } from "@lazyfinance/contracts";
 import { formatClp } from "../../../../utils/currency";
 import { formatDate } from "../../../../utils/date";
 import { currentMonth } from "../../../../utils/month";
+import { reportWorkspaceReadiness } from "../../../core/rendering/workspace-preparation";
 import { RpcClient } from "../../../core/rpc/rpc-client";
 import { createScopedCommand } from "../../../core/rpc/scoped-command";
 import { SavingsMeasure } from "../../../features/objectives/savings-measure";
@@ -81,6 +82,7 @@ export class SavingsGoalPage {
   }
 
   constructor() {
+    reportWorkspaceReadiness(this.goal);
     effect(() => {
       this.selection();
       this.archiving.set(false);

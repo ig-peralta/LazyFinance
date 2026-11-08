@@ -3,12 +3,10 @@ import { TestBed } from "@angular/core/testing";
 import { provideRouter } from "@angular/router";
 import type { AuthConfig } from "@lazyfinance/contracts";
 import type { User as FirebaseUser } from "firebase/auth";
-import { SsrCookieService } from "ngx-cookie-service-ssr";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { deferred } from "../../../testing/deferred";
 import { firebaseUser } from "../../../testing/firebase";
 import { FirebaseService } from "../../services/firebase/firebase.service";
-import { initializeServices } from "../../services/initializer";
 import { AuthApi } from "./auth-api";
 import { SessionService } from "./session.service";
 
@@ -26,7 +24,7 @@ const second = {
   name: "Second user",
 };
 
-const initialize = () => TestBed.runInInjectionContext(initializeServices);
+const initialize = () => TestBed.inject(SessionService).start();
 
 function setup() {
   const firstUser = firebaseUser("firebase-a", "token-a");
@@ -34,9 +32,16 @@ function setup() {
   let initialized = false;
   let onTokenChanged: (user: FirebaseUser | null) => void = () => {};
   let onTokenError: () => void = () => {};
+  let beforeIdentityChanged: (user: FirebaseUser | null) => void = () => {};
   const auth = {
     currentUser: firstUser.user as FirebaseUser | null,
     authStateReady: vi.fn(async () => {}),
+    beforeAuthStateChanged: vi.fn(
+      (listener: (user: FirebaseUser | null) => void) => {
+        beforeIdentityChanged = listener;
+        return () => {};
+      },
+    ),
     onIdTokenChanged: vi.fn(
       (listener: (user: FirebaseUser | null) => void, onError: () => void) => {
         onTokenChanged = listener;
@@ -126,6 +131,8 @@ function setup() {
     getPrincipal,
     onTokenChanged: (user: FirebaseUser | null) => onTokenChanged(user),
     onTokenError: () => onTokenError(),
+    beforeIdentityChanged: (user: FirebaseUser | null) =>
+      beforeIdentityChanged(user),
   };
 }
 
@@ -158,17 +165,19 @@ describe("Firebase browser session", () => {
     expect(session.isResolving()).toBe(false);
   });
 
-  it("restores the SDK user through the API and stores only the verified ID token for SSR", async () => {
+  it("restores the SDK user through the API without trusting or retaining the legacy cookie", async () => {
     document.cookie = `${cookieName}=${encodeURIComponent(JSON.stringify({ token: "forged", user: second }))}; Path=/`;
     const { session, firebase, getPrincipal } = setup();
     await initialize();
 
     expect(firebase.init).toHaveBeenCalledOnce();
-    expect(getPrincipal).toHaveBeenCalledExactlyOnceWith("token-a");
+    expect(getPrincipal).toHaveBeenCalledExactlyOnceWith(
+      "token-a",
+      expect.any(AbortSignal),
+    );
     expect(session.user()).toEqual(first);
     expect(session.active()).toBe(true);
-    const cookie = TestBed.inject(SsrCookieService).get(cookieName);
-    expect(JSON.parse(cookie)).toEqual({ token: "token-a" });
+    expect(document.cookie).not.toContain(cookieName);
   });
 
   it("refreshes rotated ID tokens without switching to a stale account response", async () => {
@@ -203,11 +212,42 @@ describe("Firebase browser session", () => {
     completeOld(first);
     await Promise.resolve();
     expect(session.token()).toBe("token-b");
-    expect(
-      JSON.parse(TestBed.inject(SsrCookieService).get(cookieName)),
-    ).toEqual({
-      token: "token-b",
-    });
+    expect(document.cookie).not.toContain(cookieName);
+  });
+
+  it("conceals the accepted owner synchronously before the SDK installs another account", async () => {
+    const {
+      session,
+      auth,
+      firstUser,
+      secondUser,
+      beforeIdentityChanged,
+      onTokenChanged,
+    } = setup();
+    await initialize();
+    expect(session.user()).toEqual(first);
+    beforeIdentityChanged(secondUser.user);
+    expect(auth.currentUser).toBe(firstUser.user);
+    expect(session.active()).toBe(false);
+    expect(session.status()).toBe("loading");
+    auth.currentUser = secondUser.user;
+    onTokenChanged(secondUser.user);
+    await vi.waitFor(() => expect(session.user()).toEqual(second));
+  });
+
+  it("retains established access on transient same-account token verification failure and clears the warning on recovery", async () => {
+    const { session, firstUser, getPrincipal, onTokenChanged } = setup();
+    await initialize();
+    getPrincipal.mockRejectedValueOnce(new TypeError("offline"));
+    firstUser.setToken("refreshed-token");
+    onTokenChanged(firstUser.user);
+    await vi.waitFor(() => expect(session.error()).not.toBeNull());
+    expect(session.status()).toBe("ready");
+    expect(session.user()).toEqual(first);
+    expect(session.token()).toBe("token-a");
+    onTokenChanged(firstUser.user);
+    await vi.waitFor(() => expect(session.token()).toBe("refreshed-token"));
+    expect(session.error()).toBeNull();
   });
 
   it("clears a rejected restored token and can recover after Firebase rotates it", async () => {
@@ -215,7 +255,7 @@ describe("Firebase browser session", () => {
     getPrincipal.mockRejectedValueOnce(new Error("Expired token"));
     await initialize();
     expect(session.active()).toBe(false);
-    expect(TestBed.inject(SsrCookieService).get(cookieName)).toBe("");
+    expect(document.cookie).not.toContain(cookieName);
 
     firstUser.setToken("token-a-refresh");
     onTokenChanged(firstUser.user);
@@ -234,7 +274,7 @@ describe("Firebase browser session", () => {
     expect(session.isResolving()).toBe(false);
     expect(session.active()).toBe(false);
     expect(getPrincipal).not.toHaveBeenCalled();
-    expect(TestBed.inject(SsrCookieService).get(cookieName)).toBe("");
+    expect(document.cookie).not.toContain(cookieName);
   });
 
   it("finishes resolving when a Google popup and token observer race", async () => {
@@ -252,14 +292,14 @@ describe("Firebase browser session", () => {
     expect(session.user()).toEqual(second);
   });
 
-  it("clears browser state and the SSR cookie on Firebase sign-out", async () => {
+  it("clears browser access on Firebase sign-out without persisting an application session", async () => {
     const { session, firebase } = setup();
     await initialize();
     await session.logout();
 
     expect(firebase.signOut).toHaveBeenCalledOnce();
     expect(session.active()).toBe(false);
-    expect(TestBed.inject(SsrCookieService).get(cookieName)).toBe("");
+    expect(document.cookie).not.toContain(cookieName);
   });
 
   it("does not accept observer tokens again when Firebase sign-out fails", async () => {
@@ -270,7 +310,7 @@ describe("Firebase browser session", () => {
     await expect(session.logout()).rejects.toThrow("sign-out unavailable");
     onTokenChanged(firstUser.user);
     expect(session.active()).toBe(false);
-    expect(TestBed.inject(SsrCookieService).get(cookieName)).toBe("");
+    expect(document.cookie).not.toContain(cookieName);
     expect(getPrincipal).toHaveBeenCalledOnce();
   });
 
@@ -309,7 +349,7 @@ describe("Firebase browser session", () => {
     finish(first);
     await Promise.resolve();
     expect(session.active()).toBe(false);
-    expect(TestBed.inject(SsrCookieService).get(cookieName)).toBe("");
+    expect(document.cookie).not.toContain(cookieName);
   });
 
   it("accepts a password login only after API verification, without trusting its email as an owner", async () => {
@@ -326,7 +366,7 @@ describe("Firebase browser session", () => {
     await vi.waitFor(() => expect(getPrincipal).toHaveBeenCalledOnce());
 
     expect(session.active()).toBe(false);
-    expect(TestBed.inject(SsrCookieService).get(cookieName)).toBe("");
+    expect(document.cookie).not.toContain(cookieName);
     pending.resolve(first);
     await expect(login).resolves.toEqual(first);
     expect(firebase.signInWithPassword).toHaveBeenCalledExactlyOnceWith(
@@ -338,12 +378,11 @@ describe("Firebase browser session", () => {
       password: true,
       google: false,
     });
-    expect(
-      JSON.parse(TestBed.inject(SsrCookieService).get(cookieName)),
-    ).toEqual({ token: "token-a" });
+    expect(session.token()).toBe("token-a");
+    expect(document.cookie).not.toContain(cookieName);
   });
 
-  it("registers an unverified password account without accepting a principal or writing an SSR token", async () => {
+  it("registers an unverified password account without accepting or persisting application credentials", async () => {
     const { session, auth, firstUser, firebase, getPrincipal } = setup();
     auth.currentUser = null;
     await initialize();
@@ -363,7 +402,7 @@ describe("Firebase browser session", () => {
       emailVerified: false,
       password: true,
     });
-    expect(TestBed.inject(SsrCookieService).get(cookieName)).toBe("");
+    expect(document.cookie).not.toContain(cookieName);
   });
 
   it("keeps a created account recoverable if sending verification fails", async () => {
@@ -418,7 +457,7 @@ describe("Firebase browser session", () => {
     ).rejects.toThrow("verified email required");
     expect(session.firebaseAccount()?.emailVerified).toBe(false);
     expect(session.active()).toBe(false);
-    expect(TestBed.inject(SsrCookieService).get(cookieName)).toBe("");
+    expect(document.cookie).not.toContain(cookieName);
   });
 
   it("links a password on the same UID and internal owner without duplicate observer acceptance", async () => {
@@ -518,7 +557,7 @@ describe("Firebase browser session", () => {
 
     expect(session.active()).toBe(false);
     expect(session.firebaseAccount()).toBeNull();
-    expect(TestBed.inject(SsrCookieService).get(cookieName)).toBe("");
+    expect(document.cookie).not.toContain(cookieName);
     expect(getPrincipal).toHaveBeenCalledTimes(2);
   });
 
@@ -548,7 +587,7 @@ describe("Firebase browser session", () => {
     });
     expect(session.active()).toBe(false);
     expect(session.firebaseAccount()).toBeNull();
-    expect(TestBed.inject(SsrCookieService).get(cookieName)).toBe("");
+    expect(document.cookie).not.toContain(cookieName);
   });
 
   it("keeps the SDK barrier until a late popup after logout has been signed out", async () => {
@@ -601,7 +640,7 @@ describe("Firebase browser session", () => {
     expect(firebase.signOut).toHaveBeenCalledOnce();
     expect(session.active()).toBe(false);
     expect(session.firebaseAccount()).toBeNull();
-    expect(TestBed.inject(SsrCookieService).get(cookieName)).toBe("");
+    expect(document.cookie).not.toContain(cookieName);
   });
 
   it("does not claim cancellation rolled back a credential already linked by Firebase", async () => {

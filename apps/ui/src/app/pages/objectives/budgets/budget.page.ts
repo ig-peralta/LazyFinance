@@ -10,6 +10,7 @@ import { toSignal } from "@angular/core/rxjs-interop";
 import { ActivatedRoute, RouterLink } from "@angular/router";
 import { formatClp } from "../../../../utils/currency";
 import { formatDate } from "../../../../utils/date";
+import { reportWorkspaceReadiness } from "../../../core/rendering/workspace-preparation";
 import { RpcClient } from "../../../core/rpc/rpc-client";
 import { createScopedCommand } from "../../../core/rpc/scoped-command";
 import { createCursorTrail } from "../../../features/pagination/cursor-trail";
@@ -66,6 +67,7 @@ export class BudgetPage {
   protected readonly date = (value: string) => formatDate(new Date(value));
 
   constructor() {
+    reportWorkspaceReadiness(this.detail);
     effect(() => {
       this.selection();
       this.archiving.set(false);

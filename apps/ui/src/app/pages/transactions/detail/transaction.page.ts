@@ -10,6 +10,7 @@ import { toSignal } from "@angular/core/rxjs-interop";
 import { ActivatedRoute, RouterLink } from "@angular/router";
 import { formatClp } from "../../../../utils/currency";
 import { formatDate } from "../../../../utils/date";
+import { reportWorkspaceReadiness } from "../../../core/rendering/workspace-preparation";
 import { RpcClient } from "../../../core/rpc/rpc-client";
 import { EditorDrawer } from "../../../shared/ui/editor-drawer";
 import { Icon } from "../../../shared/ui/icon";
@@ -51,6 +52,7 @@ export class TransactionPage {
   );
 
   constructor() {
+    reportWorkspaceReadiness(this.detail);
     effect(() => {
       this.rpc.authenticatedScope();
       this.id();

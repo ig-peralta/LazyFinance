@@ -9,6 +9,7 @@ import {
 import { RouterLink } from "@angular/router";
 import { formatClp } from "../../../../utils/currency";
 import { AuthCredentials } from "../../../core/auth/auth-credentials";
+import { reportWorkspaceReadiness } from "../../../core/rendering/workspace-preparation";
 import { RpcClient } from "../../../core/rpc/rpc-client";
 import { EditorDrawer } from "../../../shared/ui/editor-drawer";
 import { Icon } from "../../../shared/ui/icon";
@@ -39,6 +40,7 @@ export class SavingsPage {
   protected readonly period = objectivePeriod;
 
   constructor() {
+    reportWorkspaceReadiness(this.goals);
     const credentials = inject(AuthCredentials),
       owner = computed(() => credentials.current()?.principal.userId);
     effect(() => {

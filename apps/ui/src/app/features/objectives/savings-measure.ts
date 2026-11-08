@@ -10,6 +10,7 @@ import { RouterLink } from "@angular/router";
 import type { ObjectiveSummary } from "@lazyfinance/contracts";
 import { formatClp, progressWidth } from "../../../utils/currency";
 import { formatDate } from "../../../utils/date";
+import { reportWorkspaceReadiness } from "../../core/rendering/workspace-preparation";
 import { RpcClient } from "../../core/rpc/rpc-client";
 import { Icon } from "../../shared/ui/icon";
 import { createCursorTrail } from "../pagination/cursor-trail";
@@ -92,6 +93,10 @@ export class SavingsMeasure {
   protected readonly money = formatClp;
   protected readonly width = progressWidth;
   protected readonly date = (value: string) => formatDate(new Date(value));
+
+  constructor() {
+    reportWorkspaceReadiness(this.progress);
+  }
 
   protected next() {
     if (this.evidence.hasValue() && !this.evidence.isLoading()) {

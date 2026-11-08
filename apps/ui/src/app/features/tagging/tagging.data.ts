@@ -35,7 +35,7 @@ export class TaggingData {
     | undefined
   >(undefined);
 
-  // Shared only within the page injector, never between SSR renders or identities.
+  // Shared only within the page injector, never across identities.
   readonly changed = computed(() => {
     const decision = this.decision();
     return decision?.scope === this.rpc.authenticatedScope()

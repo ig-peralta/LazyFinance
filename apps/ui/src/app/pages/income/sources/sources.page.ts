@@ -10,6 +10,7 @@ import { RouterLink } from "@angular/router";
 import type { IncomeSource } from "@lazyfinance/contracts";
 import { formatClp } from "../../../../utils/currency";
 import { AuthCredentials } from "../../../core/auth/auth-credentials";
+import { reportWorkspaceReadiness } from "../../../core/rendering/workspace-preparation";
 import { RpcClient } from "../../../core/rpc/rpc-client";
 import { createScopedCommand } from "../../../core/rpc/scoped-command";
 import { EditorDrawer } from "../../../shared/ui/editor-drawer";
@@ -41,6 +42,7 @@ export class SourcesPage {
   protected readonly schedule = scheduleLabel;
 
   constructor() {
+    reportWorkspaceReadiness(this.sources);
     const credentials = inject(AuthCredentials);
     const owner = computed(() => credentials.current()?.principal.userId);
     effect(() => {

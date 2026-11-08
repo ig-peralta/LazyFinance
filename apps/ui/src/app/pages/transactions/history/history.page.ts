@@ -4,6 +4,10 @@ import { FormsModule } from "@angular/forms";
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 import { formatClp } from "../../../../utils/currency";
 import { formatDate } from "../../../../utils/date";
+import {
+  initialReadSettled,
+  reportWorkspaceReadiness,
+} from "../../../core/rendering/workspace-preparation";
 import { AccountsData } from "../../../features/accounts/accounts.data";
 import { TagsData } from "../../../features/tags/tags.data";
 import { HistoryData } from "../../../features/transactions/history.data";
@@ -47,6 +51,11 @@ export class HistoryPage {
   protected readonly date = (value: string) => formatDate(new Date(value));
 
   constructor() {
+    reportWorkspaceReadiness(
+      this.accounts,
+      this.tags,
+      () => !!this.error() || initialReadSettled(this.data.page),
+    );
     effect(() => {
       const query = this.query();
       this.fields = {

@@ -184,7 +184,7 @@ runs workspace test scripts, including Angular's default test behavior.
 | --- | --- | --- |
 | Formatting, architecture, RPC drift, build/typecheck | No app services or database; generated/build output may be written | Source boundaries, generated agreement, compilation |
 | Backend `src/**/*.spec.ts` unit tests | In-memory/mocked dependencies; no HTTP listener | Financial calculations, signatures/policies, rollback logic and orchestration |
-| UI one-shot suite | Angular test compilation, injected `RPC_FETCH` and jsdom; no dev/API/DB server | Resource/session/SSR isolation and presentation behavior |
+| UI one-shot suite | Angular test compilation, injected `RPC_FETCH` and jsdom; no dev/API/DB server | Resource/session isolation, public-only prerendering, eager frames and presentation behavior |
 | API `tests/integration/` HTTP/router/MCP specs | No real persistence needed when overridden, but may open local HTTP listeners | Transport policy, serialization, public/runtime surface and MCP auth |
 | Persistence PostgreSQL suite | Owner access to an existing disposable `_test` DB; creates/provisions fixtures and starts test HTTP listeners | Real RLS/grants, pooled users, identity races, migrations and rollback |
 | Root API integration runner | Builds, migrates/provisions disposable DB, starts compiled persistence plus API test listeners | API workflows through real public/private RPC and restricted SQL roles |

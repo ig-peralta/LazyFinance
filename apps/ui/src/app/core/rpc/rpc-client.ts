@@ -31,7 +31,7 @@ export interface RpcScope {
   readonly signal: AbortSignal;
 }
 
-/** Native tRPC clients, owned by this Angular application / SSR render injector. */
+/** Native tRPC clients owned by this application injector, never module-global. */
 @Injectable({ providedIn: "root" })
 export class RpcClient {
   private readonly url = `${inject(API_URL).replace(/\/$/, "")}/trpc`;

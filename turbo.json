@@ -13,8 +13,7 @@
         "FIREBASE_*",
         "CORS_ORIGINS",
         "PERSISTENCE_*",
-        "POSTGRES_*",
-        "API_INTERNAL_URL"
+        "POSTGRES_*"
       ],
       "dependsOn": ["^build"]
     },

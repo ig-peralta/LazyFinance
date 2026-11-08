@@ -88,15 +88,8 @@ services:
     build:
       context: ../..
       dockerfile: apps/ui/Dockerfile
-    environment:
-      NODE_ENV: production
-      PORT: '4000'
-      API_INTERNAL_URL: http://api:3000
     ports:
       - '${UI_PORT:-4200}:4000'
-    depends_on:
-      api:
-        condition: service_healthy
     networks: [edge]
     restart: unless-stopped
 

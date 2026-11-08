@@ -62,7 +62,10 @@ describe("AppShell", () => {
             ],
           },
         ]),
-        { provide: SessionService, useValue: { clear, logout } },
+        {
+          provide: SessionService,
+          useValue: { clear, logout, error: signal(null), retry: vi.fn() },
+        },
         { provide: OnboardingData, useValue: { status: onboardingStatus } },
       ],
     });
@@ -149,6 +152,27 @@ describe("AppShell", () => {
     root.querySelector<HTMLAnchorElement>(".skip-link")?.click();
     expect(root.ownerDocument.activeElement).toBe(root.querySelector("main"));
     expect(TestBed.inject(Router).url).toBe(url);
+  });
+
+  it("dismisses the modal menu on programmatic navigation, not only menu-link clicks", async () => {
+    const { harness, root } = await setup();
+    root
+      .querySelector<HTMLButtonElement>('button[aria-controls="mobile-menu"]')
+      ?.click();
+    harness.detectChanges();
+    expect(root.querySelector<HTMLDialogElement>("#mobile-menu")?.open).toBe(
+      true,
+    );
+    await harness.navigateByUrl("/cuentas");
+    harness.detectChanges();
+    expect(root.querySelector<HTMLDialogElement>("#mobile-menu")?.open).toBe(
+      false,
+    );
+    expect(
+      root
+        .querySelector('[aria-controls="mobile-menu"]')
+        ?.getAttribute("aria-expanded"),
+    ).toBe("false");
   });
 
   it("keeps nested pages in the correct area and selects only the most specific submenu", async () => {

@@ -1,6 +1,7 @@
 import { Component, effect, inject, input, output } from "@angular/core";
 import { formatClp } from "../../../../utils/currency";
 import { formatDate } from "../../../../utils/date";
+import { reportWorkspaceReadiness } from "../../../core/rendering/workspace-preparation";
 import { HistoryData } from "../../../features/transactions/history.data";
 
 @Component({
@@ -16,6 +17,7 @@ export class CreditBrowser {
   protected readonly date = (value: string) => formatDate(new Date(value));
 
   constructor() {
+    reportWorkspaceReadiness(this.data.page);
     effect(() => {
       const month = this.month(),
         year = Number(month.slice(0, 4)),

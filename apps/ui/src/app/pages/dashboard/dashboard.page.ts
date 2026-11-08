@@ -4,6 +4,7 @@ import { MonthSchema } from "@lazyfinance/contracts";
 import { formatClp } from "../../../utils/currency";
 import { currentMonth, monthLabel } from "../../../utils/month";
 import { SessionService } from "../../core/auth/session.service";
+import { reportWorkspaceReadiness } from "../../core/rendering/workspace-preparation";
 import { AccountsData } from "../../features/accounts/accounts.data";
 import { ObjectivesData } from "../../features/objectives/objectives.data";
 import { SavingsMeasure } from "../../features/objectives/savings-measure";
@@ -56,6 +57,17 @@ export class DashboardPage {
   );
   protected readonly maxMonth = currentMonth();
   protected readonly money = formatClp;
+
+  constructor() {
+    reportWorkspaceReadiness(
+      this.summaries.monthly,
+      this.summaries.comparison,
+      inject(AccountsData).accounts,
+      this.objectives.objectives,
+      this.objectives.progress,
+      inject(TransactionsData).recent,
+    );
+  }
 
   protected selectMonth(month: string) {
     if (!MonthSchema.safeParse(month).success || month > this.maxMonth) return;

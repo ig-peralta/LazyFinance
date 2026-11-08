@@ -35,6 +35,7 @@
       </nav>
     }
     <main #content id="workspace-content" tabindex="-1" class="workspace-content">
+      @if (session.error()) { <div class="notice danger" role="status">{{ session.error() }} <button type="button" class="button secondary" (click)="retrySession()">Reintentar</button></div> }
       @if (logoutError()) { <div class="notice danger" role="alert">{{ logoutError() }}</div> }
       @else { <router-outlet /> }
     </main>

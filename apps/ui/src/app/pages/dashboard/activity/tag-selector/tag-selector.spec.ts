@@ -9,6 +9,7 @@ import {
   setupRpc,
   tag,
 } from "../../../../../testing/rpc";
+import { AuthCredentials } from "../../../../core/auth/auth-credentials";
 import { TaggingData } from "../../../../features/tagging/tagging.data";
 import { TransactionTagSelector } from "./tag-selector";
 
@@ -43,11 +44,13 @@ function button(
   fixture: ComponentFixture<TransactionTagSelector>,
   label: string,
 ) {
-  return (
+  const target = (
     Array.from(
       fixture.nativeElement.querySelectorAll("button"),
     ) as HTMLButtonElement[]
-  ).find((item) => item.textContent?.includes(label))!;
+  ).find((item) => item.textContent?.includes(label));
+  if (!target) throw new Error(`Missing picker action: ${label}`);
+  return target;
 }
 
 describe("TransactionTagSelector presentation and command state", () => {
@@ -201,5 +204,47 @@ describe("TransactionTagSelector presentation and command state", () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('[role="dialog"]')).toBeNull();
     scrollBy.mockRestore();
+  });
+
+  it("discards an open picker and its draft when its movement changes", async () => {
+    const { fixture } = setup();
+    await open(fixture);
+    const search = fixture.nativeElement.querySelector(
+      'input[type="search"]',
+    ) as HTMLInputElement;
+    search.value = "Private draft";
+    search.dispatchEvent(new Event("input"));
+    fixture.componentRef.setInput("transaction", {
+      ...movement,
+      id: "other-movement",
+    });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[role="dialog"]')).toBeNull();
+    await open(fixture);
+    expect(
+      fixture.nativeElement.querySelector('input[type="search"]').value,
+    ).toBe("");
+  });
+
+  it("closes its overlay immediately when the credential scope disappears", async () => {
+    const { fixture } = setup();
+    await open(fixture);
+    TestBed.inject(AuthCredentials).clear();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[role="dialog"]')).toBeNull();
+  });
+
+  it("returns focus from a successful picker action to the trigger", async () => {
+    const { fixture } = setup();
+    await open(fixture);
+    const action = button(fixture, "Dejar sin etiqueta");
+    action.focus();
+    action.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[role="dialog"]')).toBeNull();
+    expect(fixture.nativeElement.ownerDocument.activeElement).toBe(
+      fixture.nativeElement.querySelector('button[aria-haspopup="dialog"]'),
+    );
   });
 });

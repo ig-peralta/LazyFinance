@@ -8,7 +8,9 @@ Start here for the current system map. Detailed references:
 
 ## Repository and runtime boundaries
 
-`apps/ui` is Angular with a Node/Express SSR server. It calls the NestJS public
+`apps/ui` prerenders the public landing at build time and renders login/private
+screens in the browser. Unprivileged Nginx serves only static UI assets. The
+browser calls the explicit environment-configured API base URL using the NestJS public
 tRPC API in `apps/api`; authenticated MCP tools enter that same workflow layer.
 `apps/persistence` alone uses Kysely/pg to access PostgreSQL 18. Its `identity` and
 `finance` schemas enforce user RLS with a restricted runtime login. All three apps
@@ -16,7 +18,7 @@ build independently using committed generated type libraries; no runtime client
 imports another application's source.
 
 ```text
-Browser / request-local SSR ─tRPC→ API workflows ─signed tRPC→ Persistence ─SQL→ DB
+Browser ─tRPC (configured API origin)→ API workflows ─signed tRPC→ Persistence ─SQL→ DB
 Authenticated MCP ────────────────┘                                      user RLS
 ```
 
@@ -27,7 +29,7 @@ code cannot import private schemas, signing code, Nest or database implementatio
 
 | Layer | Owns | Does not own |
 | --- | --- | --- |
-| Angular browser/request-local SSR | Presentation, verified session handoff, page resources and explicit commands | SQL, private service assertions, authoritative financial calculations |
+| Angular browser/public prerender | Presentation, browser identity and verified credentials, page resources and explicit commands | SQL, private service assertions, authoritative financial calculations |
 | Public API / MCP adapters | Bearer verification, internal principal, financial/calendar rules, response composition and provider orchestration | Database pools/credentials, migrations or generic SQL |
 | Private persistence | Authenticated scoped transactions, bounded facts/aggregates, ownership checks and named atomic commands | Provider network calls, UI summaries or user-selected execution scopes |
 | PostgreSQL | Exact stored facts, constraints/keys, related-owner RLS and transaction atomicity | Firebase verification, product authorization for external MCP clients |
@@ -60,16 +62,29 @@ SQL execution. RLS does not defend against compromise of those trusted processes
 or privileged database operators. Use protected/TLS private transport; the
 [security reference](persistence-security.md) describes these limits and roles.
 
-SSR receives only a token cookie and verifies `auth.principal` before rendering.
-Vanilla tRPC clients/auth snapshots are request-local, with no shared queue/cache.
-`AuthCredentials` holds accepted identity independently of the RPC client and
+Public prerendering/hydration never starts authentication or fetches protected data.
+Private entry serves a neutral static frame, then starts shared browser restoration
+asynchronously. Its matching Angular loader stays visible for at least one second
+on every workspace entry, including already-verified returns. Authentication and
+destination-code loading run concurrently. After `auth.principal` verification,
+the actual page mounts invisibly/inertly and starts page-owned reads during the
+animation. A route-scoped readiness contract includes conditional visible reads;
+the same instance is revealed after both readiness and the minimum second, with
+usable errors/reload recovery for failed or slow preparation. Internal navigation,
+filters and token refresh do not replay the animation. There is no financial
+preload cache or reveal-time refetch. See the [entry lifecycle](ui-data-lifecycle.md#public-prerendering-and-browser-owned-private-rendering).
+Firebase owns browser identity persistence; accepted application access stays in
+memory, without an SSR cookie or persisted principal. The legacy bearer cookie is
+expired without being read. Development mock reloads use only a tab-session token
+and verify it with the API again. `AuthCredentials` holds accepted identity independently of the RPC client and
 session coordinator. Its immutable scopes cancel old-user work on token changes
 and logout; late 401s cannot expire a newer session. Page-owned feature services
 use Angular resources for reads and native Promise commands for writes. Widgets
 render resource state, not an Observable compatibility facade or HTTP-shaped
 errors. Protected resources have no transfer-cache IDs and components do not
-write financial `TransferState`; browser hydration revalidates and refetches.
-Protected fetches and SSR HTML are no-store. Firebase Web identifiers are public;
+write financial `TransferState`; private routes are never prerendered or hydrated.
+Protected fetches are no-store. Static HTML is non-personalized and revalidated;
+fingerprinted assets are immutable. Firebase Web identifiers are public;
 Admin and service signing keys are server-only.
 
 ## Financial and atomicity boundaries
