@@ -64,6 +64,13 @@ explicit. Evidence retains its booking cutoff and rejects mismatched goal
 versions; it is current-fact evidence, not historical time travel. Dashboard tag
 decisions invalidate savings allocations as well as spending/budget reads.
 
+`/cuentas` reads stored active-account balances and last-synchronization dates.
+It does not refresh the bank. Connection pending/failed/revoked state is not
+available from the current public API; linking, refresh, relink and disconnect
+are explicitly unavailable. A timestamp older than 24 hours is labelled by age,
+not treated as proof of a connection state. **LAZ-62 remains blocked/open** until
+the separate banking backend and live verification exist.
+
 Detailed references: [session/resource lifetimes](../../docs/technical/ui-data-lifecycle.md),
 [provider-neutral identity](../../docs/technical/identity.md),
 [RPC contracts](../../docs/technical/rpc-contracts.md) and

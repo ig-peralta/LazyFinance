@@ -20,6 +20,11 @@ body {
 }
 
 /* Authenticated workspace only: the public landing keeps its own visual language. */
+.accounts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 20px;
+}
 .dashboard-grid > .dashboard-savings {
   grid-column: span 6;
   min-width: 0;

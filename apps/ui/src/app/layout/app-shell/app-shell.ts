@@ -50,6 +50,12 @@ export class AppShell {
       description: "Ir al resumen de tus finanzas",
     },
     {
+      path: "/cuentas",
+      icon: "bank",
+      label: "Cuentas",
+      description: "Consultar cuentas y sincronización informada",
+    },
+    {
       path: "/etiquetas",
       icon: "tag",
       label: "Etiquetas",
