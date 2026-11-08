@@ -51,6 +51,12 @@ separate original purchases, refunds, reimbursements and net spending. Continuat
 retains returned cutoffs, explains current-fact drift and never claims complete
 bank coverage. Changed revisions require reopening the current progress selection.
 
+`/metas` creates selected-tag lifetime/monthly/yearly/fixed savings targets;
+`/metas/:id` provides owned detail, immutable configuration history and expected-
+version edit/archive. Savings edits restate the current allocation view immediately
+rather than changing next period's spending limit. Archival preserves direct
+detail/history and does not move cash or generate contributions.
+
 Detailed references: [session/resource lifetimes](../../docs/technical/ui-data-lifecycle.md),
 [provider-neutral identity](../../docs/technical/identity.md),
 [RPC contracts](../../docs/technical/rpc-contracts.md) and

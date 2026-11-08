@@ -3,6 +3,8 @@ import { RenderMode, ServerRoute } from "@angular/ssr";
 const privateHeaders = { "Cache-Control": "private, no-store" };
 
 export const serverRoutes: ServerRoute[] = [
+  { path: "metas", renderMode: RenderMode.Server, headers: privateHeaders },
+  { path: "metas/:id", renderMode: RenderMode.Server, headers: privateHeaders },
   {
     path: "presupuestos/:id/movimientos",
     renderMode: RenderMode.Server,

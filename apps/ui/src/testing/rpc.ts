@@ -203,6 +203,52 @@ export const budgetProgress = {
   },
 } satisfies RpcOutput<"objectives.progress">[number];
 
+export const savingsGoal = {
+  id: "00000000-0000-4000-8000-000000000071",
+  revisionId: "00000000-0000-4000-8000-000000000072",
+  version: 1,
+  archivedAt: null,
+  intent: "saving",
+  name: "Fondo de calma",
+  amount: "5000000.00",
+  kind: "amount_based",
+  isRecurring: null,
+  period: null,
+  startDate: null,
+  endDate: null,
+  tags: [tag],
+} satisfies RpcOutput<"objectives.savingsGoal">;
+
+export const savingsProgress = {
+  goal: savingsGoal,
+  month: "2026-11",
+  period: "cumulative",
+  basis: "recorded_allocations",
+  contributions: "600000.00",
+  withdrawals: "100000.00",
+  netContributions: "500000.00",
+  remaining: "4500000.00",
+  percentage: "10.00",
+  contributionCount: 2,
+  withdrawalCount: 1,
+  pendingCount: 1,
+  tracking: {
+    start: null,
+    end: "2026-12-01T03:00:00.000Z",
+    asOf: "2026-11-07T15:00:00.000Z",
+    archivedAt: null,
+    empty: false,
+  },
+  historyCoverage: [
+    {
+      accountId: movement.account.id,
+      completeness: "partial",
+      from: "2026-01-01",
+      through: "2026-11-07",
+    },
+  ],
+} satisfies RpcOutput<"objectives.savingsProgress">;
+
 export const manualDecision = (
   transactionId = movement.id,
   tagId: string | null = tag.id,

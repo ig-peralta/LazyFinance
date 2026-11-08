@@ -1,5 +1,5 @@
 import { Component, computed, inject, input } from "@angular/core";
-import { FormsModule } from "@angular/forms";
+import { ControlContainer, FormsModule, NgForm } from "@angular/forms";
 import type { TagSummary } from "@lazyfinance/contracts";
 import { TagsData } from "../../features/tags/tags.data";
 import type { ObjectiveFields } from "./objective-form";
@@ -8,6 +8,7 @@ import type { ObjectiveFields } from "./objective-form";
   selector: "objective-fields",
   imports: [FormsModule],
   providers: [TagsData],
+  viewProviders: [{ provide: ControlContainer, useExisting: NgForm }],
   templateUrl: "./objective-fields.html",
 })
 export class ObjectiveFieldsView {

@@ -20,6 +20,20 @@ export const routes: Routes = [
       import("./layout/app-shell/app-shell").then((m) => m.AppShell),
     children: [
       {
+        path: "metas",
+        title: "Metas de ahorro",
+        loadComponent: () =>
+          import("./pages/objectives/savings.page").then((m) => m.SavingsPage),
+      },
+      {
+        path: "metas/:id",
+        title: "Meta de ahorro",
+        loadComponent: () =>
+          import("./pages/objectives/savings-goal.page").then(
+            (m) => m.SavingsGoalPage,
+          ),
+      },
+      {
         path: "presupuestos/:id/movimientos",
         title: "Compras del presupuesto",
         loadComponent: () =>
