@@ -1,6 +1,7 @@
 import {
   AppliedTagRuleSchema,
   ApplyTagRuleSchema,
+  ManagedTagSchema,
   ReplaceTagRuleSchema,
   RpcEmptySchema,
   RpcIdSchema,
@@ -15,6 +16,8 @@ import {
   TagRulesResultSchema,
   TagSummarySchema,
   TagsResultSchema,
+  type UpdateTag,
+  UpdateTagSchema,
 } from "@lazyfinance/contracts";
 import { Ctx, Input, Mutation, Query, Router } from "nestjs-trpc";
 import { type ApiRequestContext, rpcUser } from "../../rpc/context";
@@ -23,6 +26,24 @@ import { TaggingService } from "./tagging.service";
 @Router({ alias: "tags" })
 export class TagsRpc {
   constructor(private readonly service: TaggingService) {}
+
+  @Mutation({
+    input: UpdateTagSchema,
+    output: ManagedTagSchema,
+    meta: { auth: "user" },
+  })
+  update(@Ctx() ctx: ApiRequestContext, @Input() input: UpdateTag) {
+    return this.service.updateTagForUser(rpcUser(ctx), input);
+  }
+
+  @Mutation({
+    input: RpcIdSchema,
+    output: ManagedTagSchema,
+    meta: { auth: "user" },
+  })
+  archive(@Ctx() ctx: ApiRequestContext, @Input() input: { id: string }) {
+    return this.service.archiveTagForUser(rpcUser(ctx), input.id);
+  }
 
   @Query({
     input: RpcEmptySchema,

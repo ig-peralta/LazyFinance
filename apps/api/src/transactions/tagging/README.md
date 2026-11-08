@@ -34,6 +34,8 @@ are not client inputs. The exact schemas are in
 | --- | --- | --- |
 | Query | `tags.list` | No input; active owned tags |
 | Mutation | `tags.create` | `{ name, color? }`; create owned tag |
+| Mutation | `tags.update` | `{ id, name?, color? }`; rename/recolor an active owned tag |
+| Mutation | `tags.archive` | `{ id }`; idempotent archival preserving history |
 | Query | `tags.suggestions` | `{ id }` movement; owned rule suggestions with reason/confidence |
 | Mutation | `tags.decide` | `{ transactionId, tagId }`; UUID or null is a manual decision |
 | Mutation | `tags.reset` | `{ id }` movement; clear the decision, not intentional no-tag |
@@ -45,6 +47,15 @@ are not client inputs. The exact schemas are in
 
 Tagging does not confirm income, change bank amounts/balances, or establish that
 a transfer is internal. Those are separate financial interpretations.
+
+Names are trimmed, case-sensitive and unique per owner, including archived names.
+Creating an existing active name returns that tag without changing its color;
+creating a reserved archived name conflicts. Updates require at least one field;
+omitted fields are retained and null clears a color. Archived tags are not editable
+or newly selectable and no longer match active rules. They remain on historical
+movements, selected goals/budgets, configuration revisions and rule records. Display
+metadata follows a rename/recolor; stored selected tag IDs and financial facts do
+not change. Full tag-management UI remains a separate delivery.
 
 ## Matching and approved automation
 

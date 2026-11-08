@@ -3,6 +3,7 @@ import {
   TagCreateInputSchema,
   type TagRuleInput,
   TagRuleInputSchema,
+  UpdateTagSchema,
 } from "@lazyfinance/contracts";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { z } from "zod";
@@ -37,6 +38,18 @@ export class TaggingService {
         parseInput(TagCreateInputSchema, value, "Invalid tag input"),
       );
     return tag;
+  }
+
+  updateTagForUser(userId: string, value: unknown) {
+    return this.persistence
+      .user(userId)
+      .tags.update.mutate(
+        parseInput(UpdateTagSchema, value, "Invalid tag input"),
+      );
+  }
+
+  archiveTagForUser(userId: string, id: string) {
+    return this.persistence.user(userId).tags.archive.mutate({ id });
   }
 
   async assignManualTagForUser(

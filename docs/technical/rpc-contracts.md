@@ -44,7 +44,7 @@ inferred Promises; there is no cross-app source import or HTTP/Observable adapte
 ## Public surface
 
 The [generated public router](../../libs/rpc-api/src/generated/server.ts) currently
-contains **49 procedures**. Prefix each method below with its router name.
+contains **51 procedures**. Prefix each method below with its router name.
 
 | Router | Methods | Responsibility |
 | --- | --- | --- |
@@ -54,7 +54,7 @@ contains **49 procedures**. Prefix each method below with its router name.
 | `objectives` | `list`, `progress`, `budget`, `budgetHistory`, `createBudget`, `updateBudget`, `archiveBudget`, `savingsGoal`, `savingsGoalHistory`, `createSavingsGoal`, `updateSavingsGoal`, `archiveSavingsGoal`, `savingsProgress`, `savingsContributions` | Revisioned management/history, spending progress and measured savings/evidence |
 | `summaries` | `monthly`, `comparison` | Financial summary and equivalent-period comparison |
 | `income` | `sources`, `source`, `createSource`, `updateSource`, `archiveSource`, `expectations`, `createExpectation`, `updateExpectation`, `removeExpectation`, `expected`, `receipts`, `confirm`, `clear`, `summary` | Declarations, dated expectations, explicit receipts and calculated summaries |
-| `tags` | `list`, `create`, `suggestions`, `decide`, `reset` | Single-tag classification and explicit no-tag/reset choices |
+| `tags` | `list`, `create`, `update`, `archive`, `suggestions`, `decide`, `reset` | Owned tag lifecycle, single-tag classification and explicit no-tag/reset choices |
 | `tagRules` | `list`, `create`, `replace`, `archive`, `apply` | Owned suggestion/approved automation rules and explicit application |
 
 Only `auth.config` and `auth.loginMock` are anonymous. Mock login is available only
@@ -75,7 +75,7 @@ are not implemented by this RPC cutover.
 ## Private surface
 
 The [generated private router](../../libs/rpc-persistence/src/generated/server.ts)
-currently contains **54 procedures**. They expose owned facts and authoritative
+currently contains **56 procedures**. They expose owned facts and authoritative
 commands rather than copying public screen calculations into persistence.
 
 | Router | Methods |
@@ -87,7 +87,7 @@ commands rather than copying public screen calculations into persistence.
 | `income` | `sources`, `source`, `createSource`, `updateSource`, `archiveSource`, `expectedFacts`, `receipts`, `facts` |
 | `incomeExpectations` | `list`, `create`, `update`, `remove` |
 | `incomeReceipts` | `confirm`, `clear` |
-| `tags` | `list`, `create` |
+| `tags` | `list`, `create`, `update`, `archive` |
 | `tagRules` | `list`, `create`, `replace`, `archive`, `facts`, `manual`, `reset`, `candidates`, `commit` |
 | `providerSync` | `begin`, `facts`, `commit`, `failure`, `review` |
 
@@ -102,6 +102,15 @@ classification-only aggregates, joined tag aggregates, or a complete snapshot.
 Do not reintroduce table-shaped reads for the API to join or aggregate itself.
 
 ## Wire semantics and transport
+
+Tag names are trimmed, nonempty, case-sensitive and unique per user, including
+archived names. Creation of an existing active name is idempotent and does not
+recolor it; an archived-name collision is a conflict. Partial `tags.update` accepts
+a name and/or nullable hex color without resetting omitted fields. Archive is
+idempotent, forbids further edits/new assignments/rule matches, and preserves
+historical movement, budget, goal, revision and rule references. Historical tag
+labels/colors reflect current metadata; immutable revision selections retain IDs,
+not separate copies of tag display metadata. Active `tags.list` remains unchanged.
 
 Savings-target commands support lifetime, calendar-month/year and inclusive fixed
 dates. Unlike deferred budget revisions, savings edits restate the current goal
