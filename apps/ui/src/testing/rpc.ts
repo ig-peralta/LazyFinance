@@ -9,6 +9,7 @@ import { AuthCredentials } from "../app/core/auth/auth-credentials";
 import { SessionService } from "../app/core/auth/session.service";
 import { RPC_FETCH, RpcClient } from "../app/core/rpc/rpc-client";
 import { AccountsData } from "../app/features/accounts/accounts.data";
+import { BankingData } from "../app/features/banking/banking.data";
 import { ObjectivesData } from "../app/features/objectives/objectives.data";
 import { SummariesData } from "../app/features/summaries/summaries.data";
 import { TaggingData } from "../app/features/tagging/tagging.data";
@@ -309,6 +310,8 @@ export function createRpcFetch(overrides: RpcHandlers = {}) {
         ? { status, completedAt: "2026-11-08T15:00:00.000Z" }
         : { status, completedAt: null },
     "accounts.list": () => [],
+    "banking.configuration": () => ({ enabled: false }),
+    "banking.connections": () => [],
     "transactions.recent": () => [],
     "transactions.list": () => transactionPage(),
     "transactions.detail": () => transactionDetail,
@@ -411,6 +414,7 @@ export function setupRpc(
       { provide: PLATFORM_ID, useValue: platform },
       { provide: RPC_FETCH, useValue: mock.fetch },
       AccountsData,
+      BankingData,
       ObjectivesData,
       SummariesData,
       TaggingData,
