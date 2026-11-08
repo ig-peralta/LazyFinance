@@ -77,10 +77,19 @@ for partial/split allocations, archived budgets, income conflicts and review sta
 
 The executable [eligibility policy](src/objectives/savings-policy.ts) and its
 [reconciled fixtures](src/objectives/savings-policy.spec.ts) define **recorded goal
-allocations**, not bank balances, new wealth or earned income. This slice defines
-and tests the rule; it adds no progress endpoint, management command, database
-change or UI percentage. Existing savings reads still show targets only. Measured
-reads/evidence belong to LAZ-40 and target management to LAZ-42.
+allocations**, not bank balances, new wealth or earned income. LAZ-35 defines and
+tests the rule; LAZ-42 adds owned target management below. Existing savings reads
+still show targets only until the measured-progress capability is connected.
+
+Target management uses `objectives.savingsGoal`, `savingsGoalHistory`,
+`createSavingsGoal`, `updateSavingsGoal` and `archiveSavingsGoal`. Lifetime,
+monthly/yearly and fixed inclusive dates are supported. Edits apply immediately
+to the current goal view, retaining immutable configuration/tag revisions rather
+than pretending past configurations never existed. Expected versions reject lost
+updates. Archived targets cannot be edited and retain their detail/history and
+server-timed counting cutoff. Newly selected tags must be owned and active;
+retained archived tags can remain selected. These commands never change bank facts
+or fabricate a contribution. Management UI remains a separate workstream.
 
 #### Selected tags and direction
 

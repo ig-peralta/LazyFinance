@@ -1,8 +1,8 @@
 # Implemented database model
 
 This reference describes the checked-in Kysely migrations, not a conceptual
-product model. PostgreSQL 18 holds **20 application tables** in fixed `identity`
-and `finance` schemas. Nineteen sensitive tables force user/identity RLS;
+product model. PostgreSQL 18 holds **22 application tables** in fixed `identity`
+and `finance` schemas. Twenty-one sensitive tables force user/identity RLS;
 `finance.provider` is the shared read-only catalog exception. There is no tenancy,
 membership or account-sharing model. See [security and RLS](persistence-security.md)
 for policy/grant details.
@@ -35,6 +35,8 @@ All unqualified table names in the finance section below belong to `finance`.
 | `objective_tag` | PK `(objective_id, tag_id)` | Both ends must be owned; multiple tags may describe one budget |
 | `budget_revision` | `id` → spending objective; unique `(objective_id, version)` and live effective boundary | Immutable configuration payload; runtime may update only supersession metadata |
 | `budget_revision_tag` | PK `(revision_id, tag_id)` | Append-only revision selection; both revision and tag must be owned |
+| `savings_revision` | `id` → savings objective; unique `(objective_id, version)` | Append-only configuration snapshots; separate goal write version and archival cutoff |
+| `savings_revision_tag` | PK `(revision_id, tag_id)` | Append-only selected tags; both revision and tag owners checked |
 | `income_source` | `id`; `user_id` | Regularity, amount behavior, schedule and effective dates |
 | `income_expectation` | `id` → source | Source-owned dated expectation for irregular income |
 | `income_receipt` | PK `transaction_id`; `source_id` | At most one confirmed source per movement; both ends owned |
@@ -85,6 +87,9 @@ erDiagram
     finance_objective ||--o{ finance_budget_revision : retains
     finance_budget_revision ||--o{ finance_budget_revision_tag : selects
     finance_tag ||--o{ finance_budget_revision_tag : groups
+    finance_objective ||--o{ finance_savings_revision : retains
+    finance_savings_revision ||--o{ finance_savings_revision_tag : selects
+    finance_tag ||--o{ finance_savings_revision_tag : groups
     finance_income_source ||--o{ finance_income_expectation : plans
     finance_income_source ||--o{ finance_income_receipt : receives
     finance_transaction ||--o| finance_income_receipt : confirms
@@ -163,6 +168,15 @@ erDiagram
     finance_income_source {
         uuid id PK
         uuid user_id FK
+    }
+    finance_savings_revision {
+        uuid id PK
+        uuid objective_id FK
+        int version
+    }
+    finance_savings_revision_tag {
+        uuid revision_id PK, FK
+        uuid tag_id PK, FK
     }
     finance_income_expectation {
         uuid id PK
@@ -267,7 +281,7 @@ workflow has been shipped.
 
 ## Migration and seed lifecycle
 
-Twenty-two migrations are globally ordered across `migrations/identity` and
+Twenty-three migrations are globally ordered across `migrations/identity` and
 `migrations/finance`: schema/bootstrap foundations plus the table migrations.
 Kysely's PostgreSQL migrator owns locking and transactional DDL/ledger updates.
 Each new sensitive table brings its constraints, indexes, grants and RLS together;

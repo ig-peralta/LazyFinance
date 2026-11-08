@@ -8,22 +8,93 @@ import {
   BudgetVersionInputSchema,
   type CreateBudgetInput,
   CreateBudgetInputSchema,
+  type CreateSavingsGoal,
+  CreateSavingsGoalSchema,
   ObjectivesResultSchema,
   RpcEmptySchema,
   RpcIdSchema,
   RpcMonthSchema,
+  SavingsGoalSchema,
+  type SavingsGoalVersion,
+  SavingsGoalVersionSchema,
+  type SavingsHistoryInput,
+  SavingsHistoryInputSchema,
+  SavingsHistoryPageSchema,
   type UpdateBudgetInput,
   UpdateBudgetInputSchema,
+  type UpdateSavingsGoal,
+  UpdateSavingsGoalSchema,
 } from "@lazyfinance/contracts";
 import { Ctx, Input, Mutation, Query, Router } from "nestjs-trpc";
 import { type ApiRequestContext, rpcUser } from "../rpc/context";
 import { checkedMonth } from "../utils/month-query";
 import { santiagoMonth } from "../utils/santiago-time";
 import { ObjectivesService } from "./objectives.service";
+import { SavingsGoalsService } from "./savings-goals.service";
 
 @Router({ alias: "objectives" })
 export class ObjectivesRpc {
-  constructor(private readonly service: ObjectivesService) {}
+  constructor(
+    private readonly service: ObjectivesService,
+    private readonly savings: SavingsGoalsService,
+  ) {}
+
+  @Query({
+    input: RpcIdSchema,
+    output: SavingsGoalSchema,
+    meta: { auth: "user" },
+  })
+  savingsGoal(@Ctx() ctx: ApiRequestContext, @Input() input: { id: string }) {
+    return this.savings.detail(rpcUser(ctx), input.id);
+  }
+
+  @Query({
+    input: SavingsHistoryInputSchema,
+    output: SavingsHistoryPageSchema,
+    meta: { auth: "user" },
+  })
+  savingsGoalHistory(
+    @Ctx() ctx: ApiRequestContext,
+    @Input() input: SavingsHistoryInput,
+  ) {
+    return this.savings.history(rpcUser(ctx), input);
+  }
+
+  @Mutation({
+    input: CreateSavingsGoalSchema,
+    output: SavingsGoalSchema,
+    meta: { auth: "user" },
+  })
+  createSavingsGoal(
+    @Ctx() ctx: ApiRequestContext,
+    @Input() input: CreateSavingsGoal,
+  ) {
+    return this.savings.create(rpcUser(ctx), input);
+  }
+
+  @Mutation({
+    input: UpdateSavingsGoalSchema,
+    output: SavingsGoalSchema,
+    meta: { auth: "user" },
+  })
+  updateSavingsGoal(
+    @Ctx() ctx: ApiRequestContext,
+    @Input() input: UpdateSavingsGoal,
+  ) {
+    return this.savings.update(rpcUser(ctx), input);
+  }
+
+  @Mutation({
+    input: SavingsGoalVersionSchema,
+    output: SavingsGoalSchema,
+    meta: { auth: "user" },
+  })
+  archiveSavingsGoal(
+    @Ctx() ctx: ApiRequestContext,
+    @Input() input: SavingsGoalVersion,
+  ) {
+    return this.savings.archive(rpcUser(ctx), input);
+  }
 
   @Query({
     input: RpcEmptySchema,

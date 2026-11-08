@@ -2,6 +2,7 @@ import type {
   BudgetRevision,
   IncomeExpectation,
   ObjectiveSummary,
+  SavingsRevision,
   TagSummary,
 } from "@lazyfinance/contracts";
 import type {
@@ -76,6 +77,7 @@ interface FixtureTables {
     createdAt: string;
     updatedAt: string;
     budgetVersion: number;
+    goalVersion: number;
     archivedAt: Date | null;
   };
   objective_tag: { objectiveId: string; tagId: string };
@@ -89,6 +91,11 @@ interface FixtureTables {
     effectiveFrom: Date;
   };
   budget_revision_tag: { revisionId: string; tagId: string };
+  savings_revision: Omit<
+    SavingsRevision,
+    "goalId" | "tags" | "startDate" | "endDate"
+  > & { objectiveId: string; startDate: Date | null; endDate: Date | null };
+  savings_revision_tag: { revisionId: string; tagId: string };
   expense_adjustment: {
     id: string;
     creditTransactionId: string;
@@ -173,6 +180,8 @@ const schemas = {
   objective_tag: "finance",
   budget_revision: "finance",
   budget_revision_tag: "finance",
+  savings_revision: "finance",
+  savings_revision_tag: "finance",
   expense_adjustment: "finance",
   provider_sync_state: "finance",
   provider_movement_removal: "finance",

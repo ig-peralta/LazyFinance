@@ -33,8 +33,8 @@ code cannot import private schemas, signing code, Nest or database implementatio
 | PostgreSQL | Exact stored facts, constraints/keys, related-owner RLS and transaction atomicity | Firebase verification, product authorization for external MCP clients |
 
 Public/private tRPC are separate surfaces, not two routes to the same router.
-The public generated library contains 42 procedures; the private library contains
-47, including bootstrap-only `identity.resolve`. `/mcp` exposes seven authenticated
+The public generated library contains 47 procedures; the private library contains
+52, including bootstrap-only `identity.resolve`. `/mcp` exposes seven authenticated
 read-only tools through the API's domain services, not direct persistence queries.
 Ordinary HTTP remains only for API `GET /`, persistence `GET /health` and MCP
 transport. Inventories and schema-change rules live in the
@@ -104,7 +104,10 @@ Savings eligibility is defined and unit-tested as selected, signed cash allocati
 credits add and debits withdraw on checking/savings accounts, without requiring
 known internal status or complete history. Same-goal tagged transfer legs net to
 zero; goal totals sharing tags overlap. This is not an account balance or a new
-progress endpoint. Existing savings reads remain target-only; see the
+progress endpoint. Savings targets have owned create/edit/archive/detail/history
+operations with optimistic versions and immutable configuration revisions; edits
+restate the current allocation view and archival retains a counting cutoff.
+Existing savings reads remain target-only; see the
 [savings policy](../../apps/api/README.md#savings-contribution-policy-laz-35).
 
 Money remains exact decimal strings; calendar dates remain strings. Checking/savings

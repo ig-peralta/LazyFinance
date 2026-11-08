@@ -269,7 +269,7 @@ describe.skipIf(!ownerUrl)(
           .filter((name) => !name.startsWith("failure."))
           .sort(),
       ).toEqual(expected.sort());
-      expect(expected).toHaveLength(47);
+      expect(expected).toHaveLength(52);
 
       for (const name of expected)
         expect(procedures[name]._def.meta).toMatchObject({
@@ -277,7 +277,7 @@ describe.skipIf(!ownerUrl)(
         });
     });
 
-    it("migrates idempotently and enables/forces RLS on all 19 sensitive tables", async () => {
+    it("migrates idempotently and enables/forces RLS on all 21 sensitive tables", async () => {
       expect(await migrate(owner, migrationProvider())).toEqual([]);
       const { rows } = await sql<{
         relrowsecurity: boolean;
@@ -286,7 +286,7 @@ describe.skipIf(!ownerUrl)(
       from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname in ('identity','finance') and c.relkind='r' and c.relname != 'provider'`.execute(
         owner,
       );
-      expect(rows).toHaveLength(19);
+      expect(rows).toHaveLength(21);
       expect(
         rows.every((row) => row.relrowsecurity && row.relforcerowsecurity),
       ).toBe(true);
@@ -1438,6 +1438,71 @@ describe.skipIf(!ownerUrl)(
           removals: [],
         }),
       ).rejects.toMatchObject({ data: { code: "CONFLICT" } });
+    });
+    it("isolates immutable savings revisions and both ends of their tag links", async () => {
+      const goals = [randomUUID(), randomUUID()];
+      for (const [id, user, tag] of [
+        [goals[0], a, tagA],
+        [goals[1], b, tagB],
+      ]) {
+        await sql`insert into finance.objective(id,user_id,name,amount,kind,intent) values (${id},${user},'Savings',100,'amount_based','saving')`.execute(
+          owner,
+        );
+        await withRequestContext(runtime, ctx(user), async (db) => {
+          await sql`insert into finance.savings_revision(id,objective_id,version,name,amount,kind) values (${id},${id},1,'Savings',100,'amount_based')`.execute(
+            db,
+          );
+          await sql`insert into finance.savings_revision_tag(revision_id,tag_id) values (${id},${tag})`.execute(
+            db,
+          );
+        });
+      }
+      await withRequestContext(runtime, ctx(a), async (db) => {
+        expect(
+          (
+            await sql<{
+              id: string;
+            }>`select id from finance.savings_revision`.execute(db)
+          ).rows.map((row) => row.id),
+        ).toEqual([goals[0]]);
+        expect(
+          (
+            await sql<{
+              revision_id: string;
+            }>`select revision_id from finance.savings_revision_tag`.execute(db)
+          ).rows.map((row) => row.revision_id),
+        ).toEqual([goals[0]]);
+      });
+      for (const work of [
+        (db: QueryExecutorProvider) =>
+          sql`insert into finance.savings_revision(objective_id,version,name,amount,kind) values (${goals[1]},2,'Foreign',1,'amount_based')`.execute(
+            db,
+          ),
+        (db: QueryExecutorProvider) =>
+          sql`insert into finance.savings_revision_tag(revision_id,tag_id) values (${goals[0]},${tagB})`.execute(
+            db,
+          ),
+        (db: QueryExecutorProvider) =>
+          sql`insert into finance.savings_revision_tag(revision_id,tag_id) values (${goals[1]},${tagA})`.execute(
+            db,
+          ),
+      ])
+        await expect(withRequestContext(runtime, ctx(a), work)).rejects.toThrow(
+          /row-level security/,
+        );
+      for (const work of [
+        (db: QueryExecutorProvider) =>
+          sql`update finance.savings_revision set amount=1 where id=${goals[0]}`.execute(
+            db,
+          ),
+        (db: QueryExecutorProvider) =>
+          sql`delete from finance.savings_revision_tag where revision_id=${goals[0]}`.execute(
+            db,
+          ),
+      ])
+        await expect(withRequestContext(runtime, ctx(a), work)).rejects.toThrow(
+          /permission denied/,
+        );
     });
   },
 );

@@ -44,14 +44,14 @@ inferred Promises; there is no cross-app source import or HTTP/Observable adapte
 ## Public surface
 
 The [generated public router](../../libs/rpc-api/src/generated/server.ts) currently
-contains **42 procedures**. Prefix each method below with its router name.
+contains **47 procedures**. Prefix each method below with its router name.
 
 | Router | Methods | Responsibility |
 | --- | --- | --- |
 | `auth` | `config`, `loginMock`, `principal` | Provider selection, local mock login, verified principal |
 | `accounts` | `list` | Active accounts, balances and freshness |
 | `transactions` | `recent`, `list`, `expenseAdjustments`, `setExpenseAdjustment`, `removeExpenseAdjustment` | Ten-movement preview, cursor-paginated history and explicit purchase-attributed refunds/reimbursements |
-| `objectives` | `list`, `progress`, `budget`, `budgetHistory`, `createBudget`, `updateBudget`, `archiveBudget` | Effective objectives, revisioned spending-budget management/history and progress |
+| `objectives` | `list`, `progress`, `budget`, `budgetHistory`, `createBudget`, `updateBudget`, `archiveBudget`, `savingsGoal`, `savingsGoalHistory`, `createSavingsGoal`, `updateSavingsGoal`, `archiveSavingsGoal` | Effective objectives, revisioned budget and savings-target management/history, spending progress |
 | `summaries` | `monthly`, `comparison` | Financial summary and equivalent-period comparison |
 | `income` | `sources`, `source`, `createSource`, `updateSource`, `archiveSource`, `expectations`, `createExpectation`, `updateExpectation`, `removeExpectation`, `expected`, `receipts`, `confirm`, `clear`, `summary` | Declarations, dated expectations, explicit receipts and calculated summaries |
 | `tags` | `list`, `create`, `suggestions`, `decide`, `reset` | Single-tag classification and explicit no-tag/reset choices |
@@ -74,7 +74,7 @@ are not implemented by this RPC cutover.
 ## Private surface
 
 The [generated private router](../../libs/rpc-persistence/src/generated/server.ts)
-currently contains **47 procedures**. They expose owned facts and authoritative
+currently contains **52 procedures**. They expose owned facts and authoritative
 commands rather than copying public screen calculations into persistence.
 
 | Router | Methods |
@@ -82,7 +82,7 @@ commands rather than copying public screen calculations into persistence.
 | `identity` | `resolve` (bootstrap only) |
 | `accounts` | `listActive` |
 | `transactions` | `recent`, `list`, `aggregates`, `taggedAggregates`, `expenseAdjustments`, `setExpenseAdjustment`, `removeExpenseAdjustment` |
-| `objectives` | `list` (effective definitions/nested tags), `forPeriod`, `spending` (revision-pinned sums/windows), `budget`, `budgetHistory`, `createBudget`, `updateBudget`, `archiveBudget` |
+| `objectives` | `list` (effective definitions/nested tags), `forPeriod`, `spending` (revision-pinned sums/windows), `budget`, `budgetHistory`, `createBudget`, `updateBudget`, `archiveBudget`, `savingsGoal`, `savingsGoalHistory`, `createSavingsGoal`, `updateSavingsGoal`, `archiveSavingsGoal` |
 | `income` | `sources`, `source`, `createSource`, `updateSource`, `archiveSource`, `expectedFacts`, `receipts`, `facts` |
 | `incomeExpectations` | `list`, `create`, `update`, `remove` |
 | `incomeReceipts` | `confirm`, `clear` |
@@ -101,6 +101,14 @@ classification-only aggregates, joined tag aggregates, or a complete snapshot.
 Do not reintroduce table-shaped reads for the API to join or aggregate itself.
 
 ## Wire semantics and transport
+
+Savings-target commands support lifetime, calendar-month/year and inclusive fixed
+dates. Unlike deferred budget revisions, savings edits restate the current goal
+view immediately while keeping immutable configuration/tag revisions. Updates and
+archival require an expected version; archived targets cannot be edited. Archival
+is server-timed/idempotent and preserves detail/history. History uses the shared
+cursor envelope, bound to the goal ID. No command changes bank facts or creates
+contributions; measured progress is a separate read capability.
 
 Budget creation accepts monthly/yearly calendar-aligned starts or fixed inclusive
 local dates. Started recurring edits take effect next month/year; started fixed

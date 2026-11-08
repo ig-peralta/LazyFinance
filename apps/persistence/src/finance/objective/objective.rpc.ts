@@ -5,12 +5,20 @@ import {
   BudgetHistoryPageSchema,
   type BudgetVersionInput,
   BudgetVersionInputSchema,
+  SavingsGoalSchema,
+  type SavingsGoalVersion,
+  SavingsGoalVersionSchema,
+  type SavingsHistoryInput,
+  SavingsHistoryInputSchema,
+  SavingsHistoryPageSchema,
 } from "@lazyfinance/contracts";
 import {
   BudgetPeriodInputSchema,
   BudgetPeriodRecordsSchema,
   type CreateBudgetCommand,
   CreateBudgetCommandSchema,
+  type CreateSavingsCommand,
+  CreateSavingsCommandSchema,
   EmptyInputSchema,
   IdInputSchema,
   ObjectiveRecordsSchema,
@@ -19,9 +27,12 @@ import {
   ObjectiveSpendingInputSchema,
   type UpdateBudgetCommand,
   UpdateBudgetCommandSchema,
+  type UpdateSavingsCommand,
+  UpdateSavingsCommandSchema,
 } from "@lazyfinance/contracts/internal";
 import { Input, Mutation, Query, Router } from "nestjs-trpc";
 import { wireValue } from "../../serialization";
+import { SavingsGoalRepository } from "../savings-goal/savings-goal.repository";
 import { BudgetRepository } from "./budget.repository";
 import { ObjectiveRepository } from "./objective.repository";
 
@@ -30,7 +41,53 @@ export class ObjectiveRpc {
   constructor(
     private readonly repository: ObjectiveRepository,
     private readonly budgets: BudgetRepository,
+    private readonly savings: SavingsGoalRepository,
   ) {}
+
+  @Query({
+    input: IdInputSchema,
+    output: SavingsGoalSchema,
+    meta: { context: "user", snapshot: true },
+  })
+  savingsGoal(@Input() input: { id: string }) {
+    return this.savings.detail(input.id);
+  }
+
+  @Query({
+    input: SavingsHistoryInputSchema,
+    output: SavingsHistoryPageSchema,
+    meta: { context: "user", snapshot: true },
+  })
+  savingsGoalHistory(@Input() input: SavingsHistoryInput) {
+    return this.savings.history(input);
+  }
+
+  @Mutation({
+    input: CreateSavingsCommandSchema,
+    output: SavingsGoalSchema,
+    meta: { context: "user" },
+  })
+  createSavingsGoal(@Input() input: CreateSavingsCommand) {
+    return this.savings.create(input);
+  }
+
+  @Mutation({
+    input: UpdateSavingsCommandSchema,
+    output: SavingsGoalSchema,
+    meta: { context: "user" },
+  })
+  updateSavingsGoal(@Input() input: UpdateSavingsCommand) {
+    return this.savings.update(input);
+  }
+
+  @Mutation({
+    input: SavingsGoalVersionSchema,
+    output: SavingsGoalSchema,
+    meta: { context: "user" },
+  })
+  archiveSavingsGoal(@Input() input: SavingsGoalVersion) {
+    return this.savings.archive(input);
+  }
 
   @Query({
     input: EmptyInputSchema,

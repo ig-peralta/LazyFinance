@@ -4,6 +4,7 @@ export * from "./identity";
 export * from "./income";
 export * from "./objectives";
 export * from "./provider-sync";
+export * from "./savings";
 export * from "./tagging";
 export * from "./tags";
 export * from "./transactions";

@@ -151,7 +151,7 @@ incorrectly commit. Result-size failures also throw before commit.
 
 ## RLS and related ownership
 
-All 19 sensitive application tables enable **and force** RLS. The twentieth,
+All 21 sensitive application tables enable **and force** RLS. The twenty-second,
 `finance.provider`, is a shared runtime-read-only catalog. Runtime grants and RLS
 are both required: a policy alone is not permission to access a table.
 
@@ -163,7 +163,8 @@ both an owned credit and original purchase, and an objective-tag link
 needs both owned ends. FKs alone cannot establish this. Tag decision events allow
 runtime SELECT/INSERT but not UPDATE/DELETE. Budget revisions check a spending
 parent owner and permit runtime updates only to supersession metadata; their tag
-links are append-only and check both owners. Identity mappings remain
+links are append-only and check both owners. Savings revisions and their tag links
+are append-only and require an owned saving objective and owned tags. Identity mappings remain
 bootstrap-only rather than becoming a user-readable identity directory.
 
 The local GUC is trusted because authenticated persistence owns SQL execution,
@@ -180,6 +181,7 @@ or generic transaction scripts.
 | Expense adjustment set/remove | Lock both owned movements; check eligibility, income exclusivity and credit/purchase capacity including retained review allocations; atomically upsert/remove one pair | Validate exact positive money and explicit refund/reimbursement intent; interpret gross/net aggregates |
 | Tag decision | Decision and append-only event together | Normalize/rank rules and calculate suggestions |
 | Budget create/edit/archive | Check owned active tags and expected version; save revision/tag links, supersede pending versions or record one archival cutoff atomically | Supported periods, Santiago boundaries, next-period edits and exact remaining/progress arithmetic |
+| Savings target create/edit/archive | Check related tags and expected version; retain immutable revisions and current selection; record archival cutoff | Supported goal dates and current-definition allocation meaning; never synthesize contributions |
 | Prepared rule application | Re-read candidate fingerprint, check eligibility, persist decisions/events | Match the bounded candidate page |
 | Provider sync commit | Check revision/fingerprint; persist facts, tombstones, conflicts, decisions/events and checkpoint together | Fetch/validate all pages and prepare classifications |
 
