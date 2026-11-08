@@ -1,8 +1,8 @@
 # Owned Fintoc linking (LAZ-49)
 
 This guide covers the **connection lifecycle**, not account/movement import or
-refresh scheduling. LAZ-51 adds the separate [first-import command](../fintoc/README.md); LAZ-48
-owns refresh/recovery. The LAZ-62 UI exposes the available lifecycle subset in
+refresh scheduling. LAZ-51/LAZ-48 add separate [snapshot import/refresh and status](../fintoc/README.md).
+The LAZ-62 UI exposes the available lifecycle subset in
 `/conexiones-bancarias` under **Mi cuenta**, without claiming its remaining refresh
 acceptance is complete. No payment or money-moving Fintoc endpoint is used.
 

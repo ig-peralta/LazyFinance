@@ -35,8 +35,8 @@ code cannot import private schemas, signing code, Nest or database implementatio
 | PostgreSQL | Exact stored facts, constraints/keys, related-owner RLS and transaction atomicity | Firebase verification, product authorization for external MCP clients |
 
 Public/private tRPC are separate surfaces, not two routes to the same router.
-The public generated library contains 64 procedures; the private library contains
-71, including bootstrap-only `identity.resolve`. `/mcp` exposes eleven authenticated
+The public generated library contains 66 procedures; the private library contains
+72, including bootstrap-only `identity.resolve`. `/mcp` exposes eleven authenticated
 read-only tools through the API's domain services, not direct persistence queries.
 Ordinary HTTP remains only for API `GET /`, persistence `GET /health` and MCP
 transport. Inventories and schema-change rules live in the
@@ -146,8 +146,11 @@ hosted authorization, access checks, same-identity relink and confirmed disconne
 with pending cleanup recovery. Its cancellable Widget flow waits for backend
 confirmation and is separate from stored balances/freshness; access is not proof
 of current financial data. The API's explicit [first snapshot import](../../apps/api/src/banking/fintoc/README.md)
-maps available Fintoc facts through shared atomic ingestion; refresh/recovery and
-UI import/refresh controls remain separate work. Accounts and onboarding link to connection settings without requiring guide
+and repeatable snapshot refresh map available Fintoc facts through shared atomic
+ingestion. Durable leases/backoff, interrupted-run recovery and readonly source
+freshness reporting are available in the API; UI import/refresh controls remain
+LAZ-62 work. Neither successful access nor a fetch forces the bank to update.
+Accounts and onboarding link to connection settings without requiring guide
 completion. LAZ-62 stays open for its refresh/recovery acceptance, and this UI subset
 does not close the LAZ-30 parent. Conversational agents and external MCP authorization
 remain separate.

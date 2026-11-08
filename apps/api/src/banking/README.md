@@ -2,8 +2,9 @@
 
 Current implementation: provider-neutral contracts, owned ingestion, the
 [Fintoc linking/lifecycle backend](linking/README.md) (LAZ-49), and the explicit
-[Fintoc first snapshot import](fintoc/README.md) (LAZ-51). Refresh/recovery and
-UI import/refresh controls remain separate unfinished slices.
+[Fintoc snapshot import/refresh](fintoc/README.md) (LAZ-51/LAZ-48). Durable attempt
+leases, recovery and source-freshness reporting supply the later UI controls;
+UI import/refresh controls remain LAZ-62 work.
 See the [database model](../../../../docs/technical/database-model.md),
 [private RPC/RLS](../../../../docs/technical/persistence-security.md) and
 [RPC inventories](../../../../docs/technical/rpc-contracts.md).
@@ -29,7 +30,7 @@ Fixtures exercise this boundary without a provider SDK. Kysely tables in `apps/p
 
 ## Owned ingestion (LAZ-50)
 
-`BankingIngestionService.syncForUser` calls private `providerSync.begin` before fetching. It validates all pages outside SQL, reads a consistent bounded factual snapshot, then `prepare-sync.ts` computes classification and tag decisions. `providerSync.commit` rechecks revision/fingerprint under the common user write lock and commits accounts, movements, tombstones, conflicts, decisions/events and checkpoint together. Rules added/removed between preparation and commit invalidate the fingerprint too. Concurrent completed runs return `superseded`; only known stale-input rejections are recomputed. Failures never change the last-good financial facts/checkpoint. Limits are 100 pages, 50,000 records, 32 MiB normalized JSON and 64 MiB private request/result JSON; an oversized run fails atomically rather than being split.
+`BankingIngestionService.syncForUser` calls private `providerSync.begin` before fetching. Begin acquires a five-minute revision-bound lease or returns the existing in-progress/backoff state without changing attempt metadata. The service validates all pages outside SQL, reads a consistent bounded factual snapshot, then `prepare-sync.ts` computes classification and tag decisions. `providerSync.commit` rechecks the live lease, revision and fingerprint under the common user write lock and commits accounts, movements, tombstones, conflicts, decisions/events and checkpoint together. Rules added/removed between preparation and commit invalidate the fingerprint too. Concurrent/obsolete runs return `in_progress`/`superseded`; only known stale-input rejections are recomputed. Failures never change last-good financial facts/checkpoints. Limits are 100 pages, 50,000 records, 32 MiB normalized JSON and 64 MiB private request/result JSON; an oversized run fails atomically rather than being split. Fintoc fetches also honor a 60-second whole-fetch budget.
 
 Account snapshots preserve user aliases and distinguish a missing balance from a reported zero. Provider balance times are separate from observation times; an older observation or source balance does not replace a newer one. Date-only bookings map to Santiago local noon while retaining `bookedOn` and date precision. Existing provider amounts, dates, descriptions and source evidence are updated on the same movement ID; user tags, confirmed income receipts and user internal-status overrides stay attached. A proven same-owner, opposite-sign pair is internal; unpaired transfer/card-payment hints remain unknown. Merchant-bearing ordinary purchases may be treated as external, but this hint cannot override a user-confirmed internal decision. Income is never auto-confirmed from a positive amount.
 
@@ -53,12 +54,13 @@ No source booking, amount, balance, relationship or tag is rewritten.
 
 | Step | Private procedure | What happens |
 | --- | --- | --- |
-| Begin | `providerSync.begin` | Verify owned connection/provider/status and credential snapshot version, then obtain revision/checkpoint |
+| Begin | `providerSync.begin` | Verify ownership/provider/status/credential version; acquire a bounded lease or coalesce/defer without provider I/O |
 | Fetch | None | API calls/validates the connector outside SQL, retaining the committed checkpoint throughout pagination |
 | Snapshot | `providerSync.facts` | Repeatable-read bounded relevant facts/rules and canonical fingerprint; POST override supports large scope keys |
 | Prepare | None | API computes owned-pair evidence, booking conversion, corrections and tag proposals |
 | Commit | `providerSync.commit` | Under user write lock, reject stale inputs and atomically persist authoritative changes/checkpoint |
-| Failure / review | `providerSync.failure` / `providerSync.review` | Record failed-attempt metadata separately / read owned unresolved conflicts |
+| Failure / review | `providerSync.failure` / `providerSync.review` | Finish the lease with failed-attempt metadata separately / read owned unresolved conflicts |
+| Status | `providerSync.status` | Repeatable-read owned lifecycle, attempt, bounded account-source facts and provider-suspension count |
 
 The sync revision orders competing runs; the factual fingerprint catches user,
 rule and relevant persisted changes between snapshot and commit. These are
@@ -73,7 +75,7 @@ matching indexes each immutable rule snapshot once, and commit validation reuses
 the revalidated rule set through an ID lookup. See the
 [read pattern](../../../../docs/technical/persistence-reads.md).
 
-The 50,000-record bound counts **accounts + movements + removals across all
+The 50,000-record bound counts **accounts + movements + removals + temporary suspensions across all
 pages**, including repeated records on separate pages. UTF-8 serialized normalized
 pages also share a cumulative 32 MiB budget; private prepared bodies and factual
 results have a 64 MiB budget. Repeated cursors, incomplete pagination, decreasing
@@ -82,15 +84,36 @@ not silently split an oversized run or advance its checkpoint after a partial
 financial import. Begin/failure attempt metadata is separate from the atomic
 financial commit, so "no partial writes" does not mean no attempt was recorded.
 
-Connector retryability and `retryAfter` are reported facts, not an implemented
-background scheduler. `banking.importInitial` explicitly imports current Fintoc
-accounts and a disclosed 90-day partial movement window through this service. Linking/access-check commands still never
-start financial imports, and no scheduled/incremental refresh trigger is shipped.
+`banking.importInitial` and `banking.refresh` explicitly import current Fintoc
+accounts and a disclosed rolling 90-day partial movement window. Refresh is a
+bounded snapshot replay, not an incremental cursor, bank-forced refresh or scheduler.
+Begin honors persisted provider `retryAfter`; no automatic mutation retry/job is
+created. An expired unfinished lease is reported as `interrupted` and may be
+explicitly retried under a new revision. Linking/access checks and status reads
+never start financial imports.
 The first import binds the owned decrypted credential's version to `begin`; a
 relink between secret lookup and begin returns `superseded` before provider I/O.
 Fintoc begins without that version are rejected. Later relinks/disconnects continue
 to invalidate facts/commit/failure through the sync revision. A private review read
 is not a delivered review-resolution UI.
+
+### Temporary unbooking and reporting (LAZ-48)
+
+`suspendedMovements` represents explicit pending/processing states, not deletion by
+absence. Previously booked records retain all source facts and user decisions but
+receive a `provider_unbooked` conflict and `needs_review` exclusion. No transaction
+is created for a never-booked pending record. New provider confirmation resolves
+only that suspension; unrelated conflicts remain. Tags, receipt links and expense
+allocations are retained throughout, and eligibility is re-evaluated from the
+current confirmed facts. Permanent removal tombstones are never implicitly undone.
+
+`banking.syncStatus` reports access, attempt activity, last success/failure and
+bank-source freshness separately. A source-dated known balance is fresh for less
+than 24 hours, stale thereafter, and unknown without a value/source date or with a
+future source date. Fetch success is not source freshness. Per-account history
+remains partial; known partial bounds are retained/extended, not erased by an empty
+replay. Provider suspension counts distinguish awaiting-bank exclusions from other
+review conflicts. See the [Fintoc guide](fintoc/README.md#refresh-and-recovery-laz-48).
 
 ### Verification scope
 

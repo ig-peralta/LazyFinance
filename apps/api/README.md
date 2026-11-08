@@ -45,8 +45,9 @@ ignored `apps/api/.env`, and configure:
 The API needs the private RPC URL/signing key, not database configuration.
 App-local dotenv files are not the root Compose `.env`.
 The authenticated `banking` RPC supports owner-bound Fintoc linking, access checks,
-relink, disconnect and an explicit `importInitial` snapshot command. The UI exposes
-the lifecycle subset; import/refresh controls and refresh recovery remain separate.
+relink, disconnect, `importInitial`, repeatable `refresh` and readonly `syncStatus`.
+Refresh pulls the latest available Fintoc snapshot, not a forced bank update.
+The UI still exposes only the lifecycle subset; import/refresh controls remain LAZ-62 work.
 See the [linking contract](src/banking/linking/README.md) for Widget/credential
 handling and the [first-import guide](src/banking/fintoc/README.md) for conservative
 financial mappings, supported products and atomic import limits.

@@ -16,8 +16,11 @@ The backend's [documented savings rule](../../apps/api/README.md#savings-contrib
 measures recorded cash allocations, not bank balances or new wealth; overlapping
 goals are not additive. Its measured progress/evidence and purchase-attributed
 refund rules are now consumed by the [web-management workflows](../../apps/ui/README.md).
-Neither those APIs nor their UI prove that imported history is complete; live
-bank linking/refresh remains explicitly unavailable pending the banking backend.
+Neither those APIs nor their UI prove that imported history is complete.
+The owned Fintoc lifecycle UI supplies hosted bank-authorization flows; this alone
+does not establish live-bank readiness. The API supplies bounded
+snapshot import/refresh and source-freshness reporting; UI refresh controls,
+bank-forced/scheduled refresh and live-bank readiness are separate acceptance work.
 
 ## Integration and ecosystem capabilities
 

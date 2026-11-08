@@ -170,9 +170,11 @@ Connection access is separate from stored active-account balances and last-sync
 dates. Public account summaries do not identify their provider connection, so the
 page does not imply that a listed balance belongs to a particular Fintoc connection.
 A timestamp older than 24 hours is labelled by age, not as a connection failure.
-Access checks do not import or refresh financial data. **Import and bank refresh
-remain unavailable** (LAZ-51/LAZ-48), and LAZ-62 remains open for its full refresh/
-recovery acceptance. See the [backend contract/setup](../api/src/banking/linking/README.md).
+Access checks do not import or refresh financial data. **Import/refresh controls
+remain unavailable in the UI**. The API now supplies explicit snapshot import,
+repeatable refresh/recovery and readonly sync/source-freshness status; LAZ-62 remains
+open for consuming these capabilities. No current UI button simulates a financial
+refresh. See the [backend contract/setup](../api/src/banking/fintoc/README.md).
 
 Before the navigation split, browser verification on 8 November 2026 exercised
 the actual authenticated app, hosted Fintoc sandbox Widget, API, signed persistence and an isolated PostgreSQL

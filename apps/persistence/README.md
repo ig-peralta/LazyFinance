@@ -2,7 +2,7 @@
 
 Private NestJS/tRPC service using Kysely, `pg`, `identity`/`finance` schemas and
 PostgreSQL user RLS. The API and UI now use the matching RPC boundaries; no API
-database fallback remains. Its 71 private procedures expose identity resolution,
+database fallback remains. Its 72 private procedures expose identity resolution,
 bounded financial facts, revisioned budget/income commands, expense-adjustment
 allocations, tag decisions/rules, owned onboarding/banking lifecycle and prepared
 atomic provider sync. Product calculations remain in the API. Read the

@@ -365,6 +365,6 @@ scope in protected query params, forward abort signals, avoid protected hydratio
 IDs, invalidate only actual dependencies, and test out-of-order completions. Do
 not restore the removed catch-all API service, RxJS compatibility facade or fake
 HTTP errors. Delivered management workflows are indexed in the UI README;
-conversational features and financial bank import/refresh remain unavailable,
+conversational features and financial bank import/refresh controls remain unavailable in the UI,
 not missing client aliases or simulated success paths. Real-provider browser
 verification is separate evidence from mocked UI resource/command tests.
