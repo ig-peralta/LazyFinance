@@ -1,6 +1,6 @@
 <a class="text-link" routerLink="/movimientos" [queryParams]="route.snapshot.queryParams">← Volver a movimientos</a>
 <header class="page-header" style="margin-top:22px">
-  <div><p class="eyebrow">UN REGISTRO, TODO SU CONTEXTO</p><h1>Detalle del movimiento<span style="color:#91a574">.</span></h1><p class="page-description">Los hechos del banco y tu interpretación son cosas distintas.</p></div>
+  <div><p class="eyebrow">UN REGISTRO, TODO SU CONTEXTO</p><h1>Detalle del movimiento<span class="accent-text">.</span></h1><p class="page-description">Los hechos del banco y tu interpretación son cosas distintas.</p></div>
   <button class="button" type="button" [disabled]="detail.isLoading()" (click)="detail.reload()"><app-icon name="refresh" /> Recargar</button>
 </header>
 @if (savedNotice()) { <p class="notice" role="status">{{ savedNotice() }}</p> }

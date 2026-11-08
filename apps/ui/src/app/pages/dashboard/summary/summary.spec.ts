@@ -34,7 +34,7 @@ const summary = {
 describe("Summary resource view", () => {
   afterEach(() => TestBed.resetTestingModule());
 
-  it("shows exclusive tag totals ordered by spending without presenting income", async () => {
+  it("renders a labelled distribution with exact legend amounts and untagged spending", async () => {
     setupRpc({ "summaries.monthly": () => summary });
     const fixture = TestBed.createComponent(Summary);
     fixture.detectChanges();
@@ -43,7 +43,7 @@ describe("Summary resource view", () => {
     const text = fixture.nativeElement.textContent;
 
     for (const value of [
-      "Gastos ·",
+      "Gastos por etiqueta",
       "$20.000",
       "$10.000",
       "$5.000",
@@ -55,12 +55,22 @@ describe("Summary resource view", () => {
     expect(text).not.toContain("Ingresos");
     const items = fixture.nativeElement.querySelectorAll("figure ol li");
     expect(items[0].textContent).toContain("Ocio");
+    expect(items[0].textContent).toContain("50%");
     expect(items[1].textContent).toContain("Comida");
-    const bars = fixture.nativeElement.querySelectorAll(
-      '[data-testid="tag-bar"]',
+    expect(items[1].textContent).toContain("25%");
+    expect(items[2].textContent).toContain("Sin etiqueta");
+    const segments = fixture.nativeElement.querySelectorAll(
+      '[data-testid="spending-segment"]',
     );
-    expect(bars[0].style.width).toBe("100%");
-    expect(bars[1].style.width).toBe("50%");
+    expect(segments).toHaveLength(3);
+    expect(segments[0].getAttribute("stroke-dasharray")).toBe("50 50");
+    expect(segments[1].getAttribute("stroke-dasharray")).toBe("25 75");
+    const figure = fixture.nativeElement.querySelector("figure");
+    expect(figure.getAttribute("aria-labelledby")).toBe("summary-heading");
+    expect(figure.getAttribute("aria-describedby")).toBe("chart-note");
+    expect(
+      fixture.nativeElement.querySelector("details summary").textContent,
+    ).toContain("Ver desglose");
   });
 
   it("discloses unresolved movements without serializing the summary", async () => {
@@ -137,5 +147,24 @@ describe("Summary resource view", () => {
     expect(fixture.nativeElement.textContent).toContain(
       "Sin gastos etiquetados",
     );
+    expect(fixture.nativeElement.textContent).toContain(
+      "No hay gasto neto para graficar",
+    );
+    expect(fixture.nativeElement.querySelector("figure")).toBeNull();
+  });
+
+  it("keeps exact details but withholds a misleading ring for inconsistent amounts", async () => {
+    setupRpc({ "summaries.monthly": () => ({ ...summary, spending: "1.00" }) });
+    const fixture = TestBed.createComponent(Summary);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain(
+      "No podemos representar estos importes",
+    );
+    expect(fixture.nativeElement.querySelector("figure")).toBeNull();
+    expect(
+      fixture.nativeElement.querySelector("details").textContent,
+    ).toContain("$10.000");
   });
 });

@@ -303,6 +303,11 @@ export function createRpcFetch(overrides: RpcHandlers = {}) {
     "auth.config": () => ({ provider: "mock" }),
     "auth.principal": () => principal,
     "auth.loginMock": () => ({ token: "mock-token" }),
+    "onboarding.state": () => ({ status: "active", completedAt: null }),
+    "onboarding.finish": ({ status }) =>
+      status === "completed"
+        ? { status, completedAt: "2026-11-08T15:00:00.000Z" }
+        : { status, completedAt: null },
     "accounts.list": () => [],
     "transactions.recent": () => [],
     "transactions.list": () => transactionPage(),

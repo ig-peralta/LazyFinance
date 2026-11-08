@@ -1,28 +1,39 @@
-<header class="page-header">
-  <div><p class="eyebrow">Hola, {{ session.user()?.name }}</p><h1>Tu dinero, en perspectiva<span style="color:#91a574">.</span></h1><p class="page-description">Menos dudas, mejores decisiones. Este es el panorama de tus finanzas.</p></div>
-  <div class="page-actions"><label class="button"><app-icon name="calendar" /><span class="sr-only">Mes del resumen</span><input #monthPicker type="month" [value]="summaries.month()" [max]="maxMonth" (change)="selectMonth(monthPicker.value)" style="border:0;background:transparent;max-width:155px;font-size:12px" /></label></div>
+<header class="page-header dashboard-header">
+  <div><p class="eyebrow">Hola, {{ session.user()?.name }}</p><h1>Una mirada más clara<br>a <span class="accent-text">tu dinero.</span></h1><p class="page-description">Entiende tu mes. Dale un rumbo a lo que viene.</p></div>
+  <div class="page-actions"><label class="button month-picker"><app-icon name="calendar" /><span class="sr-only">Mes del resumen</span><input #monthPicker type="month" [value]="summaries.month()" [max]="maxMonth" (change)="selectMonth(monthPicker.value)" /></label></div>
 </header>
 <onboarding-hint />
 
 @if (summaries.monthly.hasValue()) {
   @let data = summaries.monthly.value();
-  <section class="metric-grid" aria-label="Las cifras de tu mes">
-    <article class="metric-card accent"><span class="metric-label">Gastos netos del mes</span><span class="metric-symbol"><app-icon name="wallet" /></span><strong class="metric-value">{{ money(data.spending) }}</strong><p class="metric-note">Compras menos devoluciones y reembolsos confirmados.</p></article>
-    <article class="metric-card"><span class="metric-label">Ingresos recibidos</span><span class="metric-symbol"><app-icon name="income" /></span><strong class="metric-value">{{ money(data.receivedIncome) }}</strong><p class="metric-note">Solo abonos confirmados como ingresos. No es tu saldo.</p></article>
-    <article class="metric-card"><span class="metric-label">Ingresos esperados</span><span class="metric-symbol"><app-icon name="calendar" /></span><strong class="metric-value">{{ money(data.expectedIncome.amount) }}</strong><p class="metric-note">Plan del mes completo · no es dinero disponible.@if (data.expectedIncome.estimatedAmount !== '0.00') { Incluye estimaciones. } @if (data.expectedIncome.unknownAmountCount) { {{ data.expectedIncome.unknownAmountCount }} importes por definir. }</p></article>
+  <section class="metric-grid dashboard-metrics" aria-label="Las cifras de tu mes">
+    <article class="metric-card accent"><span class="metric-label"><app-icon name="wallet" /> Gastos netos del mes</span><strong class="metric-value">{{ money(data.spending) }}</strong><p class="metric-note">Compras menos devoluciones y reembolsos confirmados.</p><span class="metric-period">{{ period() }}</span></article>
+    <article class="metric-card"><span class="metric-label"><app-icon name="income" /> Ingresos recibidos</span><strong class="metric-value">{{ money(data.receivedIncome) }}</strong><p class="metric-note">Abonos confirmados como ingresos. No es tu saldo.</p><a class="text-link" routerLink="/ingresos">Revisar cobros <span aria-hidden="true">↗</span></a></article>
+    <article class="metric-card"><span class="metric-label"><app-icon name="calendar" /> Ingresos esperados</span><strong class="metric-value">{{ money(data.expectedIncome.amount) }}</strong><p class="metric-note">Plan del mes completo · no es dinero disponible.@if (data.expectedIncome.estimatedAmount !== '0.00') { Incluye {{ money(data.expectedIncome.estimatedAmount) }} en estimaciones. } @if (data.expectedIncome.unknownAmountCount) { {{ data.expectedIncome.unknownAmountCount }} importes por definir. }</p><a class="text-link" routerLink="/ingresos/fuentes">Ver mis fuentes <span aria-hidden="true">↗</span></a></article>
   </section>
 } @else if (summaries.monthly.isLoading()) {
-  <div class="metric-grid" role="status" aria-label="Cargando cifras del mes">@for (item of [1,2,3]; track item) { <div class="metric-card"><div class="skeleton" style="width:45%"></div><div class="skeleton big"></div><div class="skeleton" style="width:75%"></div></div> }</div>
+  <div class="metric-grid dashboard-metrics" role="status" aria-label="Cargando cifras del mes">@for (item of [1,2,3]; track item) { <div class="metric-card"><div class="skeleton" style="width:45%"></div><div class="skeleton big"></div><div class="skeleton" style="width:75%"></div></div> }</div>
 }
 
-<div class="dashboard-grid">
+<nav class="dashboard-shortcuts" aria-label="Accesos rápidos">
+  <a routerLink="/movimientos"><app-icon name="activity" /><span>Explorar movimientos</span><app-icon name="arrow" /></a>
+  <a routerLink="/ingresos"><app-icon name="income" /><span>Confirmar ingresos</span><app-icon name="arrow" /></a>
+  <a routerLink="/presupuestos-y-metas"><app-icon name="wallet" /><span>Planificar gastos</span><app-icon name="arrow" /></a>
+  <a routerLink="/metas"><app-icon name="target" /><span>Ver mis metas</span><app-icon name="arrow" /></a>
+</nav>
+
+<div class="dashboard-sections">
+  <div class="dashboard-analysis"><dashboard-summary /><dashboard-comparison /></div>
+  <section aria-labelledby="planning-heading">
+    <div class="section-heading"><div><p class="eyebrow">ESPACIO PARA LO QUE IMPORTA</p><h2 id="planning-heading">Tus planes, en marcha</h2><p class="panel-subtitle">Límites de gasto y metas de ahorro: cada uno con su propia medida.</p></div><span class="badge neutral">{{ period() }}</span></div>
+    <div class="dashboard-planning">
+      <dashboard-budget-progress />
+      <div class="dashboard-savings">
+        @if (firstSavings(); as goal) { <savings-measure [goal]="goal" [month]="objectives.month()" [compact]="true" /> }
+        @else { <section class="panel"><div class="panel-heading"><h2>Metas de ahorro</h2><app-icon name="target" /></div>@if (objectives.objectives.isLoading()) { <p role="status" class="notice">Cargando tus metas…</p> } @else if (objectives.objectives.error()) { <p class="notice danger" role="alert">No pudimos cargar tus metas. <button type="button" (click)="objectives.objectives.reload()">Reintentar</button></p> } @else { <div class="empty-state"><span class="empty-icon"><app-icon name="target" /></span><h3>Un propósito para lo que apartas</h3><p>Un fondo de calma, un viaje, tu próximo proyecto. Empieza con una meta y mira sus aportes reales, no un progreso inventado.</p><a class="button soft" routerLink="/metas">Crear mi primera meta <app-icon name="arrow" /></a></div> }</section> }
+      </div>
+    </div>
+  </section>
   <dashboard-account />
-  <dashboard-summary />
-  <dashboard-comparison />
-  <dashboard-budget-progress />
-  <div class="dashboard-savings">
-    @if (firstSavings(); as goal) { <savings-measure [goal]="goal" [month]="objectives.month()" [compact]="true" /> }
-    @else { <section class="panel" style="height:100%"><div class="panel-heading"><h2>Metas de ahorro</h2><app-icon name="target" /></div>@if (objectives.objectives.isLoading()) { <p role="status" class="notice">Cargando tus metas…</p> } @else if (objectives.objectives.error()) { <p class="notice danger" role="alert">No pudimos cargar tus metas. <button type="button" (click)="objectives.objectives.reload()">Reintentar</button></p> } @else { <div class="empty-state"><span class="empty-icon"><app-icon name="target" /></span><h3>Un propósito para lo que apartas</h3><p>Un fondo de calma, un viaje, tu próximo proyecto. Empieza con una meta y mira sus aportes reales, no un progreso inventado.</p><a class="button soft" routerLink="/metas">Crear mi primera meta <app-icon name="arrow" /></a></div> }</section> }
-  </div>
   <dashboard-activity />
 </div>

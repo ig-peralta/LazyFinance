@@ -2,7 +2,7 @@ import { Component, computed, inject } from "@angular/core";
 import { RouterLink } from "@angular/router";
 import { MonthSchema } from "@lazyfinance/contracts";
 import { formatClp } from "../../../utils/currency";
-import { currentMonth } from "../../../utils/month";
+import { currentMonth, monthLabel } from "../../../utils/month";
 import { SessionService } from "../../core/auth/session.service";
 import { AccountsData } from "../../features/accounts/accounts.data";
 import { ObjectivesData } from "../../features/objectives/objectives.data";
@@ -43,6 +43,9 @@ import { Summary } from "./summary/summary";
 export class DashboardPage {
   protected readonly session = inject(SessionService);
   protected readonly summaries = inject(SummariesData);
+  protected readonly period = computed(() =>
+    monthLabel(this.summaries.month()),
+  );
   protected readonly objectives = inject(ObjectivesData);
   protected readonly firstSavings = computed(() =>
     this.objectives.objectives.hasValue()

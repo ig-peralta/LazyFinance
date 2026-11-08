@@ -1,10 +1,11 @@
 import "@angular/compiler";
-import { Component } from "@angular/core";
+import { Component, signal } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
 import { provideRouter, Router } from "@angular/router";
 import { RouterTestingHarness } from "@angular/router/testing";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SessionService } from "../../core/auth/session.service";
+import { OnboardingData } from "../../features/onboarding/onboarding.data";
 import { AppShell } from "./app-shell";
 
 @Component({ selector: "tags-stub", template: "<h1>Etiquetas</h1>" })
@@ -26,6 +27,9 @@ describe("AppShell", () => {
   afterEach(() => TestBed.resetTestingModule());
 
   async function setup(failLogout = false) {
+    const onboardingStatus = signal<
+      "active" | "skipped" | "completed" | undefined
+    >("skipped");
     const clear = vi.fn();
     const logout = vi.fn(async () => {
       if (failLogout) throw new Error("Firebase sign-out failed");
@@ -41,17 +45,25 @@ describe("AppShell", () => {
             children: [
               { path: "dashboard", component: TagsStub },
               { path: "etiquetas", component: TagsStub },
+              { path: "movimientos", component: TagsStub },
+              { path: "movimientos/:id", component: TagsStub },
+              { path: "cuentas", component: TagsStub },
+              { path: "ingresos", component: TagsStub },
+              { path: "ingresos/fuentes", component: TagsStub },
               { path: "presupuestos-y-metas", component: ObjectivesStub },
               {
                 path: "presupuestos/:id/movimientos",
                 component: ObjectivesStub,
               },
               { path: "metas/:id", component: ObjectivesStub },
+              { path: "metas", component: ObjectivesStub },
               { path: "seguridad", component: SecurityStub },
+              { path: "comenzar", component: SecurityStub },
             ],
           },
         ]),
         { provide: SessionService, useValue: { clear, logout } },
+        { provide: OnboardingData, useValue: { status: onboardingStatus } },
       ],
     });
     const harness = await RouterTestingHarness.create("/etiquetas");
@@ -64,10 +76,10 @@ describe("AppShell", () => {
       dialog.open = false;
     };
 
-    return { harness, clear, logout, root };
+    return { harness, clear, logout, root, onboardingStatus };
   }
 
-  it("links to financial and account-security destinations and marks the active one", async () => {
+  it("keeps four primary areas and direct contextual links with an active destination", async () => {
     const { root } = await setup();
     const links = Array.from(
       root.querySelectorAll(
@@ -75,20 +87,27 @@ describe("AppShell", () => {
       ),
     );
 
-    expect(links.map((a) => a.textContent?.trim())).toEqual(
-      expect.arrayContaining([
-        "Resumen",
-        "Etiquetas",
-        "Presupuestos",
-        "Metas de ahorro",
-        "Acceso y seguridad",
-      ]),
-    );
+    expect(links.map((a) => a.textContent?.trim())).toEqual([
+      "Resumen",
+      "Mi dinero",
+      "Planificación",
+      "Mi cuenta",
+    ]);
     expect(
       links
-        .filter((a) => a.getAttribute("aria-current") === "page")
+        .filter((a) => a.getAttribute("aria-current") === "true")
         .map((a) => a.textContent?.trim()),
-    ).toEqual(["Etiquetas"]);
+    ).toEqual(["Mi dinero"]);
+    expect(
+      root
+        .querySelector('.workspace-subnav a[aria-current="page"]')
+        ?.textContent?.trim(),
+    ).toBe("Etiquetas");
+    expect(
+      [...root.querySelectorAll(".workspace-subnav a")].map((a) =>
+        a.getAttribute("href"),
+      ),
+    ).toEqual(["/movimientos", "/cuentas", "/etiquetas"]);
   });
 
   it("toggles the mobile menu and closes it after navigating", async () => {
@@ -104,7 +123,12 @@ describe("AppShell", () => {
     const mobileLinks = root.querySelectorAll(
       "#mobile-menu .workspace-links a",
     );
-    expect(mobileLinks.length).toBeGreaterThanOrEqual(4);
+    expect([...mobileLinks].map((link) => link.textContent?.trim())).toEqual([
+      "Resumen",
+      "Mi dinero",
+      "Planificación",
+      "Mi cuenta",
+    ]);
 
     (
       root.querySelector(
@@ -113,7 +137,9 @@ describe("AppShell", () => {
     ).click();
     await harness.fixture.whenStable();
     harness.detectChanges();
-    expect(root.querySelector("#mobile-menu")).toBeNull();
+    expect(root.querySelector<HTMLDialogElement>("#mobile-menu")?.open).toBe(
+      false,
+    );
     expect(TestBed.inject(Router).url).toBe("/presupuestos-y-metas");
   });
 
@@ -125,22 +151,86 @@ describe("AppShell", () => {
     expect(TestBed.inject(Router).url).toBe(url);
   });
 
-  it("keeps nested budget and savings pages in their own active sections", async () => {
+  it("keeps nested pages in the correct area and selects only the most specific submenu", async () => {
     const { harness, root } = await setup();
-    for (const [path, label] of [
-      ["/presupuestos/example/movimientos?month=2026-11", "Presupuestos"],
-      ["/metas/example", "Metas de ahorro"],
+    for (const [path, area, label] of [
+      [
+        "/presupuestos/example/movimientos?month=2026-11",
+        "Planificación",
+        "Presupuestos",
+      ],
+      ["/metas/example", "Planificación", "Metas de ahorro"],
+      ["/ingresos/fuentes", "Planificación", "Fuentes de ingreso"],
+      ["/movimientos/example", "Mi dinero", "Movimientos"],
+      ["/comenzar", "Mi cuenta", "Retomar configuración"],
     ]) {
       await harness.navigateByUrl(path);
       harness.detectChanges();
       const active = root.querySelectorAll(
-        '.workspace-sidebar a[aria-current="page"]',
+        '.workspace-sidebar a[aria-current="true"]',
       );
       expect([...active].map((link) => link.textContent?.trim())).toEqual([
-        label,
+        area,
       ]);
       expect(active[0].getAttribute("aria-label")).toBeNull();
+      const current = root.querySelectorAll(
+        '.workspace-subnav a[aria-current="page"]',
+      );
+      expect([...current].map((a) => a.textContent?.trim())).toEqual([label]);
     }
+  });
+
+  it("offers resumption only while skipped, never a permanent onboarding menu item", async () => {
+    const { harness, root, onboardingStatus } = await setup();
+    await harness.navigateByUrl("/seguridad");
+    harness.detectChanges();
+    expect(root.querySelector(".topbar-location")?.textContent).toContain(
+      "Mi cuenta",
+    );
+    expect(root.querySelector("h1")?.textContent).toBe("Acceso y seguridad");
+    expect(
+      root.querySelector('.workspace-subnav a[href="/comenzar"]')?.textContent,
+    ).toContain("Retomar configuración");
+    for (const state of ["active", "completed", undefined] as const) {
+      onboardingStatus.set(state);
+      harness.detectChanges();
+      expect(
+        root.querySelector('.workspace-subnav a[href="/comenzar"]'),
+      ).toBeNull();
+      expect(root.querySelector(".workspace-subnav")).toBeNull();
+    }
+  });
+
+  it("makes every existing workflow reachable through an area and its submenu", async () => {
+    const { harness, root } = await setup();
+    const destinations = new Set<string>();
+    for (const path of [
+      "/dashboard",
+      "/movimientos",
+      "/presupuestos-y-metas",
+      "/seguridad",
+    ]) {
+      await harness.navigateByUrl(path);
+      harness.detectChanges();
+      destinations.add(path);
+      for (const a of root.querySelectorAll<HTMLAnchorElement>(
+        ".workspace-subnav a",
+      )) {
+        destinations.add(a.getAttribute("href") ?? "");
+      }
+    }
+    expect([...destinations].sort()).toEqual([
+      "/comenzar",
+      "/cuentas",
+      "/dashboard",
+      "/etiquetas",
+      "/ingresos",
+      "/ingresos/fuentes",
+      "/metas",
+      "/movimientos",
+      "/presupuestos-y-metas",
+      "/seguridad",
+    ]);
   });
 
   it("offers logout on desktop and mobile and returns to the landing page", async () => {

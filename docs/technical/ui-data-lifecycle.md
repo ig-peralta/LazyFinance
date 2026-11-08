@@ -182,9 +182,24 @@ versions require a fresh read. The dashboard measures only one featured goal;
 lists do not issue an unbounded per-goal measurement/suggestion fan-out during SSR.
 
 Optional setup progress is derived from owned account/source/objective reads.
-Only `active`/`skipped`/`completed` guide preferences live in owner-keyed localStorage,
-loaded after browser rendering to avoid changing the hydration DOM. SSR does not
-read them, and unavailable storage is disclosed. Closing the guide does not claim
+`OnboardingData` is a deliberate application/render-local exception for small
+non-financial account metadata shared by the shell, dashboard hint and guide;
+it is not a financial response cache. Its resource reads `onboarding.state` with
+the accepted credential scope, forwards cancellation and has no protected transfer
+ID. Loading/error/unknown never means `active`, so a completed user's prompt does
+not flash before verification. No onboarding state is read from or saved to
+browser storage, including legacy browser-only guide preferences.
+
+The dashboard prompts only active users. Explicit skip hides reminders and leaves
+a contextual resume link only for skipped users. Finishing removes both prompt
+and link; completed guide URLs redirect to the dashboard. Guide entry reconciles
+the stored state, while credential changes/page reloads refetch account metadata.
+Completed state is never automatically reset by financial edits or missing steps.
+Guide/hint writes use component-owned scoped commands, prevent duplicates and
+adopt state only after confirmed success for the same lifetime. Setting the
+resource to the confirmed result cancels an older read so it cannot restore a
+prompt. Ambiguous failures remain unconfirmed and offer an explicit state check,
+not automatic mutation replay. Completion closes the optional guide, not a claim
 that optional financial steps or unavailable bank linking are complete.
 
 ## SSR and hydration isolation

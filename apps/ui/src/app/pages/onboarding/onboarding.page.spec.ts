@@ -1,6 +1,8 @@
 import { TransferState } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
+import type { OnboardingState } from "@lazyfinance/contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { deferred } from "../../../testing/deferred";
 import {
   budgetDetail,
   budgetRevision,
@@ -10,19 +12,40 @@ import {
   savingsGoal,
   setupRpc,
 } from "../../../testing/rpc";
-import { OnboardingPreferences } from "../../features/onboarding/onboarding-preferences";
+import { OnboardingData } from "../../features/onboarding/onboarding.data";
 import { OnboardingPage } from "./onboarding.page";
 
-describe("optional owner-scoped onboarding", () => {
+const completed = {
+  status: "completed",
+  completedAt: "2026-11-08T15:00:00.000Z",
+} satisfies OnboardingState;
+
+function button(root: HTMLElement, label: string) {
+  const found = [...root.querySelectorAll("button")].find((item) =>
+    item.textContent?.includes(label),
+  );
+  if (!found) throw new Error(`Missing button: ${label}`);
+  return found;
+}
+
+describe("optional account-persisted onboarding", () => {
   afterEach(() => {
     TestBed.resetTestingModule();
     vi.restoreAllMocks();
-    window.localStorage.removeItem("lazyfinance:onboarding:v1:owner-a");
-    window.localStorage.removeItem("lazyfinance:onboarding:v1:bob");
   });
 
-  it("derives progress from persisted records, can skip/resume across visits and never creates duplicate financial data", async () => {
+  it("derives financial progress from records and resumes skipped guides without reactivating reminders", async () => {
+    let state: OnboardingState = { status: "active", completedAt: null };
     const mock = setupRpc({
+      "onboarding.state": (_input, call) =>
+        call.authorization === "Bearer bob"
+          ? { status: "active", completedAt: null }
+          : state,
+      "onboarding.finish": ({ status }) => {
+        state =
+          status === "completed" ? completed : { status, completedAt: null };
+        return state;
+      },
       "income.sources": (_input, call) =>
         call.authorization === "Bearer bob" ? [] : [incomeSource],
       "objectives.list": (_input, call) =>
@@ -40,42 +63,47 @@ describe("optional owner-scoped onboarding", () => {
     const root: HTMLElement = fixture.nativeElement;
     expect(root.textContent).toContain("3 de 4 con registros");
     expect(root.textContent).toContain("Vinculación no disponible");
-    [...root.querySelectorAll("button")]
-      .find((button) => button.textContent?.includes("Saltar por ahora"))
-      ?.click();
+    button(root, "Saltar por ahora").click();
+    await fixture.whenStable();
     fixture.detectChanges();
-    expect(
-      window.localStorage.getItem("lazyfinance:onboarding:v1:owner-a"),
-    ).toBe("skipped");
+    expect(mock.callsTo("onboarding.finish")[0].input).toEqual({
+      status: "skipped",
+    });
+    expect(TestBed.inject(OnboardingData).status()).toBe("skipped");
     fixture.destroy();
+
     const revisit = TestBed.createComponent(OnboardingPage);
     revisit.detectChanges();
     await revisit.whenStable();
     revisit.detectChanges();
-    const revisitedRoot: HTMLElement = revisit.nativeElement;
-    expect(revisitedRoot.textContent).toContain("Dejaste la guía para después");
-    [...revisitedRoot.querySelectorAll("button")]
-      .find((button) => button.textContent?.includes("Retomar la guía"))
-      ?.click();
-    revisit.detectChanges();
-    expect(TestBed.inject(OnboardingPreferences).status()).toBe("active");
+    expect(revisit.nativeElement.textContent).toContain(
+      "sin volver a activar los recordatorios",
+    );
     mock.credentials.accept({ ...principal, userId: "bob" }, "bob");
     await revisit.whenStable();
     revisit.detectChanges();
-    expect(revisitedRoot.textContent).toContain("0 de 4 con registros");
-    expect(TestBed.inject(OnboardingPreferences).status()).toBe("active");
+    expect(revisit.nativeElement.textContent).toContain("0 de 4 con registros");
+    expect(TestBed.inject(OnboardingData).status()).toBe("active");
     expect(
       mock.calls.every((call) =>
-        ["accounts.list", "income.sources", "objectives.list"].includes(
-          call.procedure,
-        ),
+        [
+          "onboarding.state",
+          "onboarding.finish",
+          "accounts.list",
+          "income.sources",
+          "objectives.list",
+        ].includes(call.procedure),
       ),
     ).toBe(true);
     expect(TestBed.inject(TransferState).toJson()).toBe("{}");
   });
 
-  it("does not mark failed imports as complete and allows finishing with explicitly optional unresolved steps", async () => {
-    setupRpc({ "accounts.list": () => rpcFailure() });
+  it("allows completing with failed or optional financial steps, waits for persistence and redirects", async () => {
+    const response = deferred<OnboardingState>();
+    const mock = setupRpc({
+      "accounts.list": () => rpcFailure(),
+      "onboarding.finish": () => response.promise,
+    });
     const fixture = TestBed.createComponent(OnboardingPage);
     fixture.detectChanges();
     await fixture.whenStable();
@@ -83,32 +111,106 @@ describe("optional owner-scoped onboarding", () => {
     const root: HTMLElement = fixture.nativeElement;
     expect(root.textContent).toContain("No comprobado");
     expect(root.textContent).toContain("Un error no significa");
-    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
-      throw new Error("Storage blocked");
-    });
-    [...root.querySelectorAll("button")]
-      .find((button) => button.textContent?.includes("Terminar recorrido"))
-      ?.click();
+    const finish = button(root, "Listo, ir al resumen");
+    finish.click();
+    finish.click();
     fixture.detectChanges();
-    expect(TestBed.inject(OnboardingPreferences).status()).toBe("completed");
-    expect(root.textContent).toContain(
-      "no implica que todas estén configuradas",
+    await vi.waitFor(() =>
+      expect(mock.callsTo("onboarding.finish")).toHaveLength(1),
     );
-    expect(root.textContent).toContain("no permite recordar la preferencia");
+    expect(finish.disabled).toBe(true);
+    expect(mock.navigate).not.toHaveBeenCalled();
+    expect(TestBed.inject(OnboardingData).status()).toBe("active");
+    response.resolve(completed);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(TestBed.inject(OnboardingData).status()).toBe("completed");
+    expect(root.querySelector("h1")).toBeNull();
+    expect(mock.navigate).toHaveBeenCalledWith("/dashboard", {
+      replaceUrl: true,
+    });
   });
 
-  it("keeps owner preferences out of server rendering and protected transfer state", async () => {
-    const get = vi.spyOn(Storage.prototype, "getItem");
-    setupRpc({}, "server");
+  it("does not pretend a failed command completed the guide or automatically retry it", async () => {
+    const mock = setupRpc({ "onboarding.finish": () => rpcFailure() });
     const fixture = TestBed.createComponent(OnboardingPage);
     fixture.detectChanges();
     await fixture.whenStable();
-    expect(TestBed.inject(OnboardingPreferences).status()).toBeUndefined();
-    expect(
-      get.mock.calls.filter(([key]) =>
-        key.startsWith("lazyfinance:onboarding"),
-      ),
-    ).toHaveLength(0);
+    fixture.detectChanges();
+    button(fixture.nativeElement, "Listo, ir al resumen").click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(TestBed.inject(OnboardingData).status()).toBe("active");
+    expect(fixture.nativeElement.textContent).toContain(
+      "No pudimos confirmar el resultado",
+    );
+    expect(mock.callsTo("onboarding.finish")).toHaveLength(1);
+    expect(mock.navigate).not.toHaveBeenCalled();
+  });
+
+  it("discards completion for an obsolete owner without redirecting or changing the new owner", async () => {
+    const response = deferred<OnboardingState>();
+    const mock = setupRpc({ "onboarding.finish": () => response.promise });
+    const fixture = TestBed.createComponent(OnboardingPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    button(fixture.nativeElement, "Listo, ir al resumen").click();
+    await vi.waitFor(() =>
+      expect(mock.callsTo("onboarding.finish")).toHaveLength(1),
+    );
+    mock.credentials.accept({ ...principal, userId: "bob" }, "bob");
+    fixture.detectChanges();
+    response.resolve(completed);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(mock.callsTo("onboarding.finish")[0].options?.signal?.aborted).toBe(
+      true,
+    );
+    expect(TestBed.inject(OnboardingData).status()).toBe("active");
+    expect(mock.navigate).not.toHaveBeenCalled();
+  });
+
+  it("reads completed status on SSR, redirects old URLs and never uses browser storage or transfer state", async () => {
+    const get = vi.spyOn(Storage.prototype, "getItem"),
+      set = vi.spyOn(Storage.prototype, "setItem");
+    const mock = setupRpc({ "onboarding.state": () => completed }, "server");
+    const fixture = TestBed.createComponent(OnboardingPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(TestBed.inject(OnboardingData).status()).toBe("completed");
+    expect(fixture.nativeElement.querySelector("h1")).toBeNull();
+    expect(mock.navigate).toHaveBeenCalledWith("/dashboard", {
+      replaceUrl: true,
+    });
+    expect(mock.calls.map((call) => call.procedure)).toEqual([
+      "onboarding.state",
+    ]);
+    expect(get).not.toHaveBeenCalled();
+    expect(set).not.toHaveBeenCalled();
     expect(TestBed.inject(TransferState).toJson()).toBe("{}");
+  });
+
+  it("does not interpret an unavailable onboarding read as a pending guide", async () => {
+    const mock = setupRpc({
+      "onboarding.state": vi
+        .fn()
+        .mockReturnValueOnce(rpcFailure())
+        .mockReturnValueOnce({ status: "active", completedAt: null }),
+    });
+    const fixture = TestBed.createComponent(OnboardingPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(TestBed.inject(OnboardingData).status()).toBeUndefined();
+    expect(fixture.nativeElement.textContent).toContain(
+      "No asumimos que esté pendiente",
+    );
+    expect(mock.callsTo("accounts.list")).toHaveLength(0);
+    button(fixture.nativeElement, "Reintentar").click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector("h1")).not.toBeNull();
   });
 });

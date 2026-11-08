@@ -6,13 +6,37 @@ The interface uses PrimeNG components with an Aura-based emerald theme, Tailwind
 
 ## Authenticated workspace
 
-The authenticated workspace has an ink/emerald sidebar, warm light surfaces and
-an adaptive overview grid; the public landing retains its existing design.
-Mobile navigation uses a native modal dialog for focus containment/Escape handling,
-with a skip link and keyboard-visible focus. Financial display formats decimal
-strings through bigint cents, retaining nonzero cents and large values without
-floating-point rounding. Dashboard income cards distinguish received amounts
-from the full-month plan and never describe either as available cash.
+The authenticated workspace uses dark surfaces, emerald accents, rounded cards
+and pill actions aligned with the public landing's visual language. Its dark
+tokens are workspace-scoped, including PrimeNG controls; the public landing and
+login retain their existing system-aware theme.
+
+Navigation has four primary areas: **Resumen**, **Mi dinero** (movements, accounts,
+tags), **Planificación** (budgets, savings, income and sources), and **Mi cuenta**
+(access/security, plus a resume link only for skipped setup). Direct contextual links appear above the
+page, wrap rather than scroll, and retain the active destination on detail routes.
+The sidebar has no internal scrolling or expandable lists. Narrow or short
+viewports replace it with a compact native modal menu, including a two-column
+layout on short screens, focus containment and Escape handling. A skip link and
+keyboard-visible focus remain available.
+
+The dashboard leads with selected-month net spending, received income and the
+full-month income plan, followed by workflow shortcuts, spending analysis,
+planning, stored account balances and recent activity. Balances are not added
+across different account types or confused with income/available cash. Financial
+display formats decimal strings through bigint cents, retaining nonzero cents
+and large values without floating-point rounding. Income cards distinguish
+confirmed receipts from plans; neither is presented as available cash.
+
+Spending by tag uses an SVG distribution ring with a readable exact-amount and
+percentage legend, including the untagged remainder. At most five named tags,
+an exact "other tags" aggregate and untagged spending appear in the ring; an
+expandable breakdown retains every tag, counts and gross/recovery/net amounts,
+including fully recovered purchases. Only visual coordinates and percentages
+use bounded numbers; amount arithmetic uses bigint cents. Zero spending and
+inconsistent/non-proportional amounts do not produce a fabricated chart. The
+backend's purchase-attributed recovery semantics and pending-review disclosures
+are unchanged. Chart colors are a presentation palette, not edits to tag colors.
 
 `/etiquetas` manages the active owned catalog: create, rename/recolor and explicit
 archive confirmation. Archived names remain reserved and historical references are
@@ -73,12 +97,21 @@ are explicitly unavailable. A timestamp older than 24 hours is labelled by age,
 not treated as proof of a connection state. **LAZ-62 remains blocked/open** until
 the separate banking backend and live verification exist.
 
-`/comenzar` is optional setup navigation: open, skip, finish or resume without
-automatic financial writes. Checklist progress is derived from persisted owned
-accounts, sources and objectives; failed reads are unverified, not completed or
-empty imports. Only an owner-keyed guide preference is stored in this browser,
-after hydration, never amounts or financial records. Closing the guide does not
-claim that its optional financial setup steps or banking integration are complete.
+`/comenzar` is optional setup navigation without automatic financial writes.
+Checklist progress comes from persisted owned accounts, sources and objectives;
+failed reads are unverified, not completed or empty imports. Small credential-
+scoped `OnboardingData` metadata is shared by shell/hint/guide and persisted per
+account through `onboarding.state`/`onboarding.finish` in PostgreSQL, never browser
+storage or protected transfer state. The dashboard card appears only for active
+users and supports explicit dismissal. Skipped users get no recurring prompt,
+but can resume from **Mi cuenta → Retomar configuración** without reactivating
+reminders. Completion permanently hides both entry points; direct guide visits
+redirect to the dashboard. Unknown/loading/error state never means a pending
+guide. Writes wait for confirmation, reject duplicate/obsolete results and allow
+explicit reconciliation after ambiguous failures. Legacy browser flags are not
+silently imported; an explicit skip/finish saves the account-level choice.
+Closing the guide does not claim optional financial setup or bank linking is
+complete, and later financial edits never reopen it.
 
 Detailed references: [session/resource lifetimes](../../docs/technical/ui-data-lifecycle.md),
 [provider-neutral identity](../../docs/technical/identity.md),
@@ -95,6 +128,9 @@ Under `src/app/pages`, related components, templates and tests stay together:
   `savings/` (with its editor), and `forms/` shared by both objective workflows.
 - `transactions/`: `history/` owns the ledger and filters; `detail/` owns the
   movement page and its `corrections/` component.
+- `dashboard/`: overview panels; `summary/` owns the distribution chart and its
+  exact-amount presentation calculation/tests. Navigation configuration belongs
+  to `layout/app-shell/`, not to individual financial workflows.
 
 Lazy routes import the owning page directly; there are no old-path re-exports.
 

@@ -120,9 +120,11 @@ belongs to each transaction; expectations, receipts and balances remain distinct
 The authenticated UI has a responsive sidebar, overview, owned transaction
 history/detail/corrections, tag lifecycle, income plans/receipts, revision-aware
 budgets with contributing-purchase evidence, savings targets/measured allocations
-and optional setup navigation. Financial resources remain page/component-owned;
-only a non-financial, owner-keyed guide preference is stored in the browser after
-hydration. The accounts page exposes stored balances/freshness without inventing
+and optional setup navigation. Financial resources remain page/component-owned.
+Small account-level onboarding metadata is read by a credential-scoped UI service
+and persisted in `identity.onboarding`, not browser storage or protected hydration
+payloads. Completion is terminal; skipped guides are resumable without recurring
+reminders. The accounts page exposes stored balances/freshness without inventing
 connection states or provider actions. Live Fintoc linking/refresh/relink/disconnect
 remains blocked, so LAZ-62 and the LAZ-30 parent are not closed by this frontend
 delivery. Conversational agents and external MCP authorization remain separate.

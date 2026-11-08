@@ -1,6 +1,7 @@
 import { Component, input } from "@angular/core";
 
 const paths = {
+  trend: "M4 18l6-7 4 4 6-9 M14 6h6v6",
   overview: "M3 3h7v8H3z M14 3h7v5h-7z M14 12h7v9h-7z M3 15h7v6H3z",
   activity: "M4 6h16 M4 12h16 M4 18h16 M7 3v6 M17 9v6 M9 15v6",
   tag: "M3 4h8l10 10-7 7L3 10V4z M7 8h.01",

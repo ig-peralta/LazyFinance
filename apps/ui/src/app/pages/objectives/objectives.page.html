@@ -1,5 +1,5 @@
 <header class="page-header">
-  <div><p class="eyebrow">ESPACIO PARA LO QUE IMPORTA</p><h1>Presupuestos y metas<span style="color:#91a574">.</span></h1><p class="page-description">Pon límites con intención. El gasto de cada presupuesto lo calcula el backend con tus etiquetas y su período.</p></div>
+  <div><p class="eyebrow">ESPACIO PARA LO QUE IMPORTA</p><h1>Presupuestos y metas<span class="accent-text">.</span></h1><p class="page-description">Pon límites con intención. El gasto de cada presupuesto lo calcula el backend con tus etiquetas y su período.</p></div>
   <label class="button"><app-icon name="calendar" /><span class="sr-only">Mes de presupuestos</span><input #picker type="month" [value]="data.month()" [max]="maxMonth" (change)="month(picker.value)" style="border:0;max-width:155px;background:none" /></label>
 </header>
 <nav class="section-tabs" aria-label="Tipos de objetivos"><a routerLink="/presupuestos-y-metas" class="active" aria-current="page">Presupuestos de gasto</a><a routerLink="/metas">Metas de ahorro</a></nav>
