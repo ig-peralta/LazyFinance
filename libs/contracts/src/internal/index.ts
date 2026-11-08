@@ -3,6 +3,7 @@ export * from "./common";
 export * from "./identity";
 export * from "./income";
 export * from "./objectives";
+export * from "./provider-links";
 export * from "./provider-sync";
 export * from "./savings";
 export * from "./spending-evidence";
