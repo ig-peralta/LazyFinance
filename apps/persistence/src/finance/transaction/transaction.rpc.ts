@@ -5,8 +5,11 @@ import {
   type ExpenseAdjustmentsInput,
   ExpenseAdjustmentsInputSchema,
   ExpenseAdjustmentsPageSchema,
+  InternalMovementDecisionSchema,
   type SetExpenseAdjustment,
   SetExpenseAdjustmentSchema,
+  type SetInternalMovement,
+  SetInternalMovementSchema,
   type TransactionsInput,
   TransactionsInputSchema,
 } from "@lazyfinance/contracts";
@@ -23,6 +26,7 @@ import {
 import { Input, Mutation, Query, Router } from "nestjs-trpc";
 import { wireValue } from "../../serialization";
 import { ExpenseAdjustmentRepository } from "../expense-adjustment/expense-adjustment.repository";
+import { InternalMovementRepository } from "./internal-movement.repository";
 import { TransactionRepository } from "./transaction.repository";
 
 @Router({ alias: "transactions" })
@@ -30,7 +34,17 @@ export class TransactionRpc {
   constructor(
     private readonly repository: TransactionRepository,
     private readonly adjustments: ExpenseAdjustmentRepository,
+    private readonly internalMovements: InternalMovementRepository,
   ) {}
+
+  @Mutation({
+    input: SetInternalMovementSchema,
+    output: InternalMovementDecisionSchema,
+    meta: { context: "user" },
+  })
+  setInternalMovement(@Input() input: SetInternalMovement) {
+    return this.internalMovements.set(input);
+  }
 
   @Query({
     input: ExpenseAdjustmentsInputSchema,

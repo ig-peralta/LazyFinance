@@ -44,13 +44,13 @@ inferred Promises; there is no cross-app source import or HTTP/Observable adapte
 ## Public surface
 
 The [generated public router](../../libs/rpc-api/src/generated/server.ts) currently
-contains **51 procedures**. Prefix each method below with its router name.
+contains **52 procedures**. Prefix each method below with its router name.
 
 | Router | Methods | Responsibility |
 | --- | --- | --- |
 | `auth` | `config`, `loginMock`, `principal` | Provider selection, local mock login, verified principal |
 | `accounts` | `list` | Active accounts, balances and freshness |
-| `transactions` | `recent`, `list`, `expenseAdjustments`, `setExpenseAdjustment`, `removeExpenseAdjustment` | Ten-movement preview, cursor-paginated history and explicit purchase-attributed refunds/reimbursements |
+| `transactions` | `recent`, `list`, `setInternalMovement`, `expenseAdjustments`, `setExpenseAdjustment`, `removeExpenseAdjustment` | History, owned internal-status corrections and purchase-attributed recoveries |
 | `objectives` | `list`, `progress`, `budget`, `budgetHistory`, `createBudget`, `updateBudget`, `archiveBudget`, `savingsGoal`, `savingsGoalHistory`, `createSavingsGoal`, `updateSavingsGoal`, `archiveSavingsGoal`, `savingsProgress`, `savingsContributions` | Revisioned management/history, spending progress and measured savings/evidence |
 | `summaries` | `monthly`, `comparison` | Financial summary and equivalent-period comparison |
 | `income` | `sources`, `source`, `createSource`, `updateSource`, `archiveSource`, `expectations`, `createExpectation`, `updateExpectation`, `removeExpectation`, `expected`, `receipts`, `confirm`, `clear`, `summary` | Declarations, dated expectations, explicit receipts and calculated summaries |
@@ -75,14 +75,14 @@ are not implemented by this RPC cutover.
 ## Private surface
 
 The [generated private router](../../libs/rpc-persistence/src/generated/server.ts)
-currently contains **56 procedures**. They expose owned facts and authoritative
+currently contains **57 procedures**. They expose owned facts and authoritative
 commands rather than copying public screen calculations into persistence.
 
 | Router | Methods |
 | --- | --- |
 | `identity` | `resolve` (bootstrap only) |
 | `accounts` | `listActive` |
-| `transactions` | `recent`, `list`, `aggregates`, `taggedAggregates`, `expenseAdjustments`, `setExpenseAdjustment`, `removeExpenseAdjustment` |
+| `transactions` | `recent`, `list`, `setInternalMovement`, `aggregates`, `taggedAggregates`, `expenseAdjustments`, `setExpenseAdjustment`, `removeExpenseAdjustment` |
 | `objectives` | `list` (effective definitions/nested tags), `forPeriod`, `spending` (revision-pinned sums/windows), `budget`, `budgetHistory`, `createBudget`, `updateBudget`, `archiveBudget`, `savingsGoal`, `savingsGoalHistory`, `createSavingsGoal`, `updateSavingsGoal`, `archiveSavingsGoal`, `savingsFacts`, `savingsEvidence` |
 | `income` | `sources`, `source`, `createSource`, `updateSource`, `archiveSource`, `expectedFacts`, `receipts`, `facts` |
 | `incomeExpectations` | `list`, `create`, `update`, `remove` |
@@ -102,6 +102,18 @@ classification-only aggregates, joined tag aggregates, or a complete snapshot.
 Do not reintroduce table-shaped reads for the API to join or aggregate itself.
 
 ## Wire semantics and transport
+
+`transactions.setInternalMovement({ id, isInternalMovement })` accepts true/false
+as a user override and null to return to the stored provider assessment (including
+unknown). It changes no bank amount, booking time, source evidence, balance or tag.
+Removed movements reject edits. Confirmed internal movements leave spending/budgets
+and receipt eligibility; restoring external status re-evaluates retained receipts
+and expense allocations against all other eligibility checks. Savings selection is
+independent of internal status. Classification acknowledgements resolve only relevant
+provider conflicts, preserving unrelated review states. Unchanged provider replays
+retain an acknowledged override; materially different assessment evidence may reopen
+a disagreement. The acknowledgement is a joined, fingerprinted sync fact. Unknown
+status/history does not force manual reconciliation to use savings reads.
 
 Tag names are trimmed, nonempty, case-sensitive and unique per user, including
 archived names. Creation of an existing active name is idempotent and does not

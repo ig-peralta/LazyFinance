@@ -3,6 +3,7 @@ import {
   type ExpenseAdjustmentsInput,
   type RecentTransaction,
   SetExpenseAdjustmentSchema,
+  type SetInternalMovement,
   type TransactionsInput,
   type TransactionsPage,
 } from "@lazyfinance/contracts";
@@ -33,6 +34,12 @@ function transactionResponse({
 @Injectable()
 export class TransactionsService {
   constructor(private readonly persistence: PersistenceClient) {}
+
+  setInternalMovementForUser(userId: string, input: SetInternalMovement) {
+    return this.persistence
+      .user(userId)
+      .transactions.setInternalMovement.mutate(input);
+  }
 
   expenseAdjustmentsForUser(userId: string, input: ExpenseAdjustmentsInput) {
     return this.persistence

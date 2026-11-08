@@ -37,6 +37,15 @@ reads compare the confirmed amounts and exact booking instants with current fact
 and eligibility; incompatible links become `needs_review` without reducing spending.
 They are not silently deleted, reallocated or converted to income by ingestion.
 
+`transactions.setInternalMovement` is the owned correction command. Boolean values
+set a user override; null returns to the stored assessment, including unknown.
+It resolves only relevant classification/compatible-credit conflicts and retains
+receipt/expense links for dynamic eligibility checks. An explicit choice against
+known internal evidence records an acknowledgement; unchanged replays do not open
+the same disagreement again. The joined acknowledgement is fingerprinted with sync
+facts. Unrelated review states and provider removals are not cleared by this command.
+No source booking, amount, balance, relationship or tag is rewritten.
+
 ### Private command sequence and failure boundaries
 
 | Step | Private procedure | What happens |
@@ -54,8 +63,8 @@ different checks. A superseded revision does not overwrite newer work. Only a
 known conflict rejection is read/prepared again (at most two retries); a lost
 response or timeout is not retried because the commit may have succeeded.
 
-Movement snapshot rows already include their account external ID and receipt
-existence from SQL joins. Those fields participate in the fingerprint and are
+Movement snapshot rows already include their account external ID, receipt
+existence and internal-override acknowledgement from SQL joins. These fields participate in the fingerprint and are
 re-read on commit; the API does not rebuild them from separate arrays. Rule
 matching indexes each immutable rule snapshot once, and commit validation reuses
 the revalidated rule set through an ID lookup. See the

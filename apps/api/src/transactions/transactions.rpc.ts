@@ -5,11 +5,14 @@ import {
   type ExpenseAdjustmentsInput,
   ExpenseAdjustmentsInputSchema,
   ExpenseAdjustmentsPageSchema,
+  InternalMovementDecisionSchema,
   RecentTransactionsResultSchema,
   RpcEmptySchema,
   RpcVoidSchema,
   type SetExpenseAdjustment,
   SetExpenseAdjustmentSchema,
+  type SetInternalMovement,
+  SetInternalMovementSchema,
   type TransactionsInput,
   TransactionsInputSchema,
   TransactionsPageSchema,
@@ -21,6 +24,18 @@ import { TransactionsService } from "./transactions.service";
 @Router({ alias: "transactions" })
 export class TransactionsRpc {
   constructor(private readonly service: TransactionsService) {}
+
+  @Mutation({
+    input: SetInternalMovementSchema,
+    output: InternalMovementDecisionSchema,
+    meta: { auth: "user" },
+  })
+  setInternalMovement(
+    @Ctx() ctx: ApiRequestContext,
+    @Input() input: SetInternalMovement,
+  ) {
+    return this.service.setInternalMovementForUser(rpcUser(ctx), input);
+  }
 
   @Query({
     input: ExpenseAdjustmentsInputSchema,

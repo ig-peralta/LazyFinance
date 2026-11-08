@@ -54,6 +54,8 @@ provider pages and generated recurrence dates are not persisted relations.
   Provider movement facts include `accountExternalId` and `hasReceipt`, rather
   than requiring another account lookup and a separate receipt scan/set. Those
   fields are included in the canonical fingerprint and recomputed on commit.
+  The joined internal-disagreement acknowledgement is fingerprinted too, so a
+  correction between preparation and commit cannot be overwritten by stale work.
 - **Expense recovery:** aggregate allocations separately to one row per purchase
   and per credit before grouping movements, never flattening allocations into a
   movement sum. Purchase facts include refunds, reimbursements and review counts;
