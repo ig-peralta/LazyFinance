@@ -115,6 +115,19 @@ export const transactionPage = (
   pageInfo: { nextCursor, hasMore: nextCursor !== null },
 });
 
+export const transactionDetail = {
+  ...movement,
+  isInternalMovement: false,
+  userInternalOverride: null,
+  providerInternalAssessment: "external",
+  source: "provider",
+  bookedPrecision: "instant",
+  bookedOn: null,
+  removedAt: null,
+  receipt: null,
+  hasExpenseAdjustments: false,
+} satisfies RpcOutput<"transactions.detail">;
+
 export const manualDecision = (
   transactionId = movement.id,
   tagId: string | null = tag.id,
@@ -172,6 +185,7 @@ export function createRpcFetch(overrides: RpcHandlers = {}) {
     "accounts.list": () => [],
     "transactions.recent": () => [],
     "transactions.list": () => transactionPage(),
+    "transactions.detail": () => transactionDetail,
     "objectives.list": () => [],
     "objectives.progress": () => [],
     "summaries.monthly": () => emptySummary,

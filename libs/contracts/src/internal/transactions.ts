@@ -2,6 +2,7 @@ import { z } from "zod";
 import { cursorPageSchema } from "../pagination";
 import { TagSummarySchema } from "../tags/tag-summary.schema";
 import { RecentTransactionSchema } from "../transactions/recent-transaction.schema";
+import { TransactionDetailSchema } from "../transactions/transaction-detail.schema";
 
 export const RecentTransactionRecordSchema = RecentTransactionSchema.omit({
   account: true,
@@ -15,6 +16,17 @@ export const RecentTransactionRecordSchema = RecentTransactionSchema.omit({
 export const RecentTransactionRecordsSchema = z
   .array(RecentTransactionRecordSchema)
   .max(10);
+
+export const TransactionDetailRecordSchema = TransactionDetailSchema.omit({
+  account: true,
+}).extend(
+  RecentTransactionRecordSchema.pick({
+    accountId: true,
+    accountAlias: true,
+    accountType: true,
+    currency: true,
+  }).shape,
+);
 
 export const TransactionRecordsPageSchema = cursorPageSchema(
   RecentTransactionRecordSchema,

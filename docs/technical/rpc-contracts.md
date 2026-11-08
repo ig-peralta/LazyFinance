@@ -44,13 +44,13 @@ inferred Promises; there is no cross-app source import or HTTP/Observable adapte
 ## Public surface
 
 The [generated public router](../../libs/rpc-api/src/generated/server.ts) currently
-contains **54 procedures**. Prefix each method below with its router name.
+contains **55 procedures**. Prefix each method below with its router name.
 
 | Router | Methods | Responsibility |
 | --- | --- | --- |
 | `auth` | `config`, `loginMock`, `principal` | Provider selection, local mock login, verified principal |
 | `accounts` | `list` | Active accounts, balances and freshness |
-| `transactions` | `recent`, `list`, `setInternalMovement`, `expenseAdjustments`, `setExpenseAdjustment`, `removeExpenseAdjustment` | History, owned internal-status corrections and purchase-attributed recoveries |
+| `transactions` | `recent`, `list`, `detail`, `setInternalMovement`, `expenseAdjustments`, `setExpenseAdjustment`, `removeExpenseAdjustment` | History, owned source/classification detail, internal-status corrections and purchase-attributed recoveries |
 | `objectives` | `list`, `progress`, `budgetContributions`, `budget`, `budgetHistory`, `createBudget`, `updateBudget`, `archiveBudget`, `savingsGoal`, `savingsGoalHistory`, `createSavingsGoal`, `updateSavingsGoal`, `archiveSavingsGoal`, `savingsProgress`, `savingsContributions` | Revisioned management/history, spending and savings progress/evidence |
 | `summaries` | `monthly`, `comparison`, `spendingContributions` | Financial summary, equivalent-period comparison and purchase-level spending evidence |
 | `income` | `sources`, `source`, `createSource`, `updateSource`, `archiveSource`, `expectations`, `createExpectation`, `updateExpectation`, `removeExpectation`, `expected`, `receipts`, `confirm`, `clear`, `summary` | Declarations, dated expectations, explicit receipts and calculated summaries |
@@ -76,14 +76,14 @@ are not implemented by this RPC cutover.
 ## Private surface
 
 The [generated private router](../../libs/rpc-persistence/src/generated/server.ts)
-currently contains **59 procedures**. They expose owned facts and authoritative
+currently contains **60 procedures**. They expose owned facts and authoritative
 commands rather than copying public screen calculations into persistence.
 
 | Router | Methods |
 | --- | --- |
 | `identity` | `resolve` (bootstrap only) |
 | `accounts` | `listActive` |
-| `transactions` | `recent`, `list`, `setInternalMovement`, `aggregates`, `taggedAggregates`, `spendingEvidence`, `expenseAdjustments`, `setExpenseAdjustment`, `removeExpenseAdjustment` |
+| `transactions` | `recent`, `list`, `detail`, `setInternalMovement`, `aggregates`, `taggedAggregates`, `spendingEvidence`, `expenseAdjustments`, `setExpenseAdjustment`, `removeExpenseAdjustment` |
 | `objectives` | `list` (effective definitions/nested tags), `forPeriod` (optional owned ID selection), `spending` (revision-pinned sums/windows), `budgetEvidence`, `budget`, `budgetHistory`, `createBudget`, `updateBudget`, `archiveBudget`, `savingsGoal`, `savingsGoalHistory`, `createSavingsGoal`, `updateSavingsGoal`, `archiveSavingsGoal`, `savingsFacts`, `savingsEvidence` |
 | `income` | `sources`, `source`, `createSource`, `updateSource`, `archiveSource`, `expectedFacts`, `receipts`, `facts` |
 | `incomeExpectations` | `list`, `create`, `update`, `remove` |
@@ -103,6 +103,12 @@ classification-only aggregates, joined tag aggregates, or a complete snapshot.
 Do not reintroduce table-shaped reads for the API to join or aggregate itself.
 
 ## Wire semantics and transport
+
+`transactions.detail({ id })` joins one owned movement's account/tag, stored
+provider/user classification, source/date precision, removal and retained receipt
+reference. Foreign/missing IDs return not found. A retained receipt reference is
+not proof of current income eligibility; recovery presence is a flag, not a total.
+The browsing projection remains small; detail is fetched only for the selected ID.
 
 `transactions.setInternalMovement({ id, isInternalMovement })` accepts true/false
 as a user override and null to return to the stored provider assessment (including

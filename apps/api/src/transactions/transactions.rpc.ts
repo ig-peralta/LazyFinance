@@ -8,11 +8,13 @@ import {
   InternalMovementDecisionSchema,
   RecentTransactionsResultSchema,
   RpcEmptySchema,
+  RpcIdSchema,
   RpcVoidSchema,
   type SetExpenseAdjustment,
   SetExpenseAdjustmentSchema,
   type SetInternalMovement,
   SetInternalMovementSchema,
+  TransactionDetailSchema,
   type TransactionsInput,
   TransactionsInputSchema,
   TransactionsPageSchema,
@@ -24,6 +26,15 @@ import { TransactionsService } from "./transactions.service";
 @Router({ alias: "transactions" })
 export class TransactionsRpc {
   constructor(private readonly service: TransactionsService) {}
+
+  @Query({
+    input: RpcIdSchema,
+    output: TransactionDetailSchema,
+    meta: { auth: "user" },
+  })
+  detail(@Ctx() ctx: ApiRequestContext, @Input() input: { id: string }) {
+    return this.service.detailForUser(rpcUser(ctx), input.id);
+  }
 
   @Mutation({
     input: SetInternalMovementSchema,

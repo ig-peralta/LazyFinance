@@ -56,6 +56,12 @@ export class AppShell {
       description: "Ir a la gestión de etiquetas",
     },
     {
+      path: "/movimientos",
+      icon: "activity",
+      label: "Movimientos",
+      description: "Explorar el historial de movimientos",
+    },
+    {
       path: "/presupuestos-y-metas",
       icon: "target",
       label: "Presupuestos y metas",

@@ -15,6 +15,7 @@ import {
 } from "@lazyfinance/contracts";
 import {
   EmptyInputSchema,
+  IdInputSchema,
   MovementAggregatesSchema,
   type PeriodInput,
   PeriodInputSchema,
@@ -23,6 +24,7 @@ import {
   type SummarySpendingEvidenceInput,
   SummarySpendingEvidenceInputSchema,
   TaggedMovementAggregatesSchema,
+  TransactionDetailRecordSchema,
   TransactionRecordsPageSchema,
   VoidResultSchema,
 } from "@lazyfinance/contracts/internal";
@@ -41,6 +43,15 @@ export class TransactionRpc {
     private readonly internalMovements: InternalMovementRepository,
     private readonly evidence: SpendingEvidenceRepository,
   ) {}
+
+  @Query({
+    input: IdInputSchema,
+    output: TransactionDetailRecordSchema,
+    meta: { context: "user" },
+  })
+  detail(@Input() input: { id: string }) {
+    return this.repository.detail(input.id);
+  }
 
   @Query({
     input: SummarySpendingEvidenceInputSchema,

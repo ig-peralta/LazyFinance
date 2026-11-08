@@ -1,6 +1,7 @@
 import type { TagSummary, TransactionsInput } from "@lazyfinance/contracts";
 import type { PeriodInput } from "@lazyfinance/contracts/internal";
 import { Inject, Injectable } from "@nestjs/common";
+import { TRPCError } from "@trpc/server";
 import { type Kysely, sql } from "kysely";
 import { RLS_DB } from "../../database/tokens";
 import { toCursorPage } from "../../pagination/cursor-page";
@@ -10,7 +11,8 @@ import {
   purchaseRecovery,
 } from "../expense-adjustment/expense-adjustment-sql";
 import type { IncomeReceiptTables } from "../income-receipt/income-receipt.tables";
-import { budgetInstant } from "../objective/budget-sql";
+import type { IncomeSourceTables } from "../income-source/income-source.tables";
+import { budgetInstant, budgetTimestamp } from "../objective/budget-sql";
 import { movementPeriod } from "../query-period";
 import type { TagTables } from "../tag/tag.tables";
 import type { TransactionTables } from "./transaction.tables";
@@ -22,7 +24,8 @@ import {
 type Tables = TransactionTables &
   AccountTables &
   TagTables &
-  IncomeReceiptTables;
+  IncomeReceiptTables &
+  IncomeSourceTables;
 
 @Injectable()
 export class TransactionRepository {
@@ -30,6 +33,57 @@ export class TransactionRepository {
 
   recent() {
     return this.movementQuery().limit(10).execute();
+  }
+
+  async detail(id: string) {
+    const row = await this.db
+      .selectFrom("finance.transaction as m")
+      .innerJoin("finance.account as a", "a.id", "m.accountId")
+      .leftJoin("finance.tag as t", "t.id", "m.tagId")
+      .leftJoin("finance.income_receipt as r", "r.transactionId", "m.id")
+      .leftJoin("finance.income_source as s", "s.id", "r.sourceId")
+      .select([
+        "m.id",
+        "m.amount",
+        "m.type",
+        "m.merchant",
+        "m.description",
+        "m.tagDecisionOrigin",
+        "m.tagRuleId",
+        "m.reviewStatus",
+        "m.isInternalMovement",
+        "m.userInternalOverride",
+        "m.providerInternalAssessment",
+        "m.source",
+        "m.bookedPrecision",
+        "m.bookedOn",
+        "a.id as accountId",
+        "a.alias as accountAlias",
+        "a.type as accountType",
+        "a.currency",
+        budgetTimestamp(sql.ref<Date>("m.bookedAt")).as("bookedAt"),
+        budgetTimestamp(sql.ref<Date | null>("m.removedAt")).as("removedAt"),
+        sql<TagSummary | null>`CASE WHEN t.id IS NULL THEN NULL ELSE jsonb_build_object('id',t.id,'name',t.name,'color',t.color) END`.as(
+          "tag",
+        ),
+        sql<{
+          sourceId: string;
+          sourceName: string;
+        } | null>`CASE WHEN s.id IS NULL THEN NULL ELSE jsonb_build_object('sourceId',s.id,'sourceName',s.name) END`.as(
+          "receipt",
+        ),
+        sql<boolean>`EXISTS (SELECT 1 FROM finance.expense_adjustment x WHERE x.credit_transaction_id=m.id OR x.purchase_transaction_id=m.id)`.as(
+          "hasExpenseAdjustments",
+        ),
+      ])
+      .where("m.id", "=", id)
+      .executeTakeFirst();
+    if (!row)
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Transaction not found",
+      });
+    return row;
   }
 
   async list(input: TransactionsInput) {

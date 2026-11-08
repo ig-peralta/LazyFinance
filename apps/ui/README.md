@@ -18,6 +18,12 @@ retained. Its resource is page-owned; commands reject duplicate submissions and
 discard obsolete owner/component results. Form drafts are cleared on owner changes
 and no financial record is cached in browser storage or hydration transfer state.
 
+`/movimientos` is a URL-filtered cursor ledger (account, Santiago dates, nullable
+tag/internal status, direction and literal merchant substring). Previous/next
+controls keep a page-local cursor trail, reset on filter/scope changes, and never
+sum pages into financial totals. `/movimientos/:id` reads owned source and
+classification detail without changing the original banking facts.
+
 Detailed references: [session/resource lifetimes](../../docs/technical/ui-data-lifecycle.md),
 [provider-neutral identity](../../docs/technical/identity.md),
 [RPC contracts](../../docs/technical/rpc-contracts.md) and

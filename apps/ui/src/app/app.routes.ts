@@ -40,6 +40,22 @@ export const routes: Routes = [
           import("./pages/tags/tags.page").then((m) => m.TagsPage),
       },
       {
+        path: "movimientos",
+        title: "Movimientos",
+        loadComponent: () =>
+          import("./pages/transactions/history.page").then(
+            (m) => m.HistoryPage,
+          ),
+      },
+      {
+        path: "movimientos/:id",
+        title: "Detalle del movimiento",
+        loadComponent: () =>
+          import("./pages/transactions/transaction.page").then(
+            (m) => m.TransactionPage,
+          ),
+      },
+      {
         path: "presupuestos-y-metas",
         title: "Presupuestos y metas",
         loadComponent: () =>
