@@ -16,10 +16,28 @@ The backend's [documented savings rule](../../apps/api/README.md#savings-contrib
 measures recorded cash allocations, not bank balances or new wealth; overlapping
 goals are not additive. Its measured progress/evidence and purchase-attributed
 refund rules are now consumed by the [web-management workflows](../../apps/ui/README.md).
-Neither those APIs nor their UI prove that imported history is complete; live
-bank linking/refresh remains explicitly unavailable pending the banking backend.
+Neither those APIs nor their UI prove that imported history is complete.
+The owned Fintoc lifecycle UI supplies hosted bank-authorization flows; this alone
+does not establish live-bank readiness. The API supplies bounded
+snapshot import/refresh and source-freshness reporting, exposed as separate explicit
+web commands and readonly status checks. Bank-forced/scheduled refresh and live-bank
+readiness remain separate acceptance work.
 
 ## Integration and ecosystem capabilities
+
+### Connected-bank tracking boundary
+
+The financial starting position comes from reported account balances, not a
+reconstructed lifetime ledger. Movement tracking starts at each connection's first
+successful linking day in Santiago and continues forward. Refresh and same-identity
+relink preserve that boundary. There is no automatic pre-link historical backfill
+and no fabricated opening transaction when no tracked movements are available.
+
+Provider accounting dates have day-level precision: transactions earlier on the
+linking day may be included, and the UI must not promise an exact-second cutoff.
+Already imported records and owned decisions remain intact. An optional historical
+import needs a separate explicit product policy and bounded eligibility; month or
+payroll-based exceptions and a history-selection UI are not delivered here.
 
 ### Shared financial results across interfaces
 

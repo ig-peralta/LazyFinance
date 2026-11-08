@@ -1,0 +1,99 @@
+:host {
+  display: block;
+  margin-block: 18px;
+}
+
+.sync-panel {
+  padding: clamp(16px, 3vw, 24px);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface-soft, rgba(255, 255, 255, 0.025));
+  overflow-wrap: anywhere;
+}
+
+h4 {
+  font-size: 18px;
+}
+
+h5 {
+  font-size: 15px;
+}
+
+.sync-actions {
+  margin-block: 18px 12px;
+}
+
+.sync-actions .button {
+  min-height: 44px;
+  white-space: normal;
+  text-align: left;
+}
+
+.sync-report,
+.sync-summary,
+.sync-result-title {
+  margin-top: 20px;
+}
+
+.sync-report p,
+.sync-summary > p,
+.sync-accounts p {
+  margin-top: 10px;
+}
+
+.sync-report {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.sync-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 16px;
+  margin-block: 18px;
+}
+
+.sync-facts dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.sync-facts dd {
+  margin-top: 6px;
+  font-size: 14px;
+}
+
+.sync-accounts {
+  display: grid;
+  gap: 16px;
+  list-style: none;
+  margin-top: 22px;
+  padding: 0;
+}
+
+.sync-accounts li {
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.sync-accounts .text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+@media (max-width: 600px) {
+  .sync-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .sync-actions .button {
+    justify-content: center;
+    width: 100%;
+  }
+}

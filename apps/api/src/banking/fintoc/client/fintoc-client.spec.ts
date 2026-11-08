@@ -3,7 +3,7 @@ import {
   fintocEnvironment,
   fintocIntent,
   fintocLink,
-} from "../../../tests/fixtures/banking/fintoc";
+} from "../../../../tests/fixtures/banking/fintoc";
 import { FintocClient } from "./fintoc-client";
 
 describe("Fintoc aggregation-only transport", () => {
@@ -101,5 +101,29 @@ describe("Fintoc aggregation-only transport", () => {
       expect(error).toMatchObject({ kind: "unavailable" });
       expect(String(error)).not.toContain("sensitive-link-token");
     }
+  });
+
+  it("propagates the whole-run cancellation signal and sanitizes aborted provider errors", async () => {
+    const controller = new AbortController();
+    const fetch = vi.fn<typeof globalThis.fetch>(async (_address, options) => {
+      const signal = options?.signal;
+      if (!signal) throw new Error("Missing fetch cancellation signal");
+      return new Promise<Response>((_resolve, reject) => {
+        signal.addEventListener(
+          "abort",
+          () => reject(new Error("sensitive-link-token in aborted URL")),
+          { once: true },
+        );
+      });
+    });
+    const pending = new FintocClient(fintocEnvironment(), fetch).link(
+      "private-token",
+      controller.signal,
+    );
+    controller.abort();
+    const error: unknown = await pending.catch((error: unknown) => error);
+    expect(error).toMatchObject({ kind: "unavailable" });
+    expect(String(error)).not.toContain("sensitive-link-token");
+    expect(fetch).toHaveBeenCalledOnce();
   });
 });

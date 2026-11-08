@@ -269,7 +269,7 @@ describe.skipIf(!ownerUrl)(
           .filter((name) => !name.startsWith("failure."))
           .sort(),
       ).toEqual(expected.sort());
-      expect(expected).toHaveLength(71);
+      expect(expected).toHaveLength(72);
 
       for (const name of expected)
         expect(procedures[name]._def.meta).toMatchObject({
@@ -1253,7 +1253,11 @@ describe.skipIf(!ownerUrl)(
       expect(await client.providerSync.commit.mutate(input)).toEqual({
         status: "superseded",
       });
-      const nextScope = { ...scope, revision: 1 };
+      const nextRun = await client.providerSync.begin.mutate({
+        connectionId: connection,
+        provider: provider.identifier,
+      });
+      const nextScope = { ...scope, revision: nextRun.revision };
       const next = await client.providerSync.facts.query(nextScope);
       expect(next.movements).toEqual([
         expect.objectContaining({
@@ -1291,7 +1295,11 @@ describe.skipIf(!ownerUrl)(
           },
         ],
       });
-      const finalScope = { ...scope, revision: 2 };
+      const finalRun = await client.providerSync.begin.mutate({
+        connectionId: connection,
+        provider: provider.identifier,
+      });
+      const finalScope = { ...scope, revision: finalRun.revision };
       const removed = await client.providerSync.facts.query(finalScope);
       expect(removed.movements[0]).toMatchObject({
         removalReason: "removed",
@@ -1306,23 +1314,34 @@ describe.skipIf(!ownerUrl)(
         checkpoint: "replayed",
         accounts: [],
       });
+      const afterReplay = await client.providerSync.status.query({
+        id: connection,
+      });
+      if (!afterReplay.state) throw new Error("Missing committed sync state");
       expect(
-        (await client.providerSync.facts.query({ ...scope, revision: 3 }))
-          .movements[0].removedAt,
+        (
+          await client.providerSync.facts.query({
+            ...scope,
+            revision: afterReplay.state.revision,
+          })
+        ).movements[0].removedAt,
       ).not.toBeNull();
+      const failureRun = await client.providerSync.begin.mutate({
+        connectionId: connection,
+        provider: provider.identifier,
+      });
       await client.providerSync.failure.mutate({
         connectionId: connection,
-        revision: 3,
+        revision: failureRun.revision,
         reason: "retryable",
         observedAt: "2026-10-18T18:00:00.000Z",
         retryAfter: null,
       });
       expect(
-        (await client.providerSync.facts.query({ ...scope, revision: 3 }))
-          .state,
+        (await client.providerSync.status.query({ id: connection })).state,
       ).toMatchObject({
         checkpoint: "replayed",
-        revision: 3,
+        revision: failureRun.revision + 1,
         lastFailureReason: "retryable",
       });
     });

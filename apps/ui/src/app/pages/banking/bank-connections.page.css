@@ -25,17 +25,6 @@
   margin-block: 12px;
   font-size: 18px;
 }
-.connection-refresh {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-  margin-top: 20px;
-}
-.connection-refresh p {
-  flex: 1 1 240px;
-}
-
 @media (max-width: 600px) {
   .panel-heading {
     flex-direction: column;

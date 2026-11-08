@@ -44,14 +44,14 @@ inferred Promises; there is no cross-app source import or HTTP/Observable adapte
 ## Public surface
 
 The [generated public router](../../libs/rpc-api/src/generated/server.ts) currently
-contains **63 procedures**. Prefix each method below with its router name.
+contains **66 procedures**. Prefix each method below with its router name.
 
 | Router | Methods | Responsibility |
 | --- | --- | --- |
 | `auth` | `config`, `loginMock`, `principal` | Provider selection, local mock login, verified principal |
 | `onboarding` | `state`, `finish` | Owned optional-guide state and terminal completion |
 | `accounts` | `list` | Active accounts, balances and freshness |
-| `banking` | `configuration`, `connections`, `createLinkIntent`, `completeLink`, `checkConnection`, `disconnect` | Owned Fintoc connection lifecycle; no financial import/refresh |
+| `banking` | `configuration`, `connections`, `createLinkIntent`, `completeLink`, `checkConnection`, `disconnect`, `importInitial`, `refresh`, `syncStatus` | Owned lifecycle, bounded snapshot import/refresh and readonly sync/source-freshness reporting; no forced/scheduled bank refresh |
 | `transactions` | `recent`, `list`, `detail`, `setInternalMovement`, `expenseAdjustments`, `setExpenseAdjustment`, `removeExpenseAdjustment` | History, owned source/classification detail, internal-status corrections and purchase-attributed recoveries |
 | `objectives` | `list`, `progress`, `budgetContributions`, `budget`, `budgetHistory`, `createBudget`, `updateBudget`, `archiveBudget`, `savingsGoal`, `savingsGoalHistory`, `createSavingsGoal`, `updateSavingsGoal`, `archiveSavingsGoal`, `savingsProgress`, `savingsContributions` | Revisioned management/history, spending and savings progress/evidence |
 | `summaries` | `monthly`, `comparison`, `spendingContributions` | Financial summary, equivalent-period comparison and purchase-level spending evidence |
@@ -78,7 +78,7 @@ are not implemented by this RPC cutover.
 ## Private surface
 
 The [generated private router](../../libs/rpc-persistence/src/generated/server.ts)
-currently contains **71 procedures**. They expose owned facts and authoritative
+currently contains **72 procedures**. They expose owned facts and authoritative
 commands rather than copying public screen calculations into persistence.
 
 | Router | Methods |
@@ -93,7 +93,7 @@ commands rather than copying public screen calculations into persistence.
 | `incomeReceipts` | `confirm`, `clear` |
 | `tags` | `list`, `create`, `update`, `archive` |
 | `tagRules` | `list`, `create`, `replace`, `archive`, `facts`, `manual`, `reset`, `candidates`, `commit` |
-| `providerSync` | `begin`, `facts`, `commit`, `failure`, `review` |
+| `providerSync` | `begin`, `status`, `facts`, `commit`, `failure`, `review` |
 | `providerLinks` | `list`, `connection`, `createIntent`, `claim`, `complete`, `fail`, `status`, `beginDisconnect`, `finishDisconnect` |
 
 Every private procedure uses user context except `identity.resolve`. The latter
@@ -104,6 +104,28 @@ API-internal workflow; these procedures are not public bank-linking endpoints.
 lifecycle commands. Its secret projection is private-only; public `banking` output
 contains no link tokens/ciphertext/provider payloads. See the
 [linking contract and recovery rules](../../apps/api/src/banking/linking/README.md).
+
+`banking.importInitial({ id })` and `banking.refresh({ id })` import reported accounts
+and movements from the owned connection's first-link Santiago day through today.
+The local `createdAt` anchors both commands and is unchanged by same-identity relink.
+No historical date override is accepted; pre-link backfill is unavailable. Booking
+precision is day-level, so same-day movements can precede the exact linking time.
+Completion returns the requested tracked window and a bounded mapping/exclusion
+report, not raw payloads or private checkpoints. It does not cause a bank refresh. `providerSync.begin`
+accepts `expectedCredentialVersion`, required for Fintoc: a mismatched snapshot
+rejects before attempt metadata/provider calls. Begin returns stored state plus
+`acquired`; a live five-minute lease or future provider backoff coalesces/defers
+without another fetch. The public outcome is `in_progress`/`retry_later` or the
+completed/failed/superseded result. `syncStatus` is readonly and reports stored
+attempt/lifecycle facts independently of 24-hour bank-source freshness. Private
+`providerSync.status` uses a repeatable-read bounded factual projection, not raw
+movements or credentials. Other neutral fixture connectors
+without stored credentials may omit it. See the
+[first-import mapping and limits](../../apps/api/src/banking/fintoc/README.md).
+The response shape is unchanged: `requestedHistory` now describes the tracked
+first-link-to-today period, not a rolling 90-day backfill. Existing older records
+are retained outside future fetches. Reported balances are independent of imported
+movements; a confirmed zero-movement import is not zero money or complete history.
 
 Read contracts follow the [purpose-shaped persistence read pattern](persistence-reads.md).
 Select the projection actually needed: declarations/expectations, receipt facts,

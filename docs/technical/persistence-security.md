@@ -136,7 +136,7 @@ middleware receive `RUNTIME_DB`. The proxy permits harmless constructor reflecti
 for NestJS-tRPC provider discovery, not raw connection access.
 
 Normal procedures use read-committed. `income.expectedFacts`, `income.facts`,
-`tagRules.facts`, `tagRules.candidates`, `providerSync.facts`, `objectives.budget`,
+`tagRules.facts`, `tagRules.candidates`, `providerSync.facts`, `providerSync.status`, `objectives.budget`,
 `objectives.budgetHistory` and `transactions.expenseAdjustments` request
 repeatable-read snapshots.
 All user mutations acquire the same per-user advisory transaction lock. This
@@ -201,7 +201,8 @@ or generic transaction scripts.
 | Savings target create/edit/archive | Check related tags and expected version; retain immutable revisions and current selection; record archival cutoff | Supported goal dates and current-definition allocation meaning; never synthesize contributions |
 | Internal-movement correction | Lock owned nonremoved movement; save override/effective state and related conflict acknowledgements atomically | Exclude internal movements from spending/income; retain receipts/recoveries for eligibility re-evaluation, independently of tag names |
 | Prepared rule application | Re-read candidate fingerprint, check eligibility, persist decisions/events | Match the bounded candidate page |
-| Provider sync commit | Check revision/fingerprint; persist facts, tombstones, conflicts, decisions/events and checkpoint together | Fetch/validate all pages and prepare classifications |
+| Provider sync begin | Check owned provider/status/credential version; acquire a five-minute revision-bound lease or honor existing lease/backoff without changing attempt metadata | Resolve/decrypt owned credentials; perform no provider calls without an acquired lease |
+| Provider sync commit | Check live lease/revision/fingerprint; persist facts, suspensions, tombstones, conflicts, decisions/events and checkpoint together | Fetch/validate all pages and prepare classifications |
 
 Prepared fingerprints are based on normalized, canonically sorted wire facts and
 are recomputed under the user write lock. They prevent stale calculations from
@@ -209,6 +210,13 @@ overwriting newer decisions; they are not client authentication. Failed sync
 attempt metadata can be recorded separately without changing last-good balances,
 success time or checkpoint. A committed run with durable unresolved conflicts
 reports `needs_review`, not clean success. Older revisions are `superseded`.
+
+Completion/failure ends the lease and advances its revision. Expired/revoked sync
+failures also advance the credential version, preventing an earlier access check
+from reactivating the connection. A crashed/unconfirmed attempt becomes interrupted
+after lease expiry; a new claim supersedes late old results. Provider retry timing
+is enforced on begin, not an automatic retry scheduler. Source freshness advances
+only with the successful financial commit, never with begin, status or failure.
 
 Only known rolled-back stale-input conflicts are recomputed, up to two retries in
 the API's prepared workflows. Network/timeout ambiguity is **not** permission to
@@ -222,7 +230,7 @@ atomic cross-procedure unit, and client cancellation does not prove server rollb
 | Public JSON body / batch | 1 MiB / at most 10 procedures |
 | Private JSON body / per-procedure serialized result | 64 MiB / 64 MiB |
 | Private batch | At most one procedure; clients use non-batched `httpLink` |
-| Provider run | 100 pages; 50,000 combined account/movement/removal records; 32 MiB normalized JSON |
+| Provider run | 100 pages; 50,000 combined account/movement/removal/suspension records; 32 MiB normalized JSON; Fintoc fetch budget 60s |
 | API-to-persistence client / HTTP request timeout | 120s / 120s |
 | HTTP headers timeout | 15s |
 | SQL statement / lock / idle transaction / whole transaction | 20s / 5s / 10s / 100s |

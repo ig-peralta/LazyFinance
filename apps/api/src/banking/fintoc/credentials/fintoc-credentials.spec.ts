@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fintocEnvironment } from "../../../tests/fixtures/banking/fintoc";
+import { fintocEnvironment } from "../../../../tests/fixtures/banking/fintoc";
 import { FintocCredentials } from "./fintoc-credentials";
 
 describe("provider link-token encryption", () => {

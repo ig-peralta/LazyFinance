@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { BankingSyncIncompleteSchema } from "../banking";
 import {
   MatchingRuleSchema,
   PreparedTagDecisionSchema,
@@ -31,6 +32,7 @@ export const ProviderConflictReasonSchema = z.enum([
   "receipt_incompatible",
   "internal_override_disagrees",
   "removed_confirmed_income",
+  "provider_unbooked",
 ]);
 
 export const ProviderAccountRecordSchema = z.object({
@@ -69,11 +71,41 @@ export const ProviderSyncStateSchema = z.object({
     .enum(["retryable", "expired", "revoked", "invalid_data"])
     .nullable(),
   retryAfter: instant.nullable(),
+  leaseExpiresAt: instant.nullable(),
+});
+
+export const ProviderSyncBeginSchema = ProviderSyncStateSchema.extend({
+  acquired: z.boolean(),
+});
+
+export const ProviderSyncStatusFactsSchema = z.object({
+  connection: z.object({
+    id: z.uuid(),
+    status: z.enum(["active", "expired", "revoked"]),
+    disconnectedAt: instant.nullable(),
+    disconnectPending: z.boolean(),
+  }),
+  state: ProviderSyncStateSchema.nullable(),
+  providerSuspensionCount: z.number().int().nonnegative(),
+  accounts: z
+    .array(
+      z.object({
+        id: z.uuid(),
+        type: z.enum(["checking", "savings", "credit_card"]),
+        hasReportedBalance: z.boolean(),
+        lastSyncedAt: instant.nullable(),
+        historyCompleteness: z.enum(["complete", "partial", "unknown"]),
+        historyFrom: z.iso.date().nullable(),
+        historyThrough: z.iso.date().nullable(),
+      }),
+    )
+    .max(1000),
 });
 
 export const BeginProviderSyncSchema = z.strictObject({
   connectionId: z.uuid(),
   provider: z.string().min(1).max(64),
+  expectedCredentialVersion: z.number().int().nonnegative().optional(),
 });
 
 export const ProviderSyncScopeSchema = z
@@ -106,6 +138,8 @@ export const ProviderMovementFactSchema = TransactionRecordSchema.extend({
   accountExternalId: externalId,
   hasReceipt: z.boolean(),
   internalOverrideAcknowledged: z.boolean(),
+  providerSuspended: z.boolean(),
+  hasOtherConflicts: z.boolean(),
 });
 
 export const ProviderSyncFactsSchema = z.object({
@@ -181,6 +215,13 @@ export const PreparedProviderRemovalSchema = ProviderMovementKeySchema.extend({
   providerUpdatedAt: instant.nullable(),
 });
 
+export const PreparedProviderSuspensionSchema =
+  ProviderMovementKeySchema.extend({
+    reason: z.enum(["pending", "processing"]),
+    observedAt: instant,
+    providerUpdatedAt: instant.nullable(),
+  });
+
 export const CommitProviderSyncSchema = z
   .strictObject({
     scope: ProviderSyncScopeSchema,
@@ -190,10 +231,17 @@ export const CommitProviderSyncSchema = z
     accounts: z.array(PreparedProviderAccountSchema).max(50000),
     movements: z.array(PreparedProviderMovementSchema).max(50000),
     removals: z.array(PreparedProviderRemovalSchema).max(50000),
+    suspensions: z
+      .array(PreparedProviderSuspensionSchema)
+      .max(50000)
+      .optional(),
   })
   .superRefine((value, ctx) => {
     if (
-      value.accounts.length + value.movements.length + value.removals.length >
+      value.accounts.length +
+        value.movements.length +
+        value.removals.length +
+        (value.suspensions?.length ?? 0) >
       50000
     )
       ctx.addIssue({ code: "custom", message: "Sync exceeds record limit" });
@@ -209,6 +257,12 @@ export const CommitProviderSyncSchema = z
       [
         "removals",
         value.removals.map((row) =>
+          JSON.stringify([row.accountExternalId, row.externalId]),
+        ),
+      ],
+      [
+        "suspensions",
+        (value.suspensions ?? []).map((row) =>
           JSON.stringify([row.accountExternalId, row.externalId]),
         ),
       ],
@@ -233,12 +287,7 @@ export const RecordProviderFailureSchema = z
   .refine((value) => value.reason === "retryable" || value.retryAfter === null);
 
 export const ProviderSyncOutcomeSchema = z.discriminatedUnion("status", [
-  z.object({ status: z.literal("superseded") }),
-  z.object({
-    status: z.literal("failed"),
-    reason: z.enum(["retryable", "expired", "revoked", "invalid_data"]),
-    retryAfter: instant.nullable(),
-  }),
+  BankingSyncIncompleteSchema,
   z.object({
     status: z.enum(["complete", "needs_review"]),
     conflictCount: z.number().int().nonnegative(),
@@ -262,6 +311,14 @@ export const ProviderReviewRecordsSchema = z
     }),
   )
   .max(50000);
+
+export type BeginProviderSync = z.infer<typeof BeginProviderSyncSchema>;
+
+export type ProviderSyncState = z.infer<typeof ProviderSyncStateSchema>;
+export type ProviderSyncBegin = z.infer<typeof ProviderSyncBeginSchema>;
+export type ProviderSyncStatusFacts = z.infer<
+  typeof ProviderSyncStatusFactsSchema
+>;
 
 export type ProviderAccountRecord = z.infer<typeof ProviderAccountRecordSchema>;
 

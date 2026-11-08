@@ -16,6 +16,7 @@ import { createScopedCommand } from "../../core/rpc/scoped-command";
 import { BankingData } from "../../features/banking/banking.data";
 import { Icon } from "../../shared/ui/icon";
 import { BankLinkFlow } from "./bank-link-flow/bank-link-flow";
+import { BankSyncPanel } from "./bank-sync-panel/bank-sync-panel";
 
 interface LinkFlow {
   scope: RpcScope;
@@ -25,7 +26,7 @@ interface LinkFlow {
 
 @Component({
   selector: "bank-connections-page",
-  imports: [RouterLink, Icon, BankLinkFlow],
+  imports: [RouterLink, Icon, BankLinkFlow, BankSyncPanel],
   providers: [BankingData],
   templateUrl: "./bank-connections.page.html",
   styleUrl: "./bank-connections.page.css",
@@ -37,6 +38,13 @@ export class BankConnectionsPage {
   private readonly injector = inject(Injector);
   protected readonly command = createScopedCommand();
   private readonly flow = signal<LinkFlow | null>(null);
+  private readonly syncSelection = signal<{
+    scope: RpcScope;
+    id: string;
+  } | null>(null);
+  private readonly syncing = signal<{ scope: RpcScope; id: string } | null>(
+    null,
+  );
   private readonly noticeState = signal<{
     scope: RpcScope;
     message: string;
@@ -74,7 +82,15 @@ export class BankConnectionsPage {
       : undefined;
   });
   protected readonly busy = computed(
-    () => this.command.pending() || !!this.activeFlow(),
+    () =>
+      this.command.pending() ||
+      !!this.activeFlow() ||
+      this.syncing()?.scope === this.rpc.authenticatedScope(),
+  );
+  protected readonly selectedSync = computed(() =>
+    this.syncSelection()?.scope === this.rpc.authenticatedScope()
+      ? this.syncSelection()?.id
+      : undefined,
   );
 
   constructor() {
@@ -96,6 +112,7 @@ export class BankConnectionsPage {
     this.command.clear();
     this.noticeState.set(null);
     this.confirmation.set(null);
+    this.syncSelection.set(null);
     this.flow.set({ scope, mode: configuration.mode, connection });
   }
 
@@ -110,8 +127,9 @@ export class BankConnectionsPage {
     this.flow.set(null);
     this.noticeState.set({
       scope: flow.scope,
-      message: `Autorización de ${connection.institution.name} guardada. La importación de saldos y movimientos todavía no está disponible.`,
+      message: `Autorización de ${connection.institution.name} guardada. Usa Importar datos disponibles para traer saldos y movimientos desde el día de vinculación, sin historial de días anteriores; autorizar no los importa automáticamente.`,
     });
+    this.syncSelection.set({ scope: flow.scope, id: connection.id });
     this.data.connections.reload();
     this.focusHeading();
   }
@@ -186,6 +204,35 @@ export class BankConnectionsPage {
       !this.data.configuration.isLoading() &&
       this.configuration()?.mode === bank.mode
     );
+  }
+
+  protected showSync(bank: BankingConnection) {
+    const scope = this.rpc.authenticatedScope();
+    if (!scope || this.busy()) return;
+    this.syncSelection.set({ scope, id: bank.id });
+    this.confirmation.set(null);
+    this.command.clear();
+    this.noticeState.set(null);
+  }
+
+  protected syncPending(bank: BankingConnection, pending: boolean) {
+    const scope = this.rpc.authenticatedScope();
+    if (pending && scope && bank.id === this.selectedSync())
+      this.syncing.set({ scope, id: bank.id });
+    else if (this.syncing()?.id === bank.id) this.syncing.set(null);
+  }
+
+  protected closeSync(bank: BankingConnection) {
+    const scope = this.rpc.authenticatedScope();
+    if (scope && this.syncing()?.id === bank.id)
+      this.noticeState.set({
+        scope,
+        message:
+          "Dejaste de esperar la sincronización. La solicitud puede continuar en el servidor; consulta Datos y sincronización antes de volver a intentar.",
+      });
+    this.syncSelection.set(null);
+    this.syncing.set(null);
+    this.focusHeading();
   }
 
   private focusHeading() {

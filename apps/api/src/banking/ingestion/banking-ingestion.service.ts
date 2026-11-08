@@ -2,6 +2,7 @@ import {
   MAX_NORMALIZED_SYNC_BYTES,
   MAX_PERSISTENCE_RPC_BYTES,
   MAX_SYNC_RECORDS,
+  type ProviderSyncBegin,
   type ProviderSyncFacts,
   type ProviderSyncOutcome,
 } from "@lazyfinance/contracts/internal";
@@ -27,12 +28,33 @@ export class BankingIngestionService {
     userId: string,
     connectionId: string,
     connector: BankingConnector,
+    expectedCredentialVersion?: number,
   ): Promise<ProviderSyncOutcome> {
     const client = this.persistence.user(userId);
-    const state = await client.providerSync.begin.mutate({
-      connectionId,
-      provider: connector.provider,
-    });
+    let state: ProviderSyncBegin;
+    try {
+      state = await client.providerSync.begin.mutate({
+        connectionId,
+        provider: connector.provider,
+        ...(expectedCredentialVersion === undefined
+          ? {}
+          : { expectedCredentialVersion }),
+      });
+    } catch (error) {
+      if (persistenceException(error)?.getStatus() === 409)
+        return { status: "superseded" };
+      throw error;
+    }
+    if (!state.acquired) {
+      if (
+        state.leaseExpiresAt &&
+        new Date(state.leaseExpiresAt).getTime() > Date.now()
+      )
+        return { status: "in_progress", until: state.leaseExpiresAt };
+      if (state.retryAfter && new Date(state.retryAfter).getTime() > Date.now())
+        return { status: "retry_later", retryAfter: state.retryAfter };
+      return { status: "superseded" };
+    }
     const fetched = await this.fetchPages(
       connector,
       connectionId,
@@ -105,15 +127,23 @@ export class BankingIngestionService {
   ): Promise<{ pages: ConnectorPage[] } | { failure: ConnectorFailure }> {
     const pages: ConnectorPage[] = [],
       seen = new Set<string>();
+    const signal = AbortSignal.timeout(60_000);
     let pageCursor: string | null = null,
       records = 0,
       bytes = 0;
 
     for (let i = 0; i < MAX_PAGES; i++) {
       try {
+        signal.throwIfAborted();
         const parsed = ConnectorResultSchema.safeParse(
-          await connector.fetchPage({ connectionId, checkpoint, pageCursor }),
+          await connector.fetchPage({
+            connectionId,
+            checkpoint,
+            pageCursor,
+            signal,
+          }),
         );
+        signal.throwIfAborted();
         if (!parsed.success) return { failure: this.invalidData() };
         if (parsed.data.kind === "failure") return { failure: parsed.data };
 
@@ -127,7 +157,8 @@ export class BankingIngestionService {
         records +=
           page.accounts.length +
           page.movements.length +
-          page.removedMovements.length;
+          page.removedMovements.length +
+          (page.suspendedMovements?.length ?? 0);
         bytes += Buffer.byteLength(JSON.stringify(page));
         if (records > MAX_SYNC_RECORDS || bytes > MAX_NORMALIZED_SYNC_BYTES)
           return { failure: this.invalidData() };

@@ -7,7 +7,9 @@
     <p class="notice warning"><strong>Ambiente de prueba de Fintoc.</strong> Usa solo identidades de prueba; no ingreses tus claves bancarias reales.</p>
     <details class="record-meta" style="margin-bottom:18px"><summary>Ver credenciales públicas de prueba</summary><p>RUT: <code>41579263-8</code> · clave: <code>jonsnow</code>. Para otra cuenta de LazyFinance usa otra combinación de banco e identidad de prueba. <a class="text-link" href="https://docs.fintoc.com/guides/movements/data-aggregation-test-your-integration" target="_blank" rel="noopener noreferrer">Guía oficial de Fintoc ↗</a></p></details>
   }
-  <p class="record-meta">Tus credenciales se ingresan directamente en Fintoc. LazyFinance no solicita ni guarda tu clave bancaria. Autorizar el acceso todavía no importa saldos ni movimientos.</p>
+  <p class="record-meta">Tus credenciales se ingresan directamente en Fintoc. LazyFinance no solicita ni guarda tu clave bancaria. Autorizar el acceso no importa saldos ni movimientos automáticamente; después puedes hacerlo desde Datos y sincronización.</p>
+  <p class="notice">El seguimiento comienza el día de la primera vinculación en Santiago, no con una importación de meses anteriores. Traemos los saldos reportados sin reconstruirlos a partir de transacciones. Al revincular se conserva la fecha original.</p>
+  <p class="field-hint">La fecha contable de Fintoc no permite distinguir la hora exacta dentro de ese día. Importar historial anterior no está disponible.</p>
   @if (connection(); as bank) {
     <p class="notice warning">Selecciona {{ bank.institution.name }} y usa el mismo usuario y titular {{ bank.holderType === 'individual' ? 'persona' : 'empresa' }} de la conexión original. Otra identidad no reemplazará esta conexión.</p>
   } @else {

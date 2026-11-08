@@ -347,7 +347,7 @@ export class ProviderLinkRepository {
   private async invalidateSync(id: string) {
     await this.db
       .updateTable("finance.provider_sync_state")
-      .set({ revision: sql<number>`revision + 1` })
+      .set({ revision: sql<number>`revision + 1`, leaseExpiresAt: null })
       .where("providerConnectionId", "=", id)
       .execute();
   }

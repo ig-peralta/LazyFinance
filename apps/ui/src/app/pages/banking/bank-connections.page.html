@@ -40,7 +40,7 @@
     <p class="notice warning">Fintoc no está habilitado en este servidor. Puedes consultar tus registros y solicitar una desconexión; la limpieza remota quedará pendiente hasta que el servidor esté configurado.</p>
   }
 
-  <div class="notice"><strong>Conectar no es importar ni actualizar.</strong> La importación de cuentas y movimientos y la actualización bancaria todavía no están disponibles. Comprobar el acceso no vuelve actuales los saldos guardados.</div>
+  <div class="notice"><strong>Conectar, importar y comprobar acceso son acciones distintas.</strong> En Datos y sincronización puedes traer saldos y movimientos desde el día de vinculación en Santiago, sin importar los días anteriores. No forzamos al banco a actualizarlos. Comprobar acceso no vuelve actuales los saldos guardados.</div>
   @if (notice() || command.success()) {
     <p class="notice" role="status">{{ notice() || command.success() }}</p>
   }
@@ -66,7 +66,7 @@
   } @else if (!data.connections.value().length) {
     <div class="connection-empty">
       <app-icon name="bank" /><h3>Aún no hay conexiones guardadas</h3>
-      <p class="record-meta">Cuando autorices un banco, su acceso aparecerá aquí. Los saldos y movimientos se importarán en una entrega posterior.</p>
+      <p class="record-meta">Cuando autorices un banco, su acceso aparecerá aquí. Después podrás importar explícitamente los datos disponibles y consultar su antigüedad.</p>
     </div>
   } @else {
     <ul class="record-list" aria-label="Conexiones bancarias de tu cuenta">
@@ -98,6 +98,10 @@
             <p class="field-hint">No podemos comprobar o revincular esta conexión con la configuración disponible. La desconexión local sigue disponible.</p>
           }
           <div class="button-row connection-actions">
+            <button class="button small" type="button" [disabled]="busy()"
+              [attr.aria-label]="'Ver datos y sincronización de ' + bank.institution.name"
+              [attr.aria-expanded]="selectedSync() === bank.id" [attr.aria-controls]="selectedSync() === bank.id ? 'bank-sync-' + bank.id : null"
+              (click)="showSync(bank)">Datos y sincronización</button>
             @if (!bank.disconnectedAt) {
               <button class="button small" type="button" [attr.aria-label]="'Comprobar acceso de ' + bank.institution.name"
                 [disabled]="busy() || !compatible(bank)" (click)="check(bank)">Comprobar acceso</button>
@@ -110,6 +114,10 @@
                 [disabled]="busy()" (click)="confirmDisconnect(bank, $event)">{{ bank.disconnectPending ? 'Completar desconexión' : 'Desconectar' }}</button>
             }
           </div>
+          @if (selectedSync() === bank.id) {
+            <bank-sync-panel [connection]="bank" [enabled]="compatible(bank)" [locked]="command.pending() || !!activeFlow() || !!confirming()"
+              (stateRead)="data.adoptStatus($event)" (pendingChange)="syncPending(bank, $event)" (closed)="closeSync(bank)" />
+          }
           @if (confirming()?.id === bank.id) {
             <div class="notice warning" role="alert">
               <strong>¿{{ bank.disconnectPending ? 'Completar la desconexión de' : 'Desconectar' }} {{ bank.institution.name }}?</strong>
@@ -126,8 +134,4 @@
       }
     </ul>
   }
-  <div class="connection-refresh">
-    <button class="button small" type="button" disabled aria-describedby="bank-refresh-unavailable"><app-icon name="refresh" /> Actualizar desde el banco</button>
-    <p id="bank-refresh-unavailable" class="field-hint">No disponible todavía. Consultar datos guardados o comprobar acceso no inicia una actualización bancaria.</p>
-  </div>
 </section>

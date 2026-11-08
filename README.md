@@ -45,7 +45,11 @@ flowchart TB
     style privateData fill:none,stroke:#64748b,stroke-dasharray:5 5
 ```
 
-The API verifies users and owns financial rules, scheduling, tag matching and provider orchestration. It has no database connection or credentials. Persistence verifies short-lived signed service assertions and enforces user RLS in a transaction per procedure. Only migration/seed tooling receives owner credentials. There is no tenancy layer or automatic old-database adoption. Local demo data supports validation without a bank adapter. Owned Fintoc authorization, access checks, relink and disconnect are available in the app; financial bank import/refresh, external-client authorization and the conversational agent remain later work. See the [architecture](docs/technical/architecture.md), [RPC/RLS security](docs/technical/persistence-security.md) and [banking boundary](apps/api/src/banking/README.md).
+The API verifies users and owns financial rules, scheduling, tag matching and provider orchestration. It has no database connection or credentials. Persistence verifies short-lived signed service assertions and enforces user RLS in a transaction per procedure. Only migration/seed tooling receives owner credentials. There is no tenancy layer or automatic old-database adoption. Local demo data supports validation without a bank adapter. Owned Fintoc authorization, access checks, relink, disconnect, explicit first import and repeatable snapshot refresh/recovery are available in the app. Bank settings distinguish readonly synchronization status and bank-source freshness from access; stored balances remain in Cuentas. Bank-forced/scheduled refresh, external-client authorization and the conversational agent remain later work. See the [architecture](docs/technical/architecture.md), [RPC/RLS security](docs/technical/persistence-security.md) and [banking boundary](apps/api/src/banking/README.md).
+
+Bank movement tracking begins on each connection's first-link day in Santiago;
+there is no automatic pre-link backfill. Reported balances stay independent of
+imported movement history. See the [tracking policy and date precision](apps/api/src/banking/fintoc/README.md#tracking-starts-at-first-link).
 
 The separate [innovation reference](docs/product/innovation.md) explains how reusable financial understanding could connect more sources and destinations, including an authorized agent combining LazyFinance context with its own tools. These opportunities are not claims of shipped integrations.
 

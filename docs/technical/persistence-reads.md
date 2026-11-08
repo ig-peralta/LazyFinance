@@ -62,6 +62,13 @@ provider pages and generated recurrence dates are not persisted relations.
   fields are included in the canonical fingerprint and recomputed on commit.
   The joined internal-disagreement acknowledgement is fingerprinted too, so a
   correction between preparation and commit cannot be overwritten by stale work.
+- **Sync reporting:** `providerSync.status` returns one owned lifecycle/attempt
+  snapshot, at most 1,000 active account source-date/value-presence/history rows,
+  and a factual provider-suspension count. It transfers no movements or encrypted
+  credentials. API policy interprets source age separately from successful fetches.
+  Provider preparation facts also include joined suspension/other-conflict flags;
+  confirmation can clear only its temporary provider suspension without losing
+  unrelated review decisions.
 - **Expense recovery:** aggregate allocations separately to one row per purchase
   and per credit before grouping movements, never flattening allocations into a
   movement sum. Purchase facts include refunds, reimbursements and review counts;

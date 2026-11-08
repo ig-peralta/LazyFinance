@@ -1,7 +1,7 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { Injectable } from "@nestjs/common";
 import { TRPCError } from "@trpc/server";
-import { EnvironmentService } from "../../environment/environment.service";
+import { EnvironmentService } from "../../../environment/environment.service";
 
 /** Link tokens are encrypted before private RPC/storage, bound to owner/mode/link. */
 @Injectable()

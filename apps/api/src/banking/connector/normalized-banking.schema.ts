@@ -163,6 +163,12 @@ export const MovementRemovalSchema = z
   })
   .strict();
 
+// A known booked fact may temporarily become pending again. Keep its decisions
+// but suspend interpretation; unlike a removal, later confirmation can recover.
+export const MovementSuspensionSchema = MovementRemovalSchema.extend({
+  reason: z.enum(["pending", "processing"]),
+});
+
 export const ConnectorPageSchema = z
   .object({
     kind: z.literal("page"),
@@ -170,6 +176,7 @@ export const ConnectorPageSchema = z
     accounts: z.array(NormalizedAccountSnapshotSchema),
     movements: z.array(NormalizedMovementSchema),
     removedMovements: z.array(MovementRemovalSchema),
+    suspendedMovements: z.array(MovementSuspensionSchema).optional(),
     // Within-run pagination; never persisted as the next refresh checkpoint.
     nextCursor: ExternalIdSchema.nullable(),
     // Candidate for the next run, supplied only on its final page.
@@ -227,21 +234,26 @@ export const ConnectorPageSchema = z
       movements.add(key);
     }
 
-    for (const [index, removal] of page.removedMovements.entries()) {
-      const key = JSON.stringify([
-        removal.accountExternalId,
-        removal.externalId,
-      ]);
+    for (const [field, rows] of [
+      ["removedMovements", page.removedMovements],
+      ["suspendedMovements", page.suspendedMovements ?? []],
+    ] as const) {
+      for (const [index, removal] of rows.entries()) {
+        const key = JSON.stringify([
+          removal.accountExternalId,
+          removal.externalId,
+        ]);
 
-      if (movements.has(key)) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["removedMovements", index, "externalId"],
-          message: "Conflicting movement changes in page",
-        });
+        if (movements.has(key)) {
+          ctx.addIssue({
+            code: "custom",
+            path: [field, index, "externalId"],
+            message: "Conflicting movement changes in page",
+          });
+        }
+
+        movements.add(key);
       }
-
-      movements.add(key);
     }
   });
 

@@ -30,7 +30,11 @@ export function syncScope(
   >();
 
   for (const page of pages)
-    for (const row of [...page.movements, ...page.removedMovements]) {
+    for (const row of [
+      ...page.movements,
+      ...page.removedMovements,
+      ...(page.suspendedMovements ?? []),
+    ]) {
       keys.set(movementKey(row.accountExternalId, row.externalId), {
         accountExternalId: row.accountExternalId,
         externalId: row.externalId,
@@ -114,9 +118,20 @@ export function prepareSync(
 
       const olderBalance =
         existing?.lastSyncedAt &&
-        snapshot.reportedBalance?.asOf &&
-        new Date(snapshot.reportedBalance.asOf) <
-          new Date(existing.lastSyncedAt);
+        (!snapshot.reportedBalance?.asOf ||
+          new Date(snapshot.reportedBalance.asOf) <
+            new Date(existing.lastSyncedAt));
+      const coverage = snapshot.historyCoverage;
+      const partialFrom =
+        [existing?.historyFrom, coverage.from]
+          .filter((value): value is string => Boolean(value))
+          .sort()
+          .at(0) ?? null;
+      const partialThrough =
+        [existing?.historyThrough, coverage.through]
+          .filter((value): value is string => Boolean(value))
+          .sort()
+          .at(-1) ?? null;
       accounts.set(snapshot.externalId, {
         id: existing?.id ?? randomUUID(),
         externalId: snapshot.externalId,
@@ -132,11 +147,15 @@ export function prepareSync(
         historyFrom:
           existing && snapshot.historyCoverage.completeness === "unknown"
             ? existing.historyFrom
-            : snapshot.historyCoverage.from,
+            : coverage.completeness === "partial"
+              ? partialFrom
+              : coverage.from,
         historyThrough:
           existing && snapshot.historyCoverage.completeness === "unknown"
             ? existing.historyThrough
-            : snapshot.historyCoverage.through,
+            : coverage.completeness === "partial"
+              ? partialThrough
+              : coverage.through,
         balance:
           snapshot.reportedBalance === null || olderBalance
             ? (existing?.balance ?? null)
@@ -152,6 +171,10 @@ export function prepareSync(
   const movements = new Map<string, NormalizedMovement>();
   const observed = new Map<string, string>();
   const removed = new Map<string, CommitProviderSync["removals"][number]>();
+  const suspended = new Map<
+    string,
+    NonNullable<CommitProviderSync["suspensions"]>[number]
+  >();
 
   for (const page of pages) {
     for (const movement of page.movements) {
@@ -169,7 +192,25 @@ export function prepareSync(
         ...removal,
         observedAt: page.observedAt,
       });
+    for (const suspension of page.suspendedMovements ?? []) {
+      const key = movementKey(
+        suspension.accountExternalId,
+        suspension.externalId,
+      );
+      const earlier = suspended.get(key);
+      if (
+        earlier &&
+        (earlier.reason !== suspension.reason ||
+          earlier.providerUpdatedAt !== suspension.providerUpdatedAt)
+      )
+        throw new InvalidBatchError("Conflicting suspensions in one sync run");
+      suspended.set(key, { ...suspension, observedAt: page.observedAt });
+    }
   }
+  for (const key of suspended.keys())
+    if (movements.has(key))
+      throw new InvalidBatchError("A movement is both booked and suspended");
+  const unavailable = new Map<string, unknown>([...removed, ...suspended]);
 
   const existingMovements = new Map(
     facts.movements.map((row) => [
@@ -224,7 +265,7 @@ export function prepareSync(
       owner,
       movements,
       accounts,
-      removed,
+      unavailable,
       Boolean(
         priorPair &&
           !tombstones.has(
@@ -247,7 +288,9 @@ export function prepareSync(
         (direction !== "credit" ||
           (effective !== false && existing.userInternalOverride !== true)));
     const reviewStatus =
-      existing?.reviewStatus === "needs_review" || conflict
+      (existing?.reviewStatus === "needs_review" &&
+        (!existing.providerSuspended || existing.hasOtherConflicts)) ||
+      conflict
         ? ("needs_review" as const)
         : ("clear" as const);
     const booked = bookingDate(movement.booked);
@@ -306,5 +349,32 @@ export function prepareSync(
     accounts: [...changedAccounts].map((key) => accounts.get(key)!),
     movements: prepared,
     removals: [...removed.values()],
+    ...(suspended.size
+      ? {
+          suspensions: [...suspended.values()].filter((row) => {
+            const key = movementKey(row.accountExternalId, row.externalId);
+            const previous = existingMovements.get(key);
+            if (
+              previous?.source !== undefined &&
+              previous.source !== "provider"
+            )
+              throw new InvalidBatchError(
+                "Provider suspension targets a manual movement",
+              );
+            return (
+              !removed.has(key) &&
+              !tombstones.has(key) &&
+              !previous?.removedAt &&
+              (!previous?.providerObservedAt ||
+                new Date(row.observedAt) >=
+                  new Date(previous.providerObservedAt)) &&
+              (!previous?.providerUpdatedAt ||
+                !row.providerUpdatedAt ||
+                new Date(row.providerUpdatedAt) >=
+                  new Date(previous.providerUpdatedAt))
+            );
+          }),
+        }
+      : {}),
   };
 }

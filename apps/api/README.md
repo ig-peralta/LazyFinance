@@ -45,9 +45,16 @@ ignored `apps/api/.env`, and configure:
 The API needs the private RPC URL/signing key, not database configuration.
 App-local dotenv files are not the root Compose `.env`.
 The authenticated `banking` RPC supports owner-bound Fintoc linking, access checks,
-relink and disconnect. It does not import or refresh financial data or add the
-bank-management UI. See the [LAZ-49 review contract](src/banking/linking/README.md)
-for migration, Widget handoff, credential storage and ambiguous-error recovery.
+relink, disconnect, `importInitial`, repeatable `refresh` and readonly `syncStatus`.
+Refresh pulls the latest available Fintoc snapshot, not a forced bank update.
+Movements start at the connection's first-link day in Santiago, with no pre-link
+backfill; balances are reported independently. Refresh/relink does not reset that
+start. Fintoc cannot reliably distinguish times within a booking day.
+The web connection settings consume these commands and statuses separately from
+the stored-balance page; authorization/access checks never import implicitly.
+See the [linking contract](src/banking/linking/README.md) for Widget/credential
+handling and the [first-import guide](src/banking/fintoc/README.md) for conservative
+financial mappings, supported products and atomic import limits.
 
 `pnpm --filter api dev` starts watch mode. `build`, `typecheck` and `test` are also
 available. Public auth procedures are `auth.config` and `auth.loginMock`; all

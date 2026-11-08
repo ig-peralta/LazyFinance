@@ -251,10 +251,41 @@ with pending provider cleanup. Completing cleanup is another explicit command.
 Keyboard focus enters the authorization heading and returns to the connections
 heading on completion/cancellation; disconnect cancellation restores its trigger.
 
-Access status never advances financial freshness. The separate account read has
-no public connection mapping; bank actions do not relabel/refetch balances as
-current. Import and financial refresh are deliberately unavailable until LAZ-51/
-LAZ-48, so this UI subset does not complete all of LAZ-62's acceptance criteria.
+Access status never advances financial freshness. The separate account-summary
+read has no public connection mapping; it is not joined heuristically to banks.
+**Datos y sincronización** mounts one connection-owned `BankSyncPanel` at a time.
+Its credential/ID/read-version resource calls readonly `banking.syncStatus` and
+forwards cancellation. Unopened panels issue no status calls, and settings entry
+does not fan out requests for every connection/account. The returned owned account
+IDs provide movement links, while values remain in the separate stored-balance page.
+
+The panel offers explicit `importInitial` before a confirmed success and `refresh`
+afterward. Both use the immutable local first-link day through today; the client
+cannot supply an earlier date. Before authorization and in the selected panel,
+copy explains no earlier-day backfill, the same-day booking precision, independent
+reported balances and preserved older records. Relink does not reset tracking.
+Historical-import options remain a future flow. The UI displays backend source
+freshness, coverage, exclusions and conflict facts without doing financial
+arithmetic. Access, source age and the last successful
+import remain independent. The last command's confirmed outcome is labelled as
+such, separately from the most recently read status. A successful network response
+with `failed`, `in_progress`, `retry_later` or `superseded` is never a completed import.
+Its scoped command suppresses duplicates, teardown results and old-owner outcomes.
+Sibling lifecycle actions are disabled while its command is pending.
+
+Confirmed command outcomes trigger a new selected-status read, not an automatic
+write retry. Confirmed lifecycle fields may update the current connection list
+without remounting the panel; older-than-record observations and foreign IDs are
+ignored. Failed status reads never mean revocation, zero balance or failed import.
+An uncertain write response latches reconciliation to the read version at failure;
+another command requires an explicit successful later status read. A read completed
+while that mutation was still pending cannot unlock the next attempt. The backend
+continues to enforce lease/backoff/version checks against concurrent clients.
+
+Closing destroys the panel's read/command lifetime and explains that the server may
+still be processing. Reopening starts with a fresh readonly status, not a replay.
+There is no automatic status polling, global financial cache or cross-page reload
+bus. Accounts, movements and financial totals refetch naturally on navigation.
 
 ## Public prerendering and browser-owned private rendering
 
@@ -349,7 +380,9 @@ token/UID replacement, stale 401/restoration failures,
 resource/component cancellation, duplicate commands, read/decision ordering and
 partial success. Banking tests cover lazy script loading, callback validation,
 scope/operation cancellation, backend-confirmed completion, mode changes, same-ID
-relinking and pending disconnect recovery without simulating financial refresh.
+relinking, pending disconnect recovery, explicit import/reimport, source-age and
+failure outcomes, ambiguous-response reconciliation and pending-refresh teardown.
+These typed mocked-RPC cases do not establish real provider behavior.
 Auth regression cases cover password verification, explicit
 same-owner linking, expired/consumed proof, SDK/API/observer races and cancelled
 credential mutations with mocked SDK operations. These cases must be executed to
@@ -365,6 +398,6 @@ scope in protected query params, forward abort signals, avoid protected hydratio
 IDs, invalidate only actual dependencies, and test out-of-order completions. Do
 not restore the removed catch-all API service, RxJS compatibility facade or fake
 HTTP errors. Delivered management workflows are indexed in the UI README;
-conversational features and financial bank import/refresh remain unavailable,
+conversational features and bank-forced/scheduled refresh remain unavailable,
 not missing client aliases or simulated success paths. Real-provider browser
 verification is separate evidence from mocked UI resource/command tests.

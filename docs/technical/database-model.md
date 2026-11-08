@@ -308,9 +308,21 @@ conflicts/events; failure recording retains last-good facts. Neither the existen
 of review tables nor a private review query means a user-facing conflict-resolution
 workflow has been shipped.
 
+`provider_sync_state.lease_expires_at` bounds in-progress attempts independently of
+last-good financial data. Begin, completion/failure and lifecycle invalidation
+advance revisions under the user write lock. A stale lease is an interrupted
+attempt, not a synthesized failure or successful refresh. Provider backoff remains
+durable across requests. The owned status projection includes source dates and
+balance-presence flags without downloading movements or encrypted credentials.
+
+An explicit temporary unbooking adds a `provider_unbooked` conflict and excludes
+the retained movement with `needs_review`. Confirmation can resolve that conflict
+without deleting decisions/receipts/allocations; unrelated conflicts remain. This
+is distinct from permanent tombstones, which replay never reactivates.
+
 ## Migration and seed lifecycle
 
-Twenty-five migrations are globally ordered across `migrations/identity` and
+Twenty-six migrations are globally ordered across `migrations/identity` and
 `migrations/finance`: schema/bootstrap foundations plus the table migrations.
 Kysely's PostgreSQL migrator owns locking and transactional DDL/ledger updates.
 Each new sensitive table brings its constraints, indexes, grants and RLS together;
