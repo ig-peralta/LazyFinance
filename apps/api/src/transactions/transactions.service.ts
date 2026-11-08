@@ -17,6 +17,24 @@ import { parseInput } from "../validation/parse-input";
 export class TransactionsService {
   constructor(private readonly persistence: PersistenceClient) {}
 
+  async detailForUser(userId: string, id: string) {
+    const record = await this.persistence
+      .user(userId)
+      .transactions.detail.query({ id });
+    return {
+      ...movementResponse(record),
+      isInternalMovement: record.isInternalMovement,
+      userInternalOverride: record.userInternalOverride,
+      providerInternalAssessment: record.providerInternalAssessment,
+      source: record.source,
+      bookedPrecision: record.bookedPrecision,
+      bookedOn: record.bookedOn,
+      removedAt: record.removedAt,
+      receipt: record.receipt,
+      hasExpenseAdjustments: record.hasExpenseAdjustments,
+    };
+  }
+
   setInternalMovementForUser(userId: string, input: SetInternalMovement) {
     return this.persistence
       .user(userId)

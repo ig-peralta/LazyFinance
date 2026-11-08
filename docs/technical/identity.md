@@ -8,7 +8,7 @@ service about a provider SDK.
 
 See [RPC/RLS security](persistence-security.md) for signed service contexts and
 bootstrap privileges, [database relationships](database-model.md) for stored
-mappings, and [UI/session lifetimes](ui-data-lifecycle.md) for browser/SSR races.
+mappings, and [UI/session lifetimes](ui-data-lifecycle.md) for browser identity races.
 
 ## External identity versus application principal
 
@@ -66,7 +66,7 @@ unselected mode is not a fallback credential.
 ## Authentication and atomic resolution
 
 1. A client sends its credential as `Authorization: Bearer <token>` to protected
-   public RPC/MCP. An SSR cookie is not accepted directly as API authentication.
+   public RPC/MCP. Client presentation state is never API authentication.
 2. `AuthService` selects the configured verifier. It validates credentials before
    producing the provider-neutral identity; callers cannot choose their owner.
 3. The API signs a short-lived **identity-bootstrap** context containing that
@@ -102,7 +102,7 @@ validation.
 
 Creating a password account signs into Firebase and sends a verification email,
 but does **not** accept a LazyFinance principal, provision through `auth.principal`
-or write an SSR token cookie. A verified email is required for first internal-user
+or persist application credentials. A verified email is required for first internal-user
 provisioning. Rechecking verification reloads the Firebase user, forces a new ID
 token and verifies it through the API before entering the app. If sending the
 email fails after creation, the Firebase account still exists: resend verification
@@ -146,23 +146,26 @@ reauthenticated linking flow. Client cancellation cannot undo a link already
 confirmed by Firebase;
 see [command lifetimes](ui-data-lifecycle.md#firebase-commands-and-observer-ordering).
 
-## Sessions across browser and SSR
+## Browser-owned sessions and public prerendering
 
 The browser verifies its candidate token through `auth.principal` before accepting
 a principal. Firebase mode lets its browser SDK own token persistence/refresh;
-mock mode restores the configured demo token. Both hand off only `{ token }` in
-the `lazyfinance-session` cookie, never a trusted serialized user.
+mock mode restores only its demo token from tab-local `sessionStorage` after the
+API selects mock mode. Neither path persists an accepted principal, permissions,
+financial responses or an application bearer cookie. Startup expires the legacy
+`lazyfinance-session` cookie without reading its token or principal.
 
-Every SSR render revalidates that token through the API before protected content.
-The cookie is JavaScript-readable, SameSite=Lax and Secure on HTTPS, not an
-HttpOnly server session. Forged/expired cookies cannot supply identity. Accepted
-credentials own cancellation lifetimes; late verification failures/401s cannot
-replace or expire a newer session. Protected resources are not serialized into
-hydration transfer state. The browser verifies its own current identity and
-refetches after hydration. Details live in the
+Session startup is shared and asynchronous, initiated by login or workspace entry,
+not by the public landing. Initial API/SDK failures expose explicit retry and never
+grant access. Transient same-account revalidation failures retain established
+access with a visible warning; definitive credential rejection clears access.
+Account changes synchronously conceal the old owner. Accepted credentials own
+cancellation lifetimes; late verification failures/401s cannot replace or expire a
+newer session. Only public content is prerendered and hydrated; protected pages
+and data are browser-only and never serialized into transfer state. Details live in the
 [session/resource reference](ui-data-lifecycle.md).
 
-Logout clears local access and the handoff cookie; it is not a general upstream
+Logout clears local access and any demo token; it is not a general upstream
 credential-revocation operation. In the current Firebase verifier,
 `verifyIdToken` checks expiry/signature/claims but does not request immediate
 revocation checking by default. An issued token may remain usable until expiry.

@@ -98,6 +98,21 @@ describe.skipIf(!integration)(
           });
           expect(first.pageInfo.hasMore).toBe(true);
           const firstCursor = first.pageInfo.nextCursor;
+          expect(
+            await own.transactions.detail.query({ id: movements[0].id }),
+          ).toMatchObject({
+            id: movements[0].id,
+            amount: "-9007199254740.99",
+            bookedAt: movements[0].bookedAt,
+            isInternalMovement: null,
+            receipt: null,
+            hasExpenseAdjustments: false,
+          });
+          await expect(
+            client(f.otherToken).transactions.detail.query({
+              id: movements[0].id,
+            }),
+          ).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
           if (!firstCursor) throw new Error("Expected a continuation cursor");
           expect(first.items[0]).not.toHaveProperty("cursorBookedAt");
 

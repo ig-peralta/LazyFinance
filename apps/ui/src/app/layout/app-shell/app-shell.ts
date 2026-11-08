@@ -1,53 +1,103 @@
-import { Component, inject, signal } from "@angular/core";
+import { NgTemplateOutlet } from "@angular/common";
 import {
+  Component,
+  computed,
+  DestroyRef,
+  ElementRef,
+  effect,
+  inject,
+  signal,
+  untracked,
+  viewChild,
+} from "@angular/core";
+import { toSignal } from "@angular/core/rxjs-interop";
+import {
+  NavigationEnd,
   Router,
   RouterLink,
-  RouterLinkActive,
   RouterOutlet,
 } from "@angular/router";
+import { filter, map } from "rxjs";
+import { AuthCredentials } from "../../core/auth/auth-credentials";
 import { SessionService } from "../../core/auth/session.service";
+import { OnboardingData } from "../../features/onboarding/onboarding.data";
+import { Icon } from "../../shared/ui/icon";
+import { workspaceLocation, workspaceNavigation } from "./workspace-navigation";
 
 @Component({
   selector: "app-shell",
-  imports: [RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [RouterLink, RouterOutlet, NgTemplateOutlet, Icon],
   templateUrl: "./app-shell.html",
 })
 export class AppShell {
-  private readonly session = inject(SessionService);
+  protected readonly session = inject(SessionService);
   private readonly router = inject(Router);
+  private readonly credentials = inject(AuthCredentials);
+  private readonly url = toSignal(
+    this.router.events.pipe(
+      filter((event) => event instanceof NavigationEnd),
+      map((event) => event.urlAfterRedirects),
+    ),
+    { initialValue: this.router.url },
+  );
+  protected readonly location = computed(() => workspaceLocation(this.url()));
+  protected readonly areas = workspaceNavigation;
+  private readonly onboarding = inject(OnboardingData);
+  protected readonly destinations = computed(() =>
+    this.location().area.destinations.filter(
+      (destination) =>
+        destination.path !== "/comenzar" ||
+        this.onboarding.status() === "skipped",
+    ),
+  );
+  private readonly dialog =
+    viewChild<ElementRef<HTMLDialogElement>>("menuDialog");
+  private readonly content = viewChild<ElementRef<HTMLElement>>("content");
+  protected readonly person = computed(
+    () => this.credentials.current()?.principal.name ?? "Tu espacio",
+  );
+  protected readonly initials = computed(() =>
+    this.person()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((word) => word[0])
+      .join(""),
+  );
 
   protected readonly menuOpen = signal(false);
   protected readonly logoutError = signal<string | null>(null);
 
-  protected readonly links = [
-    {
-      path: "/dashboard",
-      label: "Resumen",
-      description: "Ir al resumen de tus finanzas",
-    },
-    {
-      path: "/etiquetas",
-      label: "Etiquetas",
-      description: "Ir a la gestión de etiquetas",
-    },
-    {
-      path: "/presupuestos-y-metas",
-      label: "Presupuestos y metas",
-      description: "Ir a presupuestos y metas",
-    },
-    {
-      path: "/seguridad",
-      label: "Acceso y seguridad",
-      description: "Gestionar métodos de acceso",
-    },
-  ] as const;
+  constructor() {
+    effect(() => {
+      this.url();
+      // Programmatic navigation/back/forward must dismiss the native modal too.
+      untracked(() => this.closeMenu());
+    });
+    inject(DestroyRef).onDestroy(() => this.closeMenu());
+  }
+
+  protected retrySession(): void {
+    void this.session.retry();
+  }
 
   protected toggleMenu(): void {
-    this.menuOpen.update((open) => !open);
+    if (this.menuOpen()) {
+      this.closeMenu();
+      return;
+    }
+    this.menuOpen.set(true);
+    this.dialog()?.nativeElement.showModal();
   }
 
   protected closeMenu(): void {
     this.menuOpen.set(false);
+    const dialog = this.dialog()?.nativeElement;
+    if (dialog?.open) dialog.close();
+  }
+
+  protected skipToContent(event: Event): void {
+    event.preventDefault();
+    this.content()?.nativeElement.focus();
   }
 
   protected async logout(): Promise<void> {

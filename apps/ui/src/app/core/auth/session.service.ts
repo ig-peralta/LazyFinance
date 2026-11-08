@@ -7,23 +7,26 @@ import {
   Injectable,
   inject,
   PLATFORM_ID,
-  REQUEST,
   signal,
   untracked,
 } from "@angular/core";
-import { Router } from "@angular/router";
-import type {
-  AuthConfig,
-  AuthPrincipal,
-  AuthProvider,
-} from "@lazyfinance/contracts";
+import type { AuthPrincipal, AuthProvider } from "@lazyfinance/contracts";
 import type { User as FirebaseUser } from "firebase/auth";
-import { SsrCookieService } from "ngx-cookie-service-ssr";
 import { FirebaseService } from "../../services/firebase/firebase.service";
+import { isCancelled, isUnauthorized } from "../rpc/rpc-error";
 import { AuthApi } from "./auth-api";
 import { AuthCredentials } from "./auth-credentials";
 
 const SESSION_COOKIE = "lazyfinance-session";
+const MOCK_TOKEN_KEY = "lazyfinance-mock-token";
+
+export type SessionStatus =
+  | "idle"
+  | "loading"
+  | "ready"
+  | "anonymous"
+  | "verification-required"
+  | "error";
 
 export interface FirebaseAccount {
   readonly uid: string;
@@ -39,32 +42,19 @@ type FirebaseCommand = {
   userId?: string;
 };
 
-function tokenOnlyCookie(value: unknown): string | null {
-  if (
-    !value ||
-    typeof value !== "object" ||
-    !("token" in value) ||
-    "user" in value
-  )
-    return null;
-
-  return typeof value.token === "string" && value.token.trim()
-    ? value.token.trim()
-    : null;
-}
-
 @Injectable({ providedIn: "root" })
 export class SessionService {
-  private readonly cookies = inject(SsrCookieService);
   private readonly api = inject(AuthApi);
   private readonly credentials = inject(AuthCredentials);
-  private readonly router = inject(Router);
   private readonly firebase = inject(FirebaseService);
   private readonly document = inject(DOCUMENT);
-  private readonly request = inject(REQUEST, { optional: true });
   private readonly isServer = isPlatformServer(inject(PLATFORM_ID));
-  private readonly resolving = signal(true);
+  private readonly resolving = signal(false);
+  private readonly failure = signal<string | null>(null);
   private readonly providerState = signal<AuthProvider | null>(null);
+  private started = false;
+  private initialization?: Promise<void>;
+  private restoration?: AbortController;
   private revision = 0;
   private firebaseUid: string | null = null;
   private firebaseCommand?: FirebaseCommand;
@@ -78,12 +68,24 @@ export class SessionService {
     expiresAt: number;
   } | null>(null);
   private stopObservingTokens?: () => void;
+  private stopObservingIdentity?: () => void;
 
   readonly isResolving = this.resolving.asReadonly();
   readonly provider = this.providerState.asReadonly();
   readonly user = computed(() => this.credentials.current()?.principal ?? null);
   readonly token = computed(() => this.credentials.current()?.token ?? null);
   readonly active = computed(() => this.user() !== null);
+  readonly error = this.failure.asReadonly();
+  readonly status = computed<SessionStatus>(() => {
+    // Same-account credential commands/revalidation do not unmount established screens.
+    if (this.active()) return "ready";
+    if (this.isResolving()) return "loading";
+    if (this.failure()) return "error";
+    if (!this.started) return "idle";
+    return this.firebaseAccount()?.emailVerified === false
+      ? "verification-required"
+      : "anonymous";
+  });
   readonly firebaseAccount = this.firebaseAccountState.asReadonly();
   readonly googleLinkReady = computed(() => {
     const proof = this.googleLinkProof();
@@ -100,7 +102,9 @@ export class SessionService {
       ++this.revision;
       this.allowFirebaseEvents = false;
       this.cancelFirebaseCommand();
+      this.restoration?.abort();
       this.stopObservingTokens?.();
+      this.stopObservingIdentity?.();
     });
     effect(() => {
       if (!this.credentials.expired()) return;
@@ -111,128 +115,158 @@ export class SessionService {
         this.cancelFirebaseCommand();
         this.clearLocalState();
         this.resolving.set(false);
-        void this.router.navigateByUrl("/login");
       });
     });
   }
 
-  async initServerSide(config: AuthConfig | null): Promise<void> {
-    if (!this.isServer) return;
-
-    const revision = ++this.revision;
-
-    try {
-      if (!config) return;
-
-      this.providerState.set(config.provider);
-      const token = this.readTokenCookie();
-      if (!token) return;
-
-      // Only the API's verified principal may establish SSR identity.
-      const user = await this.api.verifyPrincipal(token);
-
-      if (revision === this.revision) this.credentials.accept(user, token);
-    } catch {
-      if (revision === this.revision) this.clearLocalState();
-    } finally {
-      this.resolving.set(false);
-    }
+  /** Shared browser startup, called by login/workspace entry, never by public rendering. */
+  start(): Promise<void> {
+    if (this.initialization) return this.initialization;
+    if (this.started || this.isServer) return Promise.resolve();
+    return this.retry();
   }
 
-  async initClientSide(config: AuthConfig | null): Promise<void> {
-    if (this.isServer) return;
+  retry(): Promise<void> {
+    if (this.initialization) return this.initialization;
+    if (
+      this.isServer ||
+      this.firebaseCommand ||
+      this.sdkCommand ||
+      this.signingOut
+    )
+      return Promise.resolve();
 
+    this.started = true;
+    this.allowFirebaseEvents = true;
+    // Remove the old bearer handoff without reading or trusting its contents.
+    this.document.cookie = `${SESSION_COOKIE}=; Max-Age=0; Path=/; SameSite=Lax`;
+    this.failure.set(null);
+    this.resolving.set(true);
+    this.restoration?.abort();
+    const controller = new AbortController();
+    this.restoration = controller;
     const revision = ++this.revision;
-
-    try {
-      if (!config) {
-        this.clearLocalState();
-        return;
-      }
-
-      this.providerState.set(config.provider);
-      if (config.provider === "mock") {
-        const token = this.readTokenCookie();
-
-        if (token) {
-          const user = await this.api.verifyPrincipal(token);
-
-          if (revision === this.revision) this.credentials.accept(user, token);
-        }
-
-        return;
-      }
-
-      const auth = this.firebase.auth();
-      if (!auth) throw new Error("Firebase Auth could not be initialized");
-
-      await auth.authStateReady();
-      await new Promise<void>((resolve) => {
-        let initial = true;
-        const finishInitial = () => {
-          if (initial) {
-            initial = false;
-            resolve();
-          }
-        };
-        this.stopObservingTokens?.();
-        this.stopObservingTokens = auth.onIdTokenChanged(
-          (firebaseUser) => {
-            if (!this.allowFirebaseEvents) {
-              this.clearLocalState();
-              finishInitial();
-              return;
-            }
-            if (this.firebaseCommand || this.sdkCommand) {
-              // Explicit commands own acceptance. Reauthentication/forced token
-              // refresh must not race their API verification or finish a login early.
-              const expectedUid =
-                this.firebaseCommand?.uid ?? this.sdkCommand?.uid;
-              if (expectedUid && expectedUid !== firebaseUser?.uid) {
-                ++this.revision;
-                this.allowFirebaseEvents = false;
-                this.cancelFirebaseCommand();
-                this.clearLocalState();
-                this.resolving.set(false);
-              }
-              finishInitial();
-              return;
-            }
-            const revision = ++this.revision;
-            this.resolving.set(true);
-
-            if (this.firebaseUid !== firebaseUser?.uid) this.clearLocalState();
-            this.publishFirebaseAccount(firebaseUser);
-
-            void this.resolveFirebaseUser(firebaseUser, revision)
-              .catch(() => {
-                if (revision === this.revision) this.clearLocalState(true);
-              })
-              .finally(() => {
-                if (revision === this.revision) this.resolving.set(false);
-                finishInitial();
-              });
-          },
-          () => {
-            ++this.revision;
-            this.allowFirebaseEvents = false;
-            this.cancelFirebaseCommand();
-            this.clearLocalState();
-            this.resolving.set(false);
-
-            finishInitial();
-          },
-        );
+    const pending = this.initializeBrowser(revision, controller.signal)
+      .catch((error: unknown) => {
+        if (revision === this.revision) this.restorationFailed(error);
+      })
+      .finally(() => {
+        if (revision === this.revision) this.resolving.set(false);
+        if (this.initialization === pending) this.initialization = undefined;
       });
-    } catch {
-      if (revision === this.revision) this.clearLocalState();
-    } finally {
-      if (revision === this.revision && !this.firebaseCommand)
-        this.resolving.set(false);
-    }
+    this.initialization = pending;
+    return pending;
   }
 
-  async loginWithToken(token: string): Promise<AuthPrincipal> {
+  private async initializeBrowser(
+    revision: number,
+    signal: AbortSignal,
+  ): Promise<void> {
+    const config = await this.api.config(signal);
+    if (revision !== this.revision || signal.aborted) return;
+    this.providerState.set(config.provider);
+    if (config.provider === "mock") {
+      const token = this.mockToken();
+      if (token) {
+        const user = await this.api.verifyPrincipal(token, signal);
+        if (revision === this.revision && !signal.aborted)
+          this.credentials.accept(user, token);
+      }
+      return;
+    }
+
+    const auth = await this.firebase.init();
+    if (revision !== this.revision || signal.aborted) return;
+    await auth.authStateReady();
+    if (revision !== this.revision || signal.aborted) return;
+    if (this.stopObservingTokens) {
+      await this.resolveFirebaseUser(auth.currentUser, revision);
+      return;
+    }
+    this.stopObservingIdentity = auth.beforeAuthStateChanged((next) => {
+      if (this.firebaseAccount() && this.firebaseAccount()?.uid !== next?.uid) {
+        ++this.revision;
+        if (this.firebaseCommand || this.sdkCommand) {
+          this.allowFirebaseEvents = false;
+          this.cancelFirebaseCommand();
+        }
+        this.clearLocalState();
+        this.resolving.set(Boolean(next) && this.allowFirebaseEvents);
+      }
+    });
+    await new Promise<void>((resolve) => {
+      let initial = true;
+      const finishInitial = () => {
+        if (initial) {
+          initial = false;
+          resolve();
+        }
+      };
+      this.stopObservingTokens = auth.onIdTokenChanged(
+        (firebaseUser) => {
+          if (!this.allowFirebaseEvents) {
+            this.clearLocalState();
+            finishInitial();
+            return;
+          }
+          if (this.firebaseCommand || this.sdkCommand) {
+            // Explicit commands own acceptance. Reauthentication/forced token
+            // refresh must not race their API verification or finish a login early.
+            const expectedUid =
+              this.firebaseCommand?.uid ?? this.sdkCommand?.uid;
+            if (expectedUid && expectedUid !== firebaseUser?.uid) {
+              ++this.revision;
+              this.allowFirebaseEvents = false;
+              this.cancelFirebaseCommand();
+              this.clearLocalState();
+              this.resolving.set(false);
+            }
+            finishInitial();
+            return;
+          }
+          const revision = ++this.revision;
+          this.failure.set(null);
+          this.resolving.set(true);
+
+          if (this.firebaseUid !== firebaseUser?.uid) this.clearLocalState();
+          this.restoration?.abort();
+          this.restoration = new AbortController();
+          this.publishFirebaseAccount(firebaseUser);
+
+          void this.resolveFirebaseUser(firebaseUser, revision)
+            .catch((error: unknown) => {
+              if (revision === this.revision) this.restorationFailed(error);
+            })
+            .finally(() => {
+              if (revision === this.revision) this.resolving.set(false);
+              finishInitial();
+            });
+        },
+        () => {
+          ++this.revision;
+          this.allowFirebaseEvents = false;
+          this.cancelFirebaseCommand();
+          this.clearLocalState();
+          this.failure.set(
+            "No pudimos restaurar tu cuenta. Inténtalo de nuevo.",
+          );
+          this.resolving.set(false);
+          this.stopObservingTokens?.();
+          this.stopObservingTokens = undefined;
+          this.stopObservingIdentity?.();
+          this.stopObservingIdentity = undefined;
+
+          finishInitial();
+        },
+      );
+    });
+  }
+
+  async loginWithToken(
+    token: string,
+    signal?: AbortSignal,
+  ): Promise<AuthPrincipal> {
+    signal?.throwIfAborted();
     if (this.providerState() !== "mock")
       throw new Error("Mock login is not available");
 
@@ -241,14 +275,25 @@ export class SessionService {
 
     const revision = ++this.revision;
     this.clearLocalState();
-    const user = await this.api.verifyPrincipal(trimmed);
-    if (revision !== this.revision)
-      throw new Error("Session changed during login");
+    const controller = new AbortController();
+    this.restoration = controller;
+    const operation = AbortSignal.any([
+      controller.signal,
+      ...(signal ? [signal] : []),
+    ]);
+    this.resolving.set(true);
+    try {
+      const user = await this.api.verifyPrincipal(trimmed, operation);
+      operation.throwIfAborted();
+      if (revision !== this.revision)
+        throw new DOMException("Session changed during login", "AbortError");
 
-    this.credentials.accept(user, trimmed);
-    this.writeCookie(JSON.stringify({ token: trimmed }));
-
-    return user;
+      this.credentials.accept(user, trimmed);
+      this.mockToken(trimmed);
+      return user;
+    } finally {
+      if (revision === this.revision) this.resolving.set(false);
+    }
   }
 
   async loginWithGoogle(signal?: AbortSignal): Promise<AuthPrincipal> {
@@ -296,7 +341,7 @@ export class SessionService {
           this.firebase.createPasswordAccount(email, password),
         );
         // Creation signs into Firebase, but an unverified address must not create
-        // an application principal or a trusted SSR cookie.
+        // an application principal.
         await this.invokeFirebaseSdk(command, () =>
           this.firebase.sendVerification(user, command.controller.signal),
         );
@@ -443,7 +488,7 @@ export class SessionService {
       return null;
     const user = command
       ? await this.api.verifyPrincipal(token, command.controller.signal)
-      : await this.api.verifyPrincipal(token);
+      : await this.api.verifyPrincipal(token, this.restoration?.signal);
     if (command) this.assertFirebaseCommand(command, firebaseUser);
     if (
       revision !== this.revision ||
@@ -461,8 +506,7 @@ export class SessionService {
     this.firebaseUid = firebaseUser.uid;
     this.publishFirebaseAccount(firebaseUser);
     this.credentials.accept(user, token);
-    // Browser SDK owns token refresh. The cookie is an SSR handoff, not a principal.
-    this.writeCookie(JSON.stringify({ token }));
+    this.failure.set(null);
     return user;
   }
 
@@ -599,6 +643,8 @@ export class SessionService {
       throw new Error(
         "Firebase is only available in the configured browser flow",
       );
+    if (!this.stopObservingTokens)
+      throw new Error("Retry session startup before using Firebase");
   }
 
   private requireFirebaseUser(verified = true): FirebaseUser {
@@ -667,37 +713,36 @@ export class SessionService {
   }
 
   private clearLocalState(preserveFirebaseAccount = false): void {
+    this.restoration?.abort();
     this.firebaseUid = null;
+    this.failure.set(null);
     this.googleLinkProof.set(null);
     if (!preserveFirebaseAccount) this.publishFirebaseAccount(null);
     this.credentials.clear();
-    this.cookies.delete(SESSION_COOKIE, "/");
+    if (this.provider() === "mock") this.mockToken(null);
   }
 
-  private writeCookie(value: string): void {
-    this.cookies.set(SESSION_COOKIE, value, {
-      path: "/",
-      sameSite: "Lax",
-      secure: this.isServer
-        ? (this.request?.url.startsWith("https:") ?? false)
-        : this.document.location.protocol === "https:",
-    });
-  }
-
-  private readTokenCookie(): string | null {
-    const raw = this.cookies.get(SESSION_COOKIE);
-    if (!raw) return null;
-
-    try {
-      const parsed: unknown = JSON.parse(raw);
-      const token = tokenOnlyCookie(parsed);
-      if (token) return token;
-    } catch {
-      /* Discard malformed token cookie. */
+  private restorationFailed(error: unknown): void {
+    if (isCancelled(error)) return;
+    if (isUnauthorized(error)) {
+      this.clearLocalState(true);
+      return;
     }
+    // A network/server outage is not evidence of sign-out. Keep established access;
+    // initial failures still have no accepted credentials and cannot mount private pages.
+    this.failure.set("No pudimos verificar tu sesión. Inténtalo de nuevo.");
+  }
 
-    this.cookies.delete(SESSION_COOKIE, "/");
-
-    return null;
+  private mockToken(value?: string | null): string | null {
+    if (this.isServer) return null;
+    try {
+      const storage = this.document.defaultView?.sessionStorage;
+      if (value === null) storage?.removeItem(MOCK_TOKEN_KEY);
+      else if (value !== undefined) storage?.setItem(MOCK_TOKEN_KEY, value);
+      return storage?.getItem(MOCK_TOKEN_KEY)?.trim() || null;
+    } catch {
+      // Restricted browser storage may disable demo reloads, never verification.
+      return null;
+    }
   }
 }

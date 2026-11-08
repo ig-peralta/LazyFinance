@@ -151,7 +151,7 @@ incorrectly commit. Result-size failures also throw before commit.
 
 ## RLS and related ownership
 
-All 21 sensitive application tables enable **and force** RLS. The twenty-second,
+All 22 sensitive application tables enable **and force** RLS. The twenty-third,
 `finance.provider`, is a shared runtime-read-only catalog. Runtime grants and RLS
 are both required: a policy alone is not permission to access a table.
 
@@ -167,6 +167,12 @@ links are append-only and check both owners. Savings revisions and their tag lin
 are append-only and require an owned saving objective and owned tags. Identity mappings remain
 bootstrap-only rather than becoming a user-readable identity directory.
 
+`identity.onboarding` permits self-read/insert and column-limited updates to its
+status/completion time. Runtime cannot delete or reassign those records, and
+neither bootstrap nor unscoped requests can access them. This grants no profile
+or external-identity write permission. Its named upsert makes completion terminal
+and retains the first server timestamp; no financial facts are changed.
+
 The local GUC is trusted because authenticated persistence owns SQL execution,
 not because PostgreSQL cryptographically verifies it. A compromised persistence
 process or signing API is outside this isolation guarantee; privileged database
@@ -177,6 +183,7 @@ or generic transaction scripts.
 
 | Command | Authoritative persistence work | API work outside SQL |
 | --- | --- | --- |
+| Onboarding finish | Upsert only the scoped user's skip/completion; retain terminal completion and its first timestamp under concurrent writes | Authenticated optional-guide intent; no financial prerequisites or writes |
 | Income confirmation | Lock/check source and eligible movement; reject any retained expense allocation; upsert one receipt | Calendar/money calculations and response composition |
 | Expense adjustment set/remove | Lock both owned movements; check eligibility, income exclusivity and credit/purchase capacity including retained review allocations; atomically upsert/remove one pair | Validate exact positive money and explicit refund/reimbursement intent; interpret gross/net aggregates |
 | Tag decision | Decision and append-only event together | Normalize/rank rules and calculate suggestions |

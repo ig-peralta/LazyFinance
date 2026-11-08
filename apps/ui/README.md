@@ -1,13 +1,195 @@
 # LazyFinance UI
 
-The UI is an Angular/TypeScript app with routing, server-side rendering (SSR), and client hydration. It is part of the [LazyFinance monorepo](../../README.md) alongside the [API](../api/README.md).
+The UI is an Angular/TypeScript app with a build-time-prerendered public landing and client-rendered login/private routes. It is part of the [LazyFinance monorepo](../../README.md) alongside the [API](../api/README.md).
 
-The interface uses PrimeNG components with an Aura-based emerald theme, Tailwind CSS v4 through PostCSS, and `tailwindcss-primeui` for styling utilities. Production builds include a browser bundle and a Node/Express SSR server.
+The interface uses PrimeNG components with an Aura-based emerald theme, Tailwind CSS v4 through PostCSS, and `tailwindcss-primeui` for styling utilities. Production serves static browser output through unprivileged Nginx; Angular's server packages support public build-time prerendering, not a request-time web server.
+
+## Rendering and startup
+
+- `/` is prerendered and hydrated without Firebase initialization or API requests.
+- Login and all authenticated routes use CSR. No private user/financial HTML is
+  prerendered, and no protected resource is put in transfer state.
+- `src/index.html` contains the same neutral frame as `WorkspaceLoading`, visible
+  before Angular or Firebase loads. Their styles live in `src/workspace-loading.css`.
+- The eager `WorkspaceBoundary` starts shared browser restoration asynchronously.
+  Every workspace entry (reload or return from public/login routes, including an
+  already-verified session) shows at least one second of animation. Destination
+  code loads concurrently with authentication; verified pages immediately mount
+  invisibly/inertly and start their page-owned reads during that second.
+- A route-scoped `WorkspacePagePreparation` collects explicit
+  `reportWorkspaceReadiness(...)` declarations for initial visible reads, including
+  conditional child reads. Default empty arrays/idle resources are not readiness.
+  Confirmation follows rendering and belongs to the accepted credential snapshot.
+  After both the minimum second and readiness, the same instance is revealed:
+  there is no second mount/fetch or application-wide financial cache.
+- Slow reads extend the animation; settled errors reveal usable retry/error states.
+  A 15-second deadline exposes a reload fallback, and late successful preparation
+  can still recover. Hidden content is excluded from interaction/accessibility,
+  with focus moved only after reveal. Internal navigation, token refresh and filters
+  never replay the entrance; ordinary destination frames/resource states still apply.
+- Every destination uses the eager `WorkspaceRoutePage`; its screen keeps the same
+  `ActivatedRoute`, reactive parameters, relative links and page-owned providers.
+  Failed imports are retryable; obsolete imports cannot mount after navigation.
+- Page resources own loading, empty, error, populated and retry states. Do not use
+  `@defer` as a substitute for reactive data state or add a root financial cache.
+
+The static output under `dist/ui/browser` contains public `index.html` and neutral
+`index.csr.html`. Nginx on port `4000` preserves client deep links, revalidates HTML,
+caches only fingerprinted assets immutably, enables gzip and returns 404 for
+missing assets. It serves only UI files, with no API proxy, prefix rewriting or
+backend/Docker DNS dependency. Browser requests use the explicit API base URL from
+the selected Angular environment. Static startup never waits for API/database
+readiness. Other UI hosting only needs equivalent static fallback/caching.
+
+## Authenticated workspace
+
+The authenticated workspace uses dark surfaces, emerald accents, rounded cards
+and pill actions aligned with the public landing's visual language. Its dark
+tokens are workspace-scoped, including PrimeNG controls; the public landing and
+login retain their existing system-aware theme.
+
+Navigation has four primary areas: **Resumen**, **Mi dinero** (movements, accounts,
+tags), **Planificación** (budgets, savings, income and sources), and **Mi cuenta**
+(access/security, plus a resume link only for skipped setup). Direct contextual links appear above the
+page, wrap rather than scroll, and retain the active destination on detail routes.
+The sidebar has no internal scrolling or expandable lists. Narrow or short
+viewports replace it with a compact native modal menu, including a two-column
+layout on short screens, focus containment and Escape handling. A skip link and
+keyboard-visible focus remain available.
+
+Financial editors are opened explicitly instead of occupying a permanent page
+column: tags, budget/savings creation and adjustments, income sources and dated
+expectations, receipt confirmation and movement corrections use a shared
+right-side modal panel. It slides in on desktop and fills narrow screens, with a
+fixed header, independently scrolling content, reachable actions and safe-area
+padding. Native dialogs contain focus, make the underlying page inert, support
+Escape/backdrop dismissal and return focus to the opener; reduced-motion users
+get no slide animation. Closing unmounts the editor, clears its draft and cancels
+its client command lifetime. It does not undo a write already sent to the server;
+use the page's reload action to reconcile an uncertain result before retrying.
+Source editing and irregular-payment planning are separate actions; expected
+payments expand under their source and open their own editor, never a nested
+modal. Filters, month selectors and sign-in forms stay in place.
+
+The dashboard leads with selected-month net spending, received income and the
+full-month income plan, followed by workflow shortcuts, spending analysis,
+planning, stored account balances and recent activity. Balances are not added
+across different account types or confused with income/available cash. Financial
+display formats decimal strings through bigint cents, retaining nonzero cents
+and large values without floating-point rounding. Income cards distinguish
+confirmed receipts from plans; neither is presented as available cash.
+
+Spending by tag uses an SVG distribution ring with a readable exact-amount and
+percentage legend, including the untagged remainder. At most five named tags,
+an exact "other tags" aggregate and untagged spending appear in the ring; an
+expandable breakdown retains every tag, counts and gross/recovery/net amounts,
+including fully recovered purchases. Only visual coordinates and percentages
+use bounded numbers; amount arithmetic uses bigint cents. Zero spending and
+inconsistent/non-proportional amounts do not produce a fabricated chart. The
+backend's purchase-attributed recovery semantics and pending-review disclosures
+are unchanged. Chart colors are a presentation palette, not edits to tag colors.
+
+`/etiquetas` manages the active owned catalog: create, rename/recolor and explicit
+archive confirmation. Archived names remain reserved and historical references are
+retained. Its resource is page-owned; commands reject duplicate submissions and
+discard obsolete owner/component results. Form drafts are cleared on owner changes
+and no financial record is cached in browser storage or hydration transfer state.
+
+`/movimientos` is a URL-filtered cursor ledger (account, Santiago dates, nullable
+tag/internal status, direction and literal merchant substring). Previous/next
+controls keep a page-local cursor trail, reset on filter/scope changes, and never
+sum pages into financial totals. Inline search, charge/credit shortcuts and removable
+chips expose applied filters. Advanced filters expand within the ledger and keep
+drafts separate until confirmation, with current/previous-month presets. Search
+and direction confirmations include any staged filters; collapsing or Escape
+discards that draft and restores focus. Catalog failures preserve selected IDs,
+and owner changes clear unsubmitted drafts.
+`/movimientos/:id` reads owned source and
+classification detail without changing the original banking facts.
+The detail view supports explicit tag/no-tag/reset and nullable internal-status
+corrections. A saved command reloads detail; history, summaries and budget pages
+refetch on navigation rather than sharing a stale application-wide cache. Removed
+records are read-only, and the backend remains authoritative for valid references.
+
+`/ingresos/fuentes` manages owned fixed/variable, regular/irregular declarations,
+all supported weekly/14-day/monthly/twice-monthly schedules, archival and dated
+expectations. Exact decimal input accepts a decimal comma without interpreting
+thousands separators. Unknown variable amounts remain unknown, and declarations
+or expectations never create received payments automatically.
+`/ingresos` separately displays full-month plans, included estimates, unknown
+amounts, received confirmations, unclassified credits and recovered expenses.
+Its paginated external-credit browser opens one owned detail to validate facts;
+confirmation/reassignment and explicit clearing preserve booked amounts/dates.
+Retained links remain clearable even when current facts no longer count as income.
+
+`/presupuestos-y-metas` creates spending budgets and shows backend net progress;
+`/presupuestos/:id` separates effective/pending revisions, paginated history and
+version-checked edit/archive. Started recurring edits apply next month/year;
+started fixed budgets are read-only apart from archival. New schedules use aligned
+monthly/yearly starts or inclusive fixed dates. Overlapping budgets are not summed
+as a combined allowance, and no command reserves cash or changes banking facts.
+Budget figures open `/presupuestos/:id/movimientos` with the report's revision,
+month and observation cutoffs. Its complete backend totals (not page sums)
+separate original purchases, refunds, reimbursements and net spending. Continuation
+retains returned cutoffs, explains current-fact drift and never claims complete
+bank coverage. Changed revisions require reopening the current progress selection.
+
+`/metas` creates selected-tag lifetime/monthly/yearly/fixed savings targets;
+`/metas/:id` provides owned detail, immutable configuration history and expected-
+version edit/archive. Savings edits restate the current allocation view immediately
+rather than changing next period's spending limit. Archival preserves direct
+detail/history and does not move cash or generate contributions.
+The goal detail and one featured dashboard goal use backend-measured savings
+allocations, remaining target, raw signed percentage and paginated evidence.
+Negative/over-target values remain visible; bars alone are bounded visually.
+Pending movements, partial/unknown history and target-only/error fallbacks are
+explicit. Evidence retains its booking cutoff and rejects mismatched goal
+versions; it is current-fact evidence, not historical time travel. Dashboard tag
+decisions invalidate savings allocations as well as spending/budget reads.
+
+`/cuentas` reads stored active-account balances and last-synchronization dates.
+It does not refresh the bank. Connection pending/failed/revoked state is not
+available from the current public API; linking, refresh, relink and disconnect
+are explicitly unavailable. A timestamp older than 24 hours is labelled by age,
+not treated as proof of a connection state. **LAZ-62 remains blocked/open** until
+the separate banking backend and live verification exist.
+
+`/comenzar` is optional setup navigation without automatic financial writes.
+Checklist progress comes from persisted owned accounts, sources and objectives;
+failed reads are unverified, not completed or empty imports. Small credential-
+scoped `OnboardingData` metadata is shared by shell/hint/guide and persisted per
+account through `onboarding.state`/`onboarding.finish` in PostgreSQL, never browser
+storage or protected transfer state. The dashboard card appears only for active
+users and supports explicit dismissal. Skipped users get no recurring prompt,
+but can resume from **Mi cuenta → Retomar configuración** without reactivating
+reminders. Completion permanently hides both entry points; direct guide visits
+redirect to the dashboard. Unknown/loading/error state never means a pending
+guide. Writes wait for confirmation, reject duplicate/obsolete results and allow
+explicit reconciliation after ambiguous failures. Legacy browser flags are not
+silently imported; an explicit skip/finish saves the account-level choice.
+Closing the guide does not claim optional financial setup or bank linking is
+complete, and later financial edits never reopen it.
 
 Detailed references: [session/resource lifetimes](../../docs/technical/ui-data-lifecycle.md),
 [provider-neutral identity](../../docs/technical/identity.md),
 [RPC contracts](../../docs/technical/rpc-contracts.md) and
 [development/tooling](../../docs/technical/development-workflow.md).
+
+## Page organization
+
+Under `src/app/pages`, related components, templates and tests stay together:
+
+- `income/`: the summary page, `credit-browser/`, `receipt-editor/` and `sources/`.
+  Source management owns its form helpers, `source-editor/` and `expectations/`.
+- `objectives/`: the overview page, `budgets/` (with its editor and `evidence/`),
+  `savings/` (with its editor), and `forms/` shared by both objective workflows.
+- `transactions/`: `history/` owns the ledger and filters; `detail/` owns the
+  movement page and its `corrections/` component.
+- `dashboard/`: overview panels; `summary/` owns the distribution chart and its
+  exact-amount presentation calculation/tests. Navigation configuration belongs
+  to `layout/app-shell/`, not to individual financial workflows.
+
+Lazy routes import the owning page directly; there are no old-path re-exports.
 
 ## Development
 
@@ -22,20 +204,31 @@ Open <http://localhost:4200>. Angular's development server reloads as you edit. 
 
 ## Session and API requests
 
-`initializeServices()` loads the provider, initializes Firebase only in the browser when selected, then resolves the session. Both modes write a token-only SSR cookie; each SSR request revalidates it through the `auth.principal` RPC. The cookie is not proof of authentication. Development uses <http://localhost:3000>; production browser builds use <https://api.lazyfinance.cl>.
+`SessionService.start()` shares provider discovery, lazy Firebase initialization
+when selected, and API principal verification. Login and workspace entry call it;
+the public landing does not. Firebase owns browser identity persistence and token
+refresh; verified application credentials stay in memory. Startup expires the
+legacy `lazyfinance-session` cookie without reading it. Mock mode stores only its
+demo token in tab-local `sessionStorage`, revalidates it on reload, and clears it
+on logout. No principal, permissions or financial results are persisted there.
+Development uses <http://localhost:3000>; production uses
+<https://api.lazyfinance.cl>. `RpcClient` appends `/trpc` to that base URL. The API's
+`CORS_ORIGINS` must allow the actual UI origin. Production URLs are compiled into
+the Docker UI too; choose a browser-reachable local API URL and rebuild for an
+entirely local container rehearsal.
 
 Data access uses native, inferred `@trpc/client` Promises and Angular resources. There is no catch-all `ApiService`, RxJS compatibility facade, fake `HttpErrorResponse`, or Angular HTTP interceptor for RPC:
 
 | Boundary                        | Responsibility                                                                                                             |
 | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `core/rpc/rpc-client.ts`        | Request-local clients, immutable bearer scopes, abort propagation, no-store fetch and current-session 401 handling.        |
+| `core/rpc/rpc-client.ts`        | Application-local clients, immutable bearer scopes, abort propagation, no-store fetch and current-session 401 handling.        |
 | `core/auth/auth-credentials.ts` | Accepted verified identity and its cancellation lifetime; no networking or routing.                                        |
 | `core/auth/auth-api.ts`         | Explicit anonymous configuration/login and candidate-token verification. Verification never installs or expires a session. |
-| `core/auth/session.service.ts`  | Firebase/mock restoration, explicit credential commands, cookie handoff, verification/owner races and expiration routing. |
+| `core/auth/session.service.ts`  | Shared browser restoration, retryable failures, explicit credential commands, verification/owner races and expiry. |
 | `features/*/*.data.ts`          | Page-owned query resources and explicit commands, not another set of endpoint aliases.                                     |
 | Components                      | Render resource values/loading/errors and handle presentation interactions.                                                |
 
-The dependency direction is `SessionService → AuthApi → RpcClient → AuthCredentials`; the transport never depends on the session coordinator. A client is reused within one accepted credential snapshot, not recreated for each endpoint or shared between SSR requests. Logout/token replacement aborts its old scope. Late results, late 401s and cancelled commands cannot affect a newer identity.
+The dependency direction is `SessionService → AuthApi → RpcClient → AuthCredentials`; the transport never depends on the session coordinator. A client is reused within one accepted credential snapshot, not recreated for each endpoint. Logout/token replacement aborts its old scope. Late results, late 401s and cancelled commands cannot affect a newer identity. Transient same-account revalidation failures keep established screens mounted with a retry warning; rejected credentials and identity changes conceal old content. The workspace boundary owns guest redirects and preserves the full return URL.
 
 For example, `AccountsData` owns the whole read lifecycle:
 
@@ -48,7 +241,7 @@ readonly accounts = resource({
 });
 ```
 
-The view consumes `accounts.value()`, `accounts.isLoading()`, `accounts.error()` and `accounts.reload()`. The scope is absent until verification succeeds; changing it invalidates old values. Feature services are provided by `DashboardPage`, so navigation destroys their resources. Month selection is a reactive query input. Activity uses only the first `transactions.list` page (`limit: 10`); continuation controls and a history view are not implemented.
+The view consumes `accounts.value()`, `accounts.isLoading()`, `accounts.error()` and `accounts.reload()`. The scope is absent until verification succeeds; changing it invalidates old values. Feature services are provided by their page, so navigation destroys their resources. Month selection is a reactive query input. Dashboard activity uses only the first `transactions.list` page (`limit: 10`); the separate history page owns filters and continuation.
 
 The dashboard distinguishes gross purchase cost, confirmed refunds/reimbursements
 and net spending. Recoveries follow the original purchase period/tag; cash recovered
@@ -58,7 +251,7 @@ without reducing cost. Allocation commands exist in the public RPC, but a refund
 management screen is not implemented. See the
 [shared semantics](../../docs/technical/rpc-contracts.md#expense-recovery-semantics).
 
-Tag commands publish confirmed decisions to page-local state. Only summaries and budget progress are invalidated; recent movements reflect the confirmed choice without component output/view-child chains. A decision completed after a read started wins over that older read, while a later explicit reload can reconcile changes from elsewhere. The tag catalog is lazy and shared within the page. Rule creation is a separate command: if it fails after saving a decision, the UI reports partial success instead of replaying or pretending to roll back the saved choice. Mutations are never automatically retried; cancelling a request does not guarantee server rollback.
+Tag commands publish confirmed decisions to page-local state. Summaries, budget progress and featured savings allocations are invalidated; recent movements reflect the confirmed choice without component output/view-child chains. A decision completed after a read started wins over that older read, while a later explicit reload can reconcile changes from elsewhere. The dashboard tag catalog is lazy and shared within the page. Rule creation is a separate command: if it fails after saving a decision, the UI reports partial success instead of replaying or pretending to roll back the saved choice. Mutations are never automatically retried; cancelling a request does not guarantee server rollback.
 
 Both environment files currently use the public `lazyfinance-dev` Firebase Web app identifiers. Set `AUTH_PROVIDER=firebase` and `FIREBASE_PROJECT_ID=lazyfinance-dev` on the API, enable **Google and Email/Password**, and authorize the UI's domain in Firebase. Before deploying against another project, update the UI environment file and API project ID together. Admin credentials are never included in the UI. Mock mode works without Firebase or an emulator. Review the [Firebase setup checklist](../../docs/technical/technical-manual.md#firebase-browser-setup) before live verification.
 
@@ -67,7 +260,7 @@ Both environment files currently use the public `lazyfinance-dev` Firebase Web a
 - `/login` offers Google, password sign-in, password registration, verification
   resend/recheck and reset-email requests in Firebase mode. A new password account
   must verify its email before first LazyFinance onboarding; registration alone
-  installs neither an application principal nor an SSR token cookie.
+  installs neither an application principal nor persisted application credentials.
 - Authenticated `/seguridad` ("Acceso y seguridad") connects methods to the same
   Firebase UID: Google-only users confirm Google again before adding a password;
   password-only users confirm their current password, then click a separate
@@ -82,29 +275,44 @@ Both environment files currently use the public `lazyfinance-dev` Firebase Web a
   reconciled by checking its actual methods, not automatically replaying it.
 
 Either connected method can grant access on its own; this is not MFA. In
-particular a new password does not inherit Google MFA. The existing JavaScript-
-readable bearer cookie and local-only logout/revocation limitations remain. See
+particular a new password does not inherit Google MFA. Browser-held bearer tokens
+and local-only logout/upstream-revocation limitations remain. See
 [identity/security boundaries](../../docs/technical/identity.md#firebase-sign-in-and-credential-linking)
 and [session command lifetimes](../../docs/technical/ui-data-lifecycle.md#firebase-commands-and-observer-ordering).
 
-SSR can fetch balances after verification. Clients/auth snapshots are render-request-local, with no module-global client, batch queue or response cache. Fetch uses `cache: no-store` and SSR HTML is private/non-cacheable. Protected resources have no transfer-cache `id`, and components do not manually populate `TransferState`: the browser revalidates its identity and refetches rather than inheriting another session's serialized data. Disabling Angular's HTTP transfer cache alone would not protect manual/resource transfer state. `API_INTERNAL_URL` selects the SSR-only base URL (Compose: `http://api:3000`) without changing the browser URL. Tests inject `RPC_FETCH` and exercise real vanilla clients/resources with in-memory responses; no development/API/database server is needed.
+Private pages fetch only in the browser after principal verification. There is no
+module-global client, batch queue, financial response cache or authenticated HTML.
+Fetch uses `cache: no-store`; protected resources have no transfer-cache `id`, and
+components do not populate financial `TransferState`. Tests inject `RPC_FETCH` and
+exercise real vanilla clients/resources with in-memory responses; no development,
+API or database server is needed. Rendering tests cover public-only prerendering,
+  every-entry animation, concurrent preparation, dependent reads, deep links,
+  cancellation and guest/error boundaries.
+Native editor drawers deliberately unmount on close (there is no retained live
+form/exit animation). The mobile menu closes on all navigation, and tag pickers
+discard drafts on scope/record changes, cancel delayed positioning and restore focus.
 
 ## Commands
+
+The test builder enables per-file isolation instead of Angular's shared-test
+default. This keeps Firebase SDK mocks and jsdom document/event realms from
+leaking across specs; shared code splitting remains enabled. Isolation adds
+document setup time, reported by Vitest, and does not affect production bundles.
+SDK tests block unexpected network requests and do not contact Firebase. Fixture
+events use their own document's event factory.
 
 Run these from the monorepo root:
 
 | Command                                       | Purpose                                                                                            |
 | --------------------------------------------- | -------------------------------------------------------------------------------------------------- |
 | `pnpm --filter ui dev`                        | Start the Angular development server on port `4200`.                                               |
-| `pnpm --filter ui build`                      | Build browser assets and the SSR server into `apps/ui/dist/ui`.                                    |
+| `pnpm --filter ui build`                      | Prerender the landing and build static browser assets into `apps/ui/dist/ui/browser`.                                    |
 | `pnpm --filter ui watch`                      | Build in watch mode with the development configuration.                                            |
 | `pnpm --filter ui test`                       | Run unit tests through Angular's Vitest-based test builder.                                        |
 | `pnpm --filter ui exec ng test --watch=false` | Run the serverless UI suite once with in-memory RPC fixtures.                                      |
-| `pnpm --filter ui serve:ssr:ui`               | Run the built SSR server (build first; default port `4000`).                                       |
 | `pnpm --filter ui ng <command>`               | Pass a command to the Angular CLI; see the [Angular CLI reference](https://angular.dev/tools/cli). |
 
-The Docker UI image runs the built SSR server on container port `4000`; the Compose stacks publish it on host port `4200`.
-
-Its production browser bundle still uses the configured public API URL;
-`API_INTERNAL_URL` does not rewrite it. For local containerized browser use, follow
-the [browser-versus-SSR configuration notes](../../docs/technical/technical-manual.md#browser-versus-ssr-destination).
+The Docker UI image serves static output on container port `4000`; Compose
+publishes it on host port `4200`. The API remains separate and its browser URL is
+selected at build time. See the
+[static hosting configuration](../../docs/technical/technical-manual.md#browser-and-static-hosting-destinations).

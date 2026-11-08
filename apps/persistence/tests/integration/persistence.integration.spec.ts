@@ -269,7 +269,7 @@ describe.skipIf(!ownerUrl)(
           .filter((name) => !name.startsWith("failure."))
           .sort(),
       ).toEqual(expected.sort());
-      expect(expected).toHaveLength(59);
+      expect(expected).toHaveLength(62);
 
       for (const name of expected)
         expect(procedures[name]._def.meta).toMatchObject({
@@ -277,7 +277,7 @@ describe.skipIf(!ownerUrl)(
         });
     });
 
-    it("migrates idempotently and enables/forces RLS on all 21 sensitive tables", async () => {
+    it("migrates idempotently and enables/forces RLS on all 22 sensitive tables", async () => {
       expect(await migrate(owner, migrationProvider())).toEqual([]);
       const { rows } = await sql<{
         relrowsecurity: boolean;
@@ -286,10 +286,112 @@ describe.skipIf(!ownerUrl)(
       from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname in ('identity','finance') and c.relkind='r' and c.relname != 'provider'`.execute(
         owner,
       );
-      expect(rows).toHaveLength(21);
+      expect(rows).toHaveLength(22);
       expect(
         rows.every((row) => row.relrowsecurity && row.relforcerowsecurity),
       ).toBe(true);
+    });
+
+    it("persists account onboarding, keeps completion terminal and preserves its first timestamp across races", async () => {
+      const client = (userId: string) =>
+        createTRPCClient<PersistenceRouter>({
+          links: [
+            httpLink({
+              url: `${url}/trpc`,
+              headers: async () => ({
+                authorization: `Bearer ${await sign(ctx(userId))}`,
+              }),
+            }),
+          ],
+        });
+      const first = client(a),
+        other = client(b);
+      expect(await first.onboarding.state.query()).toEqual({
+        status: "active",
+        completedAt: null,
+      });
+      expect(await other.onboarding.state.query()).toEqual({
+        status: "active",
+        completedAt: null,
+      });
+      expect(
+        await first.onboarding.finish.mutate({ status: "skipped" }),
+      ).toEqual({ status: "skipped", completedAt: null });
+      expect(await other.onboarding.state.query()).toEqual({
+        status: "active",
+        completedAt: null,
+      });
+      await Promise.all([
+        first.onboarding.finish.mutate({ status: "completed" }),
+        first.onboarding.finish.mutate({ status: "skipped" }),
+      ]);
+      const completed = await first.onboarding.state.query();
+      expect(completed.status).toBe("completed");
+      expect(completed.completedAt).toEqual(expect.any(String));
+      for (const status of ["skipped", "completed"] as const)
+        expect(await client(a).onboarding.finish.mutate({ status })).toEqual(
+          completed,
+        );
+      expect(await client(a).onboarding.state.query()).toEqual(completed);
+
+      // Concurrent first writes also converge on completion, not a stale skip.
+      await Promise.all([
+        other.onboarding.finish.mutate({ status: "completed" }),
+        other.onboarding.finish.mutate({ status: "skipped" }),
+      ]);
+      expect((await other.onboarding.state.query()).status).toBe("completed");
+    });
+
+    it("isolates onboarding records with RLS and forbids deleting or reassigning completion records", async () => {
+      await sql`insert into identity.onboarding(user_id,status,completed_at)
+        values (${a},'completed',clock_timestamp()),(${b},'completed',clock_timestamp())
+        on conflict (user_id) do nothing`.execute(owner);
+      await withRequestContext(runtime, ctx(a), async (tx) => {
+        const { rows } = await sql<{
+          user_id: string;
+        }>`select user_id from identity.onboarding`.execute(tx);
+        expect(rows.map((row) => row.user_id)).toEqual([a]);
+        const changed =
+          await sql`update identity.onboarding set status='skipped',completed_at=null where user_id=${b} returning user_id`.execute(
+            tx,
+          );
+        expect(changed.rows).toEqual([]);
+      });
+      expect(
+        (await sql`select * from identity.onboarding`.execute(runtime)).rows,
+      ).toEqual([]);
+      await expect(
+        withRequestContext(runtime, ctx(a), (tx) =>
+          sql`insert into identity.onboarding(user_id,status) values (${b},'skipped')`.execute(
+            tx,
+          ),
+        ),
+      ).rejects.toThrow(/row-level security/);
+      for (const operation of [
+        (tx: QueryExecutorProvider) =>
+          sql`delete from identity.onboarding where user_id=${a}`.execute(tx),
+        (tx: QueryExecutorProvider) =>
+          sql`update identity.onboarding set user_id=${b} where user_id=${a}`.execute(
+            tx,
+          ),
+      ])
+        await expect(
+          withRequestContext(runtime, ctx(a), operation),
+        ).rejects.toThrow(/permission denied/);
+      await expect(
+        withRequestContext(runtime, ctx(a), (tx) =>
+          sql`update identity.onboarding set status='completed',completed_at=null where user_id=${a}`.execute(
+            tx,
+          ),
+        ),
+      ).rejects.toThrow(/check constraint/);
+      await expect(
+        withRequestContext(runtime, ctx(a), (tx) =>
+          sql`update identity.onboarding set status='active',completed_at=null where user_id=${a}`.execute(
+            tx,
+          ),
+        ),
+      ).rejects.toThrow(/check constraint/);
     });
 
     it("rolls back an unsuccessful migration without recording it", async () => {

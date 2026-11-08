@@ -1,0 +1,81 @@
+<header class="page-header">
+  <div><p class="eyebrow">LA HISTORIA DETRÁS DE TUS NÚMEROS</p><h1>Movimientos<span class="accent-text">.</span></h1><p class="page-description">Explora tus registros, encuentra una compra y entiende qué está contando. Sin confundir una página con todo tu historial.</p></div>
+  <span class="badge"><app-icon name="activity" /> Importes originales · CLP</span>
+</header>
+@if (error()) { <p class="notice danger" role="alert">{{ error() }} <button type="button" (click)="openFilters()">Revisar filtros</button></p> }
+<section class="panel history-ledger-panel">
+  <div class="history-toolbar">
+    <form class="history-search" role="search" aria-label="Buscar movimientos" (ngSubmit)="search()">
+      <app-icon name="search" />
+      <label class="sr-only" for="history-merchant">Buscar comercio</label>
+      <input id="history-merchant" name="merchant" type="search" [(ngModel)]="merchantSearch" placeholder="Busca un comercio…" maxlength="120" autocomplete="off" />
+      @if (merchantSearch) { <button class="history-search-clear" type="button" aria-label="Borrar búsqueda" (click)="clearSearch()"><app-icon name="close" /></button> }
+      <button class="history-search-submit" type="submit">Buscar</button>
+    </form>
+    <div class="history-directions" role="group" aria-label="Dirección del movimiento">
+      @for (option of directions; track option.value) { <button type="button" [attr.aria-label]="option.accessible" [attr.aria-pressed]="applied().direction === option.value" (click)="direction(option.value)">{{ option.label }}</button> }
+    </div>
+    <button #filterToggle class="button history-filter-toggle" type="button" aria-controls="history-filters" [attr.aria-label]="'Filtros del historial: ' + activeFilters() + ' aplicados'" [attr.aria-expanded]="filtersOpen()" [class.has-filters]="activeFilters() > 0" (click)="toggleFilters()"><app-icon name="filter" /><span class="history-filter-toggle-label">Filtros</span>@if (activeFilters()) { <span class="history-filter-count" aria-hidden="true">{{ activeFilters() }}</span> }<app-icon class="history-filter-chevron" name="chevron" /></button>
+  </div>
+  @if (criteria().length) {
+    <div class="history-applied-filters" role="group" aria-label="Filtros aplicados">
+      @for (criterion of criteria(); track criterion.key) { <button class="history-filter-chip" type="button" [attr.aria-label]="'Quitar filtro ' + criterion.label" [title]="criterion.label" (click)="removeFilter(criterion.key)"><app-icon [name]="criterion.icon" /><span>{{ criterion.label }}</span><app-icon name="close" /></button> }
+      <button class="history-clear-filters" type="button" (click)="reset()">Limpiar filtros</button>
+    </div>
+  }
+  @if (filtersOpen()) {
+    <section #filterPanel id="history-filters" class="history-filter-expander" aria-labelledby="history-filters-heading" (keydown.escape)="cancelFilters(); $event.stopPropagation()">
+      <div class="history-filter-heading"><div><h2 id="history-filters-heading">Filtros avanzados</h2><p>Los cambios se aplican cuando tú confirmas.</p></div><button class="icon-button" type="button" aria-label="Contraer filtros" (click)="cancelFilters()"><app-icon name="close" /></button></div>
+      <form class="history-filter-form" (ngSubmit)="apply()" novalidate>
+        <div class="history-advanced-grid">
+          <section class="history-filter-section history-filter-period" aria-labelledby="history-period-heading">
+            <div class="history-filter-section-heading"><span class="record-icon"><app-icon name="calendar" /></span><div><h3 id="history-period-heading">¿En qué fechas?</h3><p>Un período rápido o un rango a tu medida.</p></div></div>
+            <div class="history-periods" role="group" aria-label="Períodos rápidos">@for (period of periods; track period.label) { <button type="button" [attr.aria-pressed]="draft.from === period.from && draft.before === period.before" (click)="selectPeriod(period)">{{ period.label }}</button> }</div>
+            <div class="form-grid"><div class="field"><label for="history-from">Desde</label><input id="history-from" name="from" type="date" [(ngModel)]="draft.from" /></div><div class="field"><label for="history-before">Antes del</label><input id="history-before" name="before" type="date" [(ngModel)]="draft.before" /></div></div>
+            <p class="field-hint">Fechas de Santiago: el inicio se incluye y la fecha final no.</p>
+          </section>
+          <section class="history-filter-section" aria-labelledby="history-context-heading">
+            <div class="history-filter-section-heading"><span class="record-icon"><app-icon name="tag" /></span><div><h3 id="history-context-heading">Cuenta y etiqueta</h3><p>Acota dónde mirar.</p></div></div>
+            <div class="form-grid">
+              <div class="field full"><label for="history-account">Cuenta</label><select id="history-account" name="account" [(ngModel)]="draft.account"><option value="">Todas mis cuentas</option>@if (draft.account && !hasAccount(draft.account)) { <option [value]="draft.account">Cuenta seleccionada · no disponible en el catálogo</option> }@if (accounts.hasValue()) { @for (account of accounts.value(); track account.id) { <option [value]="account.id">{{ account.alias || 'Cuenta sin nombre' }}</option> } }</select></div>
+              <div class="field full"><label for="history-tag">Etiqueta</label><select id="history-tag" name="tag" [(ngModel)]="draft.tag"><option value="all">Todas las etiquetas</option><option value="untagged">Sin etiqueta</option>@if (draft.tag !== 'all' && draft.tag !== 'untagged' && !hasTag(draft.tag)) { <option [value]="draft.tag">Etiqueta seleccionada · no disponible en el catálogo</option> }@if (tags.hasValue()) { @for (tag of tags.value(); track tag.id) { <option [value]="tag.id">{{ tag.name }}</option> } }</select></div>
+            </div>
+          </section>
+          <section class="history-filter-section" aria-labelledby="history-kind-heading">
+            <div class="history-filter-section-heading"><span class="record-icon"><app-icon name="activity" /></span><div><h3 id="history-kind-heading">Tipo de movimiento</h3><p>Cargos, abonos y transferencias.</p></div></div>
+            <div class="form-grid"><div class="field full"><label for="history-direction">Dirección</label><select id="history-direction" name="direction" [(ngModel)]="draft.direction"><option value="all">Cargos y abonos</option><option value="debit">Solo cargos</option><option value="credit">Solo abonos</option></select></div><div class="field full"><label for="history-internal">Movimiento interno</label><select id="history-internal" name="internal" [(ngModel)]="draft.internal"><option value="all">Todos los estados</option><option value="internal">Interno</option><option value="external">Externo</option><option value="unknown">Sin determinar</option></select></div></div>
+            <p class="field-hint">Un abono no es automáticamente un ingreso.</p>
+          </section>
+        </div>
+        @if (draftError()) { <p class="notice danger" role="alert">{{ draftError() }}</p> }
+        @if (accounts.error() || tags.error()) { <p class="notice warning" role="alert">No se cargaron todas las opciones. Tus selecciones se conservan. <button type="button" (click)="accounts.reload(); tags.reload()">Reintentar catálogos</button></p> }
+        <div class="history-filter-actions"><button class="button" type="button" (click)="clearDraft()">Restablecer</button><button class="button primary" type="submit">Aplicar filtros <app-icon name="arrow" /></button></div>
+      </form>
+    </section>
+  }
+  @if (accounts.error() || tags.error()) { <p class="notice warning" role="alert">Algunas opciones de filtros no están disponibles. <button type="button" (click)="accounts.reload(); tags.reload()">Reintentar</button></p> }
+  <div class="panel-heading history-results-heading"><div><h2>Tu registro de movimientos</h2><p class="panel-subtitle">{{ activeFilters() ? activeFilters() + ' filtros aplicados' : 'Sin filtros' }} · Más recientes primero.</p></div><button class="icon-button" type="button" aria-label="Recargar historial" [disabled]="data.page.isLoading() || !!error()" (click)="data.page.reload()"><app-icon name="refresh" /></button></div>
+  @if (error()) { <p class="notice">Corrige los filtros para consultar el historial. No se ha interpretado el enlace inválido como una selección vacía.</p> }
+  @else if (data.page.isLoading()) { <div role="status" aria-label="Cargando historial" class="stack">@for (item of [1,2,3,4]; track item) { <div class="skeleton" style="height:38px"></div> }</div> }
+  @else if (data.page.error()) { <div class="notice danger" role="alert">No pudimos cargar el historial. No significa que esté vacío. <button type="button" (click)="data.page.reload()">Reintentar</button></div> }
+  @else if (!data.items().length) { <div class="empty-state"><span class="empty-icon"><app-icon name="search" /></span><h3>No hay movimientos en esta selección</h3><p>Cambia los filtros o vuelve a consultar. La ausencia de registros no confirma que el banco haya entregado todo tu historial.</p><button class="button" type="button" (click)="reset()">Ver todos mis movimientos</button></div> }
+  @else {
+    <div class="table-scroll desktop-ledger">
+      <table class="ledger"><caption class="sr-only">Movimientos de la selección actual, con importe y cuenta</caption><thead><tr><th scope="col">Movimiento</th><th scope="col">Fecha</th><th scope="col">Cuenta</th><th scope="col">Etiqueta</th><th scope="col" style="text-align:right">Importe</th></tr></thead>
+        <tbody>@for (item of data.items(); track item.id) { <tr><td><a class="record-title text-link" [routerLink]="['/movimientos', item.id]" [queryParams]="route.snapshot.queryParams">{{ item.merchant || item.description || 'Movimiento' }}</a><p class="record-meta">{{ item.type === 'debit' ? 'Cargo' : 'Abono · no implica ingreso' }} @if (item.reviewStatus === 'needs_review') { <span class="badge warning">Por revisar</span> }</p></td><td style="white-space:nowrap">{{ date(item.bookedAt) }}</td><td>{{ item.account.alias || 'Cuenta' }}</td><td><span class="badge neutral"><span class="tag-swatch" [style.backgroundColor]="item.tag?.color || '#b5c1aa'"></span>{{ item.tag?.name || 'Sin etiqueta' }}</span></td><td class="record-amount">{{ money(item.amount) }}</td></tr> }</tbody>
+      </table>
+    </div>
+    <ul class="mobile-ledger" aria-label="Movimientos de la selección actual">
+      @for (item of data.items(); track item.id) {
+        <li>
+          <div class="record-row"><a class="record-title text-link" [routerLink]="['/movimientos', item.id]" [queryParams]="route.snapshot.queryParams">{{ item.merchant || item.description || 'Movimiento' }}</a><strong class="record-amount">{{ money(item.amount) }}</strong></div>
+          <p class="record-meta">{{ date(item.bookedAt) }} · {{ item.account.alias || 'Cuenta' }}</p>
+          <p class="record-meta">{{ item.type === 'debit' ? 'Cargo' : 'Abono · no implica ingreso' }}{{ item.reviewStatus === 'needs_review' ? ' · por revisar' : '' }}</p>
+          <span class="badge neutral" style="margin-top:8px"><span class="tag-swatch" [style.backgroundColor]="item.tag?.color || '#b5c1aa'"></span>{{ item.tag?.name || 'Sin etiqueta' }}</span>
+        </li>
+      }
+    </ul>
+    <div class="pagination"><span>Página {{ data.pageNumber() }} · {{ data.items().length }} movimientos en esta página</span><div class="button-row"><button class="button small" type="button" [disabled]="data.pageNumber() === 1 || data.page.isLoading()" (click)="data.previous()">Anterior</button><button class="button small" type="button" [disabled]="!data.page.hasValue() || !data.page.value().pageInfo.hasMore || data.page.isLoading()" (click)="data.next()">Siguiente <app-icon name="arrow" /></button></div></div>
+  }
+  <p class="field-hint" style="margin-top:20px">La paginación usa límites estables, pero una corrección bancaria puede cambiar el orden. Recarga para reconciliar los datos actuales; no sumes páginas para calcular gastos o saldos.</p>
+</section>

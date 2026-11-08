@@ -15,8 +15,9 @@ The [user journeys](user-journeys.md) give observable examples of the foundation
 The backend's [documented savings rule](../../apps/api/README.md#savings-contribution-policy-laz-35)
 measures recorded cash allocations, not bank balances or new wealth; overlapping
 goals are not additive. Its measured progress/evidence and purchase-attributed
-refund rules do not by themselves deliver the separate web-management workstream
-or prove that imported history is complete.
+refund rules are now consumed by the [web-management workflows](../../apps/ui/README.md).
+Neither those APIs nor their UI prove that imported history is complete; live
+bank linking/refresh remains explicitly unavailable pending the banking backend.
 
 ## Integration and ecosystem capabilities
 

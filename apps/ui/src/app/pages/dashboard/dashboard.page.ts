@@ -1,15 +1,22 @@
-import { Component, inject } from "@angular/core";
+import { Component, computed, inject } from "@angular/core";
+import { RouterLink } from "@angular/router";
+import { MonthSchema } from "@lazyfinance/contracts";
+import { formatClp } from "../../../utils/currency";
+import { currentMonth, monthLabel } from "../../../utils/month";
 import { SessionService } from "../../core/auth/session.service";
+import { reportWorkspaceReadiness } from "../../core/rendering/workspace-preparation";
 import { AccountsData } from "../../features/accounts/accounts.data";
 import { ObjectivesData } from "../../features/objectives/objectives.data";
+import { SavingsMeasure } from "../../features/objectives/savings-measure";
+import { OnboardingHint } from "../../features/onboarding/onboarding-hint";
 import { SummariesData } from "../../features/summaries/summaries.data";
 import { TaggingData } from "../../features/tagging/tagging.data";
 import { TransactionsData } from "../../features/transactions/transactions.data";
+import { Icon } from "../../shared/ui/icon";
 import { Account } from "./account/account";
 import { Activity } from "./activity/activity";
 import { BudgetProgressView } from "./budget-progress/budget-progress";
 import { Comparison } from "./comparison/comparison";
-import { Objective } from "./objective/objective";
 import { Summary } from "./summary/summary";
 
 @Component({
@@ -17,10 +24,13 @@ import { Summary } from "./summary/summary";
   imports: [
     Account,
     Activity,
-    Objective,
+    SavingsMeasure,
+    OnboardingHint,
+    RouterLink,
     Summary,
     Comparison,
     BudgetProgressView,
+    Icon,
   ],
   providers: [
     AccountsData,
@@ -33,4 +43,35 @@ import { Summary } from "./summary/summary";
 })
 export class DashboardPage {
   protected readonly session = inject(SessionService);
+  protected readonly summaries = inject(SummariesData);
+  protected readonly period = computed(() =>
+    monthLabel(this.summaries.month()),
+  );
+  protected readonly objectives = inject(ObjectivesData);
+  protected readonly firstSavings = computed(() =>
+    this.objectives.objectives.hasValue()
+      ? this.objectives.objectives
+          .value()
+          .find((item) => item.intent === "saving")
+      : undefined,
+  );
+  protected readonly maxMonth = currentMonth();
+  protected readonly money = formatClp;
+
+  constructor() {
+    reportWorkspaceReadiness(
+      this.summaries.monthly,
+      this.summaries.comparison,
+      inject(AccountsData).accounts,
+      this.objectives.objectives,
+      this.objectives.progress,
+      inject(TransactionsData).recent,
+    );
+  }
+
+  protected selectMonth(month: string) {
+    if (!MonthSchema.safeParse(month).success || month > this.maxMonth) return;
+    this.summaries.month.set(month);
+    this.objectives.month.set(month);
+  }
 }

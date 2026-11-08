@@ -26,12 +26,9 @@
             ],
             "styles": ["src/styles.css"],
             "server": "src/main.server.ts",
-            "outputMode": "server",
+            "outputMode": "static",
             "security": {
               "allowedHosts": ["localhost", "127.0.0.1"]
-            },
-            "ssr": {
-              "entry": "src/server.ts"
             }
           },
           "configurations": {
@@ -77,7 +74,8 @@
           "defaultConfiguration": "development"
         },
         "test": {
-          "builder": "@angular/build:unit-test"
+          "builder": "@angular/build:unit-test",
+          "options": { "isolate": true }
         }
       }
     }

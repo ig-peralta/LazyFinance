@@ -44,13 +44,14 @@ inferred Promises; there is no cross-app source import or HTTP/Observable adapte
 ## Public surface
 
 The [generated public router](../../libs/rpc-api/src/generated/server.ts) currently
-contains **54 procedures**. Prefix each method below with its router name.
+contains **57 procedures**. Prefix each method below with its router name.
 
 | Router | Methods | Responsibility |
 | --- | --- | --- |
 | `auth` | `config`, `loginMock`, `principal` | Provider selection, local mock login, verified principal |
+| `onboarding` | `state`, `finish` | Owned optional-guide state and terminal completion |
 | `accounts` | `list` | Active accounts, balances and freshness |
-| `transactions` | `recent`, `list`, `setInternalMovement`, `expenseAdjustments`, `setExpenseAdjustment`, `removeExpenseAdjustment` | History, owned internal-status corrections and purchase-attributed recoveries |
+| `transactions` | `recent`, `list`, `detail`, `setInternalMovement`, `expenseAdjustments`, `setExpenseAdjustment`, `removeExpenseAdjustment` | History, owned source/classification detail, internal-status corrections and purchase-attributed recoveries |
 | `objectives` | `list`, `progress`, `budgetContributions`, `budget`, `budgetHistory`, `createBudget`, `updateBudget`, `archiveBudget`, `savingsGoal`, `savingsGoalHistory`, `createSavingsGoal`, `updateSavingsGoal`, `archiveSavingsGoal`, `savingsProgress`, `savingsContributions` | Revisioned management/history, spending and savings progress/evidence |
 | `summaries` | `monthly`, `comparison`, `spendingContributions` | Financial summary, equivalent-period comparison and purchase-level spending evidence |
 | `income` | `sources`, `source`, `createSource`, `updateSource`, `archiveSource`, `expectations`, `createExpectation`, `updateExpectation`, `removeExpectation`, `expected`, `receipts`, `confirm`, `clear`, `summary` | Declarations, dated expectations, explicit receipts and calculated summaries |
@@ -76,14 +77,15 @@ are not implemented by this RPC cutover.
 ## Private surface
 
 The [generated private router](../../libs/rpc-persistence/src/generated/server.ts)
-currently contains **59 procedures**. They expose owned facts and authoritative
+currently contains **62 procedures**. They expose owned facts and authoritative
 commands rather than copying public screen calculations into persistence.
 
 | Router | Methods |
 | --- | --- |
 | `identity` | `resolve` (bootstrap only) |
+| `onboarding` | `state`, `finish` |
 | `accounts` | `listActive` |
-| `transactions` | `recent`, `list`, `setInternalMovement`, `aggregates`, `taggedAggregates`, `spendingEvidence`, `expenseAdjustments`, `setExpenseAdjustment`, `removeExpenseAdjustment` |
+| `transactions` | `recent`, `list`, `detail`, `setInternalMovement`, `aggregates`, `taggedAggregates`, `spendingEvidence`, `expenseAdjustments`, `setExpenseAdjustment`, `removeExpenseAdjustment` |
 | `objectives` | `list` (effective definitions/nested tags), `forPeriod` (optional owned ID selection), `spending` (revision-pinned sums/windows), `budgetEvidence`, `budget`, `budgetHistory`, `createBudget`, `updateBudget`, `archiveBudget`, `savingsGoal`, `savingsGoalHistory`, `createSavingsGoal`, `updateSavingsGoal`, `archiveSavingsGoal`, `savingsFacts`, `savingsEvidence` |
 | `income` | `sources`, `source`, `createSource`, `updateSource`, `archiveSource`, `expectedFacts`, `receipts`, `facts` |
 | `incomeExpectations` | `list`, `create`, `update`, `remove` |
@@ -103,6 +105,22 @@ classification-only aggregates, joined tag aggregates, or a complete snapshot.
 Do not reintroduce table-shaped reads for the API to join or aggregate itself.
 
 ## Wire semantics and transport
+
+`onboarding.state()` returns `active` with a null completion time when no owned
+record exists; reads do not create records. `onboarding.finish({ status })` accepts
+only `skipped` or `completed`. Completion retains its first server-generated
+`completedAt` timestamp and cannot be reset by a later skip, repeat or concurrent
+request. There is no reset/reopen command, client-selected owner or client-supplied
+timestamp. Skipping suppresses reminders without completing the guide. Both
+boundaries use user context; no bank connection, budget or other financial setup
+is required or created. Browser-local flags are not silently promoted to account
+state; users explicitly finish/skip once to save their choice on the server.
+
+`transactions.detail({ id })` joins one owned movement's account/tag, stored
+provider/user classification, source/date precision, removal and retained receipt
+reference. Foreign/missing IDs return not found. A retained receipt reference is
+not proof of current income eligibility; recovery presence is a flag, not a total.
+The browsing projection remains small; detail is fetched only for the selected ID.
 
 `transactions.setInternalMovement({ id, isInternalMovement })` accepts true/false
 as a user override and null to return to the stored provider assessment (including
@@ -155,7 +173,7 @@ idempotent, cancels pending revisions and preserves historical configuration.
 Progress includes its revision ID and exact tracking bounds/archival state; late
 eligible financial facts and confirmed recoveries can reconcile earlier purchases,
 including in archived budgets. No purchase booked at or after archival is admitted.
-No MCP write tools or management screen are added by these operations.
+The web app exposes this management policy; no MCP write tools are added.
 
 - Money is an exact decimal string, not a floating-point JSON number. Nullable
   balances stay nullable; unknown is not zero. PostgreSQL numeric/int8 parsers

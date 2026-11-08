@@ -55,7 +55,7 @@ omitted fields are retained and null clears a color. Archived tags are not edita
 or newly selectable and no longer match active rules. They remain on historical
 movements, selected goals/budgets, configuration revisions and rule records. Display
 metadata follows a rename/recolor; stored selected tag IDs and financial facts do
-not change. Full tag-management UI remains a separate delivery.
+not change. The UI's `/etiquetas` page exposes these tag-management operations.
 
 ## Matching and approved automation
 
@@ -112,8 +112,9 @@ tag calls. See the [banking guide](../../banking/README.md).
 The dashboard uses page-local confirmed decisions, targeted summary/budget
 invalidation, component cancellation and guards against an older read erasing a
 saved choice. Optional rule creation is separate from saving the tag; failure
-reports partial success without replaying the saved decision. Full tag/rule
-management destinations remain placeholders. See the
+reports partial success without replaying the saved decision. Full
+rule-management destinations remain placeholders; `/etiquetas` now provides owned
+tag create/rename/recolor/archive with retained-history explanations. See the
 [UI lifecycle reference](../../../../../docs/technical/ui-data-lifecycle.md).
 
 Unit matching tests, serverless UI race tests and real-PostgreSQL integration

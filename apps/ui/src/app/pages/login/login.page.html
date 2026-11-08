@@ -121,6 +121,8 @@
               </button>
             </div>
           </div>
+        } @else if (session.error()) {
+          <button type="button" class="mt-8 text-sm font-semibold text-primary" [disabled]="busy()" (click)="retry()">Reintentar acceso</button>
         } @else if (needsVerification()) {
           <div class="mt-10 space-y-4 rounded-2xl border border-surface bg-surface-100 p-6 dark:bg-surface-900">
             <h2 class="text-lg font-semibold">Verifica tu correo</h2>
@@ -310,7 +312,7 @@
               </div>
             </form>
           } @else {
-            <button type="button" class="mt-8 text-sm font-semibold text-primary" (click)="config.reload()">
+            <button type="button" class="mt-8 text-sm font-semibold text-primary" (click)="retry()">
               Reintentar
             </button>
           }
@@ -321,6 +323,7 @@
         }
         @if (error()) {
           <p role="alert" class="mt-4 text-sm text-red-600">{{ error() }}</p>
+          @if (provider() && session.error()) { <button type="button" class="mt-3 text-sm font-semibold text-primary" [disabled]="busy()" (click)="retry()">Volver a comprobar sesión</button> }
         }
 
         @if (provider() === 'mock') {

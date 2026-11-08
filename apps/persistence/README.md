@@ -2,9 +2,9 @@
 
 Private NestJS/tRPC service using Kysely, `pg`, `identity`/`finance` schemas and
 PostgreSQL user RLS. The API and UI now use the matching RPC boundaries; no API
-database fallback remains. Its 59 private procedures expose identity resolution,
+database fallback remains. Its 62 private procedures expose identity resolution,
 bounded financial facts, revisioned budget/income commands, expense-adjustment
-allocations, tag decisions/rules and prepared atomic provider sync. Product
+allocations, tag decisions/rules, owned onboarding state and prepared atomic provider sync. Product
 calculations remain in the API. Read the
 [private RPC/RLS reference](../../docs/technical/persistence-security.md),
 [implemented schema/ERD](../../docs/technical/database-model.md) and
@@ -58,6 +58,11 @@ protected/TLS service channel in deployment.
 
 ## Boundaries
 
+- `identity.onboarding` stores explicit skip/completion per internal user. Reads
+  default to active without inserting; the atomic finish upsert preserves terminal
+  completion and its first server timestamp. Self-owned RLS and column-limited
+  grants permit no delete/reassignment or profile writes. Apply migration 024 to
+  an existing current-schema database; no reseed or data reset is needed.
 - Follow the [purpose-shaped read pattern](../../docs/technical/persistence-reads.md):
   joins/projections and factual SQL sums belong here; API calendar/financial
   interpretation must not be copied into a second implementation.

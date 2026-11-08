@@ -57,6 +57,12 @@ accepted directly as API authentication.
 to detect drift. Normal application builds need neither generation nor another
 application's source. The browser must never import private contracts/signing code.
 
+`onboarding.state` and `onboarding.finish` persist optional-guide state through
+user-scoped private RPC, not the authentication principal or browser storage.
+Finish accepts only skip/completion; completion is terminal and retains its first
+server timestamp even after delayed skips. It has no financial prerequisites or
+automatic setup writes. See the [wire semantics](../../docs/technical/rpc-contracts.md#wire-semantics-and-transport).
+
 Feature services inject the single `PersistenceClient` and call its inferred
 `user(userId)` RPC surface directly. There are no per-domain persistence adapters
 or database-shaped Date conversions. Financial calculations stay in the owning
@@ -78,7 +84,8 @@ purchase-level evidence with complete aggregate totals, exact cutoffs and explic
 untagged coverage. They reuse the same reporting windows and eligibility as the
 reported amounts, including archived budgets and later recoveries. Read-only MCP
 tools call those same services. See [contributing purchases](../../docs/technical/rpc-contracts.md#contributing-purchases)
-for revision/observation pinning and live-page limitations; no drill-down UI is implied.
+for revision/observation pinning and live-page limitations. The web budget
+drill-down consumes these results without summing pages into a financial total.
 
 ### Savings contribution policy (LAZ-35)
 
@@ -103,7 +110,8 @@ than pretending past configurations never existed. Expected versions reject lost
 updates. Archived targets cannot be edited and retain their detail/history and
 server-timed counting cutoff. Newly selected tags must be owned and active;
 retained archived tags can remain selected. These commands never change bank facts
-or fabricate a contribution. Management UI remains a separate workstream.
+or fabricate a contribution. The web app exposes target management and measured
+progress/evidence while retaining these meanings; see the [UI guide](../ui/README.md).
 
 #### Selected tags and direction
 

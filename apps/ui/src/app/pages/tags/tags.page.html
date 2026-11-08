@@ -1,17 +1,33 @@
-<div class="max-w-2xl">
-  <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Tu catálogo</p>
-  <h1 class="mt-4 text-4xl font-semibold tracking-[-0.05em] text-color-emphasis sm:text-5xl">
-    Etiquetas
-  </h1>
-  <p class="mt-4 text-base leading-7 text-muted-color">
-    Aquí podrás crear, renombrar y archivar tus etiquetas para clasificar cada movimiento.
-  </p>
+<header class="page-header">
+  <div><p class="eyebrow">CADA COSA EN SU LUGAR</p><h1>Etiquetas<span class="accent-text">.</span></h1><p class="page-description">Dale contexto a tus movimientos. Una etiqueta por compra, una manera más clara de mirar tus hábitos.</p></div>
+  <button class="button primary" type="button" [disabled]="command.pending()" (click)="fresh()"><app-icon name="plus" /> Nueva etiqueta</button>
+</header>
+@if (command.error()) { <p class="notice danger" role="alert">{{ command.error() }}</p> }
+@if (message() || command.success()) { <p class="notice" role="status">{{ message() || command.success() }}</p> }
+@if (archiving(); as tag) {
+  <div class="notice warning" role="alert"><strong>¿Archivar «{{ tag.name }}»?</strong><p>No podrá seleccionarse de nuevo. Sus movimientos, presupuestos y metas conservarán el historial; el nombre seguirá reservado.</p><div class="button-row" style="margin-top:12px"><button class="button small danger" type="button" [disabled]="command.pending()" (click)="archive()">Sí, archivar etiqueta</button><button class="button small" type="button" [disabled]="command.pending()" (click)="archiving.set(null)">Cancelar</button></div></div>
+}
+<div class="stack">
+  <section class="panel">
+    <div class="panel-heading"><div><h2>Tu colección</h2><p class="panel-subtitle">Etiquetas activas, listas para dar claridad.</p></div><div class="button-row"><span class="badge neutral">{{ data.tags.hasValue() ? data.tags.value().length : '—' }} etiquetas</span><button class="icon-button" type="button" aria-label="Recargar etiquetas" [disabled]="data.tags.isLoading()" (click)="data.tags.reload()"><app-icon name="refresh" /></button></div></div>
+    <label class="field" style="margin-bottom:22px"><span class="sr-only">Buscar etiquetas</span><input #searchInput type="search" placeholder="Buscar una etiqueta…" [value]="search()" (input)="search.set(searchInput.value)" /></label>
+    @if (data.tags.isLoading()) { <p role="status" class="notice">Cargando tus etiquetas…</p> }
+    @else if (data.tags.error()) { <div class="notice danger" role="alert">No pudimos cargar tus etiquetas. <button type="button" (click)="data.tags.reload()">Reintentar</button></div> }
+    @else if (!items().length) { <div class="empty-state"><span class="empty-icon"><app-icon name="tag" /></span><h3>{{ search() ? 'No encontramos esa etiqueta' : 'Tu organización empieza aquí' }}</h3><p>{{ search() ? 'Prueba con otro nombre o borra la búsqueda.' : 'Crea tu primera etiqueta: hogar, cafés, viajes… Lo que tenga sentido para ti.' }}</p></div> }
+    @else {
+      <ul class="record-list">
+        @for (tag of items(); track tag.id) {
+          <li class="record-row">
+            <div class="record-identity"><span class="record-icon"><app-icon name="tag" /></span><div><h3 class="record-title">{{ tag.name }}</h3><p class="record-meta"><span class="tag-swatch" [style.backgroundColor]="tag.color || '#b5c1aa'"></span>{{ tag.color || 'Color predeterminado' }}</p></div></div>
+            <div class="button-row"><button class="button small" type="button" [attr.aria-label]="'Editar ' + tag.name" [disabled]="command.pending()" (click)="edit(tag)">Editar</button><button class="icon-button" type="button" [attr.aria-label]="'Archivar ' + tag.name" [disabled]="command.pending()" (click)="archiving.set(tag)"><app-icon name="close" /></button></div>
+          </li>
+        }
+      </ul>
+    }
+  </section>
 </div>
-
-<div
-  role="status"
-  class="mt-10 rounded-3xl border border-dashed border-surface bg-surface-0 p-8 text-sm text-muted-color dark:border-surface-700 dark:bg-surface-900"
->
-  La gestión de etiquetas aún no está disponible. Por ahora esta sección es solo un espacio
-  reservado.
-</div>
+@if (editorOpen()) {
+  <editor-drawer [title]="editing() ? 'Editar etiqueta' : 'Nueva etiqueta'" eyebrow="CADA COSA EN SU LUGAR" (dismissed)="reset()">
+    <tag-editor [tag]="editing()" (saved)="saved($event)" (cancelled)="reset()" />
+  </editor-drawer>
+}

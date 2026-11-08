@@ -38,10 +38,15 @@ const sdk = vitest.hoisted(() => ({
   linkWithPopup: vitest.fn<typeof import("firebase/auth").linkWithPopup>(),
 }));
 
-vitest.mock("firebase/auth", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("firebase/auth")>()),
-  ...sdk,
-}));
+// Avoid emitted object-spread helpers here: hoisting can run this factory before
+// Angular's generated helper declarations have initialized.
+vitest.mock("firebase/auth", async (importOriginal) =>
+  Object.assign(
+    {},
+    await importOriginal<typeof import("firebase/auth")>(),
+    sdk,
+  ),
+);
 
 const network = vitest.fn<typeof fetch>();
 
@@ -146,6 +151,22 @@ describe("Firebase credential operations (mocked SDK)", () => {
       auth,
       browserLocalPersistence,
     );
+  });
+
+  it("shares initialization while browser persistence is still pending", async () => {
+    const pending = deferred<void>();
+    const initializing = setup();
+    sdk.setPersistence.mockReturnValueOnce(pending.promise);
+    const service = TestBed.inject(FirebaseService);
+    const first = service.init();
+    expect(service.init()).toBe(first);
+    await vitest.waitFor(() =>
+      expect(sdk.setPersistence).toHaveBeenCalledOnce(),
+    );
+    pending.resolve();
+    const { auth } = await initializing;
+    await expect(first).resolves.toBe(auth);
+    expect(sdk.getAuth).toHaveBeenCalledOnce();
   });
 
   it("delegates password login and registration directly to Firebase, trimming only the email", async () => {

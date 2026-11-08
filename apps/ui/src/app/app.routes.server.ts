@@ -1,17 +1,6 @@
-import { RenderMode, ServerRoute } from "@angular/ssr";
-
-const privateHeaders = { "Cache-Control": "private, no-store" };
+import { RenderMode, type ServerRoute } from "@angular/ssr";
 
 export const serverRoutes: ServerRoute[] = [
-  { path: "dashboard", renderMode: RenderMode.Server, headers: privateHeaders },
-  { path: "etiquetas", renderMode: RenderMode.Server, headers: privateHeaders },
-  {
-    path: "presupuestos-y-metas",
-    renderMode: RenderMode.Server,
-    headers: privateHeaders,
-  },
-  {
-    path: "**",
-    renderMode: RenderMode.Server,
-  },
+  { path: "", renderMode: RenderMode.Prerender },
+  { path: "**", renderMode: RenderMode.Client },
 ];

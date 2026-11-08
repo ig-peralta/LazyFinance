@@ -1,33 +1,27 @@
 import { Component, computed, inject } from "@angular/core";
+import { RouterLink } from "@angular/router";
 import { formatClp } from "../../../../utils/currency";
 import { monthLabel } from "../../../../utils/month";
 import { SummariesData } from "../../../features/summaries/summaries.data";
+import { spendingDistribution } from "./spending-distribution";
 
-@Component({ selector: "dashboard-summary", templateUrl: "./summary.html" })
+@Component({
+  selector: "dashboard-summary",
+  imports: [RouterLink],
+  templateUrl: "./summary.html",
+})
 export class Summary {
   private readonly data = inject(SummariesData);
   protected readonly summary = this.data.monthly;
   protected readonly period = computed(() => monthLabel(this.data.month()));
 
-  protected readonly tagBars = computed(() => {
-    const tags = this.summary.hasValue() ? [...this.summary.value().tags] : [];
-    tags.sort(
-      (left, right) =>
-        Number(right.amount) - Number(left.amount) ||
-        left.name.localeCompare(right.name),
-    );
-    const maximum = Number(tags[0]?.amount ?? 0);
-
-    return tags.map((tag) => ({
-      ...tag,
-      width:
-        maximum > 0 && Number.isFinite(Number(tag.amount))
-          ? Math.max(0, Math.min(100, (Number(tag.amount) / maximum) * 100))
-          : 0,
-    }));
-  });
+  protected readonly distribution = computed(() =>
+    this.summary.hasValue()
+      ? spendingDistribution(this.summary.value())
+      : undefined,
+  );
 
   protected money(value: string): string {
-    return formatClp(Number(value));
+    return formatClp(value);
   }
 }

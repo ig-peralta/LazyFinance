@@ -8,14 +8,14 @@
   </header>
 
   @if (session.provider() !== 'firebase') {
-    <p class="rounded-2xl border border-surface bg-surface-0 p-6 dark:bg-surface-950">
+    <p class="rounded-2xl border border-surface bg-surface-0 p-6">
       El acceso de demostración no permite modificar métodos de acceso.
     </p>
   } @else if (account(); as identity) {
     <p class="text-sm text-muted-color">Cuenta de Firebase: {{ identity.email }}</p>
 
     <section
-      class="rounded-2xl border border-surface bg-surface-0 p-6 dark:bg-surface-950"
+      class="rounded-2xl border border-surface bg-surface-0 p-6"
       aria-labelledby="google-method"
     >
       <h2 id="google-method" class="text-lg font-semibold">Google</h2>
@@ -51,7 +51,7 @@
               maxlength="4096"
               required
               [disabled]="busy()"
-              class="w-full rounded-xl border border-surface bg-surface-100 px-4 py-3 outline-none dark:bg-surface-900"
+              class="w-full rounded-xl border border-surface bg-surface-100 px-4 py-3 outline-none"
             />
             <button
               type="submit"
@@ -68,7 +68,7 @@
     </section>
 
     <section
-      class="rounded-2xl border border-surface bg-surface-0 p-6 dark:bg-surface-950"
+      class="rounded-2xl border border-surface bg-surface-0 p-6"
       aria-labelledby="password-method"
     >
       <h2 id="password-method" class="text-lg font-semibold">Correo y contraseña</h2>
@@ -95,7 +95,7 @@
               maxlength="4096"
               required
               [disabled]="busy()"
-              class="w-full rounded-xl border border-surface bg-surface-100 px-4 py-3 outline-none dark:bg-surface-900"
+              class="w-full rounded-xl border border-surface bg-surface-100 px-4 py-3 outline-none"
             />
           </div>
           <div>
@@ -110,7 +110,7 @@
               maxlength="4096"
               required
               [disabled]="busy()"
-              class="w-full rounded-xl border border-surface bg-surface-100 px-4 py-3 outline-none dark:bg-surface-900"
+              class="w-full rounded-xl border border-surface bg-surface-100 px-4 py-3 outline-none"
             />
           </div>
           <button

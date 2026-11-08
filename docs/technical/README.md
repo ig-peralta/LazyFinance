@@ -12,10 +12,10 @@ target is not evidence of a delivered capability.
 | --- | --- |
 | [Architecture](architecture.md) | Runtime/dependency boundaries, responsibility split and product scope |
 | [Private RPC, transactions and RLS](persistence-security.md) | Signed contexts, bootstrap, roles/grants, related ownership, rollback, atomic commands and limits |
-| [Implemented database model and ERD](database-model.md) | All 22 application tables, actual relationships/keys, financial representation and fresh migrations |
-| [RPC contracts and clients](rpc-contracts.md) | Public/private exports, 54/59 procedure inventories, MCP, code generation and wire semantics |
+| [Implemented database model and ERD](database-model.md) | All 23 application tables, actual relationships/keys, financial representation and fresh migrations |
+| [RPC contracts and clients](rpc-contracts.md) | Public/private exports, 57/62 procedure inventories, MCP, code generation and wire semantics |
 | [Persistence read pattern](persistence-reads.md) | Purpose-shaped joins/aggregates, bounded projections, cardinality, snapshots and review checklist |
-| [UI/session/SSR lifetimes](ui-data-lifecycle.md) | Accepted credentials, candidate verification, cancellation, page resources, command/read races and hydration isolation |
+| [UI/session/rendering lifetimes](ui-data-lifecycle.md) | Accepted credentials, candidate verification, cancellation, page resources, command/read races and public-only hydration |
 | [Provider-neutral identity](identity.md) | Provider/issuer/subject namespaces, internal principals, verifier selection, provisioning and session boundaries |
 | [Tag decisions and rules](../../apps/api/src/transactions/tagging/README.md) | Manual no-tag versus reset, matching, approved automation and atomic decision/event writes |
 | [Banking connector and ingestion](../../apps/api/src/banking/README.md) | Provider normalization, prepared sync, preserved user decisions, tombstones and review |
@@ -23,7 +23,7 @@ target is not evidence of a delivered capability.
 ## Setup, development and verification
 
 - [Technical manual](technical-manual.md): process/environment separation, local
-  setup, Compose topology, browser-versus-SSR configuration and troubleshooting.
+  setup, Compose topology, environment-specific browser/static hosting and troubleshooting.
 - [Development and verification](development-workflow.md): builds, Biome/editor/DI
   conventions, [file ownership and extraction](development-workflow.md#file-ownership-and-extraction),
   [type safety and boundaries](development-workflow.md#type-safety-and-boundary-types),

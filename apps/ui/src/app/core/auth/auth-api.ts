@@ -9,8 +9,11 @@ export class AuthApi {
     return this.rpc.anonymous.auth.config.query(undefined, { signal });
   }
 
-  loginMock(email: string, password: string) {
-    return this.rpc.anonymous.auth.loginMock.mutate({ email, password });
+  loginMock(email: string, password: string, signal?: AbortSignal) {
+    return this.rpc.anonymous.auth.loginMock.mutate(
+      { email, password },
+      { signal },
+    );
   }
 
   verifyPrincipal(token: string, signal?: AbortSignal) {

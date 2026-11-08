@@ -8,7 +8,7 @@ LazyFinance is a pnpm/Turborepo monorepo with an Angular app, a NestJS API, and 
 
 | Workspace  | Stack                                | Development guide                |
 | ---------- | ------------------------------------ | -------------------------------- |
-| `apps/ui`  | Angular, SSR, PrimeNG, Tailwind CSS  | [UI README](apps/ui/README.md)   |
+| `apps/ui`  | Angular, public prerendering/private CSR, PrimeNG, Tailwind CSS | [UI README](apps/ui/README.md) |
 | `apps/api` | NestJS, tRPC, MCP, financial workflows | [API README](apps/api/README.md) |
 | `apps/persistence` | NestJS, tRPC, Kysely, PostgreSQL RLS | [Persistence README](apps/persistence/README.md) |
 
@@ -19,7 +19,7 @@ The apps use TypeScript/Node.js, PostgreSQL 18, Firebase identity, Zod, Vitest a
 ```mermaid
 flowchart TB
     subgraph interfaces["Interfaces"]
-        ui["Angular UI<br/>Browser · request-local SSR"]
+        ui["Angular UI<br/>Public prerender · browser workspace"]
         mcp["MCP clients<br/>Authenticated · read-only"]
     end
 
@@ -86,11 +86,11 @@ reading order and distinction between implementation, evidence and targets.
 | --- | --- |
 | [Architecture](docs/technical/architecture.md) | Three-app/runtime boundaries, responsibility split and implementation scope |
 | [Private RPC, transactions and RLS](docs/technical/persistence-security.md) | Assertions, bootstrap, runtime roles, related-owner policies, atomicity and budgets |
-| [Database model and implemented ERD](docs/technical/database-model.md) | All 22 tables, relationships/keys, representation and fresh-migration lifecycle |
+| [Database model and implemented ERD](docs/technical/database-model.md) | All 23 tables, relationships/keys, representation and fresh-migration lifecycle |
 | [RPC contracts and clients](docs/technical/rpc-contracts.md) | Public/private procedures, MCP tools, type-only libraries and generation workflow |
 | [Persistence read pattern](docs/technical/persistence-reads.md) | Purpose-shaped joins/aggregates, cardinality, snapshots and data-access review rules |
 | [Provider-neutral identity](docs/technical/identity.md) | External provider/issuer/subject mapping, internal principals and current provider-selection limits |
-| [UI/session/SSR lifetimes](docs/technical/ui-data-lifecycle.md) | Verified scopes, resources, cancellation, command/read ordering and hydration privacy |
+| [UI/session/rendering lifetimes](docs/technical/ui-data-lifecycle.md) | Verified scopes, resources, cancellation, command/read ordering and public-only hydration |
 | [Technical manual](docs/technical/technical-manual.md) | Installation, environment/credential separation, Compose, operation and troubleshooting |
 | [Development and verification](docs/technical/development-workflow.md) | Build/tooling/DI conventions and serverless, HTTP, DB and live-provider verification tiers |
 
@@ -224,7 +224,10 @@ Markdown and YAML remain manually formatted with this Biome version.
 
 Demo seeding is explicit: `pnpm deploy:local --profile tools run --rm seed`. It is not a migration or startup side effect. Existing volumes are not reset or upgraded from the old schema; choose a fresh database. Use Firebase plus `API_NODE_ENV=production` for a production-mode rehearsal; mock auth is development-only.
 
-The Docker UI's production browser bundle currently targets `https://api.lazyfinance.cl`;
-`API_INTERNAL_URL=http://api:3000` changes SSR only. For a fully local browser
-rehearsal, configure/rebuild the browser destination or explicitly route its public
-hostname to the intended API. See [browser versus SSR setup](docs/technical/technical-manual.md#browser-versus-ssr-destination).
+The production UI serves static files through unprivileged Nginx on port `4000`.
+Its browser API base URL comes directly from the Angular environment files:
+`http://localhost:3000` in development and `https://api.lazyfinance.cl` in production.
+Nginx only serves UI files; no API proxy or URL rewriting is involved. A fully
+local Docker rehearsal needs a browser-reachable local API URL selected before
+building the UI. No API/database request is needed to serve the landing or neutral
+startup frame. See [browser and static hosting setup](docs/technical/technical-manual.md#browser-and-static-hosting-destinations).

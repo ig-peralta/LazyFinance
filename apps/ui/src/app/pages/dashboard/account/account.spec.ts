@@ -100,6 +100,7 @@ describe("Account resource view", () => {
     fixture.detectChanges();
     await fixture.whenStable();
     expect(credentials.current()).toBeUndefined();
-    expect(navigate).toHaveBeenCalledExactlyOnceWith("/login");
+    // The workspace boundary redirects after observing the cleared credentials.
+    expect(navigate).not.toHaveBeenCalled();
   });
 });

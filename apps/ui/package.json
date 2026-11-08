@@ -7,8 +7,7 @@
     "dev": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test",
-    "serve:ssr:ui": "node dist/ui/server/server.mjs"
+    "test": "ng test"
   },
   "dependencies": {
     "@angular/common": "^22.2.0",
@@ -24,9 +23,7 @@
     "@trpc/client": "11.24.0",
     "@trpc/server": "11.24.0",
     "@primeng/themes": "^21.0.4",
-    "express": "^5.1.0",
     "firebase": "^13.1.0",
-    "ngx-cookie-service-ssr": "^22.0.0",
     "primeng": "21",
     "rxjs": "~7.8.0",
     "tailwindcss-primeui": "^0.6.1",
@@ -37,7 +34,6 @@
     "@angular/cli": "^22.2.2",
     "@angular/compiler-cli": "^22.2.0",
     "@tailwindcss/postcss": "^4.1.12",
-    "@types/express": "^5.0.1",
     "@types/node": "^22.12.0",
     "jsdom": "^30.0.0",
     "postcss": "^8.5.3",
