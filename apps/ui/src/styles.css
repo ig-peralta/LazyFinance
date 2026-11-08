@@ -20,6 +20,26 @@ body {
 }
 
 /* Authenticated workspace only: the public landing keeps its own visual language. */
+.detail-facts {
+  margin: 0;
+}
+.detail-facts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+}
+.detail-facts dt {
+  font-size: 12px;
+  color: var(--muted);
+}
+.detail-facts dd {
+  text-align: right;
+  overflow-wrap: anywhere;
+  min-width: 0;
+  font-size: 12px;
+}
 .workspace {
   --ink: #183d34;
   --muted: #6d7b74;

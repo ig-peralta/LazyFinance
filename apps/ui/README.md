@@ -23,6 +23,10 @@ tag/internal status, direction and literal merchant substring). Previous/next
 controls keep a page-local cursor trail, reset on filter/scope changes, and never
 sum pages into financial totals. `/movimientos/:id` reads owned source and
 classification detail without changing the original banking facts.
+The detail view supports explicit tag/no-tag/reset and nullable internal-status
+corrections. A saved command reloads detail; history, summaries and budget pages
+refetch on navigation rather than sharing a stale application-wide cache. Removed
+records are read-only, and the backend remains authoritative for valid references.
 
 Detailed references: [session/resource lifetimes](../../docs/technical/ui-data-lifecycle.md),
 [provider-neutral identity](../../docs/technical/identity.md),
