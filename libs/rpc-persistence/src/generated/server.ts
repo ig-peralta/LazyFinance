@@ -13,7 +13,7 @@ import { z } from "zod";
 
 const t = initTRPC.create();
 const publicProcedure = t.procedure;
-import { EmptyInputSchema, AccountRecordsSchema, IdInputSchema, ExpectationRecordsSchema, ExpectationCreateSchema, ExpectationRecordSchema, ExpectationUpdateSchema, VoidResultSchema, ReceiptConfirmSchema, ReceiptFactSchema, IncomeSourceRecordsSchema, IncomeSourceRecordSchema, IncomeSourceCreateSchema, IncomeSourceUpdateSchema, AtIdInputSchema, PeriodInputSchema, ExpectedIncomeFactsSchema, ReceiptFactsSchema, IncomeFactsSchema, SavingsReadSchema, SavingsFactsSchema, SavingsEvidenceReadSchema, SavingsEvidenceRecordsSchema, CreateSavingsCommandSchema, UpdateSavingsCommandSchema, ObjectiveRecordsSchema, BudgetPeriodInputSchema, BudgetPeriodRecordsSchema, CreateBudgetCommandSchema, UpdateBudgetCommandSchema, ObjectiveSpendingInputSchema, ObjectiveSpendingFactsSchema, BeginProviderSyncSchema, ProviderSyncStateSchema, ProviderSyncScopeSchema, ProviderSyncFactsSchema, CommitProviderSyncSchema, ProviderSyncOutcomeSchema, RecordProviderFailureSchema, ProviderReviewRecordsSchema, TagRecordSchema, TagRecordsSchema, TagCreateSchema, TagRuleRecordsSchema, TagRuleCreateSchema, TagRuleRecordSchema, TagRuleReplaceSchema, TaggingFactsSchema, ManualTagCommandSchema, RuleCandidatesInputSchema, RuleCandidatesSchema, CommitRuleDecisionsSchema, ChangedCountSchema, RecentTransactionRecordsSchema, TransactionRecordsPageSchema, MovementAggregatesSchema, TaggedMovementAggregatesSchema, IdentityResolutionInputSchema } from "@lazyfinance/contracts/internal";
+import { EmptyInputSchema, AccountRecordsSchema, IdInputSchema, ExpectationRecordsSchema, ExpectationCreateSchema, ExpectationRecordSchema, ExpectationUpdateSchema, VoidResultSchema, ReceiptConfirmSchema, ReceiptFactSchema, IncomeSourceRecordsSchema, IncomeSourceRecordSchema, IncomeSourceCreateSchema, IncomeSourceUpdateSchema, AtIdInputSchema, PeriodInputSchema, ExpectedIncomeFactsSchema, ReceiptFactsSchema, IncomeFactsSchema, BudgetSpendingEvidenceInputSchema, SpendingEvidenceFactsSchema, SavingsReadSchema, SavingsFactsSchema, SavingsEvidenceReadSchema, SavingsEvidenceRecordsSchema, CreateSavingsCommandSchema, UpdateSavingsCommandSchema, ObjectiveRecordsSchema, BudgetPeriodInputSchema, BudgetPeriodRecordsSchema, CreateBudgetCommandSchema, UpdateBudgetCommandSchema, ObjectiveSpendingInputSchema, ObjectiveSpendingFactsSchema, BeginProviderSyncSchema, ProviderSyncStateSchema, ProviderSyncScopeSchema, ProviderSyncFactsSchema, CommitProviderSyncSchema, ProviderSyncOutcomeSchema, RecordProviderFailureSchema, ProviderReviewRecordsSchema, TagRecordSchema, TagRecordsSchema, TagCreateSchema, TagRuleRecordsSchema, TagRuleCreateSchema, TagRuleRecordSchema, TagRuleReplaceSchema, TaggingFactsSchema, ManualTagCommandSchema, RuleCandidatesInputSchema, RuleCandidatesSchema, CommitRuleDecisionsSchema, ChangedCountSchema, SummarySpendingEvidenceInputSchema, RecentTransactionRecordsSchema, TransactionRecordsPageSchema, MovementAggregatesSchema, TaggedMovementAggregatesSchema, IdentityResolutionInputSchema } from "@lazyfinance/contracts/internal";
 import { SavingsGoalSchema, SavingsHistoryInputSchema, SavingsHistoryPageSchema, SavingsGoalVersionSchema, BudgetDetailSchema, BudgetHistoryInputSchema, BudgetHistoryPageSchema, BudgetVersionInputSchema, UpdateTagSchema, TagDecisionSchema, SetInternalMovementSchema, InternalMovementDecisionSchema, ExpenseAdjustmentsInputSchema, ExpenseAdjustmentsPageSchema, SetExpenseAdjustmentSchema, ExpenseAdjustmentSchema, ExpenseAdjustmentPairSchema, TransactionsInputSchema, AuthPrincipalSchema } from "@lazyfinance/contracts";
 
 const appRouter = t.router({
@@ -86,6 +86,10 @@ const appRouter = t.router({
       .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
     }),
   objectives: t.router({
+    budgetEvidence: publicProcedure
+      .input(BudgetSpendingEvidenceInputSchema)
+      .output(SpendingEvidenceFactsSchema)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
     savingsFacts: publicProcedure
       .input(SavingsReadSchema)
       .output(SavingsFactsSchema)
@@ -226,6 +230,10 @@ const appRouter = t.router({
       .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
     }),
   transactions: t.router({
+    spendingEvidence: publicProcedure
+      .input(SummarySpendingEvidenceInputSchema)
+      .output(SpendingEvidenceFactsSchema)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
     setInternalMovement: publicProcedure
       .input(SetInternalMovementSchema)
       .output(InternalMovementDecisionSchema)

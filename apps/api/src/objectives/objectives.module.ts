@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { FinancialEvidenceModule } from "../finance/financial-evidence.module";
 import { PersistenceModule } from "../persistence/persistence.module";
 import { ObjectivesMcpController } from "./objectives.mcp";
 import { ObjectivesRpc } from "./objectives.rpc";
@@ -7,7 +8,7 @@ import { SavingsGoalsService } from "./savings-goals.service";
 import { SavingsProgressService } from "./savings-progress.service";
 
 @Module({
-  imports: [PersistenceModule],
+  imports: [PersistenceModule, FinancialEvidenceModule],
   controllers: [ObjectivesMcpController],
   providers: [
     ObjectivesService,

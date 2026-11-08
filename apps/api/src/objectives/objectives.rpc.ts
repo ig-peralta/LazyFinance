@@ -1,4 +1,6 @@
 import {
+  type BudgetContributionsInput,
+  BudgetContributionsInputSchema,
   BudgetDetailSchema,
   type BudgetHistoryInput,
   BudgetHistoryInputSchema,
@@ -26,12 +28,14 @@ import {
   type SavingsProgressInput,
   SavingsProgressInputSchema,
   SavingsProgressSchema,
+  SpendingContributionsPageSchema,
   type UpdateBudgetInput,
   UpdateBudgetInputSchema,
   type UpdateSavingsGoal,
   UpdateSavingsGoalSchema,
 } from "@lazyfinance/contracts";
 import { Ctx, Input, Mutation, Query, Router } from "nestjs-trpc";
+import { SpendingEvidenceService } from "../finance/spending-evidence.service";
 import { type ApiRequestContext, rpcUser } from "../rpc/context";
 import { checkedMonth } from "../utils/month-query";
 import { santiagoMonth } from "../utils/santiago-time";
@@ -45,7 +49,20 @@ export class ObjectivesRpc {
     private readonly service: ObjectivesService,
     private readonly savings: SavingsGoalsService,
     private readonly measuredSavings: SavingsProgressService,
+    private readonly evidence: SpendingEvidenceService,
   ) {}
+
+  @Query({
+    input: BudgetContributionsInputSchema,
+    output: SpendingContributionsPageSchema,
+    meta: { auth: "user" },
+  })
+  budgetContributions(
+    @Ctx() ctx: ApiRequestContext,
+    @Input() input: BudgetContributionsInput,
+  ) {
+    return this.evidence.budget(rpcUser(ctx), input);
+  }
 
   @Query({
     input: SavingsProgressInputSchema,

@@ -15,6 +15,8 @@ import {
 import {
   BudgetPeriodInputSchema,
   BudgetPeriodRecordsSchema,
+  type BudgetSpendingEvidenceInput,
+  BudgetSpendingEvidenceInputSchema,
   type CreateBudgetCommand,
   CreateBudgetCommandSchema,
   type CreateSavingsCommand,
@@ -31,6 +33,7 @@ import {
   SavingsFactsSchema,
   type SavingsRead,
   SavingsReadSchema,
+  SpendingEvidenceFactsSchema,
   type UpdateBudgetCommand,
   UpdateBudgetCommandSchema,
   type UpdateSavingsCommand,
@@ -40,6 +43,7 @@ import { Input, Mutation, Query, Router } from "nestjs-trpc";
 import { wireValue } from "../../serialization";
 import { SavingsGoalRepository } from "../savings-goal/savings-goal.repository";
 import { SavingsReadRepository } from "../savings-goal/savings-read.repository";
+import { SpendingEvidenceRepository } from "../spending-evidence/spending-evidence.repository";
 import { BudgetRepository } from "./budget.repository";
 import { ObjectiveRepository } from "./objective.repository";
 
@@ -50,7 +54,17 @@ export class ObjectiveRpc {
     private readonly budgets: BudgetRepository,
     private readonly savings: SavingsGoalRepository,
     private readonly measuredSavings: SavingsReadRepository,
+    private readonly evidence: SpendingEvidenceRepository,
   ) {}
+
+  @Query({
+    input: BudgetSpendingEvidenceInputSchema,
+    output: SpendingEvidenceFactsSchema,
+    meta: { context: "user", snapshot: true },
+  })
+  budgetEvidence(@Input() input: BudgetSpendingEvidenceInput) {
+    return this.evidence.budget(input);
+  }
 
   @Query({
     input: SavingsReadSchema,
@@ -129,8 +143,8 @@ export class ObjectiveRpc {
     output: BudgetPeriodRecordsSchema,
     meta: { context: "user" },
   })
-  forPeriod(@Input() input: { before: string }) {
-    return this.repository.forPeriod(input.before);
+  forPeriod(@Input() input: { before: string; id?: string }) {
+    return this.repository.forPeriod(input.before, input.id);
   }
 
   @Query({

@@ -44,15 +44,15 @@ inferred Promises; there is no cross-app source import or HTTP/Observable adapte
 ## Public surface
 
 The [generated public router](../../libs/rpc-api/src/generated/server.ts) currently
-contains **52 procedures**. Prefix each method below with its router name.
+contains **54 procedures**. Prefix each method below with its router name.
 
 | Router | Methods | Responsibility |
 | --- | --- | --- |
 | `auth` | `config`, `loginMock`, `principal` | Provider selection, local mock login, verified principal |
 | `accounts` | `list` | Active accounts, balances and freshness |
 | `transactions` | `recent`, `list`, `setInternalMovement`, `expenseAdjustments`, `setExpenseAdjustment`, `removeExpenseAdjustment` | History, owned internal-status corrections and purchase-attributed recoveries |
-| `objectives` | `list`, `progress`, `budget`, `budgetHistory`, `createBudget`, `updateBudget`, `archiveBudget`, `savingsGoal`, `savingsGoalHistory`, `createSavingsGoal`, `updateSavingsGoal`, `archiveSavingsGoal`, `savingsProgress`, `savingsContributions` | Revisioned management/history, spending progress and measured savings/evidence |
-| `summaries` | `monthly`, `comparison` | Financial summary and equivalent-period comparison |
+| `objectives` | `list`, `progress`, `budgetContributions`, `budget`, `budgetHistory`, `createBudget`, `updateBudget`, `archiveBudget`, `savingsGoal`, `savingsGoalHistory`, `createSavingsGoal`, `updateSavingsGoal`, `archiveSavingsGoal`, `savingsProgress`, `savingsContributions` | Revisioned management/history, spending and savings progress/evidence |
+| `summaries` | `monthly`, `comparison`, `spendingContributions` | Financial summary, equivalent-period comparison and purchase-level spending evidence |
 | `income` | `sources`, `source`, `createSource`, `updateSource`, `archiveSource`, `expectations`, `createExpectation`, `updateExpectation`, `removeExpectation`, `expected`, `receipts`, `confirm`, `clear`, `summary` | Declarations, dated expectations, explicit receipts and calculated summaries |
 | `tags` | `list`, `create`, `update`, `archive`, `suggestions`, `decide`, `reset` | Owned tag lifecycle, single-tag classification and explicit no-tag/reset choices |
 | `tagRules` | `list`, `create`, `replace`, `archive`, `apply` | Owned suggestion/approved automation rules and explicit application |
@@ -64,26 +64,27 @@ financial owner scope. Method schemas in the generated file and
 shapes; counts/tables here are a navigation aid, not a second schema definition.
 
 The API's ordinary `GET /` is a liveness check. `/mcp` is authenticated Streamable
-HTTP exposing nine read-only tools through the same services:
+HTTP exposing eleven read-only tools through the same services:
 `consultar_saldos_cuentas`, `consultar_movimientos_recientes`,
 `consultar_presupuestos_y_metas`, `consultar_avance_presupuestos`,
 `consultar_resumen_gastos_mensuales`, `comparar_gastos_mensuales`, and
-`consultar_ingresos`, `consultar_avance_ahorro`, and `consultar_aportes_ahorro`.
+`consultar_ingresos`, `consultar_avance_ahorro`, `consultar_aportes_ahorro`,
+`consultar_compras_del_gasto`, and `consultar_compras_presupuesto`.
 External-client OAuth, a first-party agent and write tools
 are not implemented by this RPC cutover.
 
 ## Private surface
 
 The [generated private router](../../libs/rpc-persistence/src/generated/server.ts)
-currently contains **57 procedures**. They expose owned facts and authoritative
+currently contains **59 procedures**. They expose owned facts and authoritative
 commands rather than copying public screen calculations into persistence.
 
 | Router | Methods |
 | --- | --- |
 | `identity` | `resolve` (bootstrap only) |
 | `accounts` | `listActive` |
-| `transactions` | `recent`, `list`, `setInternalMovement`, `aggregates`, `taggedAggregates`, `expenseAdjustments`, `setExpenseAdjustment`, `removeExpenseAdjustment` |
-| `objectives` | `list` (effective definitions/nested tags), `forPeriod`, `spending` (revision-pinned sums/windows), `budget`, `budgetHistory`, `createBudget`, `updateBudget`, `archiveBudget`, `savingsGoal`, `savingsGoalHistory`, `createSavingsGoal`, `updateSavingsGoal`, `archiveSavingsGoal`, `savingsFacts`, `savingsEvidence` |
+| `transactions` | `recent`, `list`, `setInternalMovement`, `aggregates`, `taggedAggregates`, `spendingEvidence`, `expenseAdjustments`, `setExpenseAdjustment`, `removeExpenseAdjustment` |
+| `objectives` | `list` (effective definitions/nested tags), `forPeriod` (optional owned ID selection), `spending` (revision-pinned sums/windows), `budgetEvidence`, `budget`, `budgetHistory`, `createBudget`, `updateBudget`, `archiveBudget`, `savingsGoal`, `savingsGoalHistory`, `createSavingsGoal`, `updateSavingsGoal`, `archiveSavingsGoal`, `savingsFacts`, `savingsEvidence` |
 | `income` | `sources`, `source`, `createSource`, `updateSource`, `archiveSource`, `expectedFacts`, `receipts`, `facts` |
 | `incomeExpectations` | `list`, `create`, `update`, `remove` |
 | `incomeReceipts` | `confirm`, `clear` |
@@ -217,6 +218,33 @@ or remaining purchase cost, including retained decisions awaiting review.
 These fields are shared by public summaries, progress and their MCP tools. The
 dashboard explains gross/net cost, credit-period recoveries and pending review;
 there is no refund-management screen or MCP write tool in this slice.
+
+### Contributing purchases
+
+`summaries.spendingContributions` accepts a month and optional tag selection
+(omitted means all; null means untagged). `objectives.budgetContributions` accepts
+the reported budget ID, revision ID and month. Both return cursor-paginated owned
+purchases with exact gross/refund/reimbursement/net amounts plus **complete**
+`totals` independent of page size. `untaggedInSelection` explains the part missing
+from a tag breakdown; the overall summary includes it, while tagged/budget slices
+do not. `includesUntagged` states the selection rule, not completeness of bank history.
+
+Pass the reported summary/progress `adjustmentsAsOf` to explain its recovery cutoff;
+booking `asOf` defaults to that observation time. Monthly/yearly/fixed budget windows,
+revision-specific tags, activation/end/archive bounds and normalized eligibility
+are shared with progress. Each purchase appears once, including card purchases;
+internal, unknown, review-pending and removed movements do not contribute. Separate
+recovery joins cannot multiply gross cost. Use `transactions.expenseAdjustments`
+with the purchase ID to inspect its individual retained recovery allocations.
+
+Continue using both `tracking.asOf` and `tracking.adjustmentsAsOf`, the same month,
+tag/budget/revision and cursor. Changed filters/cutoffs or archived tracking bounds
+require a fresh first page; stale budget revisions conflict. PostgreSQL microseconds
+are preserved for evidence, boundaries and inclusive observation cutoffs. The private
+page, total and coverage reads form one repeatable-read snapshot, not a frozen
+snapshot across separate pages. Corrections can restate current-fact totals, even
+in archived periods. Do not manufacture a balance or full-history claim from this read.
+Read-only MCP tools expose these same services; no drill-down UI is added here.
 
 ## Cursor-paginated browsing
 

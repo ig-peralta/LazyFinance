@@ -3,25 +3,19 @@ import { Inject, Injectable } from "@nestjs/common";
 import { type Kysely, sql } from "kysely";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { RLS_DB } from "../../database/tokens";
-import type { BudgetRevisionTables } from "../budget-revision/budget-revision.tables";
-import type { BudgetRevisionTagTables } from "../budget-revision-tag/budget-revision-tag.tables";
 import { purchaseRecovery } from "../expense-adjustment/expense-adjustment-sql";
-import type { ObjectiveTagTables } from "../objective-tag/objective-tag.tables";
-import type { TagTables } from "../tag/tag.tables";
-import type { TransactionTables } from "../transaction/transaction.tables";
+import {
+  type BudgetSpendingTables,
+  budgetSpendingBounds,
+  budgetSpendingQuery,
+} from "./budget-spending-query";
 import { budgetInstant, budgetTimestamp } from "./budget-sql";
-import type { ObjectiveTables } from "./objective.tables";
-
-type Tables = ObjectiveTables &
-  ObjectiveTagTables &
-  BudgetRevisionTables &
-  BudgetRevisionTagTables &
-  TagTables &
-  TransactionTables;
 
 @Injectable()
 export class ObjectiveRepository {
-  constructor(@Inject(RLS_DB) private readonly db: Kysely<Tables>) {}
+  constructor(
+    @Inject(RLS_DB) private readonly db: Kysely<BudgetSpendingTables>,
+  ) {}
 
   private definitions(before?: string) {
     const at = before ? budgetInstant(before) : sql<Date>`now()`;
@@ -126,96 +120,19 @@ export class ObjectiveRepository {
     return this.definitions().where("o.archivedAt", "is", null).execute();
   }
 
-  forPeriod(before: string) {
-    return this.definitions(before)
+  forPeriod(before: string, id?: string) {
+    const query = this.definitions(before)
       .where("o.intent", "=", "spending")
       .select([
         sql<string>`coalesce(r.id, o.id)`.as("revisionId"),
         budgetTimestamp(sql.ref<Date | null>("o.archivedAt")).as("archivedAt"),
-      ])
-      .execute();
+      ]);
+    return (id === undefined ? query : query.where("o.id", "=", id)).execute();
   }
 
   spending({ windows, asOf, adjustmentsAsOf }: ObjectiveSpendingInput) {
-    const requested = sql<{
-      id: string;
-      revisionId: string;
-      start: string;
-      end: string;
-    }>`jsonb_to_recordset(${JSON.stringify(windows.map(({ revisionId, ...window }) => ({ ...window, revision_id: revisionId })))}::jsonb)`.as<"w">(
-      sql`w(id uuid, revision_id uuid, start text, "end" text)`,
-    );
-    const start = sql<Date>`greatest(${budgetInstant(sql.ref<string>("w.start"))},
-      CASE WHEN r.id IS NULL THEN o.start_date ELSE r.start_date END, r.effective_from)`;
-    const end = sql<Date>`least(${budgetInstant(sql.ref<string>("w.end"))}, o.archived_at,
-      CASE WHEN r.id IS NULL THEN o.end_date ELSE r.end_date END)`;
-
-    return this.db
-      .selectFrom(requested)
-      .innerJoin("finance.objective as o", "o.id", "w.id")
-      .leftJoin("finance.budget_revision as r", (join) =>
-        join
-          .onRef("r.id", "=", "w.revisionId")
-          .onRef("r.objectiveId", "=", "o.id"),
-      )
-      .where("o.intent", "=", "spending")
-      .where((eb) =>
-        eb.or([
-          eb.and([
-            eb("r.id", "is not", null),
-            eb("r.supersededAt", "is", null),
-          ]),
-          eb.and([
-            eb("w.revisionId", "=", eb.ref("o.id")),
-            eb.not(
-              eb.exists(
-                eb
-                  .selectFrom("finance.budget_revision as v")
-                  .select("v.id")
-                  .whereRef("v.objectiveId", "=", "o.id"),
-              ),
-            ),
-          ]),
-        ]),
-      )
-      .where(sql<boolean>`${start} < ${end}`)
-      .leftJoin("finance.transaction as m", (join) =>
-        join
-          .on(sql<boolean>`m.booked_at >= ${start} AND m.booked_at < ${end}`)
-          .on("m.type", "=", "debit")
-          .on("m.isInternalMovement", "=", false)
-          .on("m.reviewStatus", "=", "clear")
-          .on("m.removedAt", "is", null)
-          .on(
-            asOf
-              ? sql<boolean>`m.booked_at <= ${new Date(asOf)}`
-              : sql<boolean>`true`,
-          )
-          .on((eb) =>
-            eb.or([
-              eb.and([
-                eb("r.id", "is not", null),
-                eb.exists(
-                  eb
-                    .selectFrom("finance.budget_revision_tag as l")
-                    .select("l.tagId")
-                    .whereRef("l.revisionId", "=", "r.id")
-                    .whereRef("l.tagId", "=", "m.tagId"),
-                ),
-              ]),
-              eb.and([
-                eb("r.id", "is", null),
-                eb.exists(
-                  eb
-                    .selectFrom("finance.objective_tag as l")
-                    .select("l.tagId")
-                    .whereRef("l.objectiveId", "=", "o.id")
-                    .whereRef("l.tagId", "=", "m.tagId"),
-                ),
-              ]),
-            ]),
-          ),
-      )
+    const { start, end } = budgetSpendingBounds();
+    return budgetSpendingQuery(this.db, { windows, asOf })
       .leftJoinLateral(purchaseRecovery(adjustmentsAsOf).as("pa"), (join) =>
         join.onTrue(),
       )

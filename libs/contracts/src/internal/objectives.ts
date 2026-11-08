@@ -23,6 +23,7 @@ export const BudgetBoundarySchema = z.union([
 
 export const BudgetPeriodInputSchema = z.strictObject({
   before: LocalTimestampSchema,
+  id: z.uuid().optional(),
 });
 
 export const BudgetPeriodRecordSchema = ObjectiveRecordSchema.extend({

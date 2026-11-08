@@ -19,6 +19,9 @@ import {
   type PeriodInput,
   PeriodInputSchema,
   RecentTransactionRecordsSchema,
+  SpendingEvidenceFactsSchema,
+  type SummarySpendingEvidenceInput,
+  SummarySpendingEvidenceInputSchema,
   TaggedMovementAggregatesSchema,
   TransactionRecordsPageSchema,
   VoidResultSchema,
@@ -26,6 +29,7 @@ import {
 import { Input, Mutation, Query, Router } from "nestjs-trpc";
 import { wireValue } from "../../serialization";
 import { ExpenseAdjustmentRepository } from "../expense-adjustment/expense-adjustment.repository";
+import { SpendingEvidenceRepository } from "../spending-evidence/spending-evidence.repository";
 import { InternalMovementRepository } from "./internal-movement.repository";
 import { TransactionRepository } from "./transaction.repository";
 
@@ -35,7 +39,17 @@ export class TransactionRpc {
     private readonly repository: TransactionRepository,
     private readonly adjustments: ExpenseAdjustmentRepository,
     private readonly internalMovements: InternalMovementRepository,
+    private readonly evidence: SpendingEvidenceRepository,
   ) {}
+
+  @Query({
+    input: SummarySpendingEvidenceInputSchema,
+    output: SpendingEvidenceFactsSchema,
+    meta: { context: "user", snapshot: true },
+  })
+  spendingEvidence(@Input() input: SummarySpendingEvidenceInput) {
+    return this.evidence.summary(input);
+  }
 
   @Mutation({
     input: SetInternalMovementSchema,

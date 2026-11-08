@@ -1,6 +1,11 @@
 import type { ObjectiveSummary } from "@lazyfinance/contracts";
+import type { BudgetPeriodRecord } from "@lazyfinance/contracts/internal";
 import { monthBounds } from "../utils/period";
-import { compareObjectiveBoundaries } from "./objective-time";
+import { santiagoMonth } from "../utils/santiago-time";
+import {
+  compareObjectiveBoundaries,
+  objectiveLocalTime,
+} from "./objective-time";
 
 export type BudgetPeriod = "monthly" | "yearly" | "fixed";
 
@@ -47,4 +52,24 @@ export function budgetPeriod(
     return null;
 
   return { start, end, period };
+}
+
+/** Shared selection for a reported budget and its contributing movements. */
+export function reportedBudgetPeriod(
+  objective: BudgetPeriodRecord,
+  month: string,
+  now: Date,
+) {
+  const window = budgetPeriod(objective, month);
+  if (
+    !window ||
+    !objective.tags.length ||
+    (objective.archivedAt &&
+      objectiveLocalTime(objective.archivedAt) <=
+        objectiveLocalTime(monthBounds(month).start)) ||
+    (month === santiagoMonth(now) &&
+      compareObjectiveBoundaries(window.start, now.toISOString()) > 0)
+  )
+    return null;
+  return window;
 }

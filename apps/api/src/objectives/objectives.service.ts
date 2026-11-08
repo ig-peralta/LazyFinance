@@ -16,12 +16,9 @@ import { fromCents, toCents } from "../utils/money";
 import { monthBounds } from "../utils/period";
 import { santiagoMonth } from "../utils/santiago-time";
 import { parseInput } from "../validation/parse-input";
-import { budgetPeriod } from "./budget-period";
+import { reportedBudgetPeriod } from "./budget-period";
 import { budgetSchedule, nextBudgetRevision } from "./budget-policy";
-import {
-  compareObjectiveBoundaries,
-  objectiveLocalTime,
-} from "./objective-time";
+import { compareObjectiveBoundaries } from "./objective-time";
 
 @Injectable()
 export class ObjectivesService {
@@ -156,24 +153,15 @@ export class ObjectivesService {
   ): Promise<BudgetProgress[]> {
     if (month > santiagoMonth(now)) return [];
 
-    const { start: monthStart, end: monthEnd } = monthBounds(month);
+    const { end: monthEnd } = monthBounds(month);
     const objectives = await this.persistence
       .user(userId)
       .objectives.forPeriod.query({
         before: monthEnd,
       });
     const candidates = objectives.flatMap((objective) => {
-      const window = budgetPeriod(objective, month);
-      if (
-        !window ||
-        !objective.tags.length ||
-        (objective.archivedAt &&
-          objectiveLocalTime(objective.archivedAt) <=
-            objectiveLocalTime(monthStart)) ||
-        (month === santiagoMonth(now) &&
-          compareObjectiveBoundaries(window.start, now.toISOString()) > 0)
-      )
-        return [];
+      const window = reportedBudgetPeriod(objective, month, now);
+      if (!window) return [];
 
       return [{ objective, window }];
     });

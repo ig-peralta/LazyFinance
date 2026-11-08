@@ -7,29 +7,11 @@ import {
   type TransactionsInput,
   type TransactionsPage,
 } from "@lazyfinance/contracts";
-import type { RecentTransactionRecord } from "@lazyfinance/contracts/internal";
 import { Injectable } from "@nestjs/common";
+import { movementResponse } from "../finance/movement-response";
 import { PersistenceClient } from "../persistence/persistence.client";
 import { fromCents, toCents } from "../utils/money";
 import { parseInput } from "../validation/parse-input";
-
-function transactionResponse({
-  accountId,
-  accountAlias,
-  accountType,
-  currency,
-  ...item
-}: RecentTransactionRecord): RecentTransaction {
-  return {
-    ...item,
-    account: {
-      id: accountId,
-      alias: accountAlias,
-      type: accountType,
-      currency,
-    },
-  };
-}
 
 @Injectable()
 export class TransactionsService {
@@ -69,7 +51,7 @@ export class TransactionsService {
     const rows = await this.persistence
       .user(userId)
       .transactions.recent.query();
-    return rows.map(transactionResponse);
+    return rows.map(movementResponse);
   }
 
   async listForUser(
@@ -80,6 +62,6 @@ export class TransactionsService {
       .user(userId)
       .transactions.list.query(input);
 
-    return { ...page, items: page.items.map(transactionResponse) };
+    return { ...page, items: page.items.map(movementResponse) };
   }
 }

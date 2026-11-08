@@ -80,6 +80,16 @@ adapters or repository-shaped compatibility clients are needed.
 
 ## Cardinality, correctness and consistency
 
+Spending evidence uses complete SQL aggregates beside a bounded purchase page,
+never page totals. Summary evidence shares the Santiago period predicate and
+purchase-recovery facts; budget evidence and progress share
+`objective/budget-spending-query.ts` for revision eligibility, tag membership and
+exact activation/end/archive intersections. The API shares `reportedBudgetPeriod`
+for monthly/yearly/fixed reporting windows. `forPeriod` accepts an optional owned
+budget ID so a drill-down does not download every definition. Evidence totals,
+untagged coverage, exact tracking bounds and page rows use one repeatable-read
+snapshot; continuation remains a separate live read.
+
 1. Identify the result's grain before writing a JOIN: one objective, one movement,
    or one aggregate group. A receipt is unique per transaction; an objective/tag
    link is unique per pair; a movement has at most one tag. Preserve those keys.

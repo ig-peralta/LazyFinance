@@ -6,9 +6,12 @@ import type {
   RecentTransaction,
 } from "@lazyfinance/contracts";
 import {
+  type BudgetContributionsInput,
   type SavingsEvidenceInput,
   type SavingsProgressInput,
   SavingsProgressSchema,
+  type SpendingContributionsInput,
+  SpendingContributionsPageSchema,
 } from "@lazyfinance/contracts";
 import { INestApplication, UnauthorizedException } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
@@ -18,6 +21,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { AccountsService } from "../../../src/accounts/accounts.service";
 import { AppModule } from "../../../src/app.module";
 import { AuthService } from "../../../src/auth/auth.service";
+import { SpendingEvidenceService } from "../../../src/finance/spending-evidence.service";
 import { IncomeService } from "../../../src/income/income.service";
 import { ObjectivesService } from "../../../src/objectives/objectives.service";
 import { SavingsProgressService } from "../../../src/objectives/savings-progress.service";
@@ -158,6 +162,47 @@ describe("Dashboard MCP tools", () => {
       goalVersion: 1,
     })),
   };
+  const evidenceResult = SpendingContributionsPageSchema.parse({
+    items: [],
+    pageInfo: { hasMore: false, nextCursor: null },
+    month: "2026-09",
+    basis: "purchase_attribution",
+    includesUntagged: true,
+    totals: {
+      grossSpending: "0.00",
+      refunds: "0.00",
+      reimbursements: "0.00",
+      spending: "0.00",
+      count: 0,
+      unresolvedAdjustmentCount: 0,
+    },
+    untaggedInSelection: {
+      grossSpending: "0.00",
+      refunds: "0.00",
+      reimbursements: "0.00",
+      spending: "0.00",
+      count: 0,
+      unresolvedAdjustmentCount: 0,
+    },
+    tracking: {
+      start: "2026-09-01T04:00:00Z",
+      end: "2026-10-01T03:00:00Z",
+      asOf: "2026-09-30T15:00:00Z",
+      adjustmentsAsOf: "2026-11-07T15:00:00Z",
+      archivedAt: null,
+      revisionId: null,
+    },
+  });
+  const evidence = {
+    summary: vi.fn(
+      async (_userId: string, _input: SpendingContributionsInput) =>
+        evidenceResult,
+    ),
+    budget: vi.fn(
+      async (_userId: string, _input: BudgetContributionsInput) =>
+        evidenceResult,
+    ),
+  };
   const summaries = {
     getMonthlyForUser: vi.fn(
       async (_userId: string, month: string): Promise<MonthlySummary> => ({
@@ -273,6 +318,8 @@ describe("Dashboard MCP tools", () => {
       .useValue(objectives)
       .overrideProvider(SavingsProgressService)
       .useValue(savings)
+      .overrideProvider(SpendingEvidenceService)
+      .useValue(evidence)
       .overrideProvider(SummariesService)
       .useValue(summaries)
       .overrideProvider(IncomeService)
@@ -291,7 +338,7 @@ describe("Dashboard MCP tools", () => {
     await app.close();
   });
 
-  it("advertises nine Spanish, read-only tools with discoverable input/output schemas", async () => {
+  it("advertises eleven Spanish, read-only tools with discoverable input/output schemas", async () => {
     const initialized = await post("alice", "initialize", {
       protocolVersion: "2025-06-18",
       capabilities: {},
@@ -319,6 +366,8 @@ describe("Dashboard MCP tools", () => {
       "consultar_aportes_ahorro",
       "consultar_avance_ahorro",
       "consultar_avance_presupuestos",
+      "consultar_compras_del_gasto",
+      "consultar_compras_presupuesto",
       "consultar_ingresos",
       "consultar_movimientos_recientes",
       "consultar_presupuestos_y_metas",
@@ -393,6 +442,16 @@ describe("Dashboard MCP tools", () => {
         "consultar_aportes_ahorro",
         "alice",
         { id: savingsResult.goal.id, month: "2026-09" },
+      ],
+      ["consultar_compras_del_gasto", "alice", { month: "2026-09" }],
+      [
+        "consultar_compras_presupuesto",
+        "bob",
+        {
+          id: savingsResult.goal.id,
+          revisionId: savingsResult.goal.revisionId,
+          month: "2026-09",
+        },
       ],
     ];
 
@@ -471,6 +530,16 @@ describe("Dashboard MCP tools", () => {
     expect(savings.progress).toHaveBeenCalledWith("bob", {
       id: savingsResult.goal.id,
       month: "2026-09",
+    });
+    expect(evidence.summary).toHaveBeenCalledWith("alice", {
+      month: "2026-09",
+      limit: 25,
+    });
+    expect(evidence.budget).toHaveBeenCalledWith("bob", {
+      id: savingsResult.goal.id,
+      revisionId: savingsResult.goal.revisionId,
+      month: "2026-09",
+      limit: 25,
     });
     expect(savings.evidence).toHaveBeenCalledWith("alice", {
       id: savingsResult.goal.id,
