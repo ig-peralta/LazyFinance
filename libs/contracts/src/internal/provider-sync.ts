@@ -74,6 +74,7 @@ export const ProviderSyncStateSchema = z.object({
 export const BeginProviderSyncSchema = z.strictObject({
   connectionId: z.uuid(),
   provider: z.string().min(1).max(64),
+  expectedCredentialVersion: z.number().int().nonnegative().optional(),
 });
 
 export const ProviderSyncScopeSchema = z
@@ -262,6 +263,10 @@ export const ProviderReviewRecordsSchema = z
     }),
   )
   .max(50000);
+
+export type BeginProviderSync = z.infer<typeof BeginProviderSyncSchema>;
+
+export type ProviderSyncState = z.infer<typeof ProviderSyncStateSchema>;
 
 export type ProviderAccountRecord = z.infer<typeof ProviderAccountRecordSchema>;
 

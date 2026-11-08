@@ -114,9 +114,9 @@ export function prepareSync(
 
       const olderBalance =
         existing?.lastSyncedAt &&
-        snapshot.reportedBalance?.asOf &&
-        new Date(snapshot.reportedBalance.asOf) <
-          new Date(existing.lastSyncedAt);
+        (!snapshot.reportedBalance?.asOf ||
+          new Date(snapshot.reportedBalance.asOf) <
+            new Date(existing.lastSyncedAt));
       accounts.set(snapshot.externalId, {
         id: existing?.id ?? randomUUID(),
         externalId: snapshot.externalId,

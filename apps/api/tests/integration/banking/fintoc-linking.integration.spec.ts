@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
-import type { FintocLink } from "../../../src/banking/fintoc/fintoc-client";
-import { FintocCredentials } from "../../../src/banking/fintoc/fintoc-credentials";
+import type { FintocLink } from "../../../src/banking/fintoc/client/fintoc-client";
+import { FintocCredentials } from "../../../src/banking/fintoc/credentials/fintoc-credentials";
 import {
   fintocEnvironment,
   fintocIntent,
@@ -227,6 +227,7 @@ describe.skipIf(!integration)(
           .providerSync.begin.mutate({
             connectionId: connected.id,
             provider: "fintoc",
+            expectedCredentialVersion: 0,
           });
         f.state.link.status = "login_required";
         expect(
@@ -370,6 +371,7 @@ describe.skipIf(!integration)(
           f.persistence.user(f.userId).providerSync.begin.mutate({
             connectionId: connected.id,
             provider: "fintoc",
+            expectedCredentialVersion: 1,
           }),
         ).rejects.toMatchObject({ data: { code: "BAD_REQUEST" } });
         f.state.failDelete = false;

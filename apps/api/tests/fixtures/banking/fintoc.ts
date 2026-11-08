@@ -1,6 +1,6 @@
 import type { BankingConnection } from "@lazyfinance/contracts";
 import type { ProviderLinkSecret } from "@lazyfinance/contracts/internal";
-import type { FintocLink } from "../../../src/banking/fintoc/fintoc-client";
+import type { FintocLink } from "../../../src/banking/fintoc/client/fintoc-client";
 import { testEnvironment } from "../environment";
 
 export const fintocEnvironment = () =>

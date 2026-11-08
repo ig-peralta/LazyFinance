@@ -7,7 +7,7 @@ import { MCP_STRATEGY, type McpStrategy } from "@rekog/mcp-nest";
 import { createTRPCClient, httpLink } from "@trpc/client";
 import { AppModule } from "../../src/app.module";
 import { MockAuthService } from "../../src/auth/mock/mock-auth.service";
-import { FINTOC_FETCH } from "../../src/banking/fintoc/fintoc-client";
+import { FINTOC_FETCH } from "../../src/banking/fintoc/client/fintoc-client";
 import { EnvironmentService } from "../../src/environment/environment.service";
 import { PersistenceClient } from "../../src/persistence/persistence.client";
 import { testMockAuth } from "./auth/mock-auth";

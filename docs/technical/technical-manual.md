@@ -50,11 +50,13 @@ Fintoc configuration is optional and API-only: configure matched-mode `FINTOC_PU
 and `FINTOC_SECRET_KEY` together with a stable `FINTOC_TOKEN_ENCRYPTION_KEY` (64 hex
 characters / 32 bytes). Do not put keys or raw Link Tokens in Git, UI builds,
 connection metadata or logs. Apply migration 025 before enabling the lifecycle
-RPC; keep the encryption key separately backed up. Provider financial imports and
-refresh scheduling remain separate slices. **Mi cuenta → Conexiones bancarias**
+RPC; keep the encryption key separately backed up. The API's explicit
+`banking.importInitial` command imports the available snapshot; bank refresh,
+scheduling and UI import controls remain separate slices. **Mi cuenta → Conexiones bancarias**
 (`/conexiones-bancarias`) supports authorization, access checks, relink and disconnect
 without importing financial data. `/cuentas` retains stored balances and links to
-those settings. See the [Fintoc linking guide](../../apps/api/src/banking/linking/README.md).
+those settings. See the [Fintoc linking guide](../../apps/api/src/banking/linking/README.md)
+and [first-import mapping/limits](../../apps/api/src/banking/fintoc/README.md).
 
 App-local dotenv files are independent of root Compose `.env`. See
 [`apps/api/.env.example`](../../apps/api/.env.example),

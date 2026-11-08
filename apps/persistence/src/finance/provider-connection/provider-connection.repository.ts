@@ -1,4 +1,5 @@
 import {
+  type BeginProviderSync,
   type CommitProviderSync,
   ProviderAccountRecordSchema,
   ProviderSyncFactsSchema,
@@ -36,7 +37,18 @@ export class ProviderConnectionRepository {
     const row = await this.db
       .selectFrom("finance.provider_connection as c")
       .innerJoin("finance.provider as p", "p.id", "c.providerId")
-      .select(["c.id", "c.status", "p.identifier"])
+      .select([
+        "c.id",
+        "c.status",
+        "c.credentialVersion",
+        "c.disconnectedAt",
+        "p.identifier",
+      ])
+      .select(
+        sql<boolean>`${sql.ref("c.encryptedCredential")} is not null`.as(
+          "hasCredential",
+        ),
+      )
       .where("c.id", "=", id)
       .executeTakeFirst();
     if (!row)
@@ -56,11 +68,32 @@ export class ProviderConnectionRepository {
       .executeTakeFirstOrThrow();
   }
 
-  async begin(connectionId: string, provider: string) {
+  async begin({
+    connectionId,
+    provider,
+    expectedCredentialVersion,
+  }: BeginProviderSync) {
     const connection = await this.connection(connectionId);
 
     if (connection.identifier !== provider)
       invalid("Connector does not match this connection");
+
+    if (
+      expectedCredentialVersion !== undefined &&
+      connection.credentialVersion !== expectedCredentialVersion
+    )
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "Bank credentials changed before sync",
+      });
+
+    if (
+      provider === "fintoc" &&
+      (expectedCredentialVersion === undefined ||
+        !connection.hasCredential ||
+        connection.disconnectedAt)
+    )
+      invalid("An active owned credential snapshot is required");
 
     if (connection.status !== "active")
       invalid("Banking connection needs relinking");

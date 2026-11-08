@@ -44,14 +44,14 @@ inferred Promises; there is no cross-app source import or HTTP/Observable adapte
 ## Public surface
 
 The [generated public router](../../libs/rpc-api/src/generated/server.ts) currently
-contains **63 procedures**. Prefix each method below with its router name.
+contains **64 procedures**. Prefix each method below with its router name.
 
 | Router | Methods | Responsibility |
 | --- | --- | --- |
 | `auth` | `config`, `loginMock`, `principal` | Provider selection, local mock login, verified principal |
 | `onboarding` | `state`, `finish` | Owned optional-guide state and terminal completion |
 | `accounts` | `list` | Active accounts, balances and freshness |
-| `banking` | `configuration`, `connections`, `createLinkIntent`, `completeLink`, `checkConnection`, `disconnect` | Owned Fintoc connection lifecycle; no financial import/refresh |
+| `banking` | `configuration`, `connections`, `createLinkIntent`, `completeLink`, `checkConnection`, `disconnect`, `importInitial` | Owned Fintoc lifecycle and explicit normalized first import; no incremental/scheduled refresh |
 | `transactions` | `recent`, `list`, `detail`, `setInternalMovement`, `expenseAdjustments`, `setExpenseAdjustment`, `removeExpenseAdjustment` | History, owned source/classification detail, internal-status corrections and purchase-attributed recoveries |
 | `objectives` | `list`, `progress`, `budgetContributions`, `budget`, `budgetHistory`, `createBudget`, `updateBudget`, `archiveBudget`, `savingsGoal`, `savingsGoalHistory`, `createSavingsGoal`, `updateSavingsGoal`, `archiveSavingsGoal`, `savingsProgress`, `savingsContributions` | Revisioned management/history, spending and savings progress/evidence |
 | `summaries` | `monthly`, `comparison`, `spendingContributions` | Financial summary, equivalent-period comparison and purchase-level spending evidence |
@@ -104,6 +104,15 @@ API-internal workflow; these procedures are not public bank-linking endpoints.
 lifecycle commands. Its secret projection is private-only; public `banking` output
 contains no link tokens/ciphertext/provider payloads. See the
 [linking contract and recovery rules](../../apps/api/src/banking/linking/README.md).
+
+`banking.importInitial({ id })` imports current accounts and the last 90 Santiago
+calendar days (including today) through shared owned ingestion. Completion returns
+the requested window and a bounded mapping/exclusion report, not raw payloads
+or private checkpoints. It does not cause a bank refresh. `providerSync.begin`
+accepts `expectedCredentialVersion`, required for Fintoc: a mismatched snapshot
+rejects before attempt metadata/provider calls. Other neutral fixture connectors
+without stored credentials may omit it. See the
+[first-import mapping and limits](../../apps/api/src/banking/fintoc/README.md).
 
 Read contracts follow the [purpose-shaped persistence read pattern](persistence-reads.md).
 Select the projection actually needed: declarations/expectations, receipt facts,

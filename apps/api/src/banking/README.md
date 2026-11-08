@@ -1,8 +1,9 @@
 # Banking connector boundary (LAZ-47)
 
-Current implementation: provider-neutral contracts, owned ingestion and the
-[Fintoc linking/lifecycle backend](linking/README.md) (LAZ-49). Financial mapping,
-first import and refresh orchestration remain separate unfinished slices.
+Current implementation: provider-neutral contracts, owned ingestion, the
+[Fintoc linking/lifecycle backend](linking/README.md) (LAZ-49), and the explicit
+[Fintoc first snapshot import](fintoc/README.md) (LAZ-51). Refresh/recovery and
+UI import/refresh controls remain separate unfinished slices.
 See the [database model](../../../../docs/technical/database-model.md),
 [private RPC/RLS](../../../../docs/technical/persistence-security.md) and
 [RPC inventories](../../../../docs/technical/rpc-contracts.md).
@@ -24,7 +25,7 @@ See the [database model](../../../../docs/technical/database-model.md),
 
 ## Handoff
 
-Fixtures exercise this boundary without a provider SDK. Kysely tables in `apps/persistence/src/finance` store connection-scoped identities, nullable balances/status, date precision/coverage, provenance, tombstones and sync revisions under user RLS. The API interprets factual aggregates; removed/unresolved movements cannot count as confirmed spending/income. Linking, provider-specific mapping, refresh reporting and savings eligibility remain separate capabilities. Refund/reimbursement allocations are explicit user commands, never inferred by this connector; their [original-purchase attribution rules](../../../../docs/technical/rpc-contracts.md#expense-recovery-semantics) leave provider facts and balances unchanged.
+Fixtures exercise this boundary without a provider SDK. Kysely tables in `apps/persistence/src/finance` store connection-scoped identities, nullable balances/status, date precision/coverage, provenance, tombstones and sync revisions under user RLS. The API interprets factual aggregates; removed/unresolved movements cannot count as confirmed spending/income. Linking, provider-specific mapping, refresh reporting and savings eligibility remain distinct capabilities. Refund/reimbursement allocations are explicit user commands, never inferred by this connector; their [original-purchase attribution rules](../../../../docs/technical/rpc-contracts.md#expense-recovery-semantics) leave provider facts and balances unchanged.
 
 ## Owned ingestion (LAZ-50)
 
@@ -52,7 +53,7 @@ No source booking, amount, balance, relationship or tag is rewritten.
 
 | Step | Private procedure | What happens |
 | --- | --- | --- |
-| Begin | `providerSync.begin` | Verify owned connection/provider/status and obtain revision/checkpoint |
+| Begin | `providerSync.begin` | Verify owned connection/provider/status and credential snapshot version, then obtain revision/checkpoint |
 | Fetch | None | API calls/validates the connector outside SQL, retaining the committed checkpoint throughout pagination |
 | Snapshot | `providerSync.facts` | Repeatable-read bounded relevant facts/rules and canonical fingerprint; POST override supports large scope keys |
 | Prepare | None | API computes owned-pair evidence, booking conversion, corrections and tag proposals |
@@ -82,10 +83,14 @@ financial import. Begin/failure attempt metadata is separate from the atomic
 financial commit, so "no partial writes" does not mean no attempt was recorded.
 
 Connector retryability and `retryAfter` are reported facts, not an implemented
-background scheduler. Synchronization still has no public/scheduled refresh trigger.
-The separate authenticated `banking` lifecycle RPC never starts financial imports
-or refreshes. A `fintoc` catalog row or fixture is not a financial adapter, and a
-private review read is not a delivered review-resolution UI.
+background scheduler. `banking.importInitial` explicitly imports current Fintoc
+accounts and a disclosed 90-day partial movement window through this service. Linking/access-check commands still never
+start financial imports, and no scheduled/incremental refresh trigger is shipped.
+The first import binds the owned decrypted credential's version to `begin`; a
+relink between secret lookup and begin returns `superseded` before provider I/O.
+Fintoc begins without that version are rejected. Later relinks/disconnects continue
+to invalidate facts/commit/failure through the sync revision. A private review read
+is not a delivered review-resolution UI.
 
 ### Verification scope
 

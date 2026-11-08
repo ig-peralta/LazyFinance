@@ -1,7 +1,7 @@
 # Owned Fintoc linking (LAZ-49)
 
-This backend exposes the **connection lifecycle**, not account/movement import or
-refresh scheduling. LAZ-51 owns the normalized adapter and first import; LAZ-48
+This guide covers the **connection lifecycle**, not account/movement import or
+refresh scheduling. LAZ-51 adds the separate [first-import command](../fintoc/README.md); LAZ-48
 owns refresh/recovery. The LAZ-62 UI exposes the available lifecycle subset in
 `/conexiones-bancarias` under **Mi cuenta**, without claiming its remaining refresh
 acceptance is complete. No payment or money-moving Fintoc endpoint is used.
@@ -32,7 +32,7 @@ existing ciphertext unreadable. Managed key rotation is not implemented.
 
 ## Client contract for review
 
-All six procedures require the ordinary accepted user bearer and reject supplied
+All six lifecycle procedures require the ordinary accepted user bearer and reject supplied
 owner IDs. These are public tRPC, not standalone REST endpoints:
 
 1. `banking.configuration()` returns enabled state and public Widget configuration.
@@ -65,7 +65,8 @@ owner IDs. These are public tRPC, not standalone REST endpoints:
 
 The authenticated `/conexiones-bancarias` settings page follows this flow through
 the generated `ApiRouter` client. `/cuentas` separately displays stored balances
-and links to those settings. Financial import/refresh remain explicitly unavailable.
+and links to those settings. Financial import/refresh controls remain unavailable in
+the UI; the separate API `banking.importInitial` command does not run implicitly.
 See the [UI guide](../../../../ui/README.md)
 and [Widget lifetime](../../../../../docs/technical/ui-data-lifecycle.md#explicit-banking-authorization).
 

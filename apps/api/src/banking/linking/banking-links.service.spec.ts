@@ -10,8 +10,8 @@ import {
 import { testEnvironment } from "../../../tests/fixtures/environment";
 import type { RpcStubs } from "../../../tests/fixtures/rpc-stubs";
 import type { PersistenceClient } from "../../persistence/persistence.client";
-import { FintocClient } from "../fintoc/fintoc-client";
-import { FintocCredentials } from "../fintoc/fintoc-credentials";
+import { FintocClient } from "../fintoc/client/fintoc-client";
+import { FintocCredentials } from "../fintoc/credentials/fintoc-credentials";
 import { BankingLinksService } from "./banking-links.service";
 
 type Store = RpcStubs<ReturnType<PersistenceClient["user"]>["providerLinks"]>;

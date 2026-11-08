@@ -3,7 +3,7 @@ import {
   fintocEnvironment,
   fintocIntent,
   fintocLink,
-} from "../../../tests/fixtures/banking/fintoc";
+} from "../../../../tests/fixtures/banking/fintoc";
 import { FintocClient } from "./fintoc-client";
 
 describe("Fintoc aggregation-only transport", () => {

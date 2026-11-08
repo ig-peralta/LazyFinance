@@ -201,6 +201,7 @@ or generic transaction scripts.
 | Savings target create/edit/archive | Check related tags and expected version; retain immutable revisions and current selection; record archival cutoff | Supported goal dates and current-definition allocation meaning; never synthesize contributions |
 | Internal-movement correction | Lock owned nonremoved movement; save override/effective state and related conflict acknowledgements atomically | Exclude internal movements from spending/income; retain receipts/recoveries for eligibility re-evaluation, independently of tag names |
 | Prepared rule application | Re-read candidate fingerprint, check eligibility, persist decisions/events | Match the bounded candidate page |
+| Provider sync begin | Check owned provider/status and captured credential version under the user write lock before attempt metadata | Resolve/decrypt owned credentials; perform no provider calls until begin succeeds |
 | Provider sync commit | Check revision/fingerprint; persist facts, tombstones, conflicts, decisions/events and checkpoint together | Fetch/validate all pages and prepare classifications |
 
 Prepared fingerprints are based on normalized, canonically sorted wire facts and

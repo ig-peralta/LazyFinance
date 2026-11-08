@@ -45,9 +45,11 @@ ignored `apps/api/.env`, and configure:
 The API needs the private RPC URL/signing key, not database configuration.
 App-local dotenv files are not the root Compose `.env`.
 The authenticated `banking` RPC supports owner-bound Fintoc linking, access checks,
-relink and disconnect. It does not import or refresh financial data or add the
-bank-management UI. See the [LAZ-49 review contract](src/banking/linking/README.md)
-for migration, Widget handoff, credential storage and ambiguous-error recovery.
+relink, disconnect and an explicit `importInitial` snapshot command. The UI exposes
+the lifecycle subset; import/refresh controls and refresh recovery remain separate.
+See the [linking contract](src/banking/linking/README.md) for Widget/credential
+handling and the [first-import guide](src/banking/fintoc/README.md) for conservative
+financial mappings, supported products and atomic import limits.
 
 `pnpm --filter api dev` starts watch mode. `build`, `typecheck` and `test` are also
 available. Public auth procedures are `auth.config` and `auth.loginMock`; all

@@ -35,7 +35,7 @@ code cannot import private schemas, signing code, Nest or database implementatio
 | PostgreSQL | Exact stored facts, constraints/keys, related-owner RLS and transaction atomicity | Firebase verification, product authorization for external MCP clients |
 
 Public/private tRPC are separate surfaces, not two routes to the same router.
-The public generated library contains 63 procedures; the private library contains
+The public generated library contains 64 procedures; the private library contains
 71, including bootstrap-only `identity.resolve`. `/mcp` exposes eleven authenticated
 read-only tools through the API's domain services, not direct persistence queries.
 Ordinary HTTP remains only for API `GET /`, persistence `GET /health` and MCP
@@ -145,8 +145,9 @@ Conexiones bancarias** exposes the owned
 hosted authorization, access checks, same-identity relink and confirmed disconnect
 with pending cleanup recovery. Its cancellable Widget flow waits for backend
 confirmation and is separate from stored balances/freshness; access is not proof
-of current financial data. The financial adapter/import and refresh remain separate
-work. Accounts and onboarding link to connection settings without requiring guide
+of current financial data. The API's explicit [first snapshot import](../../apps/api/src/banking/fintoc/README.md)
+maps available Fintoc facts through shared atomic ingestion; refresh/recovery and
+UI import/refresh controls remain separate work. Accounts and onboarding link to connection settings without requiring guide
 completion. LAZ-62 stays open for its refresh/recovery acceptance, and this UI subset
 does not close the LAZ-30 parent. Conversational agents and external MCP authorization
 remain separate.

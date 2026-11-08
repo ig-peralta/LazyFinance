@@ -4,6 +4,7 @@ import {
   MAX_SYNC_RECORDS,
   type ProviderSyncFacts,
   type ProviderSyncOutcome,
+  type ProviderSyncState,
 } from "@lazyfinance/contracts/internal";
 import { Injectable } from "@nestjs/common";
 import { PersistenceClient } from "../../persistence/persistence.client";
@@ -27,12 +28,23 @@ export class BankingIngestionService {
     userId: string,
     connectionId: string,
     connector: BankingConnector,
+    expectedCredentialVersion?: number,
   ): Promise<ProviderSyncOutcome> {
     const client = this.persistence.user(userId);
-    const state = await client.providerSync.begin.mutate({
-      connectionId,
-      provider: connector.provider,
-    });
+    let state: ProviderSyncState;
+    try {
+      state = await client.providerSync.begin.mutate({
+        connectionId,
+        provider: connector.provider,
+        ...(expectedCredentialVersion === undefined
+          ? {}
+          : { expectedCredentialVersion }),
+      });
+    } catch (error) {
+      if (persistenceException(error)?.getStatus() === 409)
+        return { status: "superseded" };
+      throw error;
+    }
     const fetched = await this.fetchPages(
       connector,
       connectionId,

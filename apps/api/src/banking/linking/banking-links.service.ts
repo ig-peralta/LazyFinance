@@ -10,8 +10,8 @@ import {
   FintocClient,
   FintocFailure,
   type FintocLink,
-} from "../fintoc/fintoc-client";
-import { FintocCredentials } from "../fintoc/fintoc-credentials";
+} from "../fintoc/client/fintoc-client";
+import { FintocCredentials } from "../fintoc/credentials/fintoc-credentials";
 
 function providerError(error: unknown): never {
   if (error instanceof FintocFailure)

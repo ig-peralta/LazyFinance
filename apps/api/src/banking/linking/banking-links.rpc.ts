@@ -2,6 +2,7 @@ import {
   BankingConfigurationSchema,
   BankingConnectionSchema,
   BankingConnectionsSchema,
+  BankingImportResultSchema,
   BankingIntentSchema,
   type CompleteBankingIntent,
   CompleteBankingIntentSchema,
@@ -12,11 +13,15 @@ import {
 } from "@lazyfinance/contracts";
 import { Ctx, Input, Mutation, Query, Router } from "nestjs-trpc";
 import { type ApiRequestContext, rpcUser } from "../../rpc/context";
+import { FintocImportService } from "../fintoc/import/fintoc-import.service";
 import { BankingLinksService } from "./banking-links.service";
 
 @Router({ alias: "banking" })
 export class BankingLinksRpc {
-  constructor(private readonly service: BankingLinksService) {}
+  constructor(
+    private readonly service: BankingLinksService,
+    private readonly imports: FintocImportService,
+  ) {}
 
   @Query({
     input: RpcEmptySchema,
@@ -79,5 +84,14 @@ export class BankingLinksRpc {
   })
   disconnect(@Ctx() ctx: ApiRequestContext, @Input() input: { id: string }) {
     return this.service.disconnect(rpcUser(ctx), input.id);
+  }
+
+  @Mutation({
+    input: RpcIdSchema,
+    output: BankingImportResultSchema,
+    meta: { auth: "user" },
+  })
+  importInitial(@Ctx() ctx: ApiRequestContext, @Input() input: { id: string }) {
+    return this.imports.importInitial(rpcUser(ctx), input.id);
   }
 }

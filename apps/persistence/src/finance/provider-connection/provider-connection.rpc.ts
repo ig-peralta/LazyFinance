@@ -1,4 +1,5 @@
 import {
+  type BeginProviderSync,
   BeginProviderSyncSchema,
   type CommitProviderSync,
   CommitProviderSyncSchema,
@@ -25,10 +26,8 @@ export class ProviderConnectionRpc {
     output: ProviderSyncStateSchema,
     meta: { context: "user" },
   })
-  async begin(@Input() input: { connectionId: string; provider: string }) {
-    return wireValue(
-      await this.repository.begin(input.connectionId, input.provider),
-    );
+  async begin(@Input() input: BeginProviderSync) {
+    return wireValue(await this.repository.begin(input));
   }
 
   @Query({
