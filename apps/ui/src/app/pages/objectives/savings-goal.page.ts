@@ -8,10 +8,13 @@ import {
 } from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
 import { ActivatedRoute, RouterLink } from "@angular/router";
+import { MonthSchema } from "@lazyfinance/contracts";
 import { formatClp } from "../../../utils/currency";
 import { formatDate } from "../../../utils/date";
+import { currentMonth } from "../../../utils/month";
 import { RpcClient } from "../../core/rpc/rpc-client";
 import { createScopedCommand } from "../../core/rpc/scoped-command";
+import { SavingsMeasure } from "../../features/objectives/savings-measure";
 import { createCursorTrail } from "../../features/pagination/cursor-trail";
 import { Icon } from "../../shared/ui/icon";
 import { objectivePeriod } from "./objective-form";
@@ -19,7 +22,7 @@ import { SavingsEditor } from "./savings-editor";
 
 @Component({
   selector: "savings-goal-page",
-  imports: [RouterLink, Icon, SavingsEditor],
+  imports: [RouterLink, Icon, SavingsEditor, SavingsMeasure],
   templateUrl: "./savings-goal.page.html",
 })
 export class SavingsGoalPage {
@@ -67,6 +70,13 @@ export class SavingsGoalPage {
   protected readonly money = formatClp;
   protected readonly date = (value: string) => formatDate(new Date(value));
   protected readonly period = objectivePeriod;
+  protected readonly month = signal(currentMonth());
+  protected readonly maxMonth = currentMonth();
+
+  protected selectMonth(value: string) {
+    if (MonthSchema.safeParse(value).success && value <= this.maxMonth)
+      this.month.set(value);
+  }
 
   constructor() {
     effect(() => {

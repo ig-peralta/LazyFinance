@@ -19,6 +19,9 @@
   <dashboard-summary />
   <dashboard-comparison />
   <dashboard-budget-progress />
+  <div class="dashboard-savings">
+    @if (firstSavings(); as goal) { <savings-measure [goal]="goal" [month]="objectives.month()" [compact]="true" /> }
+    @else { <section class="panel" style="height:100%"><div class="panel-heading"><h2>Metas de ahorro</h2><app-icon name="target" /></div>@if (objectives.objectives.isLoading()) { <p role="status" class="notice">Cargando tus metas…</p> } @else if (objectives.objectives.error()) { <p class="notice danger" role="alert">No pudimos cargar tus metas. <button type="button" (click)="objectives.objectives.reload()">Reintentar</button></p> } @else { <div class="empty-state"><span class="empty-icon"><app-icon name="target" /></span><h3>Un propósito para lo que apartas</h3><p>Un fondo de calma, un viaje, tu próximo proyecto. Empieza con una meta y mira sus aportes reales, no un progreso inventado.</p><a class="button soft" routerLink="/metas">Crear mi primera meta <app-icon name="arrow" /></a></div> }</section> }
+  </div>
   <dashboard-activity />
-  <dashboard-objective />
 </div>

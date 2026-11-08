@@ -56,6 +56,13 @@ bank coverage. Changed revisions require reopening the current progress selectio
 version edit/archive. Savings edits restate the current allocation view immediately
 rather than changing next period's spending limit. Archival preserves direct
 detail/history and does not move cash or generate contributions.
+The goal detail and one featured dashboard goal use backend-measured savings
+allocations, remaining target, raw signed percentage and paginated evidence.
+Negative/over-target values remain visible; bars alone are bounded visually.
+Pending movements, partial/unknown history and target-only/error fallbacks are
+explicit. Evidence retains its booking cutoff and rejects mismatched goal
+versions; it is current-fact evidence, not historical time travel. Dashboard tag
+decisions invalidate savings allocations as well as spending/budget reads.
 
 Detailed references: [session/resource lifetimes](../../docs/technical/ui-data-lifecycle.md),
 [provider-neutral identity](../../docs/technical/identity.md),

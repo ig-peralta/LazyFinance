@@ -309,6 +309,7 @@ export function createRpcFetch(overrides: RpcHandlers = {}) {
     "transactions.detail": () => transactionDetail,
     "objectives.list": () => [],
     "objectives.progress": () => [],
+    "objectives.savingsProgress": () => savingsProgress,
     "income.sources": () => [],
     "income.summary": () => incomeSummary,
     "summaries.monthly": () => emptySummary,

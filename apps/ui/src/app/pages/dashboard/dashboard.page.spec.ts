@@ -22,7 +22,7 @@ describe("DashboardPage data ownership", () => {
       "Hola, Camila Rojas",
       "Cuentas",
       "Tus últimos movimientos",
-      "Presupuestos y metas",
+      "Metas de ahorro",
       "Gastos por etiqueta",
       "Comparación de gastos",
       "Avance de presupuestos",

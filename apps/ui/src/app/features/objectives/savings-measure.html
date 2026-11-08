@@ -1,0 +1,32 @@
+<section class="panel" aria-label="Avance medido de ahorro">
+  <div class="panel-heading"><div><p class="eyebrow">LO QUE HAS IDO APARTANDO</p><h2><a class="text-link" style="font:inherit" [routerLink]="['/metas', goal().id]">{{ goal().name }}</a></h2><p class="panel-subtitle">Meta de ahorro · asignaciones registradas</p></div><span class="record-icon"><app-icon name="target" /></span></div>
+  @if (progress.isLoading()) { <p role="status" class="notice">Midiendo aportes y retiros…</p> }
+  @else if (progress.error()) { <div class="notice warning" role="alert"><strong>Solo objetivo: {{ money(goal().amount) }}.</strong><p>No pudimos medir el avance para este período. No mostramos un porcentaje ni asumimos aportes cero.</p><button type="button" (click)="progress.reload()">Reintentar medición</button></div> }
+  @else if (progress.hasValue()) { @let data = progress.value();
+    <p class="metric-label">Asignación neta registrada</p><strong class="metric-value">{{ money(data.netContributions) }} <span class="record-meta">de {{ money(data.goal.amount) }}</span></strong>
+    <div class="progress-track" role="img" [attr.aria-label]="data.percentage + '% del objetivo, asignación neta registrada'"><div class="progress-fill" [style.width.%]="width(data.netContributions, data.goal.amount)"></div></div>
+    <div class="record-row"><strong class="record-title">{{ data.percentage.replace('.', ',') }}%</strong><span class="record-meta">Restante: {{ money(data.remaining) }}</span></div>
+    <p class="record-meta" style="margin-top:14px">Aportes {{ money(data.contributions) }} ({{ data.contributionCount }}) − retiros {{ money(data.withdrawals) }} ({{ data.withdrawalCount }}).</p>
+    <p class="record-meta">{{ data.period === 'monthly' ? 'Este mes reinicia su asignación' : data.period === 'yearly' ? 'Acumulado del año hasta el mes seleccionado' : data.period === 'fixed' ? 'Fechas configuradas, hasta el mes seleccionado' : 'Acumulado de todos los registros seleccionados disponibles' }}.</p>
+    @if (!compact()) { <p class="field-hint" style="margin-top:9px">Desde {{ data.tracking.start ? date(data.tracking.start) : 'el historial disponible' }} → {{ date(data.tracking.end) }} (fin excluido). Corte de registro: {{ data.tracking.asOf }}.</p> }
+    @if (data.pendingCount) { <p class="notice warning">{{ data.pendingCount }} movimientos seleccionados están por revisar y no se aplican como aportes ni retiros.</p> }
+    @if (uncertain()) { <p class="notice warning">Cobertura parcial o desconocida. Es una medida de los registros disponibles, no garantía de todo tu ahorro. @if (!data.historyCoverage.length) { No hay cobertura de cuentas informada. }</p> }
+    @if (data.tracking.archivedAt) { <p class="notice">Meta archivada: asignaciones limitadas al corte {{ data.tracking.archivedAt }}.</p> }
+    @if (!compact()) { <p class="field-hint" style="margin-top:14px">Abonos con etiquetas seleccionadas en cuentas de efectivo suman; cargos restan, incluso transferencias internas. Se excluyen tarjetas, retirados y hechos fuera de la ventana. No es saldo, ingreso ni riqueza nueva; metas superpuestas no se suman.</p> }
+    <div class="button-row" style="margin-top:18px">@if (compact()) { <a class="text-link" [routerLink]="['/metas', goal().id]">Ver meta, período y evidencia →</a> } @else { <button class="button small" type="button" (click)="showEvidence.set(!showEvidence())">{{ showEvidence() ? 'Ocultar aportes y retiros' : 'Ver aportes y retiros' }}</button> }<button class="icon-button" type="button" aria-label="Actualizar avance de ahorro" (click)="progress.reload()"><app-icon name="refresh" /></button></div>
+    @if (showEvidence()) {
+      <div style="margin-top:22px;padding-top:20px;border-top:1px solid var(--line)"><h3 class="record-title">Evidencia de la asignación</h3>
+        @if (evidence.isLoading()) { <p role="status" class="notice">Cargando evidencia…</p> }
+        @else if (evidence.error()) { <p class="notice danger" role="alert">No pudimos cargar la evidencia. La versión pudo cambiar; actualiza la medición antes de comparar. <button type="button" (click)="progress.reload()">Actualizar medición</button></p> }
+        @else if (evidence.hasValue()) { @let page = evidence.value();
+          @if (page.goalVersion !== data.goal.version) { <p class="notice warning" role="alert">La meta cambió entre lecturas. <button type="button" (click)="progress.reload()">Recargar la medición y su evidencia</button></p> }
+          @else {
+            <ul class="record-list" style="margin-top:16px">@for (item of page.items; track item.id) { <li><div class="record-row"><div><a class="record-title text-link" [routerLink]="['/movimientos', item.id]">{{ item.merchant || item.description || 'Movimiento' }}</a><p class="record-meta">{{ date(item.bookedAt) }} · {{ item.tag?.name || 'Sin etiqueta' }}</p></div><div style="text-align:right"><strong class="record-amount">{{ money(item.amount) }}</strong><p class="record-meta">Importe bancario</p></div></div><p class="record-meta">Efecto: @if (item.effect.status === 'applied') { {{ item.effect.kind === 'contribution' ? 'aporte' : 'retiro' }} {{ money(item.effect.amount) }} } @else if (item.effect.status === 'pending') { pendiente de revisión · no aplicado } @else { excluido · no aplicado }</p></li> } @empty { <li><p class="record-meta">No hay evidencia en esta página. No implica un historial bancario completo.</p></li> }</ul>
+            <div class="pagination"><span>Página {{ trail.number() }} · no se suman páginas</span><div class="button-row"><button class="button small" type="button" [disabled]="trail.number() === 1" (click)="trail.previous()">Anterior</button><button class="button small" type="button" [disabled]="!page.pageInfo.hasMore" (click)="next()">Siguiente</button></div></div>
+          }
+        }
+        <p class="field-hint" style="margin-top:15px">Mismo corte y selección de versión, con hechos actuales. Ni las páginas ni el mes reconstruyen lo que se sabía antes de una corrección.</p>
+      </div>
+    }
+  }
+</section>

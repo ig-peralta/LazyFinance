@@ -20,6 +20,13 @@ body {
 }
 
 /* Authenticated workspace only: the public landing keeps its own visual language. */
+.dashboard-grid > .dashboard-savings {
+  grid-column: span 6;
+  min-width: 0;
+}
+.dashboard-savings savings-measure > section {
+  height: 100%;
+}
 .detail-facts {
   margin: 0;
 }
@@ -881,12 +888,9 @@ body {
   grid-column: span 4;
 }
 .dashboard-grid > dashboard-budget-progress {
-  grid-column: span 7;
+  grid-column: span 6;
 }
 .dashboard-grid > dashboard-activity {
-  grid-column: span 5;
-}
-.dashboard-grid > dashboard-objective {
   grid-column: 1 / -1;
 }
 .dashboard-grid > * > section {
@@ -921,9 +925,6 @@ body {
 }
 .dashboard-grid dashboard-account h2 {
   font-size: 18px;
-}
-.dashboard-grid dashboard-objective {
-  display: none;
 }
 .dashboard-grid dashboard-activity li {
   padding: 16px 12px;
@@ -990,8 +991,7 @@ body {
   }
   .dashboard-grid > dashboard-summary,
   .dashboard-grid > dashboard-comparison,
-  .dashboard-grid > dashboard-budget-progress,
-  .dashboard-grid > dashboard-activity {
+  .dashboard-grid > dashboard-budget-progress {
     grid-column: span 6;
   }
   .split-layout {
@@ -1067,9 +1067,6 @@ body {
   .dashboard-grid > * {
     display: block;
     margin-bottom: 20px;
-  }
-  .dashboard-grid > dashboard-objective {
-    display: none;
   }
   .form-grid {
     grid-template-columns: 1fr;
