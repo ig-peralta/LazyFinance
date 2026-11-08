@@ -1,5 +1,11 @@
 import { z } from "zod";
 import { BudgetAmountSchema } from "../objectives/budget-management.schema";
+import {
+  SavingsEvidenceRecordSchema,
+  SavingsHistoryCoverageSchema,
+  SavingsTrackingSchema,
+} from "../objectives/savings-progress.schema";
+import { CursorPageInputSchema, cursorPageSchema } from "../pagination";
 import { BudgetBoundarySchema } from "./objectives";
 
 export const SavingsWriteDefinitionSchema = z
@@ -42,3 +48,38 @@ export type SavingsWriteDefinition = z.infer<
 >;
 export type CreateSavingsCommand = z.infer<typeof CreateSavingsCommandSchema>;
 export type UpdateSavingsCommand = z.infer<typeof UpdateSavingsCommandSchema>;
+
+export const SavingsReadSchema = z.strictObject({
+  id: z.uuid(),
+  expectedVersion: z.number().int().positive(),
+  start: BudgetBoundarySchema.nullable(),
+  end: BudgetBoundarySchema,
+  asOf: z.iso.datetime(),
+});
+export const SavingsEvidenceReadSchema = SavingsReadSchema.extend(
+  CursorPageInputSchema.shape,
+);
+export const SavingsGroupsSchema = z
+  .array(
+    z.object({
+      accountType: z.enum(["checking", "savings"]),
+      type: z.enum(["debit", "credit"]),
+      reviewStatus: z.enum(["clear", "needs_review"]),
+      amount: z.string(),
+      count: z.number().int().nonnegative(),
+    }),
+  )
+  .max(8);
+export const SavingsFactsSchema = z.object({
+  groups: SavingsGroupsSchema,
+  tracking: SavingsTrackingSchema,
+  historyCoverage: SavingsHistoryCoverageSchema,
+});
+export const SavingsEvidenceRecordsSchema = cursorPageSchema(
+  SavingsEvidenceRecordSchema,
+).extend({
+  tracking: SavingsTrackingSchema,
+  goalVersion: z.number().int().positive(),
+});
+export type SavingsRead = z.infer<typeof SavingsReadSchema>;
+export type SavingsEvidenceRead = z.infer<typeof SavingsEvidenceReadSchema>;

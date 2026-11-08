@@ -62,6 +62,12 @@ provider pages and generated recurrence dates are not persisted relations.
   independently from the purchase window/`asOf`, so a later refund can restate an
   earlier period. This is a cutoff over current facts, not historical time travel
   through edited/deleted decisions or provider corrections. Both joins use RLS.
+- **Savings allocations:** `savingsFacts` groups selected, non-removed cash movements
+  by account type, direction and review state, alongside account history coverage.
+  `savingsEvidence` uses the same movement selection and exact bounds in a separate
+  page projection. Both reads use repeatable-read snapshots, check the expected
+  goal version and intersect configured/archive bounds. The API interprets signed
+  sums and pending review states through the shared savings eligibility policy.
 
 Use named typed procedures, not arbitrary SQL/filter expressions over RPC. The
 API injects the single `PersistenceClient` directly; no per-domain transport

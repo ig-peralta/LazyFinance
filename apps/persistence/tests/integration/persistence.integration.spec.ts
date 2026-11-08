@@ -269,7 +269,7 @@ describe.skipIf(!ownerUrl)(
           .filter((name) => !name.startsWith("failure."))
           .sort(),
       ).toEqual(expected.sort());
-      expect(expected).toHaveLength(52);
+      expect(expected).toHaveLength(54);
 
       for (const name of expected)
         expect(procedures[name]._def.meta).toMatchObject({

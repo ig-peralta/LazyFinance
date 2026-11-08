@@ -1,3 +1,4 @@
+import type { SavingsEffect } from "@lazyfinance/contracts";
 import type {
   ProviderAccountRecord,
   TransactionRecord,
@@ -17,20 +18,29 @@ export interface SavingsWindow {
   asOf: string;
 }
 
-export type SavingsEffect =
-  | { status: "applied"; kind: "contribution" | "withdrawal"; amount: string }
-  | { status: "pending"; reason: "movement_review" }
-  | {
-      status: "excluded";
-      reason:
-        | "unselected_tag"
-        | "non_cash_account"
-        | "removed"
-        | "outside_window";
-    };
+export function savingsCashEffect(
+  movement: Pick<
+    SavingsMovement,
+    "accountType" | "reviewStatus" | "amount" | "type"
+  >,
+): SavingsEffect {
+  if (movement.accountType === "credit_card")
+    return { status: "excluded", reason: "non_cash_account" };
+  if (movement.reviewStatus === "needs_review")
+    return { status: "pending", reason: "movement_review" };
+  const amount = toCents(movement.amount);
+  const isDebit = amount < 0n;
+  if (amount === 0n || isDebit !== (movement.type === "debit"))
+    throw new Error("Savings movement amount disagrees with its direction");
+  return {
+    status: "applied",
+    kind: isDebit ? "withdrawal" : "contribution",
+    amount: fromCents(amount),
+  };
+}
 
 /**
- * LAZ-35's executable eligibility rule, not a progress endpoint or history reader.
+ * Shared eligibility policy for measured savings and evidence.
  * Inputs must already be owned, normalized facts. A tag selects a signed cash
  * allocation; internal status, receipt status and history coverage are not gates.
  */
@@ -52,17 +62,5 @@ export function savingsEffect(
     compareObjectiveBoundaries(movement.bookedAt, window.asOf) > 0
   )
     return { status: "excluded", reason: "outside_window" };
-  if (movement.reviewStatus === "needs_review")
-    return { status: "pending", reason: "movement_review" };
-
-  const amount = toCents(movement.amount);
-  const isDebit = amount < 0n;
-  if (amount === 0n || isDebit !== (movement.type === "debit"))
-    throw new Error("Savings movement amount disagrees with its direction");
-
-  return {
-    status: "applied",
-    kind: isDebit ? "withdrawal" : "contribution",
-    amount: fromCents(amount),
-  };
+  return savingsCashEffect(movement);
 }

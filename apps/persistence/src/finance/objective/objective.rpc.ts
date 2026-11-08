@@ -25,6 +25,12 @@ import {
   ObjectiveSpendingFactsSchema,
   type ObjectiveSpendingInput,
   ObjectiveSpendingInputSchema,
+  type SavingsEvidenceRead,
+  SavingsEvidenceReadSchema,
+  SavingsEvidenceRecordsSchema,
+  SavingsFactsSchema,
+  type SavingsRead,
+  SavingsReadSchema,
   type UpdateBudgetCommand,
   UpdateBudgetCommandSchema,
   type UpdateSavingsCommand,
@@ -33,6 +39,7 @@ import {
 import { Input, Mutation, Query, Router } from "nestjs-trpc";
 import { wireValue } from "../../serialization";
 import { SavingsGoalRepository } from "../savings-goal/savings-goal.repository";
+import { SavingsReadRepository } from "../savings-goal/savings-read.repository";
 import { BudgetRepository } from "./budget.repository";
 import { ObjectiveRepository } from "./objective.repository";
 
@@ -42,7 +49,26 @@ export class ObjectiveRpc {
     private readonly repository: ObjectiveRepository,
     private readonly budgets: BudgetRepository,
     private readonly savings: SavingsGoalRepository,
+    private readonly measuredSavings: SavingsReadRepository,
   ) {}
+
+  @Query({
+    input: SavingsReadSchema,
+    output: SavingsFactsSchema,
+    meta: { context: "user", snapshot: true },
+  })
+  async savingsFacts(@Input() input: SavingsRead) {
+    return wireValue(await this.measuredSavings.facts(input));
+  }
+
+  @Query({
+    input: SavingsEvidenceReadSchema,
+    output: SavingsEvidenceRecordsSchema,
+    meta: { context: "user", snapshot: true },
+  })
+  savingsEvidence(@Input() input: SavingsEvidenceRead) {
+    return this.measuredSavings.evidence(input);
+  }
 
   @Query({
     input: IdInputSchema,

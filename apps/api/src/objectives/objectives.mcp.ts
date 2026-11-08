@@ -1,6 +1,10 @@
 import {
   BudgetProgressSchema,
   ObjectiveSummarySchema,
+  SavingsEvidenceInputSchema,
+  SavingsEvidencePageSchema,
+  SavingsProgressInputSchema,
+  SavingsProgressSchema,
 } from "@lazyfinance/contracts";
 import { Ctx, Payload } from "@nestjs/microservices";
 import { McpContext, McpController, Tool } from "@rekog/mcp-nest";
@@ -12,10 +16,50 @@ import {
   readOnlyTool,
 } from "../mcp/mcp.tools";
 import { ObjectivesService } from "./objectives.service";
+import { SavingsProgressService } from "./savings-progress.service";
 
 @McpController()
 export class ObjectivesMcpController {
-  constructor(private readonly objectives: ObjectivesService) {}
+  constructor(
+    private readonly objectives: ObjectivesService,
+    private readonly savings: SavingsProgressService,
+  ) {}
+
+  @Tool({
+    name: "consultar_avance_ahorro",
+    description:
+      "Consulta una meta propia por id: aportes, retiros, asignación neta, restante y porcentaje exactos según movimientos de efectivo etiquetados. No representa saldo bancario, ingresos ni nueva riqueza. Incluye período, corte y cobertura de historia incompleta; las metas con etiquetas compartidas se superponen y no deben sumarse.",
+    parameters: SavingsProgressInputSchema,
+    annotations: {
+      title: "Consultar avance de una meta de ahorro",
+      ...readOnlyTool,
+    },
+    outputSchema: SavingsProgressSchema,
+  })
+  getSavingsProgress(
+    @Payload() input: z.infer<typeof SavingsProgressInputSchema>,
+    @Ctx() ctx: McpContext,
+  ) {
+    return this.savings.progress(mcpUserId(ctx), input);
+  }
+
+  @Tool({
+    name: "consultar_aportes_ahorro",
+    description:
+      "Pagina la evidencia de una meta propia: movimientos etiquetados de cuentas corrientes/ahorro, con aportes, retiros y pendientes de revisión. Usa los mismos cortes y reglas del avance; excluye tarjetas y eliminados. Para continuar conserva id, mes y el asOf de tracking de la página anterior; no sumes páginas como si fueran saldos bancarios.",
+    parameters: SavingsEvidenceInputSchema,
+    annotations: {
+      title: "Consultar evidencia de aportes y retiros",
+      ...readOnlyTool,
+    },
+    outputSchema: SavingsEvidencePageSchema,
+  })
+  getSavingsEvidence(
+    @Payload() input: z.infer<typeof SavingsEvidenceInputSchema>,
+    @Ctx() ctx: McpContext,
+  ) {
+    return this.savings.evidence(mcpUserId(ctx), input);
+  }
 
   @Tool({
     name: "consultar_presupuestos_y_metas",

@@ -44,14 +44,14 @@ inferred Promises; there is no cross-app source import or HTTP/Observable adapte
 ## Public surface
 
 The [generated public router](../../libs/rpc-api/src/generated/server.ts) currently
-contains **47 procedures**. Prefix each method below with its router name.
+contains **49 procedures**. Prefix each method below with its router name.
 
 | Router | Methods | Responsibility |
 | --- | --- | --- |
 | `auth` | `config`, `loginMock`, `principal` | Provider selection, local mock login, verified principal |
 | `accounts` | `list` | Active accounts, balances and freshness |
 | `transactions` | `recent`, `list`, `expenseAdjustments`, `setExpenseAdjustment`, `removeExpenseAdjustment` | Ten-movement preview, cursor-paginated history and explicit purchase-attributed refunds/reimbursements |
-| `objectives` | `list`, `progress`, `budget`, `budgetHistory`, `createBudget`, `updateBudget`, `archiveBudget`, `savingsGoal`, `savingsGoalHistory`, `createSavingsGoal`, `updateSavingsGoal`, `archiveSavingsGoal` | Effective objectives, revisioned budget and savings-target management/history, spending progress |
+| `objectives` | `list`, `progress`, `budget`, `budgetHistory`, `createBudget`, `updateBudget`, `archiveBudget`, `savingsGoal`, `savingsGoalHistory`, `createSavingsGoal`, `updateSavingsGoal`, `archiveSavingsGoal`, `savingsProgress`, `savingsContributions` | Revisioned management/history, spending progress and measured savings/evidence |
 | `summaries` | `monthly`, `comparison` | Financial summary and equivalent-period comparison |
 | `income` | `sources`, `source`, `createSource`, `updateSource`, `archiveSource`, `expectations`, `createExpectation`, `updateExpectation`, `removeExpectation`, `expected`, `receipts`, `confirm`, `clear`, `summary` | Declarations, dated expectations, explicit receipts and calculated summaries |
 | `tags` | `list`, `create`, `suggestions`, `decide`, `reset` | Single-tag classification and explicit no-tag/reset choices |
@@ -64,17 +64,18 @@ financial owner scope. Method schemas in the generated file and
 shapes; counts/tables here are a navigation aid, not a second schema definition.
 
 The API's ordinary `GET /` is a liveness check. `/mcp` is authenticated Streamable
-HTTP exposing seven read-only tools through the same services:
+HTTP exposing nine read-only tools through the same services:
 `consultar_saldos_cuentas`, `consultar_movimientos_recientes`,
 `consultar_presupuestos_y_metas`, `consultar_avance_presupuestos`,
 `consultar_resumen_gastos_mensuales`, `comparar_gastos_mensuales`, and
-`consultar_ingresos`. External-client OAuth, a first-party agent and write tools
+`consultar_ingresos`, `consultar_avance_ahorro`, and `consultar_aportes_ahorro`.
+External-client OAuth, a first-party agent and write tools
 are not implemented by this RPC cutover.
 
 ## Private surface
 
 The [generated private router](../../libs/rpc-persistence/src/generated/server.ts)
-currently contains **52 procedures**. They expose owned facts and authoritative
+currently contains **54 procedures**. They expose owned facts and authoritative
 commands rather than copying public screen calculations into persistence.
 
 | Router | Methods |
@@ -82,7 +83,7 @@ commands rather than copying public screen calculations into persistence.
 | `identity` | `resolve` (bootstrap only) |
 | `accounts` | `listActive` |
 | `transactions` | `recent`, `list`, `aggregates`, `taggedAggregates`, `expenseAdjustments`, `setExpenseAdjustment`, `removeExpenseAdjustment` |
-| `objectives` | `list` (effective definitions/nested tags), `forPeriod`, `spending` (revision-pinned sums/windows), `budget`, `budgetHistory`, `createBudget`, `updateBudget`, `archiveBudget`, `savingsGoal`, `savingsGoalHistory`, `createSavingsGoal`, `updateSavingsGoal`, `archiveSavingsGoal` |
+| `objectives` | `list` (effective definitions/nested tags), `forPeriod`, `spending` (revision-pinned sums/windows), `budget`, `budgetHistory`, `createBudget`, `updateBudget`, `archiveBudget`, `savingsGoal`, `savingsGoalHistory`, `createSavingsGoal`, `updateSavingsGoal`, `archiveSavingsGoal`, `savingsFacts`, `savingsEvidence` |
 | `income` | `sources`, `source`, `createSource`, `updateSource`, `archiveSource`, `expectedFacts`, `receipts`, `facts` |
 | `incomeExpectations` | `list`, `create`, `update`, `remove` |
 | `incomeReceipts` | `confirm`, `clear` |
@@ -109,6 +110,19 @@ archival require an expected version; archived targets cannot be edited. Archiva
 is server-timed/idempotent and preserves detail/history. History uses the shared
 cursor envelope, bound to the goal ID. No command changes bank facts or creates
 contributions; measured progress is a separate read capability.
+
+`savingsProgress` reports exact decimal contributions, positive withdrawal totals,
+signed net allocations, remaining target and an unclamped decimal-string percentage.
+Monthly goals reset each month; yearly goals count January through the selected
+month; lifetime/fixed goals are cumulative through that month, clipped to configured
+dates and archival. `asOf` is an inclusive booking cutoff, not historical time travel
+through edits/provider corrections. Pending-review cash movements are evidence but
+not applied allocations. Partial/unknown account history is disclosed, not a gate.
+Evidence shares the aggregate predicate, pins the goal write version and binds
+continuation to its normalized selection. Continue with the returned `tracking.asOf`.
+Pages are live current-fact reads, not a frozen cross-request database snapshot.
+Overlapping goal selections are not additive; these amounts are not bank balances,
+earned income or new wealth. Credit cards and removed movements never contribute.
 
 Budget creation accepts monthly/yearly calendar-aligned starts or fixed inclusive
 local dates. Started recurring edits take effect next month/year; started fixed

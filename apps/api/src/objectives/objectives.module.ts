@@ -4,10 +4,16 @@ import { ObjectivesMcpController } from "./objectives.mcp";
 import { ObjectivesRpc } from "./objectives.rpc";
 import { ObjectivesService } from "./objectives.service";
 import { SavingsGoalsService } from "./savings-goals.service";
+import { SavingsProgressService } from "./savings-progress.service";
 
 @Module({
   imports: [PersistenceModule],
   controllers: [ObjectivesMcpController],
-  providers: [ObjectivesService, SavingsGoalsService, ObjectivesRpc],
+  providers: [
+    ObjectivesService,
+    SavingsGoalsService,
+    SavingsProgressService,
+    ObjectivesRpc,
+  ],
 })
 export class ObjectivesModule {}

@@ -78,8 +78,15 @@ for partial/split allocations, archived budgets, income conflicts and review sta
 The executable [eligibility policy](src/objectives/savings-policy.ts) and its
 [reconciled fixtures](src/objectives/savings-policy.spec.ts) define **recorded goal
 allocations**, not bank balances, new wealth or earned income. LAZ-35 defines and
-tests the rule; LAZ-42 adds owned target management below. Existing savings reads
-still show targets only until the measured-progress capability is connected.
+tests the rule; LAZ-42 adds owned target management below. LAZ-40 connects measured
+`objectives.savingsProgress` and paginated `savingsContributions` reads, also exposed
+by the read-only MCP tools `consultar_avance_ahorro` / `consultar_aportes_ahorro`.
+They share exact eligibility/cutoffs, disclose pending-review counts and cash-account
+history coverage, preserve negative net observations and never infer a bank balance.
+Monthly/yearly goals reset by calendar period; lifetime/fixed views accumulate
+through the requested month. Evidence continuation retains the returned `asOf`;
+selection/configuration changes require a fresh page. Current-fact corrections may
+restate past views; an observation cutoff is not historical time travel.
 
 Target management uses `objectives.savingsGoal`, `savingsGoalHistory`,
 `createSavingsGoal`, `updateSavingsGoal` and `archiveSavingsGoal`. Lifetime,

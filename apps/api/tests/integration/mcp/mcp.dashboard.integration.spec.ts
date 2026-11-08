@@ -5,6 +5,11 @@ import type {
   MonthlySummary,
   RecentTransaction,
 } from "@lazyfinance/contracts";
+import {
+  type SavingsEvidenceInput,
+  type SavingsProgressInput,
+  SavingsProgressSchema,
+} from "@lazyfinance/contracts";
 import { INestApplication, UnauthorizedException } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { MCP_STRATEGY, McpStrategy } from "@rekog/mcp-nest";
@@ -15,6 +20,7 @@ import { AppModule } from "../../../src/app.module";
 import { AuthService } from "../../../src/auth/auth.service";
 import { IncomeService } from "../../../src/income/income.service";
 import { ObjectivesService } from "../../../src/objectives/objectives.service";
+import { SavingsProgressService } from "../../../src/objectives/savings-progress.service";
 import { PersistenceClient } from "../../../src/persistence/persistence.client";
 import { SummariesService } from "../../../src/summaries/summaries.service";
 import { TransactionsService } from "../../../src/transactions/transactions.service";
@@ -104,6 +110,53 @@ describe("Dashboard MCP tools", () => {
         },
       ],
     ),
+  };
+  const savingsResult = SavingsProgressSchema.parse({
+    goal: {
+      id: "00000000-0000-4000-8000-000000000041",
+      name: "Savings",
+      amount: "100.00",
+      kind: "amount_based",
+      intent: "saving",
+      isRecurring: null,
+      period: null,
+      startDate: null,
+      endDate: null,
+      tags: [],
+      version: 1,
+      revisionId: "00000000-0000-4000-8000-000000000042",
+      archivedAt: null,
+    },
+    month: "2026-09",
+    period: "cumulative",
+    basis: "recorded_allocations",
+    tracking: {
+      start: null,
+      end: "2026-10-01T03:00:00Z",
+      asOf: "2026-09-30T15:00:00Z",
+      archivedAt: null,
+      empty: false,
+    },
+    contributions: "30.00",
+    withdrawals: "10.00",
+    netContributions: "20.00",
+    remaining: "80.00",
+    percentage: "20.00",
+    contributionCount: 1,
+    withdrawalCount: 1,
+    pendingCount: 0,
+    historyCoverage: [],
+  });
+  const savings = {
+    progress: vi.fn(
+      async (_userId: string, _input: SavingsProgressInput) => savingsResult,
+    ),
+    evidence: vi.fn(async (_userId: string, _input: SavingsEvidenceInput) => ({
+      items: [],
+      pageInfo: { hasMore: false, nextCursor: null },
+      tracking: savingsResult.tracking,
+      goalVersion: 1,
+    })),
   };
   const summaries = {
     getMonthlyForUser: vi.fn(
@@ -218,6 +271,8 @@ describe("Dashboard MCP tools", () => {
       .useValue(transactions)
       .overrideProvider(ObjectivesService)
       .useValue(objectives)
+      .overrideProvider(SavingsProgressService)
+      .useValue(savings)
       .overrideProvider(SummariesService)
       .useValue(summaries)
       .overrideProvider(IncomeService)
@@ -236,7 +291,7 @@ describe("Dashboard MCP tools", () => {
     await app.close();
   });
 
-  it("advertises seven Spanish, read-only tools with discoverable input/output schemas", async () => {
+  it("advertises nine Spanish, read-only tools with discoverable input/output schemas", async () => {
     const initialized = await post("alice", "initialize", {
       protocolVersion: "2025-06-18",
       capabilities: {},
@@ -261,6 +316,8 @@ describe("Dashboard MCP tools", () => {
     }>;
     expect(tools.map(({ name }) => name).sort()).toEqual([
       "comparar_gastos_mensuales",
+      "consultar_aportes_ahorro",
+      "consultar_avance_ahorro",
       "consultar_avance_presupuestos",
       "consultar_ingresos",
       "consultar_movimientos_recientes",
@@ -327,6 +384,16 @@ describe("Dashboard MCP tools", () => {
       ["consultar_resumen_gastos_mensuales", "alice", { month: "2026-09" }],
       ["comparar_gastos_mensuales", "bob", { month: "2026-09" }],
       ["consultar_ingresos", "alice", { month: "2026-09" }],
+      [
+        "consultar_avance_ahorro",
+        "bob",
+        { id: savingsResult.goal.id, month: "2026-09" },
+      ],
+      [
+        "consultar_aportes_ahorro",
+        "alice",
+        { id: savingsResult.goal.id, month: "2026-09" },
+      ],
     ];
 
     for (const [name, token, args] of calls) {
@@ -401,6 +468,15 @@ describe("Dashboard MCP tools", () => {
     expect(transactions.getRecentForUser).toHaveBeenCalledWith("alice");
     expect(income.getSummaryForUser).toHaveBeenCalledWith("alice", "2026-09");
     expect(objectives.getForUser).toHaveBeenCalledWith("alice");
+    expect(savings.progress).toHaveBeenCalledWith("bob", {
+      id: savingsResult.goal.id,
+      month: "2026-09",
+    });
+    expect(savings.evidence).toHaveBeenCalledWith("alice", {
+      id: savingsResult.goal.id,
+      month: "2026-09",
+      limit: 25,
+    });
     expect(objectives.getSpendingProgressForUser).toHaveBeenCalledWith(
       "bob",
       "2026-09",

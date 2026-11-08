@@ -14,12 +14,18 @@ import {
   RpcEmptySchema,
   RpcIdSchema,
   RpcMonthSchema,
+  type SavingsEvidenceInput,
+  SavingsEvidenceInputSchema,
+  SavingsEvidencePageSchema,
   SavingsGoalSchema,
   type SavingsGoalVersion,
   SavingsGoalVersionSchema,
   type SavingsHistoryInput,
   SavingsHistoryInputSchema,
   SavingsHistoryPageSchema,
+  type SavingsProgressInput,
+  SavingsProgressInputSchema,
+  SavingsProgressSchema,
   type UpdateBudgetInput,
   UpdateBudgetInputSchema,
   type UpdateSavingsGoal,
@@ -31,13 +37,39 @@ import { checkedMonth } from "../utils/month-query";
 import { santiagoMonth } from "../utils/santiago-time";
 import { ObjectivesService } from "./objectives.service";
 import { SavingsGoalsService } from "./savings-goals.service";
+import { SavingsProgressService } from "./savings-progress.service";
 
 @Router({ alias: "objectives" })
 export class ObjectivesRpc {
   constructor(
     private readonly service: ObjectivesService,
     private readonly savings: SavingsGoalsService,
+    private readonly measuredSavings: SavingsProgressService,
   ) {}
+
+  @Query({
+    input: SavingsProgressInputSchema,
+    output: SavingsProgressSchema,
+    meta: { auth: "user" },
+  })
+  savingsProgress(
+    @Ctx() ctx: ApiRequestContext,
+    @Input() input: SavingsProgressInput,
+  ) {
+    return this.measuredSavings.progress(rpcUser(ctx), input);
+  }
+
+  @Query({
+    input: SavingsEvidenceInputSchema,
+    output: SavingsEvidencePageSchema,
+    meta: { auth: "user" },
+  })
+  savingsContributions(
+    @Ctx() ctx: ApiRequestContext,
+    @Input() input: SavingsEvidenceInput,
+  ) {
+    return this.measuredSavings.evidence(rpcUser(ctx), input);
+  }
 
   @Query({
     input: RpcIdSchema,
