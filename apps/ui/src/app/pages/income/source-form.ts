@@ -62,6 +62,7 @@ export function scheduleLabel(source: IncomeSource): string {
   const day = (value: number | "last") =>
     value === "last" ? "último día" : `día ${value}`;
   if (schedule.frequency === "monthly") return `Mensual · ${day(schedule.day)}`;
-  if (schedule.frequency === "twice_monthly") return `Dos veces al mes · ${day(schedule.days[0])} y ${day(schedule.days[1])}`;
+  if (schedule.frequency === "twice_monthly")
+    return `Dos veces al mes · ${day(schedule.days[0])} y ${day(schedule.days[1])}`;
   return "Calendario regular";
 }

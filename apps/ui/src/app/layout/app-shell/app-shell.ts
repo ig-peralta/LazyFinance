@@ -62,7 +62,7 @@ export class AppShell {
       description: "Explorar el historial de movimientos",
     },
     {
-      path: "/ingresos/fuentes",
+      path: "/ingresos",
       icon: "income",
       label: "Ingresos",
       description: "Planificar tus fuentes de ingreso",

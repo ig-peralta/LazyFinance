@@ -33,6 +33,11 @@ all supported weekly/14-day/monthly/twice-monthly schedules, archival and dated
 expectations. Exact decimal input accepts a decimal comma without interpreting
 thousands separators. Unknown variable amounts remain unknown, and declarations
 or expectations never create received payments automatically.
+`/ingresos` separately displays full-month plans, included estimates, unknown
+amounts, received confirmations, unclassified credits and recovered expenses.
+Its paginated external-credit browser opens one owned detail to validate facts;
+confirmation/reassignment and explicit clearing preserve booked amounts/dates.
+Retained links remain clearable even when current facts no longer count as income.
 
 Detailed references: [session/resource lifetimes](../../docs/technical/ui-data-lifecycle.md),
 [provider-neutral identity](../../docs/technical/identity.md),

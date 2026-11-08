@@ -1,6 +1,11 @@
 import { TestBed } from "@angular/core/testing";
 import { afterEach, describe, expect, it } from "vitest";
-import { incomeSource, type RpcOutput, setupRpc, rpcResponse } from "../../../testing/rpc";
+import {
+  incomeSource,
+  type RpcOutput,
+  rpcResponse,
+  setupRpc,
+} from "../../../testing/rpc";
 import { Expectations } from "./expectations";
 
 describe("dated income expectations", () => {

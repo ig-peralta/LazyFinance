@@ -3,6 +3,7 @@ import { RenderMode, ServerRoute } from "@angular/ssr";
 const privateHeaders = { "Cache-Control": "private, no-store" };
 
 export const serverRoutes: ServerRoute[] = [
+  { path: "ingresos", renderMode: RenderMode.Server, headers: privateHeaders },
   {
     path: "ingresos/fuentes",
     renderMode: RenderMode.Server,
