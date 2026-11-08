@@ -44,13 +44,14 @@ inferred Promises; there is no cross-app source import or HTTP/Observable adapte
 ## Public surface
 
 The [generated public router](../../libs/rpc-api/src/generated/server.ts) currently
-contains **57 procedures**. Prefix each method below with its router name.
+contains **63 procedures**. Prefix each method below with its router name.
 
 | Router | Methods | Responsibility |
 | --- | --- | --- |
 | `auth` | `config`, `loginMock`, `principal` | Provider selection, local mock login, verified principal |
 | `onboarding` | `state`, `finish` | Owned optional-guide state and terminal completion |
 | `accounts` | `list` | Active accounts, balances and freshness |
+| `banking` | `configuration`, `connections`, `createLinkIntent`, `completeLink`, `checkConnection`, `disconnect` | Owned Fintoc connection lifecycle; no financial import/refresh |
 | `transactions` | `recent`, `list`, `detail`, `setInternalMovement`, `expenseAdjustments`, `setExpenseAdjustment`, `removeExpenseAdjustment` | History, owned source/classification detail, internal-status corrections and purchase-attributed recoveries |
 | `objectives` | `list`, `progress`, `budgetContributions`, `budget`, `budgetHistory`, `createBudget`, `updateBudget`, `archiveBudget`, `savingsGoal`, `savingsGoalHistory`, `createSavingsGoal`, `updateSavingsGoal`, `archiveSavingsGoal`, `savingsProgress`, `savingsContributions` | Revisioned management/history, spending and savings progress/evidence |
 | `summaries` | `monthly`, `comparison`, `spendingContributions` | Financial summary, equivalent-period comparison and purchase-level spending evidence |
@@ -77,7 +78,7 @@ are not implemented by this RPC cutover.
 ## Private surface
 
 The [generated private router](../../libs/rpc-persistence/src/generated/server.ts)
-currently contains **62 procedures**. They expose owned facts and authoritative
+currently contains **71 procedures**. They expose owned facts and authoritative
 commands rather than copying public screen calculations into persistence.
 
 | Router | Methods |
@@ -93,11 +94,16 @@ commands rather than copying public screen calculations into persistence.
 | `tags` | `list`, `create`, `update`, `archive` |
 | `tagRules` | `list`, `create`, `replace`, `archive`, `facts`, `manual`, `reset`, `candidates`, `commit` |
 | `providerSync` | `begin`, `facts`, `commit`, `failure`, `review` |
+| `providerLinks` | `list`, `connection`, `createIntent`, `claim`, `complete`, `fail`, `status`, `beginDisconnect`, `finishDisconnect` |
 
 Every private procedure uses user context except `identity.resolve`. The latter
 cannot be called with user context; bootstrap cannot call finance procedures.
 `GET /health` is liveness, not a database/admin RPC. Provider synchronization is an
 API-internal workflow; these procedures are not public bank-linking endpoints.
+`providerLinks` stores owner-bound intents, encrypted credentials and versioned
+lifecycle commands. Its secret projection is private-only; public `banking` output
+contains no link tokens/ciphertext/provider payloads. See the
+[linking contract and recovery rules](../../apps/api/src/banking/linking/README.md).
 
 Read contracts follow the [purpose-shaped persistence read pattern](persistence-reads.md).
 Select the projection actually needed: declarations/expectations, receipt facts,

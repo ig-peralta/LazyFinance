@@ -1,8 +1,8 @@
 # Implemented database model
 
 This reference describes the checked-in Kysely migrations, not a conceptual
-product model. PostgreSQL 18 holds **23 application tables** in fixed `identity`
-and `finance` schemas. Twenty-two sensitive tables force user/identity RLS;
+product model. PostgreSQL 18 holds **24 application tables** in fixed `identity`
+and `finance` schemas. Twenty-three sensitive tables force user/identity RLS;
 `finance.provider` is the shared read-only catalog exception. There is no tenancy,
 membership or account-sharing model. See [security and RLS](persistence-security.md)
 for policy/grant details.
@@ -26,7 +26,8 @@ All unqualified table names in the finance section below belong to `finance`.
 | `identity.external_identity` | PK `(provider, issuer, provider_subject)`; unique `(user_id, provider, issuer)` | External subject → user; bootstrap-only access, no stored bearer token |
 | `identity.onboarding` | PK `user_id` → user | Optional-guide skip/completion; self-owned read/insert and status/timestamp update, no runtime delete |
 | `provider` | `id`; unique `identifier` | Shared catalog; runtime SELECT only |
-| `provider_connection` | `id` → provider; `user_id` | Owned connection lifecycle (`active`, `revoked`, `expired`) and optional test/live mode |
+| `provider_connection` | `id` → provider; `user_id`; unique provider/mode/external Link ID | Owned access status, API-encrypted credential/version, institution/holder and terminal disconnect/remote-cleanup state; legacy fixture fields remain nullable |
+| `provider_link_intent` | `id`; unique provider intent ID; optional original/completed connection FKs | Owner-bound, expiring callback claims with hashed exchange token, version-pinned relink and durable completion |
 | `account` | `id`; unique `(provider_connection_id, external_id)`; `user_id` | Owned account and owned connection must agree; independent nullable source balance |
 | `transaction` | `id`; unique non-null `(account_id, external_id)` | Ownership through account; provider fact plus preserved user interpretation |
 | `tag` | `id`; unique `(user_id, name)` | User-owned catalog with archive flag |
@@ -63,6 +64,7 @@ erDiagram
     identity_user ||--o{ identity_external_identity : maps
     identity_user ||--o| identity_onboarding : records
     identity_user ||--o{ finance_provider_connection : owns
+    identity_user ||--o{ finance_provider_link_intent : initiates
     identity_user ||--o{ finance_account : owns
     identity_user ||--o{ finance_tag : owns
     identity_user ||--o{ finance_tag_rule : owns
@@ -71,6 +73,8 @@ erDiagram
     identity_user ||--o{ finance_income_source : owns
 
     finance_provider ||--o{ finance_provider_connection : identifies
+    finance_provider_connection o|--o{ finance_provider_link_intent : reconnects
+    finance_provider_connection o|--o{ finance_provider_link_intent : completes
     finance_provider_connection ||--o{ finance_account : contains
     finance_provider_connection ||--o| finance_provider_sync_state : tracks
     finance_provider_connection ||--o{ finance_provider_movement_removal : retains
@@ -122,6 +126,14 @@ erDiagram
         uuid id PK
         uuid user_id FK
         uuid provider_id FK
+    }
+    finance_provider_link_intent {
+        uuid id PK
+        uuid user_id FK
+        string provider_intent_id UK
+        uuid connection_id FK
+        uuid completed_connection_id FK
+        string state
     }
     finance_account {
         uuid id PK
@@ -298,7 +310,7 @@ workflow has been shipped.
 
 ## Migration and seed lifecycle
 
-Twenty-four migrations are globally ordered across `migrations/identity` and
+Twenty-five migrations are globally ordered across `migrations/identity` and
 `migrations/finance`: schema/bootstrap foundations plus the table migrations.
 Kysely's PostgreSQL migrator owns locking and transactional DDL/ledger updates.
 Each new sensitive table brings its constraints, indexes, grants and RLS together;

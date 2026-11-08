@@ -151,7 +151,7 @@ incorrectly commit. Result-size failures also throw before commit.
 
 ## RLS and related ownership
 
-All 22 sensitive application tables enable **and force** RLS. The twenty-third,
+All 23 sensitive application tables enable **and force** RLS. The twenty-fourth,
 `finance.provider`, is a shared runtime-read-only catalog. Runtime grants and RLS
 are both required: a policy alone is not permission to access a table.
 
@@ -172,6 +172,16 @@ status/completion time. Runtime cannot delete or reassign those records, and
 neither bootstrap nor unscoped requests can access them. This grants no profile
 or external-identity write permission. Its named upsert makes completion terminal
 and retains the first server timestamp; no financial facts are changed.
+
+`finance.provider_link_intent` checks both optional connection FKs against its
+owner in addition to direct owner RLS, and runtime DELETE is revoked. Lifecycle
+commands claim callbacks atomically and recheck credential versions; provider
+network calls remain outside SQL. `provider_connection` stores only API-encrypted
+link credentials, never its encryption key or raw provider API keys. Global
+provider/mode/external-ID uniqueness cannot reassign another owner's hidden row.
+Disconnect/relink/status changes invalidate obsolete sync revisions and retain
+financial history; pending remote deletion is explicit. See the
+[lifecycle limits](../../apps/api/src/banking/linking/README.md#races-failures-and-limits).
 
 The local GUC is trusted because authenticated persistence owns SQL execution,
 not because PostgreSQL cryptographically verifies it. A compromised persistence
