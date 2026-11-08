@@ -26,3 +26,49 @@ export const bankingConnection = {
   createdAt: "2026-11-08T17:00:00.000Z",
   updatedAt: "2026-11-08T17:00:00.000Z",
 } satisfies RpcOutput<"banking.connections">[number];
+
+export const bankingSyncStatus = (
+  changes: Partial<RpcOutput<"banking.syncStatus">> = {},
+): RpcOutput<"banking.syncStatus"> => ({
+  connectionId: bankingConnection.id,
+  asOf: "2026-11-08T18:00:00.000Z",
+  lifecycle: "active",
+  disconnectedAt: null,
+  disconnectPending: false,
+  activity: "idle",
+  leaseExpiresAt: null,
+  lastAttemptAt: null,
+  lastSuccessAt: null,
+  lastResult: null,
+  unresolvedConflictCount: 0,
+  providerSuspensionCount: 0,
+  failure: null,
+  canRefresh: true,
+  freshness: {
+    state: "unknown",
+    staleAfterSeconds: 86400,
+    freshAccounts: 0,
+    staleAccounts: 0,
+    unknownAccounts: 0,
+  },
+  accounts: [],
+  ...changes,
+});
+
+export const bankingImportResult = {
+  status: "complete",
+  conflictCount: 0,
+  report: {
+    requestedHistory: { from: "2026-11-08", through: "2026-11-08" },
+    importedAccounts: 2,
+    bookedMovements: 15,
+    reversedMovements: 1,
+    ignoredPendingMovements: 2,
+    ignoredProcessingMovements: 1,
+    uncertainMovements: 15,
+    skippedAccounts: [
+      { externalId: "acc_unsupported_fixture", reason: "unsupported_currency" },
+    ],
+    unknownCardBalances: ["acc_card_fixture"],
+  },
+} satisfies RpcOutput<"banking.importInitial">;

@@ -47,7 +47,11 @@ App-local dotenv files are not the root Compose `.env`.
 The authenticated `banking` RPC supports owner-bound Fintoc linking, access checks,
 relink, disconnect, `importInitial`, repeatable `refresh` and readonly `syncStatus`.
 Refresh pulls the latest available Fintoc snapshot, not a forced bank update.
-The UI still exposes only the lifecycle subset; import/refresh controls remain LAZ-62 work.
+Movements start at the connection's first-link day in Santiago, with no pre-link
+backfill; balances are reported independently. Refresh/relink does not reset that
+start. Fintoc cannot reliably distinguish times within a booking day.
+The web connection settings consume these commands and statuses separately from
+the stored-balance page; authorization/access checks never import implicitly.
 See the [linking contract](src/banking/linking/README.md) for Widget/credential
 handling and the [first-import guide](src/banking/fintoc/README.md) for conservative
 financial mappings, supported products and atomic import limits.

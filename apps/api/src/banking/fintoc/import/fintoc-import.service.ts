@@ -6,7 +6,7 @@ import { BankingIngestionService } from "../../ingestion/banking-ingestion.servi
 import { FintocClient } from "../client/fintoc-client";
 import { FintocCredentials } from "../credentials/fintoc-credentials";
 import { FintocSnapshotConnector } from "../snapshot/fintoc-snapshot.connector";
-import { fintocInitialHistoryWindow } from "./fintoc-history-window";
+import { fintocTrackingWindow } from "./fintoc-tracking-window";
 
 @Injectable()
 export class FintocImportService {
@@ -17,7 +17,7 @@ export class FintocImportService {
     private readonly ingestion: BankingIngestionService,
   ) {}
 
-  /** Current accounts and bounded partial history; not a bank refresh/job. */
+  /** Current accounts and movements since first link, never a pre-link backfill. */
   async importSnapshot(
     userId: string,
     connectionId: string,
@@ -50,7 +50,7 @@ export class FintocImportService {
       this.fintoc,
       owned,
       token,
-      fintocInitialHistoryWindow(new Date()),
+      fintocTrackingWindow(new Date(owned.connection.createdAt), new Date()),
     );
     const outcome = await this.ingestion.syncForUser(
       userId,

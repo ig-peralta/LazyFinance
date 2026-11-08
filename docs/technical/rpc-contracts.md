@@ -105,10 +105,13 @@ lifecycle commands. Its secret projection is private-only; public `banking` outp
 contains no link tokens/ciphertext/provider payloads. See the
 [linking contract and recovery rules](../../apps/api/src/banking/linking/README.md).
 
-`banking.importInitial({ id })` and `banking.refresh({ id })` import current accounts and the last 90 Santiago
-calendar days (including today) through shared owned ingestion. Completion returns
-the requested window and a bounded mapping/exclusion report, not raw payloads
-or private checkpoints. It does not cause a bank refresh. `providerSync.begin`
+`banking.importInitial({ id })` and `banking.refresh({ id })` import reported accounts
+and movements from the owned connection's first-link Santiago day through today.
+The local `createdAt` anchors both commands and is unchanged by same-identity relink.
+No historical date override is accepted; pre-link backfill is unavailable. Booking
+precision is day-level, so same-day movements can precede the exact linking time.
+Completion returns the requested tracked window and a bounded mapping/exclusion
+report, not raw payloads or private checkpoints. It does not cause a bank refresh. `providerSync.begin`
 accepts `expectedCredentialVersion`, required for Fintoc: a mismatched snapshot
 rejects before attempt metadata/provider calls. Begin returns stored state plus
 `acquired`; a live five-minute lease or future provider backoff coalesces/defers
@@ -119,6 +122,10 @@ attempt/lifecycle facts independently of 24-hour bank-source freshness. Private
 movements or credentials. Other neutral fixture connectors
 without stored credentials may omit it. See the
 [first-import mapping and limits](../../apps/api/src/banking/fintoc/README.md).
+The response shape is unchanged: `requestedHistory` now describes the tracked
+first-link-to-today period, not a rolling 90-day backfill. Existing older records
+are retained outside future fetches. Reported balances are independent of imported
+movements; a confirmed zero-movement import is not zero money or complete history.
 
 Read contracts follow the [purpose-shaped persistence read pattern](persistence-reads.md).
 Select the projection actually needed: declarations/expectations, receipt facts,

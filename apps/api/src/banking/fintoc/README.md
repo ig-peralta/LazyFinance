@@ -1,11 +1,13 @@
 # Fintoc snapshot import and refresh (LAZ-51/LAZ-48)
 
 `banking.importInitial({ id: connectionId })` is an authenticated, explicit API
-command. It imports current account snapshots and **the last 90 Santiago calendar
-days, including today**, not unrestricted history or a new bank refresh.
+command. It imports reported account snapshots and movements **from the connection's
+first-link day in Santiago through today**. It does not backfill earlier days or
+force a bank refresh. Reported balances do not depend on importing past transactions.
 Authorization completion and `checkConnection` never import implicitly.
 `banking.refresh` replays the same bounded snapshot with durable recovery/status
-reporting. The UI import/refresh action remains LAZ-62 work.
+reporting. The web connection settings expose these commands explicitly (LAZ-62),
+separately from authorization/access checks and the stored-balance page.
 No payment or money-moving endpoint is used.
 
 ## Directory ownership
@@ -14,11 +16,44 @@ No payment or money-moving endpoint is used.
 | --- | --- |
 | `client/` | HTTP transport, pagination and raw Fintoc response schemas |
 | `credentials/` | Owner-bound Link Token encryption/decryption |
-| `import/` | Owned snapshot import/reimport orchestration and history-window policy |
+| `import/` | Owned snapshot import/reimport orchestration and first-link tracking policy |
 | `snapshot/` | Operation-owned connector and neutral account/movement mapping |
 
 Unit tests stay beside their implementation. Shared provider fixtures and
 public/private RPC integration suites remain under `apps/api/tests/`.
+
+## Tracking starts at first link
+
+`fintocTrackingWindow` derives the inclusive `since` date from the owned local
+connection's immutable `createdAt`, not the upstream Link's age, the application
+user's age, the last successful sync or the current token version. `until` is the
+current Santiago day. Each connection has its own start; ordinary refresh and
+same-identity relink preserve it. Terminal disconnect followed by a new connection
+creates a new start. The public commands still accept only the connection ID, not
+a client-selected date or a historical-import option.
+
+Fintoc reliably supplies an accounting **day**, not an exact transaction-time
+cutoff. The first-link day is included, so movements earlier on that same day may
+appear. `transaction_date` is not used to pretend otherwise. The UI explains this
+precision before authorization and beside synchronization controls.
+
+The starting financial position is the independently reported balance. No opening
+transaction is synthesized and no complete bank history is reconstructed. A pull
+can successfully return known balances with zero tracked movements; missing/card
+balances remain unknown rather than zero or invented debt. Classification and
+income confirmation keep their existing explicit eligibility rules.
+
+The old 90-day pre-link backfill is removed. Already imported records, user
+decisions, receipts, allocations and observed history bounds are not deleted or
+reclassified. Records booked before the first-link day are outside future fetches,
+so those older retained records are not refreshed by this policy. Importing earlier
+history is a future explicit product flow; no month/payroll exception is implemented.
+
+Each explicit pull currently replays the tracked first-link-to-today period, not an
+incremental cursor or a silently truncated rolling window. Existing page/record/
+byte/time limits still fail oversized runs atomically. Long-running connection
+history may eventually need a separate bounded catch-up/correction strategy; this
+policy does not claim a successful maximum-size or multi-year load benchmark.
 
 ## Ownership and transport
 
@@ -111,8 +146,8 @@ This is not a webhook consumer, scheduler or incremental-cursor implementation.
 It does not request Fintoc refresh intents, prove complete bank history, automatically
 pair transfers, establish card debt or reactivate permanent tombstones. Only explicit
 reversed records cause removals; absent records and webhook-only deletion events
-are not inferred from a snapshot. Older records outside the rolling window are
-retained but not refetched by this mechanism.
+are not inferred from a snapshot. Retained records from before the first-link day
+are not refetched by this mechanism.
 
 ## Refresh and recovery (LAZ-48)
 
@@ -163,8 +198,11 @@ account makes the aggregate stale; otherwise unknown accounts make it unknown.
 `canRefresh` describes stored lifecycle/lease/backoff eligibility, not a guarantee
 that server configuration or the provider is available.
 
-The LAZ-62 UI must consume these statuses rather than treating access checks,
-successful network calls or an old balance as proof of fresh financial data.
+The [web connection settings](../../../../ui/README.md) consume these statuses
+rather than treating access checks, successful network calls or an old balance as
+proof of fresh financial data. A single selected panel reads status without
+provider I/O. Import/refresh requires an explicit action; uncertain responses
+require a new readonly status check before another attempt.
 
 ## Verification and references
 
@@ -181,6 +219,10 @@ Mocked-provider tests are not evidence of live-bank consent or production readin
 coalescing, abandoned-lease recovery, provider backoff/outages, expired/revoked
 access, stale access-check rejection, pending/processing recovery, unrelated
 conflict preservation and retained refund allocations.
+`fintoc-tracking.integration.spec.ts` verifies the first-link boundary, an older
+application user, independent balances with zero movements, stable relink/refresh
+dates and preservation of existing pre-link decisions/receipts. Its provider
+fixture honors requested booking dates; only the policy observation clock is fixed.
 
 An isolated upgrade from migration 025 to 026 preserved all 24 application tables,
 including 1,052 demo movements, 37 receipts, fixture credentials and sync facts,
@@ -189,6 +231,9 @@ with even a resolved provider-unbooked audit row was rejected atomically. This
 used a fresh disposable database, not the configured review database.
 
 ### First-import sandbox evidence — 8 November 2026 (LAZ-51)
+
+This dated check used the former 90-day policy. It is transport/mapping evidence,
+not verification of the newer first-link tracking boundary.
 
 A disposable hosted Widget authorization at an unoccupied sandbox institution
 exercised the real provider through public authentication, signed private RPC and
@@ -206,6 +251,9 @@ liability conventions, automatic transfer recognition, live-bank consent, refres
 recovery, maximum-size commits or production readiness.
 
 ### Refresh sandbox evidence — 8 November 2026 (LAZ-48)
+
+This dated check also predates the first-link policy. Its recovery/identity evidence
+does not imply that new connections still backfill the preceding 90 days.
 
 A new disposable hosted sandbox authorization imported three cash accounts and
 707 booked movements in the same 11 August–8 November window. Explicit refresh

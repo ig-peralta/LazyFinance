@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   bankingConfiguration,
   bankingConnection,
+  bankingSyncStatus,
 } from "../../../testing/banking";
 import { deferred } from "../../../testing/deferred";
 import { principal, type RpcOutput, setupRpc } from "../../../testing/rpc";
@@ -117,5 +118,38 @@ describe("banking resource credential lifetimes", () => {
     ).toBe(true);
     configuration.resolve(bankingConfiguration);
     banks.resolve([bankingConnection]);
+  });
+
+  it("adopts confirmed lifecycle facts without refetching the list or changing unrelated bank fields", async () => {
+    const mock = setupRpc({ "banking.connections": () => [bankingConnection] });
+    const data = TestBed.inject(BankingData);
+    await settle();
+    data.adoptStatus(
+      bankingSyncStatus({ lifecycle: "expired", canRefresh: false }),
+    );
+    expect(data.connections.value()).toEqual([
+      { ...bankingConnection, status: "expired" },
+    ]);
+    expect(mock.callsTo("banking.connections")).toHaveLength(1);
+    expect(mock.callsTo("accounts.list")).toHaveLength(0);
+  });
+
+  it("does not apply older lifecycle observations or another connection's status", async () => {
+    setupRpc({ "banking.connections": () => [bankingConnection] });
+    const data = TestBed.inject(BankingData);
+    await settle();
+    data.adoptStatus(
+      bankingSyncStatus({
+        asOf: "2026-11-01T18:00:00.000Z",
+        lifecycle: "expired",
+      }),
+    );
+    data.adoptStatus(
+      bankingSyncStatus({
+        connectionId: "00000000-0000-4000-8000-000000000099",
+        lifecycle: "revoked",
+      }),
+    );
+    expect(data.connections.value()).toEqual([bankingConnection]);
   });
 });

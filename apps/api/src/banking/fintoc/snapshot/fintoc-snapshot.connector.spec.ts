@@ -215,7 +215,7 @@ describe("operation-owned Fintoc snapshot pages", () => {
   });
 
   it.each([
-    "2026-08-10",
+    "2026-10-31",
     "2026-11-09",
   ])("rejects a provider record outside the requested partial window: %s", async (day) => {
     const f = setup([

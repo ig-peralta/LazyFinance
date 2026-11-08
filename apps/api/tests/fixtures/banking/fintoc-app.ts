@@ -5,7 +5,7 @@ import type {
   FintocAccount,
   FintocMovement,
 } from "../../../src/banking/fintoc/client/fintoc-snapshot.schema";
-import * as historyWindow from "../../../src/banking/fintoc/import/fintoc-history-window";
+import * as trackingWindow from "../../../src/banking/fintoc/import/fintoc-tracking-window";
 import { fixture, startApi } from "../persistence";
 import { fintocEnvironment, fintocIntent, fintocLink } from "./fintoc";
 import {
@@ -14,13 +14,19 @@ import {
   fintocMovement,
 } from "./fintoc-snapshot";
 
-/** Real public/private RPC, a mocked provider and a deterministic history window.
- * Freeze this policy only, not Date/JWT clocks shared with real persistence. */
-export async function fintocAppFixture() {
+/** Real RPC, a mocked provider and previously linked connections. Fix only the
+ * policy's observation clock, never Date/JWT clocks shared with persistence. */
+export async function fintocAppFixture(linkedAt = "2026-11-01T15:00:00.000Z") {
   const f = await fixture();
+  const realWindow = trackingWindow.fintocTrackingWindow;
   const window = vi
-    .spyOn(historyWindow, "fintocInitialHistoryWindow")
-    .mockReturnValue(fintocHistoryWindow);
+    .spyOn(trackingWindow, "fintocTrackingWindow")
+    .mockImplementation((start) =>
+      realWindow(
+        start,
+        new Date(`${fintocHistoryWindow.through}T18:00:00.000Z`),
+      ),
+    );
   f.environment = fintocEnvironment();
   const externalId = `link_${randomUUID().replaceAll("-", "")}`;
   const link: FintocLink = {
@@ -131,8 +137,14 @@ export async function fintocAppFixture() {
       });
     if (isMovements && state.invalidMovement)
       return Response.json([{ ...fintocMovement, amount: 1.5 }]);
+    const from = url.searchParams.get("since") ?? "",
+      through = url.searchParams.get("until") ?? "";
     const items = isMovements
-      ? (state.movements[url.pathname.split("/")[3]] ?? [])
+      ? (state.movements[url.pathname.split("/")[3]] ?? []).filter(
+          (row) =>
+            row.post_date.slice(0, 10) >= from &&
+            row.post_date.slice(0, 10) <= through,
+        )
       : state.accounts;
     const page = Number(url.searchParams.get("page"));
     return Response.json(items.slice((page - 1) * 300, page * 300), {
@@ -152,12 +164,14 @@ export async function fintocAppFixture() {
       exchangeToken: `${intent.widgetToken.split("_sec_")[0]}_exc_fixture`,
     });
   };
-  const connected = await connect().catch(async (error: unknown) => {
+  const saved = await connect().catch(async (error: unknown) => {
     await api.app.close();
     await f.db.close();
     window.mockRestore();
     throw error;
   });
+  await f.db.update("provider_connection", saved.id, { createdAt: linkedAt });
+  const connected = { ...saved, createdAt: linkedAt };
   fetch.mockClear();
   return {
     ...f,

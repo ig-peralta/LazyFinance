@@ -52,6 +52,8 @@ export const CompleteBankingIntentSchema = z.strictObject({
 });
 
 export const BankingImportReportSchema = z.object({
+  // Inclusive booking days from the connection's first link through this pull.
+  // This is neither a pre-link backfill nor a claim of exact transaction times.
   requestedHistory: z
     .object({ from: z.iso.date(), through: z.iso.date() })
     .refine((value) => value.from <= value.through),

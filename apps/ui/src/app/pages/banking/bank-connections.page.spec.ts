@@ -4,7 +4,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   bankingConfiguration,
   bankingConnection,
+  bankingImportResult,
   bankingIntent,
+  bankingSyncStatus,
 } from "../../../testing/banking";
 import { deferred } from "../../../testing/deferred";
 import {
@@ -28,6 +30,7 @@ function setup(overrides: RpcHandlers = {}, initial: BankingConnection[] = []) {
       return bankingConnection;
     },
     "banking.checkConnection": () => bankingConnection,
+    "banking.syncStatus": ({ id }) => bankingSyncStatus({ connectionId: id }),
     "banking.disconnect": () => {
       const value: BankingConnection = {
         ...bankingConnection,
@@ -130,7 +133,9 @@ describe("owned banking controls without fabricated financial refresh", () => {
       "Autorización de Bci de prueba guardada",
     );
     expect(f.root.textContent).toContain("Acceso disponible");
-    expect(button(f.root, "Actualizar desde el banco").disabled).toBe(true);
+    expect(button(f.root, "Importar datos disponibles").disabled).toBe(false);
+    expect(f.callsTo("banking.importInitial")).toHaveLength(0);
+    expect(f.callsTo("banking.refresh")).toHaveLength(0);
     expect(f.callsTo("accounts.list")).toHaveLength(0);
     expect(f.root.textContent).not.toContain(bankingIntent.widgetToken);
     expect(f.root.textContent).not.toContain("li_ui_exc_callback");
@@ -358,5 +363,141 @@ describe("owned banking controls without fabricated financial refresh", () => {
     expect(
       f.callsTo("banking.createLinkIntent")[0].options?.signal?.aborted,
     ).toBe(true);
+  });
+
+  it("loads synchronization only for one explicitly selected bank and cancels an obsolete selection", async () => {
+    const pending = deferred<RpcOutput<"banking.syncStatus">>();
+    const other = {
+      ...bankingConnection,
+      id: "00000000-0000-4000-8000-000000000093",
+      institution: { id: "cl_other", name: "Otro banco" },
+    };
+    const f = setup(
+      {
+        "banking.syncStatus": ({ id }) =>
+          id === bankingConnection.id
+            ? pending.promise
+            : bankingSyncStatus({ connectionId: id }),
+      },
+      [bankingConnection, other],
+    );
+    await render(f.fixture);
+    expect(f.callsTo("banking.syncStatus")).toHaveLength(0);
+    f.root
+      .querySelector<HTMLButtonElement>(
+        `button[aria-label="Ver datos y sincronización de ${bankingConnection.institution.name}"]`,
+      )
+      ?.click();
+    f.fixture.detectChanges();
+    await vi.waitFor(() =>
+      expect(f.callsTo("banking.syncStatus")).toHaveLength(1),
+    );
+    f.root
+      .querySelector<HTMLButtonElement>(
+        'button[aria-label="Ver datos y sincronización de Otro banco"]',
+      )
+      ?.click();
+    await render(f.fixture);
+    expect(f.root.querySelectorAll("bank-sync-panel")).toHaveLength(1);
+    expect(f.root.querySelector("bank-sync-panel")?.textContent).toContain(
+      "Otro banco",
+    );
+    expect(f.callsTo("banking.syncStatus")[0].options?.signal?.aborted).toBe(
+      true,
+    );
+    pending.resolve(
+      bankingSyncStatus({ lifecycle: "expired", canRefresh: false }),
+    );
+    await render(f.fixture);
+    expect(f.root.querySelector("bank-sync-panel")?.textContent).not.toContain(
+      "El acceso venció",
+    );
+    expect(f.callsTo("banking.importInitial")).toHaveLength(0);
+    expect(f.callsTo("banking.refresh")).toHaveLength(0);
+  });
+
+  it("adopts a confirmed expired status without destroying its failure details and offers owned relink", async () => {
+    let state = bankingSyncStatus();
+    const f = setup(
+      {
+        "banking.syncStatus": () => state,
+        "banking.importInitial": () => {
+          state = bankingSyncStatus({
+            lifecycle: "expired",
+            canRefresh: false,
+            failure: {
+              at: "2026-11-08T18:00:00.000Z",
+              reason: "expired",
+              retryAfter: null,
+            },
+          });
+          return { status: "failed", reason: "expired", retryAfter: null };
+        },
+      },
+      [bankingConnection],
+    );
+    await render(f.fixture);
+    button(f.root, "Datos y sincronización").click();
+    await render(f.fixture);
+    button(f.root, "Importar datos disponibles").click();
+    await render(f.fixture);
+    expect(f.root.textContent).toContain("Requiere reconexión");
+    expect(f.root.querySelector("bank-sync-panel")?.textContent).toContain(
+      "No se completó la sincronización",
+    );
+    expect(button(f.root, "Revincular").disabled).toBe(false);
+    expect(button(f.root, "Importar datos disponibles").disabled).toBe(true);
+    expect(f.callsTo("banking.connections")).toHaveLength(1);
+  });
+
+  it("can stop waiting, reconcile the server lease on reopen and discard the old import result on logout", async () => {
+    const pending = deferred<RpcOutput<"banking.importInitial">>();
+    let state = bankingSyncStatus();
+    const f = setup(
+      {
+        "banking.syncStatus": () => state,
+        "banking.importInitial": () => pending.promise,
+      },
+      [bankingConnection],
+    );
+    await render(f.fixture);
+    button(f.root, "Datos y sincronización").click();
+    await render(f.fixture);
+    button(f.root, "Importar datos disponibles").click();
+    await vi.waitFor(() =>
+      expect(f.callsTo("banking.importInitial")).toHaveLength(1),
+    );
+    f.fixture.detectChanges();
+    expect(button(f.root, "Desconectar").disabled).toBe(true);
+    f.root
+      .querySelector<HTMLButtonElement>(
+        `button[aria-label="Cerrar sincronización de ${bankingConnection.institution.name}"]`,
+      )
+      ?.click();
+    await render(f.fixture);
+    expect(f.root.textContent).toContain(
+      "La solicitud puede continuar en el servidor",
+    );
+    expect(f.callsTo("banking.importInitial")[0].options?.signal?.aborted).toBe(
+      true,
+    );
+    state = bankingSyncStatus({
+      activity: "in_progress",
+      leaseExpiresAt: "2026-11-08T18:05:00.000Z",
+      canRefresh: false,
+    });
+    button(f.root, "Datos y sincronización").click();
+    await render(f.fixture);
+    expect(f.root.textContent).toContain("Sincronización en curso");
+    expect(button(f.root, "Importar datos disponibles").disabled).toBe(true);
+    f.credentials.clear();
+    f.setBanks([]);
+    f.credentials.accept({ ...principal, userId: "owner-b" }, "bob");
+    pending.resolve(bankingImportResult);
+    await render(f.fixture);
+    expect(f.root.querySelector("bank-sync-panel")).toBeNull();
+    expect(f.root.textContent).not.toContain("Bci de prueba");
+    expect(f.root.textContent).not.toContain("Importación completada");
+    expect(f.callsTo("banking.importInitial")).toHaveLength(1);
   });
 });

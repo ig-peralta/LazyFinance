@@ -3,8 +3,8 @@
 Current implementation: provider-neutral contracts, owned ingestion, the
 [Fintoc linking/lifecycle backend](linking/README.md) (LAZ-49), and the explicit
 [Fintoc snapshot import/refresh](fintoc/README.md) (LAZ-51/LAZ-48). Durable attempt
-leases, recovery and source-freshness reporting supply the later UI controls;
-UI import/refresh controls remain LAZ-62 work.
+leases, recovery and source-freshness reporting supply the explicit web controls
+in bank settings (LAZ-62), independently of the stored-balance page.
 See the [database model](../../../../docs/technical/database-model.md),
 [private RPC/RLS](../../../../docs/technical/persistence-security.md) and
 [RPC inventories](../../../../docs/technical/rpc-contracts.md).
@@ -85,8 +85,12 @@ financial import. Begin/failure attempt metadata is separate from the atomic
 financial commit, so "no partial writes" does not mean no attempt was recorded.
 
 `banking.importInitial` and `banking.refresh` explicitly import current Fintoc
-accounts and a disclosed rolling 90-day partial movement window. Refresh is a
-bounded snapshot replay, not an incremental cursor, bank-forced refresh or scheduler.
+accounts and movements from that connection's first-link Santiago day through
+today, without pre-link backfill. Same-day earlier movements may appear because
+booking precision is a calendar day, not a trustworthy transaction timestamp.
+Refresh replays the tracked period under the existing resource limits, not an
+incremental cursor, bank-forced refresh or scheduler. Balances remain independently
+reported; zero tracked movements do not require an invented opening transaction.
 Begin honors persisted provider `retryAfter`; no automatic mutation retry/job is
 created. An expired unfinished lease is reported as `interrupted` and may be
 explicitly retried under a new revision. Linking/access checks and status reads
@@ -96,6 +100,9 @@ relink between secret lookup and begin returns `superseded` before provider I/O.
 Fintoc begins without that version are rejected. Later relinks/disconnects continue
 to invalidate facts/commit/failure through the sync revision. A private review read
 is not a delivered review-resolution UI.
+The local first-link `createdAt` is preserved by same-identity relink. Historical
+imports before that day remain a future explicit flow. Previously imported records
+and their decisions are retained, not deleted or silently reclassified.
 
 ### Temporary unbooking and reporting (LAZ-48)
 

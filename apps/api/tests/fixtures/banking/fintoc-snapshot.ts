@@ -4,7 +4,7 @@ import type {
 } from "../../../src/banking/fintoc/client/fintoc-snapshot.schema";
 
 export const fintocHistoryWindow = {
-  from: "2026-08-11",
+  from: "2026-11-01",
   through: "2026-11-08",
 };
 

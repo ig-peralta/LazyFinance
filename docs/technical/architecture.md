@@ -148,12 +148,19 @@ confirmation and is separate from stored balances/freshness; access is not proof
 of current financial data. The API's explicit [first snapshot import](../../apps/api/src/banking/fintoc/README.md)
 and repeatable snapshot refresh map available Fintoc facts through shared atomic
 ingestion. Durable leases/backoff, interrupted-run recovery and readonly source
-freshness reporting are available in the API; UI import/refresh controls remain
-LAZ-62 work. Neither successful access nor a fetch forces the bank to update.
+freshness reporting are consumed by one selected web synchronization panel.
+Initial import and later snapshot refresh are explicit commands, separate from
+readonly status and authorization. Neither successful access nor a fetch forces
+the bank to update.
+The local connection's immutable first-link date anchors forward movement tracking;
+reported balances are not reconstructed from pre-link transactions. Dates are
+Santiago accounting days, with the same-day precision limitation disclosed in the
+UI. Historical-import options remain separate future work; existing records are
+not purged when the sync scope changes.
 Accounts and onboarding link to connection settings without requiring guide
-completion. LAZ-62 stays open for its refresh/recovery acceptance, and this UI subset
-does not close the LAZ-30 parent. Conversational agents and external MCP authorization
-remain separate.
+completion. Provider normalization and financial calculations remain backend-owned;
+the UI never reconstructs balances or marks failed imports as current data.
+Conversational agents and external MCP authorization remain separate.
 
 ## Operations
 

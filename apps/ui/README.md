@@ -166,15 +166,51 @@ late results. A failed/uncertain exchange offers read reconciliation, not replay
 Disconnect preserves financial history and shows pending remote cleanup when needed;
 local disconnect remains available if provider configuration is disabled/mismatched.
 
-Connection access is separate from stored active-account balances and last-sync
-dates. Public account summaries do not identify their provider connection, so the
-page does not imply that a listed balance belongs to a particular Fintoc connection.
-A timestamp older than 24 hours is labelled by age, not as a connection failure.
-Access checks do not import or refresh financial data. **Import/refresh controls
-remain unavailable in the UI**. The API now supplies explicit snapshot import,
-repeatable refresh/recovery and readonly sync/source-freshness status; LAZ-62 remains
-open for consuming these capabilities. No current UI button simulates a financial
-refresh. See the [backend contract/setup](../api/src/banking/fintoc/README.md).
+**Datos y sincronización** opens one selected connection's status panel, not a
+fan-out of provider calls on page entry. The readonly backend status identifies
+that connection's accounts and reports access, attempt activity, last success/
+failure, retry timing, conflicts, source freshness and retained history bounds.
+Its per-account movement links use the returned owned account IDs. Balances still
+belong to `/cuentas`; no client-side balance reconstruction or connection guessing
+is added to the public account-summary projection.
+
+**Importar datos disponibles** calls the explicit initial-import command; after a
+confirmed success, **Actualizar datos disponibles** replays the backend's bounded
+snapshot. Neither action forces the bank to refresh. Authorization completion opens
+the panel but never imports automatically. Counts describe examined provider
+records, not new rows or recognized income. Unsupported accounts, unknown card
+balances, pending/processing exclusions, partial requested history and uncertain
+movement classification remain explicit. The UI performs no provider normalization
+or spending/income/savings calculations.
+
+Tracking begins on **the connection's first-link day in Santiago** and continues
+forward, not with a 90-day transaction backfill. Authorization and synchronization
+explain the start date, which does not move on refresh or same-identity relink.
+Fintoc supplies reliable accounting days, not an exact-time cutoff, so records
+earlier within that same day may appear. The requested period is disclosed after
+each completed import. Current balances are brought independently, including when
+there are no tracked movements; no opening transaction is manufactured. Historical
+import choices/month/payroll exceptions are not implemented. Earlier records already
+imported are retained, but days before the linking boundary are not fetched again.
+
+**Consultar estado** only reads saved facts. In-progress and interrupted attempts,
+backoff, failed imports and expired/revoked access have distinct presentations.
+Successful import does not make a stale/unknown source recent. The backend's
+per-account freshness is displayed with its observation time and 24-hour policy;
+history bounds are observed extremes, not proof of complete or continuous history.
+Provider suspensions and other conflicts retain their different meanings.
+
+Commands prevent duplicate submission and discard obsolete scope/component results.
+A confirmed outcome reloads only the selected status; confirmed lifecycle fields
+can update the page-local connection projection without destroying the outcome.
+An ambiguous transport failure requires an explicit successful status read made
+after that failure before another write is enabled. A pre-response read cannot
+unlock a retry. There is no automatic polling or mutation replay. Closing a panel
+stops waiting, not server processing; reopening reconciles its durable lease.
+Other financial pages read fresh data when navigated to, without a root cache.
+Server configuration/mode and authoritative status eligibility both gate imports;
+readonly status and local disconnect remain available when configuration is disabled.
+See the [backend contract/setup](../api/src/banking/fintoc/README.md).
 
 Before the navigation split, browser verification on 8 November 2026 exercised
 the actual authenticated app, hosted Fintoc sandbox Widget, API, signed persistence and an isolated PostgreSQL
@@ -194,6 +230,54 @@ Widths 320/390/768/1440 had no horizontal overflow, and the new connection-setti
 screen had no automated axe WCAG A/AA violations in the tested state. This used
 an ephemeral non-default loopback port, shut down afterward; it did not rerun
 the real provider flow or access the user's development database.
+
+### Import/refresh browser verification — 8 November 2026 (LAZ-62)
+
+This dated check predates the first-link tracking policy and used the former 90-day
+window. Its lifecycle/recovery evidence does not describe the current import scope.
+
+Production static output was exercised in Chromium through actual public/private
+RPC and a restricted PostgreSQL login in a fresh disposable database. Two mocked
+application identities used the real authentication/ownership boundary; this was
+not live Firebase verification. The hosted Fintoc sandbox flow authorized a new
+connection, then an explicit UI import recorded three accounts and 1,592 movements.
+Readonly status made no provider call. Refresh preserved prior movement IDs and
+checked manual tags/internal-status choices and a confirmed income receipt; spending
+and received-income totals reconciled independently through the backend. Additional
+provider records appeared during later snapshots/relink without replacing old IDs.
+
+The same run checked account/movement navigation, concurrent refresh coalescing,
+stale source dates with an injected 503 and successful recovery, injected expired
+access followed by real same-identity relink, logout during a pending refresh,
+session rejection and foreign-owner status/refresh denial. Source aging, outage and
+expiry were controlled fault injection, not naturally observed bank failures.
+Keyboard interaction and widths 320/390/768/1440 passed without horizontal overflow;
+the tested settings state had no automated axe WCAG A/AA violations or browser
+errors. This does not audit the provider iframe or establish full accessibility.
+
+Every attempt cleaned up its own disposable Link, database,
+runtime login and ephemeral listeners, preserving all four pre-existing Links.
+The configured review database and application environment files were not changed.
+These checks do not establish live-bank consent, provider SLAs, maximum-size commit
+performance or production readiness.
+
+### First-link tracking browser verification — 8 November 2026
+
+Production static output was separately exercised in Chromium with **mocked RPC**
+for the new first-link policy. The check covered pre-authorization disclosure and
+focus restoration, the Santiago link day across a UTC-date boundary, retained-record
+and same-day precision notices, no historical-date selector, an explicit import
+with one account and zero movements, and a subsequent explicit refresh. Both writes
+sent only the connection ID. Widths 320/390/768/1440 had no horizontal overflow;
+the tested settings state had zero automated axe WCAG A/AA violations or browser
+errors. The ephemeral non-default loopback listener was stopped afterward.
+
+This browser check contacted neither Fintoc nor a database. Separate real-RPC tests
+against disposable PostgreSQL verified the provider request cutoff, independent
+balances with zero movements, stable relink boundary and retained pre-link decisions
+and receipts with a mocked provider. The API suite passed 406 tests with one
+conditional live-Firebase skip; persistence integration passed 26 tests and the UI
+suite passed 353 tests. No new live-provider check of the first-link policy is claimed.
 
 `/comenzar` is optional setup navigation without automatic financial writes. Its
 bank shortcut opens `/conexiones-bancarias` directly; skipping or completing the
@@ -230,7 +314,8 @@ Under `src/app/pages`, related components, templates and tests stay together:
   movement page and its `corrections/` component.
 - `accounts/`: stored balances and shortcuts to connection settings/history.
 - `banking/`: the bank-connections settings page owns access reads/checks/disconnect;
-  `bank-link-flow/` owns one cancellable intent/Widget/completion.
+  `bank-link-flow/` owns one cancellable intent/Widget/completion, and
+  `bank-sync-panel/` owns the selected connection's status and explicit sync commands.
 - `dashboard/`: overview panels; `summary/` owns the distribution chart and its
   exact-amount presentation calculation/tests. Navigation configuration belongs
   to `layout/app-shell/`, not to individual financial workflows.

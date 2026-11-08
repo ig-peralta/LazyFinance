@@ -2,9 +2,10 @@
 
 This guide covers the **connection lifecycle**, not account/movement import or
 refresh scheduling. LAZ-51/LAZ-48 add separate [snapshot import/refresh and status](../fintoc/README.md).
-The LAZ-62 UI exposes the available lifecycle subset in
-`/conexiones-bancarias` under **Mi cuenta**, without claiming its remaining refresh
-acceptance is complete. No payment or money-moving Fintoc endpoint is used.
+The LAZ-62 UI exposes lifecycle controls in `/conexiones-bancarias` under **Mi
+cuenta**, alongside separate explicit import/refresh and readonly status controls.
+Those synchronization commands are not part of authorization or access checks.
+No payment or money-moving Fintoc endpoint is used.
 
 ## Configuration and migration
 
@@ -65,8 +66,9 @@ owner IDs. These are public tRPC, not standalone REST endpoints:
 
 The authenticated `/conexiones-bancarias` settings page follows this flow through
 the generated `ApiRouter` client. `/cuentas` separately displays stored balances
-and links to those settings. Financial import/refresh controls remain unavailable in
-the UI; the separate API `banking.importInitial` command does not run implicitly.
+and links to those settings. A single selected synchronization panel offers
+explicit import/refresh and readonly status; none runs implicitly from authorization
+or an access check.
 See the [UI guide](../../../../ui/README.md)
 and [Widget lifetime](../../../../../docs/technical/ui-data-lifecycle.md#explicit-banking-authorization).
 

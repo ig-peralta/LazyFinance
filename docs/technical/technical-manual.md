@@ -54,9 +54,17 @@ RPC; keep the encryption key separately backed up. The API's explicit
 `banking.importInitial` and `banking.refresh` commands import available snapshots;
 `banking.syncStatus` reports durable attempt recovery and bank-source age. Apply
 migration 026 before running this backend; it does not reset data or start jobs.
-Forced/scheduled bank refresh and UI import controls remain separate work. **Mi cuenta → Conexiones bancarias**
+Forced/scheduled bank refresh remains separate work. **Mi cuenta → Conexiones bancarias**
 (`/conexiones-bancarias`) supports authorization, access checks, relink and disconnect
-without importing financial data. `/cuentas` retains stored balances and links to
+without implicitly importing financial data. Its **Datos y sincronización** panel
+offers explicit initial import, repeat snapshot refresh and readonly status checks.
+Movement requests start at that connection's first-link Santiago day, not the
+preceding 90 days. Relink preserves the date; a new connection after terminal
+disconnect starts a new period. Earlier same-day movements may appear because the
+provider does not supply a reliable exact-time cutoff. Previously imported older
+records are not removed; no historical-import option is currently available.
+An uncertain response requires checking status before another attempt; closing the
+panel does not undo server work. `/cuentas` retains stored balances and links to
 those settings. See the [Fintoc linking guide](../../apps/api/src/banking/linking/README.md)
 and [first-import mapping/limits](../../apps/api/src/banking/fintoc/README.md).
 
