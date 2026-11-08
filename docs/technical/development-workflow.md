@@ -243,6 +243,11 @@ matching test signing key; the root runner wires these together. Running API
 tests with no integration environment is not evidence those skipped cases passed.
 Other API transport specs can still open listeners even when DB cases skip.
 
+The API suite bounds concurrent workers to four. Real-persistence workflows use a
+15-second test deadline instead of the unit/transport default of five seconds;
+these multi-request scenarios are not route-latency benchmarks. Use disposable
+fixtures and assess the separate performance target with a measured load run.
+
 For the live Firebase extension, set `TEST_FIREBASE_ID_TOKEN_A/B` for two distinct
 verified-email test identities, optionally `TEST_FIREBASE_PROJECT_ID` and
 `TEST_FIREBASE_EXPIRED_ID_TOKEN`. Without both active tokens the live case skips.

@@ -12,6 +12,12 @@
 
 The [user journeys](user-journeys.md) give observable examples of the foundational behaviors; the [implemented database model](../technical/database-model.md) describes the current storage relationships and invariants.
 
+The backend's [documented savings rule](../../apps/api/README.md#savings-contribution-policy-laz-35)
+measures recorded cash allocations, not bank balances or new wealth; overlapping
+goals are not additive. Its measured progress/evidence and purchase-attributed
+refund rules do not by themselves deliver the separate web-management workstream
+or prove that imported history is complete.
+
 ## Integration and ecosystem capabilities
 
 ### Shared financial results across interfaces
@@ -24,7 +30,7 @@ Ingest provider accounts, balances and booked movements through a validated, pro
 
 ### MCP for agents in the user's own workflow
 
-Expose appropriate **read-only**, user-scoped financial capabilities as MCP tools so a compatible agent can use them alongside its own tools. Tool results must preserve financial meaning, period, owner and data-quality context. Before describing third-party access as available, define and validate client discovery, user authorization, permitted capabilities, token expiry/revocation and two-user isolation with a reference client. The current authenticated MCP endpoint and its seven read-only tools establish a technical foundation; the final external-client authorization flow is separate work.
+Expose appropriate **read-only**, user-scoped financial capabilities as MCP tools so a compatible agent can use them alongside its own tools. Tool results must preserve financial meaning, period, owner and data-quality context. Before describing third-party access as available, define and validate client discovery, user authorization, permitted capabilities, token expiry/revocation and two-user isolation with a reference client. The current authenticated MCP endpoint and its read-only tools establish a technical foundation; the final external-client authorization flow is separate work. The current [tool inventory](../technical/rpc-contracts.md#public-surface) includes measured savings and spending evidence.
 
 The [innovation reference](innovation.md#example-a-decision-in-the-users-existing-assistant) describes a possible external-agent workflow, not a requirement for LazyFinance to implement web search, shopping or financial writes. Any future action-preparation workflow requires its own contract, explicit approval, permissions and acceptance checks before selection for delivery. Transaction execution is outside the initial agent scope, not excluded from every future product direction.
 

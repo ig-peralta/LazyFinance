@@ -73,6 +73,13 @@ income. Bank facts and balances are unchanged. See the shared
 [recovery semantics](../../docs/technical/rpc-contracts.md#expense-recovery-semantics)
 for partial/split allocations, archived budgets, income conflicts and review states.
 
+`summaries.spendingContributions` and `objectives.budgetContributions` expose
+purchase-level evidence with complete aggregate totals, exact cutoffs and explicit
+untagged coverage. They reuse the same reporting windows and eligibility as the
+reported amounts, including archived budgets and later recoveries. Read-only MCP
+tools call those same services. See [contributing purchases](../../docs/technical/rpc-contracts.md#contributing-purchases)
+for revision/observation pinning and live-page limitations; no drill-down UI is implied.
+
 ### Savings contribution policy (LAZ-35)
 
 The executable [eligibility policy](src/objectives/savings-policy.ts) and its
@@ -159,7 +166,7 @@ rule. Factual `needs_review` status does, so only the affected matching movement
 stays pending. Partial/unknown history or an unknown balance must not suppress
 known allocations or require users to reconcile every transfer first.
 
-The eventual progress read must identify the observation window and available
+The measured progress read identifies the observation window and available
 history separately: "recorded net contributions from imported movements", not
 "your entire savings balance". Missing history can contain additions **or**
 withdrawals, so observed net is not necessarily a lower bound. A recorded-progress
@@ -168,11 +175,11 @@ funding is known. Relevant retained history may include inactive accounts. No
 balance-derived opening amount, confidence engine or reconciliation workflow is
 introduced here.
 
-Ownership still belongs to signed persistence/RLS. LAZ-40 must use complete,
-purpose-shaped owned aggregates and paginated evidence, not total up a history
-browse page or download every transaction to the API. The pure policy and unit
-fixture reconciliation do not by themselves establish database isolation or a
-delivered progress API.
+Ownership still belongs to signed persistence/RLS. Measured reads use complete,
+purpose-shaped owned aggregates and paginated evidence, not totals of a history
+browse page or downloads of every transaction to the API. Real-RPC integration
+tests cover ownership, periods, current-fact corrections and evidence reconciliation;
+pure policy tests alone do not establish database isolation or live-provider readiness.
 
 Public bodies are limited to 1 MiB and batches to 10 procedures. Private provider
 runs are bounded by 100 pages, 50,000 records, 32 MiB normalized JSON and 64 MiB

@@ -31,7 +31,7 @@ All unqualified table names in the finance section below belong to `finance`.
 | `tag` | `id`; unique `(user_id, name)` | User-owned catalog with archive flag |
 | `tag_rule` | `id` → owned tag and optional owned account | User-owned exact-match suggestion or approved automatic rule |
 | `tag_decision_event` | `id` → movement, optional previous/new tags and rule; `user_id` | Runtime append-only audit history, with every referenced owner checked |
-| `objective` | `id`; `user_id` | Stable spending/saving declaration identity; spending write version and archival cutoff |
+| `objective` | `id`; `user_id` | Stable spending/saving declaration identity; separate budget/goal write versions and archival cutoff |
 | `objective_tag` | PK `(objective_id, tag_id)` | Both ends must be owned; multiple tags may describe one budget |
 | `budget_revision` | `id` → spending objective; unique `(objective_id, version)` and live effective boundary | Immutable configuration payload; runtime may update only supersession metadata |
 | `budget_revision_tag` | PK `(revision_id, tag_id)` | Append-only revision selection; both revision and tag must be owned |
@@ -244,8 +244,13 @@ evidence, not guaranteed local relational links.
   preserves existing IDs, actual timestamp bounds and the known selection without
   inventing earlier revisions. Superseded pending definitions remain auditable.
   Archival truncates tracking without prorating the limit or freezing transactions;
-  historical tag metadata remains readable. Savings declarations retain their
-  existing model. Budget timestamp projections preserve SQL microseconds.
+  historical tag metadata remains readable. Budget timestamp projections preserve
+  SQL microseconds.
+- Savings revisions retain immutable configuration/tag selections. `goal_version`
+  checks writes independently of budget versions; edits restate the current
+  allocation view immediately, while archival prevents edits and clips counting
+  at the retained server cutoff. Configuration never creates a bank movement or
+  an opening allocation. History/detail and measured reads preserve exact bounds.
 - Expense adjustments store a positive allocated amount and both confirmed signed
   movement amounts and exact booking instants. Per-row checks enforce distinct
   movements, supported kind, capacity against those snapshots and chronological
