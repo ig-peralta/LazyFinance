@@ -28,6 +28,7 @@ import {
 export class SavingsEditor {
   readonly goal = input<SavingsGoal | null>(null);
   readonly saved = output<SavingsGoal>();
+  readonly cancelled = output<void>();
   protected readonly command = createScopedCommand();
   protected readonly error = signal<string | null>(null);
   protected readonly unsupported = computed(() => {

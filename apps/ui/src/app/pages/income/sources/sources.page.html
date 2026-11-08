@@ -1,11 +1,43 @@
-<header class="page-header"><div><p class="eyebrow">PLANIFICA LO QUE VIENE</p><h1>Fuentes de ingreso<span class="accent-text">.</span></h1><p class="page-description">Sueldo, proyectos, rentas. Define cuándo esperas cobrar sin confundirlo con lo que ya llegó.</p></div><button class="button primary" type="button" (click)="fresh()"><app-icon name="plus" /> Nueva fuente</button></header>
+<header class="page-header">
+  <div><p class="eyebrow">PLANIFICA LO QUE VIENE</p><h1>Fuentes de ingreso<span class="accent-text">.</span></h1><p class="page-description">Sueldo, proyectos, rentas. Define cuándo esperas cobrar sin confundirlo con lo que ya llegó.</p></div>
+  <button class="button primary" type="button" [disabled]="command.pending()" (click)="fresh()"><app-icon name="plus" /> Nueva fuente</button>
+</header>
 <nav class="section-tabs" aria-label="Secciones de ingresos"><a routerLink="/ingresos">Esperado y recibido</a><a routerLink="/ingresos/fuentes" class="active" aria-current="page">Mis fuentes</a></nav>
-@if (message() || command.success()) { <p class="notice" role="status">{{ message() || command.success() }}</p> } @if (command.error()) { <p class="notice danger" role="alert">{{ command.error() }}</p> }
-@if (archiving()) { <div class="notice warning" role="alert"><strong>¿Archivar esta fuente?</strong><p>Detiene su planificación desde el corte del servidor, conserva el historial y no borra cobros. No se podrá editar después.</p><div class="button-row"><button class="button small danger" type="button" [disabled]="command.pending()" (click)="archive()">Confirmar archivo</button><button class="button small" type="button" [disabled]="command.pending()" (click)="archiving.set(null)">Cancelar</button></div></div> }
-<div class="split-layout"><section class="panel"><div class="panel-heading"><div><h2>De dónde viene tu dinero</h2><p class="panel-subtitle">Declaraciones en pesos chilenos.</p></div><button type="button" class="icon-button" aria-label="Recargar fuentes" [disabled]="sources.isLoading()" (click)="sources.reload()"><app-icon name="refresh" /></button></div>
-@if (sources.isLoading()) { <p class="notice" role="status">Cargando tus fuentes…</p> }
-@else if (sources.error()) { <p class="notice danger" role="alert">No pudimos cargar las fuentes. <button type="button" (click)="sources.reload()">Reintentar</button></p> }
-@else if (sources.hasValue()) { <ul class="record-list">@for (source of sources.value(); track source.id) { <li><div class="record-row"><div class="record-identity"><span class="record-icon"><app-icon name="income" /></span><div><h3 class="record-title">{{ source.name }}</h3><p class="record-meta">{{ schedule(source) }}</p></div></div><span class="badge" [class.neutral]="!!source.archivedAt">{{ source.archivedAt ? 'Archivada' : 'Activa' }}</span></div><p class="record-meta" style="margin-top:12px">{{ source.expectedAmount === null ? 'Monto por definir' : money(source.expectedAmount) + ' por pago' }} · {{ source.amountKind === 'fixed' ? 'Fijo' : 'Variable / estimado' }}<br>{{ source.startDate }} → {{ source.endDate || 'sin fecha final' }}</p><div class="button-row" style="margin-top:12px"><button type="button" class="button small" [disabled]="command.pending()" (click)="selectedId.set(source.id); message.set(null)">{{ source.archivedAt ? 'Ver declaración' : 'Editar / planificar' }}</button>@if (!source.archivedAt) { <button type="button" class="button small danger" [disabled]="command.pending()" (click)="archiving.set(source.id)">Archivar</button> }</div></li> } @empty { <li><div class="empty-state"><span class="empty-icon"><app-icon name="income" /></span><h3>Un poco de previsión, mucha claridad</h3><p>Añade una fuente para ver tu plan mensual. No se crearán ingresos recibidos automáticamente.</p></div></li> }</ul> }</section>
-<div class="stack">@for (key of [selectedId() + ':' + editorKey()]; track key) { <income-source-editor [source]="selected()" (saved)="message.set('Fuente guardada. Los cobros recibidos no se modificaron.'); selectedId.set($event.id); sources.reload()" (cancelled)="fresh()" /> }
-@if (selected(); as source) { @if (source.regularity === 'irregular') { @for (item of [source]; track item.id) { <income-expectations [source]="item" /> } } @else { <p class="notice" style="margin:0">Los pagos regulares se generan en el backend con el calendario declarado. Para pasar de irregular a regular, elimina primero sus expectativas puntuales.</p> } }
-</div></div>
+@if (message() || command.success()) { <p class="notice" role="status">{{ message() || command.success() }}</p> }
+@if (command.error()) { <p class="notice danger" role="alert">{{ command.error() }}</p> }
+@if (archiving()) {
+  <div class="notice warning" role="alert"><strong>¿Archivar esta fuente?</strong><p>Detiene su planificación desde el corte del servidor, conserva el historial y no borra cobros. No se podrá editar después.</p><div class="button-row"><button class="button small danger" type="button" [disabled]="command.pending()" (click)="archive()">Confirmar archivo</button><button class="button small" type="button" [disabled]="command.pending()" (click)="archiving.set(null)">Cancelar</button></div></div>
+}
+<section class="panel">
+  <div class="panel-heading"><div><h2>De dónde viene tu dinero</h2><p class="panel-subtitle">Declaraciones en pesos chilenos.</p></div><button type="button" class="icon-button" aria-label="Recargar fuentes" [disabled]="sources.isLoading()" (click)="sources.reload()"><app-icon name="refresh" /></button></div>
+  @if (sources.isLoading()) { <p class="notice" role="status">Cargando tus fuentes…</p> }
+  @else if (sources.error()) { <p class="notice danger" role="alert">No pudimos cargar las fuentes. <button type="button" (click)="sources.reload()">Reintentar</button></p> }
+  @else if (sources.hasValue()) {
+    <ul class="record-list">
+      @for (source of sources.value(); track source.id) {
+        <li>
+          <div class="record-row"><div class="record-identity"><span class="record-icon"><app-icon name="income" /></span><div><h3 class="record-title">{{ source.name }}</h3><p class="record-meta">{{ schedule(source) }}</p></div></div><span class="badge" [class.neutral]="!!source.archivedAt">{{ source.archivedAt ? 'Archivada' : 'Activa' }}</span></div>
+          <p class="record-meta" style="margin-top:12px">{{ source.expectedAmount === null ? 'Monto por definir' : money(source.expectedAmount) + ' por pago' }} · {{ source.amountKind === 'fixed' ? 'Fijo' : 'Variable / estimado' }}<br>{{ source.startDate }} → {{ source.endDate || 'sin fecha final' }}</p>
+          <div class="button-row" style="margin-top:12px">
+            <button type="button" class="button small" [disabled]="command.pending()" (click)="edit(source)">{{ source.archivedAt ? 'Ver declaración' : 'Editar fuente' }}</button>
+            @if (source.regularity === 'irregular') { <button type="button" class="button small soft" [attr.aria-expanded]="planningId() === source.id" [attr.aria-controls]="'source-planning-' + source.id" (click)="planningId.set(planningId() === source.id ? null : source.id)">{{ planningId() === source.id ? 'Ocultar pagos esperados' : 'Planificar pagos' }}</button> }
+            @if (!source.archivedAt) { <button type="button" class="button small danger" [disabled]="command.pending()" (click)="archiving.set(source.id)">Archivar</button> }
+          </div>
+          @if (source.regularity === 'irregular') {
+            <div class="source-planning" [id]="'source-planning-' + source.id">
+              @if (planningId() === source.id) { @for (key of [source.id + ':' + source.updatedAt + ':' + source.archivedAt]; track key) { <income-expectations [source]="source" /> } }
+            </div>
+          }
+        </li>
+      } @empty {
+        <li><div class="empty-state"><span class="empty-icon"><app-icon name="income" /></span><h3>Un poco de previsión, mucha claridad</h3><p>Añade una fuente para ver tu plan mensual. No se crearán ingresos recibidos automáticamente.</p></div></li>
+      }
+    </ul>
+  }
+</section>
+<p class="notice">Los pagos regulares se generan con el calendario declarado. Las fuentes irregulares tienen sus propios pagos esperados; para pasar a regular, elimina primero esas expectativas.</p>
+@if (editorOpen()) {
+  <editor-drawer [title]="editing()?.archivedAt ? 'Declaración de ingreso' : editing() ? 'Editar fuente de ingreso' : 'Nueva fuente de ingreso'" eyebrow="PLANIFICA LO QUE VIENE" (dismissed)="closeEditor()">
+    <income-source-editor [source]="editing()" (saved)="saved($event)" (cancelled)="closeEditor()" />
+  </editor-drawer>
+}

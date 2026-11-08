@@ -2,6 +2,7 @@ import { TestBed } from "@angular/core/testing";
 import { Router } from "@angular/router";
 import { RouterTestingHarness } from "@angular/router/testing";
 import { afterEach, describe, expect, it } from "vitest";
+import { useDialogStub } from "../../../../../testing/dialog";
 import { eventsIn } from "../../../../../testing/dom";
 import {
   budgetDetail,
@@ -17,6 +18,7 @@ import { BudgetPage } from "../budget.page";
 import { BudgetEditor } from "./budget-editor";
 
 describe("revision-aware spending budgets", () => {
+  useDialogStub();
   afterEach(() => TestBed.resetTestingModule());
 
   it("creates a selected-tag budget with exact money and supported calendar dates", async () => {
@@ -131,11 +133,22 @@ describe("revision-aware spending budgets", () => {
     harness.detectChanges();
     const root: HTMLElement = harness.fixture.nativeElement;
     const event = eventsIn(root);
+    expect(root.querySelector("form")).toBeNull();
+    [...root.querySelectorAll("button")]
+      .find((button) => button.textContent?.includes("Ajustar presupuesto"))
+      ?.click();
+    harness.detectChanges();
+    await harness.fixture.whenStable();
     root.querySelector("form")?.dispatchEvent(event("submit"));
     await harness.fixture.whenStable();
     harness.detectChanges();
     expect(mock.callsTo("objectives.updateBudget")).toHaveLength(1);
     expect(root.textContent).toContain("El registro cambió");
+    expect(root.querySelector("dialog")).not.toBeNull();
+    root
+      .querySelector<HTMLButtonElement>('[aria-label="Cerrar panel"]')
+      ?.click();
+    harness.detectChanges();
     [...root.querySelectorAll("button")]
       .find((button) => button.textContent?.includes("Ver historial"))
       ?.click();

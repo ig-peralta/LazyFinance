@@ -1,5 +1,6 @@
 import { TestBed } from "@angular/core/testing";
 import { afterEach, describe, expect, it } from "vitest";
+import { useDialogStub } from "../../../../../testing/dialog";
 import { eventsIn } from "../../../../../testing/dom";
 import {
   incomeSource,
@@ -10,6 +11,7 @@ import {
 import { Expectations } from "./expectations";
 
 describe("dated income expectations", () => {
+  useDialogStub();
   afterEach(() => TestBed.resetTestingModule());
 
   it("creates, edits and removes an estimate without confirming income", async () => {
@@ -46,6 +48,12 @@ describe("dated income expectations", () => {
     await fixture.whenStable();
     const root: HTMLElement = fixture.nativeElement;
     const event = eventsIn(root);
+    expect(root.querySelector("form")).toBeNull();
+    [...root.querySelectorAll("button")]
+      .find((button) => button.textContent?.includes("Nuevo pago esperado"))
+      ?.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
     const fill = (id: string, value: string) => {
       const input = root.querySelector<HTMLInputElement>(id);
       if (!input) throw new Error(id);
@@ -61,10 +69,12 @@ describe("dated income expectations", () => {
     expect(
       mock.callsTo("income.createExpectation")[0].input.expectation,
     ).toEqual({ date: "2026-11-20", amount: "100.50", isEstimate: true });
+    expect(root.querySelector("dialog")).toBeNull();
     [...root.querySelectorAll("button")]
       .find((button) => button.textContent?.trim() === "Editar")
       ?.click();
     fixture.detectChanges();
+    await fixture.whenStable();
     fill("#expectation-amount", "200");
     root.querySelector("form")?.dispatchEvent(event("submit"));
     await fixture.whenStable();

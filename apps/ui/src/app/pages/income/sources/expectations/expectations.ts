@@ -1,17 +1,25 @@
-import { Component, inject, input, resource, signal } from "@angular/core";
-import { FormsModule } from "@angular/forms";
+import {
+  Component,
+  effect,
+  inject,
+  input,
+  resource,
+  signal,
+} from "@angular/core";
 import {
   type IncomeExpectation,
-  IncomeExpectationInputSchema,
   type IncomeSource,
 } from "@lazyfinance/contracts";
-import { decimalInput, formatClp } from "../../../../../utils/currency";
+import { formatClp } from "../../../../../utils/currency";
 import { RpcClient } from "../../../../core/rpc/rpc-client";
 import { createScopedCommand } from "../../../../core/rpc/scoped-command";
+import { EditorDrawer } from "../../../../shared/ui/editor-drawer";
+import { Icon } from "../../../../shared/ui/icon";
+import { ExpectationEditor } from "./expectation-editor";
 
 @Component({
   selector: "income-expectations",
-  imports: [FormsModule],
+  imports: [EditorDrawer, ExpectationEditor, Icon],
   templateUrl: "./expectations.html",
 })
 export class Expectations {
@@ -26,71 +34,54 @@ export class Expectations {
       scope.client.income.expectations.query({ id }, { signal: abortSignal }),
     defaultValue: [],
   });
-  protected readonly command = createScopedCommand();
+  protected readonly command = createScopedCommand(() => this.source().id);
   protected readonly editing = signal<IncomeExpectation | null>(null);
   protected readonly removing = signal<IncomeExpectation | null>(null);
-  protected readonly error = signal<string | null>(null);
-  protected date = "";
-  protected amount = "";
-  protected estimate = false;
+  protected readonly editorOpen = signal(false);
+  protected readonly message = signal<string | null>(null);
   protected readonly money = formatClp;
+
+  constructor() {
+    effect(() => {
+      this.rpc.authenticatedScope();
+      this.source();
+      this.reset();
+      this.removing.set(null);
+      this.message.set(null);
+    });
+  }
+
+  protected fresh() {
+    this.editing.set(null);
+    this.message.set(null);
+    this.command.clear();
+    this.editorOpen.set(true);
+  }
 
   protected edit(entry: IncomeExpectation) {
     this.editing.set(entry);
-    this.date = entry.date;
-    this.amount = entry.amount;
-    this.estimate = entry.isEstimate;
-    this.error.set(null);
+    this.message.set(null);
+    this.command.clear();
+    this.editorOpen.set(true);
   }
 
   protected reset() {
     this.editing.set(null);
-    this.date = "";
-    this.amount = "";
-    this.estimate = false;
-    this.error.set(null);
+    this.editorOpen.set(false);
   }
 
-  protected save() {
-    const parsed = IncomeExpectationInputSchema.safeParse({
-        date: this.date,
-        amount: decimalInput(this.amount),
-        isEstimate: this.estimate,
-      }),
-      source = this.source();
-    if (
-      !parsed.success ||
-      this.date < source.startDate ||
-      (source.endDate && this.date > source.endDate)
-    ) {
-      this.error.set(
-        "Usa una fecha dentro de la vigencia de la fuente y un monto positivo con hasta 2 decimales.",
-      );
-      return;
-    }
-    const existing = this.editing();
-    void this.command.run(
-      (scope, signal) =>
-        existing
-          ? scope.client.income.updateExpectation.mutate(
-              { id: existing.id, expectation: parsed.data },
-              { signal },
-            )
-          : scope.client.income.createExpectation.mutate(
-              { sourceId: source.id, expectation: parsed.data },
-              { signal },
-            ),
-      () => {
-        this.reset();
-        this.entries.reload();
-      },
+  protected saved() {
+    this.message.set(
       "Pago esperado guardado. No se ha confirmado ningún ingreso.",
     );
+    this.reset();
+    this.entries.reload();
   }
 
   protected remove() {
     const entry = this.removing();
     if (!entry) return;
+    this.message.set(null);
     void this.command.run(
       (scope, signal) =>
         scope.client.income.removeExpectation.mutate(

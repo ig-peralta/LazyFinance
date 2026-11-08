@@ -8,7 +8,7 @@
 @else if (detail.error()) { <div class="notice danger" role="alert">No pudimos abrir este movimiento. Puede no estar disponible para tu cuenta. <button type="button" (click)="detail.reload()">Reintentar</button></div> }
 @else if (detail.hasValue()) {
   @let item = detail.value();
-  <div class="split-layout">
+  <div class="stack">
     <section class="panel">
       <div class="panel-heading"><span class="record-icon"><app-icon [name]="item.type === 'debit' ? 'wallet' : 'income'" /></span><span class="badge neutral">{{ item.source === 'provider' ? 'Importado del proveedor' : 'Registro manual' }}</span></div>
       <p class="eyebrow">{{ item.type === 'debit' ? 'CARGO ORIGINAL' : 'ABONO ORIGINAL' }}</p>
@@ -22,6 +22,7 @@
       </dl>
       @if (item.description) { <p class="notice">{{ item.description }}</p> }
       <p class="field-hint">{{ item.bookedPrecision === 'calendar_day' ? 'El proveedor informó un día, no una hora exacta.' : 'Hora mostrada en el calendario de Santiago.' }} El importe original nunca se cambia al corregir una etiqueta.</p>
+      @if (!item.removedAt) { <div class="button-row" style="margin-top:20px"><button class="button primary" type="button" (click)="editorOpen.set(true)">Corregir clasificación</button></div> }
       <section style="margin-top:28px;padding-top:22px;border-top:1px solid var(--line)" aria-labelledby="facts-heading">
         <div class="panel-heading"><h2 id="facts-heading">Lo que sabemos</h2><app-icon name="info" /></div>
         <p class="record-meta">Evaluación del proveedor: {{ item.providerInternalAssessment === 'unknown' ? 'sin determinar' : item.providerInternalAssessment === 'internal' ? 'interno' : 'externo' }}.</p>
@@ -32,9 +33,7 @@
         @if (item.hasExpenseAdjustments) { <p class="notice">Este movimiento conserva vínculos de devolución o reembolso. Sus efectos dependen de los hechos actuales.</p> }
       </section>
     </section>
-    <aside class="stack">
-      @for (current of [item]; track current.id) { <transaction-corrections [item]="current" (saved)="corrected($event)" /> }
-      <p class="notice" style="margin:0">Un abono no es automáticamente un ingreso. Una transferencia interna no es una compra. Tampoco inferimos un saldo a partir de este registro.</p>
-    </aside>
+    <p class="notice" style="margin:0">Un abono no es automáticamente un ingreso. Una transferencia interna no es una compra. Tampoco inferimos un saldo a partir de este registro.</p>
   </div>
+  @if (editorOpen() && !item.removedAt) { <editor-drawer title="Corregir clasificación" eyebrow="TU INTERPRETACIÓN" (dismissed)="editorOpen.set(false)">@for (current of [item]; track current.id) { <transaction-corrections [item]="current" (saved)="corrected($event)" (cancelled)="editorOpen.set(false)" /> }</editor-drawer> }
 }

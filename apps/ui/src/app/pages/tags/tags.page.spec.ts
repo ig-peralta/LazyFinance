@@ -1,11 +1,13 @@
 import { TestBed } from "@angular/core/testing";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { deferred } from "../../../testing/deferred";
+import { useDialogStub } from "../../../testing/dialog";
 import { eventsIn } from "../../../testing/dom";
 import { principal, type RpcOutput, setupRpc, tag } from "../../../testing/rpc";
 import { TagsPage } from "./tags.page";
 
 describe("owned tag management", () => {
+  useDialogStub();
   afterEach(() => TestBed.resetTestingModule());
 
   it("creates, renames, recolors and archives through explicit commands and reloads persisted results", async () => {
@@ -42,7 +44,13 @@ describe("owned tag management", () => {
     await fixture.whenStable();
     const root: HTMLElement = fixture.nativeElement;
     const event = eventsIn(root);
-    const input = root.querySelector<HTMLInputElement>("#tag-name");
+    expect(root.querySelector("form")).toBeNull();
+    [...root.querySelectorAll("button")]
+      .find((button) => button.textContent?.includes("Nueva etiqueta"))
+      ?.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    let input = root.querySelector<HTMLInputElement>("#tag-name");
     if (!input) throw new Error("Missing name field");
     input.value = "Viajes";
     input.dispatchEvent(event("input"));
@@ -56,10 +64,14 @@ describe("owned tag management", () => {
       color: "#78966a",
     });
     expect(root.textContent).toContain("Etiqueta creada");
+    expect(root.querySelector("dialog")).toBeNull();
     root
       .querySelector<HTMLButtonElement>('[aria-label="Editar Comida"]')
       ?.click();
     fixture.detectChanges();
+    await fixture.whenStable();
+    input = root.querySelector<HTMLInputElement>("#tag-name");
+    if (!input) throw new Error("Missing edit field");
     input.value = "Alimentación";
     input.dispatchEvent(event("input"));
     const color = root.querySelector<HTMLInputElement>("#tag-color");
@@ -109,6 +121,11 @@ describe("owned tag management", () => {
     await fixture.whenStable();
     const root: HTMLElement = fixture.nativeElement;
     const event = eventsIn(root);
+    [...root.querySelectorAll("button")]
+      .find((button) => button.textContent?.includes("Nueva etiqueta"))
+      ?.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
     const input = root.querySelector<HTMLInputElement>("#tag-name");
     if (!input) throw new Error("Missing form");
     input.value = "Privada";
@@ -117,6 +134,7 @@ describe("owned tag management", () => {
     form?.dispatchEvent(event("submit", { bubbles: true, cancelable: true }));
     form?.dispatchEvent(event("submit", { bubbles: true, cancelable: true }));
     fixture.detectChanges();
+    await vi.waitFor(() => expect(mock.callsTo("tags.create")).toHaveLength(1));
     mock.credentials.accept(
       { ...principal, userId: "owner-b", name: "Bob" },
       "bob",
@@ -127,6 +145,47 @@ describe("owned tag management", () => {
     expect(mock.callsTo("tags.create")).toHaveLength(1);
     expect(root.textContent).not.toContain("Comida");
     expect(root.textContent).not.toContain("Etiqueta creada");
-    expect(input.value).toBe("");
+    expect(root.querySelector("dialog")).toBeNull();
+    [...root.querySelectorAll("button")]
+      .find((button) => button.textContent?.includes("Nueva etiqueta"))
+      ?.click();
+    fixture.detectChanges();
+    expect(root.querySelector<HTMLInputElement>("#tag-name")?.value).toBe("");
+  });
+
+  it("discards cancelled drafts and ignores a create response after the drawer is closed", async () => {
+    const pending = deferred<RpcOutput<"tags.create">>();
+    const mock = setupRpc({ "tags.create": () => pending.promise });
+    const fixture = TestBed.createComponent(TagsPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const root: HTMLElement = fixture.nativeElement;
+    const event = eventsIn(root);
+    const open = async () => {
+      [...root.querySelectorAll("button")]
+        .find((button) => button.textContent?.includes("Nueva etiqueta"))
+        ?.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+    };
+    await open();
+    const input = root.querySelector<HTMLInputElement>("#tag-name");
+    if (!input) throw new Error("Missing tag draft");
+    input.value = "Sin confirmar";
+    input.dispatchEvent(event("input"));
+    root.querySelector("form")?.dispatchEvent(event("submit"));
+    await vi.waitFor(() => expect(mock.callsTo("tags.create")).toHaveLength(1));
+    root
+      .querySelector<HTMLButtonElement>('[aria-label="Cerrar panel"]')
+      ?.click();
+    fixture.detectChanges();
+    expect(mock.callsTo("tags.create")[0].options?.signal?.aborted).toBe(true);
+    await open();
+    pending.resolve({ ...tag, name: "Sin confirmar" });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(root.querySelector<HTMLInputElement>("#tag-name")?.value).toBe("");
+    expect(root.querySelector("dialog")).not.toBeNull();
+    expect(root.textContent).not.toContain("Etiqueta creada");
   });
 });

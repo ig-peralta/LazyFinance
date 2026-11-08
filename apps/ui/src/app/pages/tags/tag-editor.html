@@ -1,0 +1,17 @@
+<p class="panel-subtitle">Pequeños detalles que hacen todo más claro.</p>
+@if (command.error()) { <p class="notice danger" role="alert">{{ command.error() }}</p> }
+<form (ngSubmit)="save()">
+  <fieldset [disabled]="command.pending()" class="form-fieldset">
+    <div class="form-grid">
+      <div class="field full"><label for="tag-name">Nombre de la etiqueta</label><input id="tag-name" name="name" [(ngModel)]="name" maxlength="80" required placeholder="Por ejemplo, cafés y antojos" [attr.aria-invalid]="formError() ? 'true' : null" /><small>Los nombres distinguen mayúsculas. Los archivados siguen reservados.</small></div>
+      <div class="field full">
+        <label for="tag-color">Un color para reconocerla</label>
+        <div class="button-row"><input id="tag-color" name="color" type="color" [(ngModel)]="color" [disabled]="noColor" /><span class="badge"><span class="tag-swatch" [style.backgroundColor]="noColor ? '#b5c1aa' : color"></span>{{ name || 'Tu etiqueta' }}</span></div>
+        <label class="check-option"><input name="noColor" type="checkbox" [(ngModel)]="noColor" /> Usar color predeterminado</label>
+      </div>
+    </div>
+    @if (formError()) { <p class="field-error" role="alert">{{ formError() }}</p> }
+  </fieldset>
+  <p class="notice"><strong>El nombre cambia, el historial no.</strong> Renombrar o cambiar un color no modifica los importes ni los movimientos que usan la etiqueta.</p>
+  <div class="form-actions"><button class="button" type="button" (click)="cancelled.emit()">Cancelar</button><button class="button primary" type="submit" [disabled]="command.pending()">{{ command.pending() ? 'Guardando…' : tag() ? 'Guardar cambios' : 'Crear etiqueta' }}</button></div>
+</form>

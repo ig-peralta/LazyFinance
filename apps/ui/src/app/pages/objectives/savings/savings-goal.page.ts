@@ -16,13 +16,14 @@ import { RpcClient } from "../../../core/rpc/rpc-client";
 import { createScopedCommand } from "../../../core/rpc/scoped-command";
 import { SavingsMeasure } from "../../../features/objectives/savings-measure";
 import { createCursorTrail } from "../../../features/pagination/cursor-trail";
+import { EditorDrawer } from "../../../shared/ui/editor-drawer";
 import { Icon } from "../../../shared/ui/icon";
 import { objectivePeriod } from "../forms/objective-form";
 import { SavingsEditor } from "./savings-editor/savings-editor";
 
 @Component({
   selector: "savings-goal-page",
-  imports: [RouterLink, Icon, SavingsEditor, SavingsMeasure],
+  imports: [RouterLink, Icon, SavingsEditor, SavingsMeasure, EditorDrawer],
   templateUrl: "./savings-goal.page.html",
 })
 export class SavingsGoalPage {
@@ -61,6 +62,7 @@ export class SavingsGoalPage {
       ),
   });
   protected readonly archiving = signal(false);
+  protected readonly editorOpen = signal(false);
   private readonly notice = signal<{ key: unknown; message: string } | null>(
     null,
   );
@@ -83,10 +85,12 @@ export class SavingsGoalPage {
       this.selection();
       this.archiving.set(false);
       this.showHistory.set(false);
+      this.editorOpen.set(false);
     });
   }
 
   protected saved() {
+    this.editorOpen.set(false);
     this.notice.set({
       key: this.selection(),
       message:

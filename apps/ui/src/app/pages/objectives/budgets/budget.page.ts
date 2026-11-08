@@ -13,12 +13,13 @@ import { formatDate } from "../../../../utils/date";
 import { RpcClient } from "../../../core/rpc/rpc-client";
 import { createScopedCommand } from "../../../core/rpc/scoped-command";
 import { createCursorTrail } from "../../../features/pagination/cursor-trail";
+import { EditorDrawer } from "../../../shared/ui/editor-drawer";
 import { Icon } from "../../../shared/ui/icon";
 import { BudgetEditor } from "./budget-editor/budget-editor";
 
 @Component({
   selector: "budget-page",
-  imports: [RouterLink, Icon, BudgetEditor],
+  imports: [RouterLink, Icon, BudgetEditor, EditorDrawer],
   templateUrl: "./budget.page.html",
 })
 export class BudgetPage {
@@ -54,6 +55,7 @@ export class BudgetPage {
   });
   protected readonly command = createScopedCommand(this.selection);
   protected readonly archiving = signal(false);
+  protected readonly editorOpen = signal(false);
   private readonly notice = signal<{ key: unknown; message: string } | null>(
     null,
   );
@@ -68,10 +70,12 @@ export class BudgetPage {
       this.selection();
       this.archiving.set(false);
       this.showHistory.set(false);
+      this.editorOpen.set(false);
     });
   }
 
   protected saved() {
+    this.editorOpen.set(false);
     this.notice.set({
       key: this.selection(),
       message:

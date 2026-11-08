@@ -20,6 +20,20 @@ viewports replace it with a compact native modal menu, including a two-column
 layout on short screens, focus containment and Escape handling. A skip link and
 keyboard-visible focus remain available.
 
+Financial editors are opened explicitly instead of occupying a permanent page
+column: tags, budget/savings creation and adjustments, income sources and dated
+expectations, receipt confirmation and movement corrections use a shared
+right-side modal panel. It slides in on desktop and fills narrow screens, with a
+fixed header, independently scrolling content, reachable actions and safe-area
+padding. Native dialogs contain focus, make the underlying page inert, support
+Escape/backdrop dismissal and return focus to the opener; reduced-motion users
+get no slide animation. Closing unmounts the editor, clears its draft and cancels
+its client command lifetime. It does not undo a write already sent to the server;
+use the page's reload action to reconcile an uncertain result before retrying.
+Source editing and irregular-payment planning are separate actions; expected
+payments expand under their source and open their own editor, never a nested
+modal. Filters, month selectors and sign-in forms stay in place.
+
 The dashboard leads with selected-month net spending, received income and the
 full-month income plan, followed by workflow shortcuts, spending analysis,
 planning, stored account balances and recent activity. Balances are not added

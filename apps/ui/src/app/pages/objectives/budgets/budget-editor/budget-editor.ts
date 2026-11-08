@@ -24,6 +24,7 @@ import { objectiveFields, objectiveInput } from "../../forms/objective-form";
 export class BudgetEditor {
   readonly detail = input<BudgetDetail | null>(null);
   readonly saved = output<BudgetDetail>();
+  readonly cancelled = output<void>();
   protected readonly definition = computed(
     () => this.detail()?.pending ?? this.detail()?.effective ?? null,
   );

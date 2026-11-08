@@ -1,6 +1,7 @@
 import { TestBed } from "@angular/core/testing";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { deferred } from "../../../../testing/deferred";
+import { useDialogStub } from "../../../../testing/dialog";
 import { eventsIn } from "../../../../testing/dom";
 import {
   incomeSource,
@@ -11,6 +12,7 @@ import {
 import { SourcesPage } from "./sources.page";
 
 describe("income source management", () => {
+  useDialogStub();
   afterEach(() => TestBed.resetTestingModule());
 
   it("persists a source, edits it and archives it with retained history after reload", async () => {
@@ -38,6 +40,12 @@ describe("income source management", () => {
     await fixture.whenStable();
     const root: HTMLElement = fixture.nativeElement;
     const event = eventsIn(root);
+    expect(root.querySelector("form")).toBeNull();
+    [...root.querySelectorAll("button")]
+      .find((button) => button.textContent?.includes("Nueva fuente"))
+      ?.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
     const fill = (selector: string, value: string) => {
       const input = root.querySelector<HTMLInputElement>(selector);
       if (!input) throw new Error(selector);
@@ -52,6 +60,12 @@ describe("income source management", () => {
     expect(mock.callsTo("income.createSource")[0].input.expectedAmount).toBe(
       "1234567.89",
     );
+    expect(root.querySelector("dialog")).toBeNull();
+    [...root.querySelectorAll("button")]
+      .find((button) => button.textContent?.includes("Editar fuente"))
+      ?.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
     fill("#source-name", "Sueldo principal");
     root.querySelector("form")?.dispatchEvent(event("submit"));
     await fixture.whenStable();
@@ -63,6 +77,7 @@ describe("income source management", () => {
       .find((button) => button.textContent?.trim() === "Archivar")
       ?.click();
     fixture.detectChanges();
+    await fixture.whenStable();
     expect(root.textContent).toContain("no borra cobros");
     [...root.querySelectorAll("button")]
       .find((button) => button.textContent?.includes("Confirmar archivo"))
@@ -87,6 +102,11 @@ describe("income source management", () => {
     await fixture.whenStable();
     const root: HTMLElement = fixture.nativeElement;
     const event = eventsIn(root);
+    [...root.querySelectorAll("button")]
+      .find((button) => button.textContent?.includes("Nueva fuente"))
+      ?.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
     for (const [id, value] of [
       ["#source-name", "Privada"],
       ["#source-amount", "100"],
@@ -98,14 +118,60 @@ describe("income source management", () => {
     }
     root.querySelector("form")?.dispatchEvent(event("submit"));
     root.querySelector("form")?.dispatchEvent(event("submit"));
+    await vi.waitFor(() =>
+      expect(mock.callsTo("income.createSource")).toHaveLength(1),
+    );
     mock.credentials.accept({ ...principal, userId: "bob" }, "bob");
     pending.resolve(incomeSource);
     await fixture.whenStable();
     fixture.detectChanges();
     expect(mock.callsTo("income.createSource")).toHaveLength(1);
     expect(root.textContent).not.toContain("Fuente guardada");
+    expect(root.querySelector("dialog")).toBeNull();
+    [...root.querySelectorAll("button")]
+      .find((button) => button.textContent?.includes("Nueva fuente"))
+      ?.click();
+    fixture.detectChanges();
     expect(root.querySelector<HTMLInputElement>("#source-name")?.value).toBe(
       "",
     );
+  });
+
+  it("keeps irregular planning separate from source editing without nested drawers", async () => {
+    const mock = setupRpc({
+      "income.sources": () => [
+        { ...incomeSource, regularity: "irregular", schedule: null },
+      ],
+      "income.expectations": () => [],
+    });
+    const fixture = TestBed.createComponent(SourcesPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement;
+    const click = async (label: string) => {
+      [...root.querySelectorAll("button")]
+        .find((button) => button.textContent?.trim() === label)
+        ?.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+    };
+    expect(mock.callsTo("income.expectations")).toHaveLength(0);
+    await click("Planificar pagos");
+    expect(mock.callsTo("income.expectations")).toHaveLength(1);
+    expect(root.querySelector("form")).toBeNull();
+    await click("Nuevo pago esperado");
+    expect(root.querySelectorAll("dialog")).toHaveLength(1);
+    expect(root.querySelector("#expectation-date")).not.toBeNull();
+    expect(root.querySelector("#source-name")).toBeNull();
+    await click("Cancelar");
+    await click("Editar fuente");
+    expect(root.querySelectorAll("dialog")).toHaveLength(1);
+    expect(root.querySelector("#source-name")).not.toBeNull();
+    expect(root.querySelector("#expectation-date")).toBeNull();
+    await click("Cancelar");
+    expect(root.querySelector("dialog")).toBeNull();
+    expect(root.textContent).toContain("Pagos puntuales esperados");
   });
 });

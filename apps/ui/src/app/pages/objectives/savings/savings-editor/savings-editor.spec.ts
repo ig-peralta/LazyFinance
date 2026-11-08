@@ -4,6 +4,7 @@ import { RouterTestingHarness } from "@angular/router/testing";
 import { CreateSavingsGoalSchema } from "@lazyfinance/contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { deferred } from "../../../../../testing/deferred";
+import { useDialogStub } from "../../../../../testing/dialog";
 import { eventsIn } from "../../../../../testing/dom";
 import {
   principal,
@@ -18,6 +19,7 @@ import { SavingsGoalPage } from "../savings-goal.page";
 import { SavingsEditor } from "./savings-editor";
 
 describe("owned savings target management", () => {
+  useDialogStub();
   afterEach(() => TestBed.resetTestingModule());
 
   it.each([
@@ -50,6 +52,13 @@ describe("owned savings target management", () => {
     fixture.detectChanges();
     const root: HTMLElement = fixture.nativeElement;
     const event = eventsIn(root);
+    expect(root.querySelector("form")).toBeNull();
+    [...root.querySelectorAll("button")]
+      .find((button) => button.textContent?.includes("Nueva meta"))
+      ?.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
     for (const [id, value] of [
       ["#objective-name", "Fondo"],
       ["#objective-amount", "9007199254740,99"],
@@ -70,6 +79,7 @@ describe("owned savings target management", () => {
       schedule: { period: "lifetime" },
     });
     expect(root.textContent).toContain("Meta guardada");
+    expect(root.querySelector("dialog")).toBeNull();
     fixture.destroy();
     const revisit = TestBed.createComponent(SavingsPage);
     revisit.detectChanges();
@@ -160,8 +170,11 @@ describe("owned savings target management", () => {
     await harness.fixture.whenStable();
     harness.detectChanges();
     expect(root.textContent).toContain("Meta archivada");
+    expect(root.querySelector("form")).toBeNull();
     expect(
-      root.querySelector<HTMLFieldSetElement>("form fieldset")?.disabled,
-    ).toBe(true);
+      [...root.querySelectorAll("button")].some((button) =>
+        button.textContent?.includes("Ajustar meta"),
+      ),
+    ).toBe(false);
   });
 });

@@ -10,13 +10,14 @@ import { RouterLink } from "@angular/router";
 import { formatClp } from "../../../../utils/currency";
 import { AuthCredentials } from "../../../core/auth/auth-credentials";
 import { RpcClient } from "../../../core/rpc/rpc-client";
+import { EditorDrawer } from "../../../shared/ui/editor-drawer";
 import { Icon } from "../../../shared/ui/icon";
 import { objectivePeriod } from "../forms/objective-form";
 import { SavingsEditor } from "./savings-editor/savings-editor";
 
 @Component({
   selector: "savings-page",
-  imports: [RouterLink, Icon, SavingsEditor],
+  imports: [RouterLink, Icon, SavingsEditor, EditorDrawer],
   templateUrl: "./savings.page.html",
 })
 export class SavingsPage {
@@ -32,7 +33,7 @@ export class SavingsPage {
       (goal) => goal.intent === "saving",
     ),
   );
-  protected readonly editorKey = signal(0);
+  protected readonly editorOpen = signal(false);
   protected readonly savedId = signal<string | null>(null);
   protected readonly money = formatClp;
   protected readonly period = objectivePeriod;
@@ -43,13 +44,13 @@ export class SavingsPage {
     effect(() => {
       owner();
       this.savedId.set(null);
-      this.editorKey.update((key) => key + 1);
+      this.editorOpen.set(false);
     });
   }
 
   protected created(id: string) {
     this.savedId.set(id);
-    this.editorKey.update((key) => key + 1);
+    this.editorOpen.set(false);
     this.goals.reload();
   }
 }

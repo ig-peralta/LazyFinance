@@ -1,10 +1,10 @@
 <header class="page-header">
   <div><p class="eyebrow">ESPACIO PARA LO QUE IMPORTA</p><h1>Presupuestos y metas<span class="accent-text">.</span></h1><p class="page-description">Pon límites con intención. El gasto de cada presupuesto lo calcula el backend con tus etiquetas y su período.</p></div>
-  <label class="button"><app-icon name="calendar" /><span class="sr-only">Mes de presupuestos</span><input #picker type="month" [value]="data.month()" [max]="maxMonth" (change)="month(picker.value)" style="border:0;max-width:155px;background:none" /></label>
+  <div class="page-actions"><label class="button"><app-icon name="calendar" /><span class="sr-only">Mes de presupuestos</span><input #picker type="month" [value]="data.month()" [max]="maxMonth" (change)="month(picker.value)" style="border:0;max-width:155px;background:none" /></label><button class="button primary" type="button" (click)="editorOpen.set(true)"><app-icon name="plus" /> Nuevo presupuesto</button></div>
 </header>
 <nav class="section-tabs" aria-label="Tipos de objetivos"><a routerLink="/presupuestos-y-metas" class="active" aria-current="page">Presupuestos de gasto</a><a routerLink="/metas">Metas de ahorro</a></nav>
 @if (savedId(); as id) { <p class="notice" role="status">Presupuesto guardado. <a class="text-link" [routerLink]="['/presupuestos', id]">Ver su configuración e historial →</a></p> }
-<div class="split-layout">
+<div class="stack">
   <div class="stack">
     <section class="panel">
       <div class="panel-heading"><div><h2>Tus límites en perspectiva</h2><p class="panel-subtitle">Compras netas de devoluciones y reembolsos atribuidos a la compra original.</p></div><button class="icon-button" type="button" aria-label="Recargar presupuestos" (click)="data.progress.reload(); data.objectives.reload()"><app-icon name="refresh" /></button></div>
@@ -34,5 +34,6 @@
       @else { <ul class="record-list">@for (item of items(); track item.id) { <li class="record-row"><div><a class="record-title text-link" [routerLink]="['/presupuestos', item.id]">{{ item.name }}</a><p class="record-meta">{{ period(item) }} · {{ item.tags.length }} etiquetas</p></div><strong class="record-amount">{{ money(item.amount) }}</strong></li> } @empty { <li><p class="record-meta">Todavía no hay presupuestos activos.</p></li> }</ul> }
     </section>
   </div>
-  <div class="stack">@for (key of [editorKey()]; track key) { <budget-editor (saved)="created($event.id)" /> }<p class="notice" style="margin:0">Los límites no reservan dinero ni modifican tu saldo. Si las etiquetas de varios presupuestos se superponen, sus cifras no son aditivas.</p></div>
+  <p class="notice" style="margin:0">Los límites no reservan dinero ni modifican tu saldo. Si las etiquetas de varios presupuestos se superponen, sus cifras no son aditivas.</p>
 </div>
+@if (editorOpen()) { <editor-drawer title="Nuevo presupuesto" eyebrow="UN LÍMITE CON INTENCIÓN" (dismissed)="editorOpen.set(false)"><budget-editor (saved)="created($event.id)" (cancelled)="editorOpen.set(false)" /></editor-drawer> }

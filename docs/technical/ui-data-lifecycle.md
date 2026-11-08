@@ -175,6 +175,19 @@ to their selected ID/write version; owner changes clear drafts and confirmation
 targets. Confirmed commands reload their dependent detail/list/summary resources.
 Other financial pages refetch when revisited instead of sharing a root cache.
 
+Management editors mount only after an explicit create/edit action, inside the
+shared native `EditorDrawer`. Closing, successful saving or an owner/record
+change destroys the editor and its component-owned scoped command, rather than
+leaving a hidden form or live mutation handler. Tag and dated-expectation forms
+own their writes separately from their page/list's archive/remove commands.
+Cancelling a pending editor suppresses late success/errors and never claims a
+server rollback; reload actions allow explicit read reconciliation. Reopening
+starts a fresh draft. Budget/savings detail editors remain keyed to ID/version.
+Irregular expectations are accessed independently of source editing, so planning
+does not require keeping a source editor mounted or stacking dialogs. Native
+focus/inertness and responsive layout are checked in a real browser; jsdom tests
+stub only `showModal`/`close` and verify mounting, commands and dismissal events.
+
 Cursor trails for budget/savings history and evidence are selection-bound. Evidence
 continuation retains backend observation cutoffs, not totals summed from pages.
 Savings evidence compares the returned goal version with its measurement; changed

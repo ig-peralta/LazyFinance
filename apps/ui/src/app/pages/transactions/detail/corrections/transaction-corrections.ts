@@ -13,6 +13,7 @@ import { TagsData } from "../../../../features/tags/tags.data";
 export class TransactionCorrections {
   readonly item = input.required<TransactionDetail>();
   readonly saved = output<string>();
+  readonly cancelled = output<void>();
   protected readonly tags = inject(TagsData).tags;
   protected readonly command = createScopedCommand();
   protected selection = "none";

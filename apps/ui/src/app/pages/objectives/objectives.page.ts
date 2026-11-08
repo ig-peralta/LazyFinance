@@ -6,13 +6,14 @@ import { currentMonth } from "../../../utils/month";
 import { AuthCredentials } from "../../core/auth/auth-credentials";
 import { ObjectivesData } from "../../features/objectives/objectives.data";
 import { TaggingData } from "../../features/tagging/tagging.data";
+import { EditorDrawer } from "../../shared/ui/editor-drawer";
 import { Icon } from "../../shared/ui/icon";
 import { BudgetEditor } from "./budgets/budget-editor/budget-editor";
 import { objectivePeriod } from "./forms/objective-form";
 
 @Component({
   selector: "objectives-page",
-  imports: [RouterLink, Icon, BudgetEditor],
+  imports: [RouterLink, Icon, BudgetEditor, EditorDrawer],
   providers: [ObjectivesData, TaggingData],
   templateUrl: "./objectives.page.html",
 })
@@ -24,7 +25,7 @@ export class ObjectivesPage {
       : []
     ).filter((item) => item.intent === "spending"),
   );
-  protected readonly editorKey = signal(0);
+  protected readonly editorOpen = signal(false);
   protected readonly savedId = signal<string | null>(null);
   protected readonly money = formatClp;
   protected readonly width = progressWidth;
@@ -37,7 +38,7 @@ export class ObjectivesPage {
     effect(() => {
       owner();
       this.savedId.set(null);
-      this.editorKey.update((key) => key + 1);
+      this.editorOpen.set(false);
     });
   }
 
@@ -48,7 +49,7 @@ export class ObjectivesPage {
 
   protected created(id: string) {
     this.savedId.set(id);
-    this.editorKey.update((key) => key + 1);
+    this.editorOpen.set(false);
     this.data.objectives.reload();
     this.data.progress.reload();
   }
