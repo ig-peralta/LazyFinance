@@ -31,7 +31,7 @@ export const routes: Routes = [
               ),
           }),
           workspaceRoute("cuentas", {
-            heading: "Cuentas y sincronización",
+            heading: "Cuentas y saldos",
             load: () =>
               import("./pages/accounts/accounts.page").then(
                 (m) => m.AccountsPage,
@@ -82,6 +82,13 @@ export const routes: Routes = [
             load: () =>
               import("./pages/security/security.page").then(
                 (m) => m.SecurityPage,
+              ),
+          }),
+          workspaceRoute("conexiones-bancarias", {
+            heading: "Conexiones bancarias",
+            load: () =>
+              import("./pages/banking/bank-connections.page").then(
+                (m) => m.BankConnectionsPage,
               ),
           }),
           workspaceRoute("dashboard", {

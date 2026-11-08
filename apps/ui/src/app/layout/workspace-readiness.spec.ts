@@ -3,6 +3,7 @@ import { type ResourceStatus, signal } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
 import { provideRouter, Router, type Routes } from "@angular/router";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { bankingConfiguration } from "../../testing/banking";
 import { deferred } from "../../testing/deferred";
 import {
   budgetDetail,
@@ -114,6 +115,8 @@ describe("workspace pages' initial visible-read contracts", () => {
     ["/dashboard", "transactions.list"],
     ["/dashboard", "objectives.savingsProgress"],
     ["/cuentas", "accounts.list"],
+    ["/conexiones-bancarias", "banking.configuration"],
+    ["/conexiones-bancarias", "banking.connections"],
     ["/etiquetas", "tags.list"],
     ["/presupuestos-y-metas", "objectives.list"],
     ["/presupuestos-y-metas", "objectives.progress"],
@@ -170,6 +173,35 @@ describe("workspace pages' initial visible-read contracts", () => {
     expect(f.callsTo("objectives.savingsProgress")).toHaveLength(1);
     expect(f.callsTo("objectives.savingsContributions")).toHaveLength(0);
     expect(f.callsTo("objectives.savingsGoalHistory")).toHaveLength(0);
+  });
+
+  it.each([
+    "active",
+    "skipped",
+    "completed",
+  ] as const)("opens bank settings independently of %s onboarding and stored balances", async (status) => {
+    const f = await setup("/conexiones-bancarias", {
+      "onboarding.state": () =>
+        status === "completed"
+          ? { status, completedAt: "2026-11-08T15:00:00.000Z" }
+          : { status, completedAt: null },
+      "banking.configuration": () => bankingConfiguration,
+    });
+    await f.settle(1_000);
+    expect(f.root.querySelector("workspace-loading")).toBeNull();
+    expect(f.root.querySelector("h1")?.textContent).toContain(
+      "Conexiones bancarias",
+    );
+    expect(f.root.textContent).toContain("Conectar banco");
+    expect(f.root.querySelector('a[href="/cuentas"]')).not.toBeNull();
+    expect(f.callsTo("accounts.list")).toHaveLength(0);
+    expect(f.callsTo("banking.configuration")).toHaveLength(1);
+    expect(f.callsTo("banking.connections")).toHaveLength(1);
+    expect(f.callsTo("banking.createLinkIntent")).toHaveLength(0);
+    expect(f.root.querySelector("bank-link-flow")).toBeNull();
+    expect(
+      document.querySelector("script[data-lazyfinance-fintoc]"),
+    ).toBeNull();
   });
 
   it("excludes optional suggestions, unopened editors, evidence and additional pages", async () => {

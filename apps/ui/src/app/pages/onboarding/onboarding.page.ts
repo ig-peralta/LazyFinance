@@ -48,9 +48,10 @@ export class OnboardingPage {
     {
       title: "Conoce tus cuentas",
       description:
-        "Saldos y sincronización informada. Vincular con Fintoc todavía no está disponible.",
-      path: "/cuentas",
+        "Conecta tu banco desde Mi cuenta → Conexiones bancarias. La importación de saldos y movimientos todavía está pendiente.",
+      path: "/conexiones-bancarias",
       icon: "bank" as const,
+      action: "Conectar banco",
       loading: this.accounts.isLoading(),
       error: !!this.accounts.error(),
       done: this.accounts.hasValue() && this.accounts.value().length > 0,

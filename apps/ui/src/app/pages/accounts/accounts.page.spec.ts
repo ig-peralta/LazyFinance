@@ -37,8 +37,13 @@ describe("truthful stored account status", () => {
     expect(root.textContent).toContain("Registro anterior a 24 horas");
     expect(
       [...root.querySelectorAll("button")].filter((button) => button.disabled),
-    ).toHaveLength(4);
-    expect(root.textContent).toContain("no informado por esta API");
+    ).toHaveLength(0);
+    expect(root.textContent).toContain("independientes del acceso bancario");
+    expect(
+      root.querySelector('a[href="/conexiones-bancarias"]')?.textContent,
+    ).toContain("Conectar banco");
+    expect(root.querySelector("bank-link-flow")).toBeNull();
+    expect(root.textContent).not.toContain("Tus conexiones bancarias");
     expect(
       root
         .querySelector<HTMLAnchorElement>('a[href^="/movimientos"]')
@@ -66,5 +71,23 @@ describe("truthful stored account status", () => {
     expect(fixture.nativeElement.textContent).not.toContain(
       "No hay cuentas activas",
     );
+    expect(
+      fixture.nativeElement.querySelector('a[href="/conexiones-bancarias"]'),
+    ).not.toBeNull();
+  });
+
+  it("offers a connection shortcut on an empty account list without loading banking settings", async () => {
+    const mock = setupRpc();
+    const fixture = TestBed.createComponent(AccountsPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement;
+    expect(root.querySelector(".empty-state a")?.getAttribute("href")).toBe(
+      "/conexiones-bancarias",
+    );
+    expect(root.textContent).toContain("No hay cuentas activas");
+    expect(mock.callsTo("banking.configuration")).toHaveLength(0);
+    expect(mock.callsTo("banking.connections")).toHaveLength(0);
   });
 });
