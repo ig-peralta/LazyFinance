@@ -37,13 +37,15 @@ export const routes: Routes = [
         path: "metas",
         title: "Metas de ahorro",
         loadComponent: () =>
-          import("./pages/objectives/savings.page").then((m) => m.SavingsPage),
+          import("./pages/objectives/savings/savings.page").then(
+            (m) => m.SavingsPage,
+          ),
       },
       {
         path: "metas/:id",
         title: "Meta de ahorro",
         loadComponent: () =>
-          import("./pages/objectives/savings-goal.page").then(
+          import("./pages/objectives/savings/savings-goal.page").then(
             (m) => m.SavingsGoalPage,
           ),
       },
@@ -51,15 +53,17 @@ export const routes: Routes = [
         path: "presupuestos/:id/movimientos",
         title: "Compras del presupuesto",
         loadComponent: () =>
-          import("./pages/objectives/budget-evidence.page").then(
-            (m) => m.BudgetEvidencePage,
-          ),
+          import(
+            "./pages/objectives/budgets/evidence/budget-evidence.page"
+          ).then((m) => m.BudgetEvidencePage),
       },
       {
         path: "presupuestos/:id",
         title: "Configurar presupuesto",
         loadComponent: () =>
-          import("./pages/objectives/budget.page").then((m) => m.BudgetPage),
+          import("./pages/objectives/budgets/budget.page").then(
+            (m) => m.BudgetPage,
+          ),
       },
       {
         path: "ingresos",
@@ -71,7 +75,9 @@ export const routes: Routes = [
         path: "ingresos/fuentes",
         title: "Fuentes de ingreso",
         loadComponent: () =>
-          import("./pages/income/sources.page").then((m) => m.SourcesPage),
+          import("./pages/income/sources/sources.page").then(
+            (m) => m.SourcesPage,
+          ),
       },
       {
         path: "seguridad",
@@ -97,7 +103,7 @@ export const routes: Routes = [
         path: "movimientos",
         title: "Movimientos",
         loadComponent: () =>
-          import("./pages/transactions/history.page").then(
+          import("./pages/transactions/history/history.page").then(
             (m) => m.HistoryPage,
           ),
       },
@@ -105,7 +111,7 @@ export const routes: Routes = [
         path: "movimientos/:id",
         title: "Detalle del movimiento",
         loadComponent: () =>
-          import("./pages/transactions/transaction.page").then(
+          import("./pages/transactions/detail/transaction.page").then(
             (m) => m.TransactionPage,
           ),
       },

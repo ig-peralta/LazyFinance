@@ -85,6 +85,19 @@ Detailed references: [session/resource lifetimes](../../docs/technical/ui-data-l
 [RPC contracts](../../docs/technical/rpc-contracts.md) and
 [development/tooling](../../docs/technical/development-workflow.md).
 
+## Page organization
+
+Under `src/app/pages`, related components, templates and tests stay together:
+
+- `income/`: the summary page, `credit-browser/`, `receipt-editor/` and `sources/`.
+  Source management owns its form helpers, `source-editor/` and `expectations/`.
+- `objectives/`: the overview page, `budgets/` (with its editor and `evidence/`),
+  `savings/` (with its editor), and `forms/` shared by both objective workflows.
+- `transactions/`: `history/` owns the ledger and filters; `detail/` owns the
+  movement page and its `corrections/` component.
+
+Lazy routes import the owning page directly; there are no old-path re-exports.
+
 ## Development
 
 Install dependencies from the [monorepo root](../../README.md), then start the UI:

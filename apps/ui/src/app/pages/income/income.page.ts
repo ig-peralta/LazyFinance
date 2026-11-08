@@ -6,8 +6,8 @@ import { formatDate } from "../../../utils/date";
 import { AuthCredentials } from "../../core/auth/auth-credentials";
 import { IncomeData } from "../../features/income/income.data";
 import { Icon } from "../../shared/ui/icon";
-import { CreditBrowser } from "./credit-browser";
-import { ReceiptEditor } from "./receipt-editor";
+import { CreditBrowser } from "./credit-browser/credit-browser";
+import { ReceiptEditor } from "./receipt-editor/receipt-editor";
 
 @Component({
   selector: "income-page",

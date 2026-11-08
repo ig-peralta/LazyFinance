@@ -7,8 +7,8 @@ import { AuthCredentials } from "../../core/auth/auth-credentials";
 import { ObjectivesData } from "../../features/objectives/objectives.data";
 import { TaggingData } from "../../features/tagging/tagging.data";
 import { Icon } from "../../shared/ui/icon";
-import { BudgetEditor } from "./budget-editor";
-import { objectivePeriod } from "./objective-form";
+import { BudgetEditor } from "./budgets/budget-editor/budget-editor";
+import { objectivePeriod } from "./forms/objective-form";
 
 @Component({
   selector: "objectives-page",
