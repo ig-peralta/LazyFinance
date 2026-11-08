@@ -1,5 +1,10 @@
 const integer = new Intl.NumberFormat("es-CL");
 
+/** Form inputs accept a decimal comma, but never infer thousands separators. */
+export function decimalInput(value: string): string {
+  return value.trim().replace(",", ".");
+}
+
 export function moneyCents(amount: string): bigint {
   const match = /^(-?)(\d+)(?:\.(\d{1,2}))?$/.exec(amount);
   if (!match) throw new Error("Invalid decimal money");

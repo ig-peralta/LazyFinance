@@ -20,6 +20,12 @@ export const routes: Routes = [
       import("./layout/app-shell/app-shell").then((m) => m.AppShell),
     children: [
       {
+        path: "ingresos/fuentes",
+        title: "Fuentes de ingreso",
+        loadComponent: () =>
+          import("./pages/income/sources.page").then((m) => m.SourcesPage),
+      },
+      {
         path: "seguridad",
         title: "Acceso y seguridad",
         loadComponent: () =>

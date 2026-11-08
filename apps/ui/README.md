@@ -28,6 +28,12 @@ corrections. A saved command reloads detail; history, summaries and budget pages
 refetch on navigation rather than sharing a stale application-wide cache. Removed
 records are read-only, and the backend remains authoritative for valid references.
 
+`/ingresos/fuentes` manages owned fixed/variable, regular/irregular declarations,
+all supported weekly/14-day/monthly/twice-monthly schedules, archival and dated
+expectations. Exact decimal input accepts a decimal comma without interpreting
+thousands separators. Unknown variable amounts remain unknown, and declarations
+or expectations never create received payments automatically.
+
 Detailed references: [session/resource lifetimes](../../docs/technical/ui-data-lifecycle.md),
 [provider-neutral identity](../../docs/technical/identity.md),
 [RPC contracts](../../docs/technical/rpc-contracts.md) and

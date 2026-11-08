@@ -128,6 +128,34 @@ export const transactionDetail = {
   hasExpenseAdjustments: false,
 } satisfies RpcOutput<"transactions.detail">;
 
+export const incomeSource = {
+  id: "00000000-0000-4000-8000-000000000041",
+  name: "Sueldo",
+  currency: "CLP",
+  regularity: "regular",
+  amountKind: "fixed",
+  expectedAmount: "1500000.00",
+  schedule: { frequency: "monthly", day: "last" },
+  startDate: "2026-01-01",
+  endDate: null,
+  archivedAt: null,
+  createdAt: "2026-01-01T15:00:00.000Z",
+  updatedAt: "2026-01-01T15:00:00.000Z",
+} satisfies RpcOutput<"income.createSource">;
+
+export const incomeSummary = {
+  month: "2026-11",
+  currency: "CLP",
+  asOf: "2026-11-08T15:00:00.000Z",
+  expectedIncome: emptySummary.expectedIncome,
+  receivedIncome: "0.00",
+  unclassifiedCredits: { amount: "0.00", count: 0 },
+  recoveredExpenseCredits: emptySummary.recoveredExpenseCredits,
+  unresolvedMovementCount: 0,
+  expectedPayments: [],
+  receipts: [],
+} satisfies RpcOutput<"income.summary">;
+
 export const manualDecision = (
   transactionId = movement.id,
   tagId: string | null = tag.id,
@@ -188,6 +216,8 @@ export function createRpcFetch(overrides: RpcHandlers = {}) {
     "transactions.detail": () => transactionDetail,
     "objectives.list": () => [],
     "objectives.progress": () => [],
+    "income.sources": () => [],
+    "income.summary": () => incomeSummary,
     "summaries.monthly": () => emptySummary,
     "summaries.comparison": () => emptyComparison,
     "tags.list": () => [tag],
