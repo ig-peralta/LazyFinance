@@ -239,17 +239,25 @@ exists. There is no total-count query or page-number promise.
 Both `transactions.list` boundaries use that shape. Persistence filters and orders
 before fetching `limit + 1`; its shared `pagination/cursor-page.ts` helper removes
 the lookahead and builds metadata from the last returned row. The API maps stored
-records to public items without changing metadata. The optional `accountId` is a
-selection filter, never an ownership override. Removed movements are excluded;
+records to public items without changing metadata. Optional history filters are
+`accountId`, `bookedFrom` (inclusive Santiago calendar date), `bookedBefore`
+(exclusive Santiago calendar date), `tagId` (null means untagged), `type`
+(`debit`/`credit`), `isInternalMovement` (true/false/null means unknown), and
+`merchant` (trimmed, case-insensitive literal substring; `%`, `_` and backslash
+are not wildcards). Omitted tag/internal filters select all states. Dates must be
+valid and ordered; nonempty merchant text is bounded to 120 characters.
+These are selection filters, never ownership overrides. Removed movements are excluded;
 review-pending movements and archived tag metadata remain visible as in `recent`.
 
 Transaction cursors are versioned base64url boundaries containing both
-`bookedAt` and `id`, ordered descending, plus the original account filter. SQL
+`bookedAt` and `id`, ordered descending, plus a SHA-256 digest of all normalized
+selection filters. Page size can change without invalidating a cursor. SQL
 preserves microsecond precision for cursor timestamps instead of round-tripping
 through JavaScript `Date`. Treat tokens as opaque: pass them back with the same
 filters, or restart without a cursor. Invalid/unsupported tokens or changed
 filters produce `BAD_REQUEST`. Tokens are not encrypted, signed or authorization;
 RLS independently scopes every page, even with a forged/foreign cursor.
+Tokens from the earlier account-only cursor format require a fresh first page.
 
 Pages use separate statement snapshots, not a frozen history. Newer inserts do
 not shift unchanged older rows through offset positions, but booking-date

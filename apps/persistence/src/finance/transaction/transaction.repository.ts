@@ -10,6 +10,7 @@ import {
   purchaseRecovery,
 } from "../expense-adjustment/expense-adjustment-sql";
 import type { IncomeReceiptTables } from "../income-receipt/income-receipt.tables";
+import { budgetInstant } from "../objective/budget-sql";
 import { movementPeriod } from "../query-period";
 import type { TagTables } from "../tag/tag.tables";
 import type { TransactionTables } from "./transaction.tables";
@@ -33,7 +34,7 @@ export class TransactionRepository {
 
   async list(input: TransactionsInput) {
     const cursor = input.cursor
-      ? decodeTransactionCursor(input.cursor, input.accountId)
+      ? decodeTransactionCursor(input.cursor, input)
       : undefined;
     let query = this.movementQuery().select(
       // pg's Date parser truncates microseconds. Keep the exact SQL boundary
@@ -45,6 +46,37 @@ export class TransactionRepository {
 
     if (input.accountId)
       query = query.where("m.accountId", "=", input.accountId);
+    if (input.bookedFrom)
+      query = query.where(
+        "m.bookedAt",
+        ">=",
+        budgetInstant(`${input.bookedFrom} 00:00:00`),
+      );
+    if (input.bookedBefore)
+      query = query.where(
+        "m.bookedAt",
+        "<",
+        budgetInstant(`${input.bookedBefore} 00:00:00`),
+      );
+    if (input.tagId !== undefined)
+      query = query.where(
+        "m.tagId",
+        input.tagId === null ? "is" : "=",
+        input.tagId,
+      );
+    if (input.type) query = query.where("m.type", "=", input.type);
+    if (input.isInternalMovement !== undefined)
+      query = query.where(
+        "m.isInternalMovement",
+        input.isInternalMovement === null ? "is" : "=",
+        input.isInternalMovement,
+      );
+    if (input.merchant)
+      query = query.where(
+        "m.merchant",
+        "ilike",
+        `%${input.merchant.replace(/[\\%_]/g, "\\$&")}%`,
+      );
     if (cursor)
       query = query.where(
         sql<boolean>`(m.booked_at, m.id) < (${cursor.bookedAt}::timestamptz, ${cursor.id}::uuid)`,
@@ -52,11 +84,13 @@ export class TransactionRepository {
 
     const rows = await query.limit(input.limit + 1).execute();
     const page = toCursorPage(rows, input.limit, (row) =>
-      encodeTransactionCursor({
-        bookedAt: row.cursorBookedAt,
-        id: row.id,
-        accountId: input.accountId ?? null,
-      }),
+      encodeTransactionCursor(
+        {
+          bookedAt: row.cursorBookedAt,
+          id: row.id,
+        },
+        input,
+      ),
     );
 
     return {

@@ -50,6 +50,9 @@ provider pages and generated recurrence dates are not persisted relations.
   page envelopes aligned through the contracts factory. This browsing contract
   does not replace complete aggregates or write-preparation snapshots. See
   [cursor semantics](rpc-contracts.md#cursor-paginated-browsing).
+  History applies owned account, Santiago date, nullable tag/internal state,
+  direction and escaped literal-merchant filters in SQL before pagination. The
+  normalized selection, not the page size, is bound into each cursor.
 - **Existence and keys already joined:** project them in the same query.
   Provider movement facts include `accountExternalId` and `hasReceipt`, rather
   than requiring another account lookup and a separate receipt scan/set. Those

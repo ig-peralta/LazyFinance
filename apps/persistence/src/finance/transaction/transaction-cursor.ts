@@ -1,36 +1,36 @@
-import { CursorPageInputSchema } from "@lazyfinance/contracts";
+import type { TransactionsInput } from "@lazyfinance/contracts";
 import {
-  type TransactionCursor,
-  TransactionCursorSchema,
-} from "@lazyfinance/contracts/internal";
-import { TRPCError } from "@trpc/server";
+  decodeSelectionCursor,
+  encodeSelectionCursor,
+} from "../../pagination/selection-cursor";
+
+type Filters = Omit<TransactionsInput, "cursor" | "limit">;
+
+function selection(input: Filters) {
+  return JSON.stringify({
+    history: 1,
+    accountId: input.accountId ?? null,
+    bookedFrom: input.bookedFrom ?? null,
+    bookedBefore: input.bookedBefore ?? null,
+    tagId: input.tagId === undefined ? "all" : input.tagId,
+    type: input.type ?? null,
+    isInternalMovement:
+      input.isInternalMovement === undefined ? "all" : input.isInternalMovement,
+    merchant: input.merchant ?? null,
+  });
+}
 
 export function encodeTransactionCursor(
-  boundary: Omit<TransactionCursor, "version">,
+  boundary: { bookedAt: string; id: string },
+  input: Filters = {},
 ): string {
-  return Buffer.from(JSON.stringify({ version: 1, ...boundary })).toString(
-    "base64url",
+  return encodeSelectionCursor(
+    selection(input),
+    boundary.bookedAt,
+    boundary.id,
   );
 }
 
-export function decodeTransactionCursor(cursor: string, accountId?: string) {
-  try {
-    CursorPageInputSchema.shape.cursor.unwrap().parse(cursor);
-    const bytes = Buffer.from(cursor, "base64url");
-    if (bytes.toString("base64url") !== cursor)
-      throw new Error("Invalid encoding");
-
-    const boundary = TransactionCursorSchema.parse(
-      JSON.parse(bytes.toString("utf8")),
-    );
-    if (boundary.accountId !== (accountId ?? null))
-      throw new Error("Cursor filters changed");
-
-    return boundary;
-  } catch {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: "Invalid transaction cursor; restart pagination",
-    });
-  }
+export function decodeTransactionCursor(cursor: string, input: Filters = {}) {
+  return decodeSelectionCursor(cursor, selection(input));
 }

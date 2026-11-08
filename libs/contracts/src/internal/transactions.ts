@@ -20,20 +20,9 @@ export const TransactionRecordsPageSchema = cursorPageSchema(
   RecentTransactionRecordSchema,
 );
 
-export const TransactionCursorSchema = z.strictObject({
-  version: z.literal(1),
-  bookedAt: z.iso
-    .datetime({ precision: 6 })
-    .refine((value) => !value.startsWith("0000-")),
-  id: z.uuid(),
-  accountId: z.uuid().nullable(),
-});
-
 export type RecentTransactionRecord = z.infer<
   typeof RecentTransactionRecordSchema
 >;
-
-export type TransactionCursor = z.infer<typeof TransactionCursorSchema>;
 
 export const MovementAggregateSchema = z.object({
   type: z.enum(["debit", "credit"]),

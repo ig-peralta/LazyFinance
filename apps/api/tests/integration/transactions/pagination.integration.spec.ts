@@ -134,10 +134,11 @@ describe.skipIf(!integration)(
 
           const beforeHistory = Buffer.from(
             JSON.stringify({
-              version: 1,
+              ...JSON.parse(
+                Buffer.from(firstCursor, "base64url").toString("utf8"),
+              ),
               id: movements[0].id,
               bookedAt: "2020-01-01T00:00:00.000000Z",
-              accountId: f.accountId,
             }),
           ).toString("base64url");
           expect(
