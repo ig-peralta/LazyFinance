@@ -73,22 +73,47 @@ export class RlsMiddleware implements TRPCMiddleware<ProcedureMeta> {
         options.meta.snapshot ? "repeatable read" : "read committed",
       );
     } catch (error) {
-      // Kysely and tRPC may both wrap the pg error; inspect only its SQLSTATE.
+      // Kysely and tRPC may wrap pg errors. SQLSTATE mappings take precedence
+      // over application messages; unknown database failures stay sanitized.
       let cause: unknown = error;
       let code: unknown;
+      let known: { code: TRPCError["code"]; message: string } | undefined;
 
       for (
         let depth = 0;
         depth < 8 && cause && typeof cause === "object";
         depth++
       ) {
-        if (
-          "code" in cause &&
-          typeof cause.code === "string" &&
-          /^[0-9A-Z]{5}$/.test(cause.code)
-        ) {
-          code = cause.code;
-          break;
+        if ("code" in cause && typeof cause.code === "string") {
+          if (/^[0-9A-Z]{5}$/.test(cause.code)) {
+            code = cause.code;
+            break;
+          }
+
+          // Nest's adapter can wrap errors from another tRPC module instance.
+          // Recognize explicit application codes without exposing raw SQL errors.
+          const value = cause.code;
+          const applicationCode = (
+            [
+              "BAD_REQUEST",
+              "UNAUTHORIZED",
+              "FORBIDDEN",
+              "NOT_FOUND",
+              "CONFLICT",
+              "PAYLOAD_TOO_LARGE",
+              "TOO_MANY_REQUESTS",
+              "METHOD_NOT_SUPPORTED",
+              "TIMEOUT",
+            ] as const
+          ).find((candidate) => candidate === value);
+          if (applicationCode)
+            known ??= {
+              code: applicationCode,
+              message:
+                "message" in cause && typeof cause.message === "string"
+                  ? cause.message
+                  : "Persistence operation failed",
+            };
         }
 
         cause = "cause" in cause ? cause.cause : undefined;
@@ -124,7 +149,12 @@ export class RlsMiddleware implements TRPCMiddleware<ProcedureMeta> {
           code: "TIMEOUT",
           message: "Persistence operation timed out",
         });
-      if (error instanceof TRPCError && error.code !== "INTERNAL_SERVER_ERROR")
+      if (code === undefined && known) throw new TRPCError(known);
+      if (
+        code === undefined &&
+        error instanceof TRPCError &&
+        error.code !== "INTERNAL_SERVER_ERROR"
+      )
         throw error;
 
       throw new TRPCError({

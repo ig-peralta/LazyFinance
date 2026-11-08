@@ -22,12 +22,17 @@ provider pages and generated recurrence dates are not persisted relations.
 ## Choose the smallest useful read
 
 - **Stored parent/child data:** return the nested relationship from persistence.
-  `objectives.list` uses an ordered correlated JSON aggregation for tags. Parent
+  `objectives.list` selects the effective budget configuration (or an unstarted
+  first definition) and uses an ordered correlated JSON aggregation for tags. Parent
   limits apply to objectives, not flattened objective/tag rows; no tags means `[]`.
 - **Totals:** send identifiers and explicit time windows; return signed decimal
-  sums/counts. `objectives.spending` joins requested windows to owned objectives,
-  their tag links and eligible debit movements. The API chooses monthly/yearly/
-  fixed windows and interprets the signed sum as spending. A retained objective
+  sums/counts. `objectives.forPeriod` selects applicable spending definitions;
+  `spending` pins their revision IDs, joins revision-specific tags and eligible
+  debit movements, and intersects exact activation/end/archive bounds. The API
+  chooses monthly/yearly/fixed windows and interprets signed gross amounts plus
+  purchase-attributed refund/reimbursement sums as net spending.
+  Returned bounds/archival state come from the aggregate statement, so a concurrent
+  archive cannot leave a stale cutoff paired with a new total. A retained objective
   with no matching movements returns zero; a foreign/deleted objective is absent.
 - **Different projection needs:** keep different reads, sharing the SQL predicate
   builder rather than making every caller receive the largest result.
@@ -45,16 +50,45 @@ provider pages and generated recurrence dates are not persisted relations.
   page envelopes aligned through the contracts factory. This browsing contract
   does not replace complete aggregates or write-preparation snapshots. See
   [cursor semantics](rpc-contracts.md#cursor-paginated-browsing).
+  History applies owned account, Santiago date, nullable tag/internal state,
+  direction and escaped literal-merchant filters in SQL before pagination. The
+  normalized selection, not the page size, is bound into each cursor.
 - **Existence and keys already joined:** project them in the same query.
   Provider movement facts include `accountExternalId` and `hasReceipt`, rather
   than requiring another account lookup and a separate receipt scan/set. Those
   fields are included in the canonical fingerprint and recomputed on commit.
+  The joined internal-disagreement acknowledgement is fingerprinted too, so a
+  correction between preparation and commit cannot be overwritten by stale work.
+- **Expense recovery:** aggregate allocations separately to one row per purchase
+  and per credit before grouping movements, never flattening allocations into a
+  movement sum. Purchase facts include refunds, reimbursements and review counts;
+  credit facts include applied recoveries, reserved allocations and the remaining
+  unclassified count. `adjustmentsAsOf` bounds confirmation/credit observation
+  independently from the purchase window/`asOf`, so a later refund can restate an
+  earlier period. This is a cutoff over current facts, not historical time travel
+  through edited/deleted decisions or provider corrections. Both joins use RLS.
+- **Savings allocations:** `savingsFacts` groups selected, non-removed cash movements
+  by account type, direction and review state, alongside account history coverage.
+  `savingsEvidence` uses the same movement selection and exact bounds in a separate
+  page projection. Both reads use repeatable-read snapshots, check the expected
+  goal version and intersect configured/archive bounds. The API interprets signed
+  sums and pending review states through the shared savings eligibility policy.
 
 Use named typed procedures, not arbitrary SQL/filter expressions over RPC. The
 API injects the single `PersistenceClient` directly; no per-domain transport
 adapters or repository-shaped compatibility clients are needed.
 
 ## Cardinality, correctness and consistency
+
+Spending evidence uses complete SQL aggregates beside a bounded purchase page,
+never page totals. Summary evidence shares the Santiago period predicate and
+purchase-recovery facts; budget evidence and progress share
+`objective/budget-spending-query.ts` for revision eligibility, tag membership and
+exact activation/end/archive intersections. The API shares `reportedBudgetPeriod`
+for monthly/yearly/fixed reporting windows. `forPeriod` accepts an optional owned
+budget ID so a drill-down does not download every definition. Evidence totals,
+untagged coverage, exact tracking bounds and page rows use one repeatable-read
+snapshot; continuation remains a separate live read.
 
 1. Identify the result's grain before writing a JOIN: one objective, one movement,
    or one aggregate group. A receipt is unique per transaction; an objective/tag

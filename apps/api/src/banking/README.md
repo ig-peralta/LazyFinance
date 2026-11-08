@@ -22,7 +22,7 @@ shipped Fintoc adapter/linking flow. See the [database model](../../../../docs/t
 
 ## Handoff
 
-Fixtures exercise this boundary without a provider SDK. Kysely tables in `apps/persistence/src/finance` store connection-scoped identities, nullable balances/status, date precision/coverage, provenance, tombstones and sync revisions under user RLS. The API interprets factual aggregates; removed/unresolved movements cannot count as confirmed spending/income. Linking, provider-specific mapping, refresh reporting, savings eligibility and gross/net refund policy remain separate product capabilities.
+Fixtures exercise this boundary without a provider SDK. Kysely tables in `apps/persistence/src/finance` store connection-scoped identities, nullable balances/status, date precision/coverage, provenance, tombstones and sync revisions under user RLS. The API interprets factual aggregates; removed/unresolved movements cannot count as confirmed spending/income. Linking, provider-specific mapping, refresh reporting and savings eligibility remain separate capabilities. Refund/reimbursement allocations are explicit user commands, never inferred by this connector; their [original-purchase attribution rules](../../../../docs/technical/rpc-contracts.md#expense-recovery-semantics) leave provider facts and balances unchanged.
 
 ## Owned ingestion (LAZ-50)
 
@@ -31,6 +31,20 @@ Fixtures exercise this boundary without a provider SDK. Kysely tables in `apps/p
 Account snapshots preserve user aliases and distinguish a missing balance from a reported zero. Provider balance times are separate from observation times; an older observation or source balance does not replace a newer one. Date-only bookings map to Santiago local noon while retaining `bookedOn` and date precision. Existing provider amounts, dates, descriptions and source evidence are updated on the same movement ID; user tags, confirmed income receipts and user internal-status overrides stay attached. A proven same-owner, opposite-sign pair is internal; unpaired transfer/card-payment hints remain unknown. Merchant-bearing ordinary purchases may be treated as external, but this hint cannot override a user-confirmed internal decision. Income is never auto-confirmed from a positive amount.
 
 An incompatible correction updates the bank fact but preserves and suspends the user interpretation. `provider_movement_conflict` records the old and new relevant facts for review, and `transaction.review_status = needs_review` excludes that movement from totals while contributing to the unresolved-movement warning. A removed movement is likewise excluded and its receipt link retained for review. Completed runs with open conflicts advance the checkpoint **only after** conflicts are durable and report `needs_review`; they are distinct from clean completion and from failed attempts. `listPendingReviewForUser` provides owned transaction, tag and income-source references for a later user-facing review/tag-assignment workflow. Resolving conflicts and editing transaction tags are separate management actions; this service does not silently rewrite user decisions.
+
+Expense allocations likewise remain attached on corrections/removals. Recovery
+reads compare the confirmed amounts and exact booking instants with current facts
+and eligibility; incompatible links become `needs_review` without reducing spending.
+They are not silently deleted, reallocated or converted to income by ingestion.
+
+`transactions.setInternalMovement` is the owned correction command. Boolean values
+set a user override; null returns to the stored assessment, including unknown.
+It resolves only relevant classification/compatible-credit conflicts and retains
+receipt/expense links for dynamic eligibility checks. An explicit choice against
+known internal evidence records an acknowledgement; unchanged replays do not open
+the same disagreement again. The joined acknowledgement is fingerprinted with sync
+facts. Unrelated review states and provider removals are not cleared by this command.
+No source booking, amount, balance, relationship or tag is rewritten.
 
 ### Private command sequence and failure boundaries
 
@@ -49,8 +63,8 @@ different checks. A superseded revision does not overwrite newer work. Only a
 known conflict rejection is read/prepared again (at most two retries); a lost
 response or timeout is not retried because the commit may have succeeded.
 
-Movement snapshot rows already include their account external ID and receipt
-existence from SQL joins. Those fields participate in the fingerprint and are
+Movement snapshot rows already include their account external ID, receipt
+existence and internal-override acknowledgement from SQL joins. These fields participate in the fingerprint and are
 re-read on commit; the API does not rebuild them from separate arrays. Rule
 matching indexes each immutable rule snapshot once, and commit validation reuses
 the revalidated rule set through an ID lookup. See the

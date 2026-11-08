@@ -12,6 +12,15 @@ export class BudgetProgressView {
   private readonly data = inject(ObjectivesData);
   protected readonly budgets = this.data.progress;
   protected readonly label = computed(() => monthLabel(this.data.month()));
+  private readonly boundaryFormatter = new Intl.DateTimeFormat("es-CL", {
+    timeZone: "America/Santiago",
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+
+  protected boundaryLabel(value: string): string {
+    return this.boundaryFormatter.format(new Date(value));
+  }
 
   protected money(value: string): string {
     return formatClp(Number(value));

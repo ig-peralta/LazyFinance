@@ -26,6 +26,7 @@ export class SummariesService {
       client.transactions.taggedAggregates.query({
         ...monthBounds(month),
         asOf,
+        adjustmentsAsOf: now.toISOString(),
       }),
       this.income.getExpectedForUser(userId, month),
     ]);
@@ -35,6 +36,7 @@ export class SummariesService {
       month,
       expectedIncome: expected.totals,
       ...totals,
+      adjustmentsAsOf: now.toISOString(),
       tags: spendingByTag(groups),
     };
   }
@@ -61,10 +63,12 @@ export class SummariesService {
       client.transactions.aggregates.query({
         ...monthBounds(month),
         asOf: partial ? now.toISOString() : undefined,
+        adjustmentsAsOf: now.toISOString(),
       }),
       client.transactions.aggregates.query({
         start: monthBounds(previous).start,
         end: partial ? previousEnd : monthBounds(previous).end,
+        adjustmentsAsOf: now.toISOString(),
       }),
     ]);
     const current = movementTotals(currentGroups);

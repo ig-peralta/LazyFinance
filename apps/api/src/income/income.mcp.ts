@@ -12,7 +12,7 @@ export class IncomeMcpController {
   @Tool({
     name: "consultar_ingresos",
     description:
-      "Consulta los ingresos esperados del mes completo según las fuentes declaradas y los ingresos recibidos confirmados hasta asOf, en CLP. Incluye fechas de pago, estimaciones, cantidades desconocidas y créditos sin clasificar. Los importes esperados no son dinero disponible; no se suman a los recibidos. Permite meses futuros para consultar expectativas, sin inventar cobros.",
+      "Consulta ingresos esperados del mes completo e ingresos recibidos confirmados hasta asOf, en CLP. Distingue créditos sin clasificar y abonos por devoluciones o reembolsos de gastos: estos abonos no son ingresos. Incluye fechas de pago, estimaciones e importes desconocidos. Lo esperado no es dinero disponible ni se suma a lo recibido. Permite meses futuros para expectativas sin inventar cobros.",
     parameters: z.object({
       month: MonthSchema.optional().describe(
         "Mes YYYY-MM en America/Santiago; por defecto el actual. Se permiten meses futuros para expectativas.",

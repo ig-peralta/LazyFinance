@@ -3,6 +3,7 @@ import type {
   IncomeSourceRecord,
 } from "@lazyfinance/contracts/internal";
 import { describe, expect, it } from "vitest";
+import { movementAggregate } from "../../tests/fixtures/movement-aggregate";
 import type { RpcStubs } from "../../tests/fixtures/rpc-stubs";
 import type { PersistenceClient } from "../persistence/persistence.client";
 import { IncomeService } from "./income.service";
@@ -34,6 +35,7 @@ const receipt: IncomeFacts["receipts"][number] = {
   isInternalMovement: false,
   reviewStatus: "clear",
   removedAt: null,
+  hasExpenseAdjustments: false,
 };
 
 type IncomeClient = RpcStubs<ReturnType<PersistenceClient["user"]>["income"]>;
@@ -81,6 +83,11 @@ describe("IncomeService factual reads", () => {
             removedAt: now.toISOString(),
           },
           { ...receipt, transactionId: "debit", type: "debit" },
+          {
+            ...receipt,
+            transactionId: "adjustment",
+            hasExpenseAdjustments: true,
+          },
         ],
       },
     });
@@ -104,22 +111,22 @@ describe("IncomeService factual reads", () => {
       expectations: [],
       receipts: [receipt],
       aggregates: [
-        {
+        movementAggregate({
           type: "credit",
           isInternalMovement: false,
           reviewStatus: "clear",
           hasReceipt: true,
           amount: "100.02",
           count: 1,
-        },
-        {
+        }),
+        movementAggregate({
           type: "credit",
           isInternalMovement: false,
           reviewStatus: "clear",
           hasReceipt: false,
           amount: "20.03",
           count: 2,
-        },
+        }),
       ],
     };
     const income = service({ facts: { query: async () => facts } });

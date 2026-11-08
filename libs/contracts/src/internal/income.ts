@@ -57,6 +57,7 @@ export const ReceiptFactSchema = z.object({
   isInternalMovement: z.boolean().nullable(),
   reviewStatus: z.enum(["clear", "needs_review"]),
   removedAt: z.iso.datetime().nullable(),
+  hasExpenseAdjustments: z.boolean(),
 });
 
 export const ExpectedIncomeFactsSchema = z.object({

@@ -1,6 +1,8 @@
 import type {
+  BudgetRevision,
   IncomeExpectation,
   ObjectiveSummary,
+  SavingsRevision,
   TagSummary,
 } from "@lazyfinance/contracts";
 import type {
@@ -74,8 +76,38 @@ interface FixtureTables {
     endDate: Date | null;
     createdAt: string;
     updatedAt: string;
+    budgetVersion: number;
+    goalVersion: number;
+    archivedAt: Date | null;
   };
   objective_tag: { objectiveId: string; tagId: string };
+  budget_revision: Omit<
+    BudgetRevision,
+    "budgetId" | "tags" | "startDate" | "endDate" | "effectiveFrom"
+  > & {
+    objectiveId: string;
+    startDate: Date | null;
+    endDate: Date | null;
+    effectiveFrom: Date;
+  };
+  budget_revision_tag: { revisionId: string; tagId: string };
+  savings_revision: Omit<
+    SavingsRevision,
+    "goalId" | "tags" | "startDate" | "endDate"
+  > & { objectiveId: string; startDate: Date | null; endDate: Date | null };
+  savings_revision_tag: { revisionId: string; tagId: string };
+  expense_adjustment: {
+    id: string;
+    creditTransactionId: string;
+    purchaseTransactionId: string;
+    kind: "refund" | "reimbursement";
+    amount: string;
+    creditAmount: string;
+    purchaseAmount: string;
+    creditBookedAt: Date;
+    purchaseBookedAt: Date;
+    confirmedAt: string;
+  };
   income_source: IncomeSourceRecord;
   income_expectation: IncomeExpectation;
   income_receipt: {
@@ -146,6 +178,11 @@ const schemas = {
   income_receipt: "finance",
   objective: "finance",
   objective_tag: "finance",
+  budget_revision: "finance",
+  budget_revision_tag: "finance",
+  savings_revision: "finance",
+  savings_revision_tag: "finance",
+  expense_adjustment: "finance",
   provider_sync_state: "finance",
   provider_movement_removal: "finance",
   provider_movement_conflict: "finance",

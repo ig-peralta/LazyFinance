@@ -60,7 +60,7 @@ executing transactions is outside the initial agent scope.
 
 | Present technical foundation | Opportunity still requiring delivery/validation |
 | --- | --- |
-| Shared financial services, dashboard and seven authenticated read-only MCP tools | Authorized external-client discovery/grants and a reference-client end-to-end flow |
+| Shared financial services, dashboard and authenticated read-only MCP capabilities | Authorized external-client discovery/grants and a reference-client end-to-end flow |
 | Provider-neutral normalization and atomic owned ingestion tested with controlled data | Real provider linking/mapping and operational refresh behavior |
 | Internal user identity, signed private RPC and user-level RLS | Broader shared/family/organization or adviser ownership and permission models |
 | Exact financial facts, explicit declarations and review/unknown states | Useful grounded text-agent explanations, then voice and advanced analysis |

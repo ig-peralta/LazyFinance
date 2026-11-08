@@ -163,6 +163,44 @@ export async function seedDemo(
         )
         .onConflict((oc) => oc.columns(["objectiveId", "tagId"]).doNothing())
         .execute();
+      if (value.intent === "spending") {
+        const existing = await tx
+          .selectFrom("finance.budget_revision")
+          .select("id")
+          .where("objectiveId", "=", value.id)
+          .limit(1)
+          .executeTakeFirst();
+        // Initialize fresh demo declarations without overwriting revision history
+        // or archived state when the explicit seed is repeated.
+        if (!existing) {
+          await tx
+            .insertInto("finance.budget_revision")
+            .values({
+              id: value.id,
+              objectiveId: value.id,
+              version: 1,
+              name: value.name,
+              amount: value.amount,
+              kind: value.kind,
+              isRecurring: value.isRecurring,
+              period: value.period,
+              startDate: value.startDate,
+              endDate: value.endDate,
+              effectiveFrom: value.startDate ?? sql<Date>`now()`,
+              supersededAt: null,
+            })
+            .execute();
+          await tx
+            .insertInto("finance.budget_revision_tag")
+            .values(
+              item.tags.map((key) => ({
+                revisionId: value.id,
+                tagId: seedId(`tag:${key}`),
+              })),
+            )
+            .execute();
+        }
+      }
     }
 
     for (const source of incomeSources)

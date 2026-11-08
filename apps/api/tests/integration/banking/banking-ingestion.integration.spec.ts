@@ -532,6 +532,28 @@ describe.skipIf(!integration)(
         expect(
           await f.summaries.getMonthlyForUser(f.userId, "2026-10"),
         ).toMatchObject({ spending: "100.00", unresolvedMovementCount: 2 });
+        await f.persistence
+          .user(f.userId)
+          .transactions.setInternalMovement.mutate({
+            id: transfer.id,
+            isInternalMovement: false,
+          });
+        expect(await f.ingestion.listPendingReviewForUser(f.userId)).toEqual(
+          [],
+        );
+        expect(
+          await f.ingestion.syncForUser(
+            f.userId,
+            f.connectionId,
+            connector(initialPage),
+          ),
+        ).toMatchObject({ status: "complete", conflictCount: 0 });
+        expect(await movement(f, "transfer-leg")).toMatchObject({
+          user_internal_override: false,
+          is_internal_movement: false,
+          provider_internal_assessment: "internal",
+          review_status: "clear",
+        });
       });
     });
     it("retains a receipt on removal but suspends its active interpretation", async () => {

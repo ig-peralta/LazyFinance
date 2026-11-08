@@ -13,6 +13,9 @@ export interface ObjectiveTable {
   endDate: Date | null;
   createdAt: Generated<Date>;
   updatedAt: Generated<Date>;
+  budgetVersion: Generated<number>;
+  goalVersion: Generated<number>;
+  archivedAt: Date | null;
 }
 
 export type ObjectiveTables = { "finance.objective": ObjectiveTable };

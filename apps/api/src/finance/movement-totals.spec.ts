@@ -1,9 +1,10 @@
 import type { MovementAggregate } from "@lazyfinance/contracts/internal";
 import { describe, expect, it } from "vitest";
+import { movementAggregate } from "../../tests/fixtures/movement-aggregate";
 import { movementTotals } from "./movement-totals";
 
 function group(update: Partial<MovementAggregate>): MovementAggregate {
-  return {
+  return movementAggregate({
     type: "credit",
     isInternalMovement: false,
     reviewStatus: "clear",
@@ -11,7 +12,7 @@ function group(update: Partial<MovementAggregate>): MovementAggregate {
     amount: "10.01",
     count: 1,
     ...update,
-  };
+  });
 }
 
 describe("movementTotals", () => {
@@ -29,6 +30,15 @@ describe("movementTotals", () => {
       receivedIncome: "9007199254740.99",
       unclassifiedCredits: { amount: "2.02", count: 2 },
       spending: "20.03",
+      grossSpending: "20.03",
+      refunds: "0.00",
+      reimbursements: "0.00",
+      unresolvedAdjustmentCount: 0,
+      recoveredExpenseCredits: {
+        amount: "0.00",
+        count: 0,
+        needsReviewCount: 0,
+      },
       unresolvedMovementCount: 5,
     });
   });
@@ -46,6 +56,15 @@ describe("movementTotals", () => {
       receivedIncome: "0.00",
       unclassifiedCredits: { amount: "0.00", count: 0 },
       spending: "0.00",
+      grossSpending: "0.00",
+      refunds: "0.00",
+      reimbursements: "0.00",
+      unresolvedAdjustmentCount: 0,
+      recoveredExpenseCredits: {
+        amount: "0.00",
+        count: 0,
+        needsReviewCount: 0,
+      },
       unresolvedMovementCount: 3,
     });
   });
@@ -55,7 +74,47 @@ describe("movementTotals", () => {
       receivedIncome: "0.00",
       unclassifiedCredits: { amount: "0.00", count: 0 },
       spending: "0.00",
+      grossSpending: "0.00",
+      refunds: "0.00",
+      reimbursements: "0.00",
+      unresolvedAdjustmentCount: 0,
+      recoveredExpenseCredits: {
+        amount: "0.00",
+        count: 0,
+        needsReviewCount: 0,
+      },
       unresolvedMovementCount: 0,
+    });
+  });
+
+  it("keeps recovered cash separate from expense attribution and reserves invalid allocations", () => {
+    expect(
+      movementTotals([
+        group({
+          type: "debit",
+          amount: "-100.03",
+          refundAmount: "30.01",
+          reimbursementAmount: "20.02",
+        }),
+        group({
+          amount: "40.00",
+          reservedCreditAmount: "30.00",
+          expenseCreditAmount: "20.00",
+          expenseCreditCount: 1,
+          creditAdjustmentReviewCount: 1,
+        }),
+      ]),
+    ).toMatchObject({
+      grossSpending: "100.03",
+      refunds: "30.01",
+      reimbursements: "20.02",
+      spending: "50.00",
+      unclassifiedCredits: { amount: "10.00", count: 1 },
+      recoveredExpenseCredits: {
+        amount: "20.00",
+        count: 1,
+        needsReviewCount: 1,
+      },
     });
   });
 });

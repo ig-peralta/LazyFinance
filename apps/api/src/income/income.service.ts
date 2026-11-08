@@ -42,7 +42,8 @@ function activeReceipts(receipts: IncomeFacts["receipts"]) {
       row.type === "credit" &&
       row.isInternalMovement === false &&
       row.reviewStatus === "clear" &&
-      row.removedAt === null,
+      row.removedAt === null &&
+      !row.hasExpenseAdjustments,
   );
 }
 
@@ -215,6 +216,7 @@ export class IncomeService {
     const facts = await this.persistence.user(userId).income.facts.query({
       ...monthBounds(parseInput(MonthSchema, month, "Invalid income input")),
       asOf: now.toISOString(),
+      adjustmentsAsOf: now.toISOString(),
     });
     const expected = expectedIncomeForMonth(
       month,
@@ -230,6 +232,7 @@ export class IncomeService {
       expectedIncome: expected.totals,
       receivedIncome: received.receivedIncome,
       unclassifiedCredits: received.unclassifiedCredits,
+      recoveredExpenseCredits: received.recoveredExpenseCredits,
       unresolvedMovementCount: received.unresolvedMovementCount,
       expectedPayments: expected.payments,
       receipts: activeReceipts(facts.receipts).map(receiptResponse),

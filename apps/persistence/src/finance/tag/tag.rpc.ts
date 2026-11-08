@@ -1,6 +1,11 @@
-import type { TagCreateInput } from "@lazyfinance/contracts";
+import {
+  type TagCreateInput,
+  type UpdateTag,
+  UpdateTagSchema,
+} from "@lazyfinance/contracts";
 import {
   EmptyInputSchema,
+  IdInputSchema,
   TagCreateSchema,
   TagRecordSchema,
   TagRecordsSchema,
@@ -11,6 +16,24 @@ import { TagRepository } from "./tag.repository";
 @Router({ alias: "tags" })
 export class TagRpc {
   constructor(private readonly repository: TagRepository) {}
+
+  @Mutation({
+    input: UpdateTagSchema,
+    output: TagRecordSchema,
+    meta: { context: "user" },
+  })
+  update(@Input() input: UpdateTag) {
+    return this.repository.update(input);
+  }
+
+  @Mutation({
+    input: IdInputSchema,
+    output: TagRecordSchema,
+    meta: { context: "user" },
+  })
+  archive(@Input() input: { id: string }) {
+    return this.repository.archive(input.id);
+  }
 
   @Query({
     input: EmptyInputSchema,

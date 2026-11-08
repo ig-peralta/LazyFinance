@@ -7,7 +7,7 @@
     Avance de presupuestos
   </h2>
   <p class="mt-2 text-sm text-muted-color">
-    Gastos registrados hasta hoy en {{ label() }}. Las metas de ahorro no se incluyen en este cálculo.
+    Gastos registrados para {{ label() }}. Las metas de ahorro no se incluyen en este cálculo.
   </p>
 
   @if (budgets.isLoading()) {
@@ -41,9 +41,27 @@
             <h3 class="font-semibold text-color-emphasis">{{ budget.name }}</h3>
             <span class="text-xs text-muted-color">{{ periodLabel(budget.period) }}</span>
           </div>
+          <p class="mt-2 text-xs text-muted-color">
+            Desde {{ boundaryLabel(budget.tracking.start) }} hasta
+            {{ boundaryLabel(budget.tracking.end) }} (fin excluido).
+          </p>
+          @if (budget.tracking.archivedAt) {
+            <p class="mt-2 text-xs font-semibold text-muted-color">
+              Archivado · sin nuevas compras. Se conserva el límite original y se permiten ajustes de compras anteriores.
+            </p>
+          }
           <p class="mt-5 text-sm text-muted-color">
             {{ money(budget.spent) }} de {{ money(budget.limit) }} usados
           </p>
+          <p class="mt-2 text-xs text-muted-color">
+            Compras {{ money(budget.grossSpent) }} · devoluciones {{ money(budget.refunds) }} ·
+            reembolsos {{ money(budget.reimbursements) }}. El gasto usado es neto.
+          </p>
+          @if (budget.unresolvedAdjustmentCount) {
+            <p role="status" class="mt-2 text-xs text-muted-color">
+              {{ budget.unresolvedAdjustmentCount }} ajustes por revisar; no se descuentan del gasto.
+            </p>
+          }
           <div
             role="progressbar"
             [attr.aria-label]="budget.name"

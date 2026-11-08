@@ -3,42 +3,47 @@ import { TestBed } from "@angular/core/testing";
 import { deleteApp, FirebaseError, getApps, initializeApp } from "firebase/app";
 import {
   type Auth,
+  browserLocalPersistence,
   EmailAuthProvider,
   GoogleAuthProvider,
   type User,
   type UserCredential,
 } from "firebase/auth";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vitest } from "vitest";
 import { deferred } from "../../../testing/deferred";
 import { firebaseUser } from "../../../testing/firebase";
 import { FirebaseService } from "./firebase.service";
 
-const sdk = vi.hoisted(() => ({
-  getAuth: vi.fn<typeof import("firebase/auth").getAuth>(),
-  setPersistence: vi.fn<typeof import("firebase/auth").setPersistence>(),
-  signInWithPopup: vi.fn<typeof import("firebase/auth").signInWithPopup>(),
+// Angular bundles the helper's `vi` import into this entry and renames another
+// `vi` to `vi2`, which Vitest cannot hoist. Keep the recognized name distinct.
+const sdk = vitest.hoisted(() => ({
+  getAuth: vitest.fn<typeof import("firebase/auth").getAuth>(),
+  setPersistence: vitest.fn<typeof import("firebase/auth").setPersistence>(),
+  signInWithPopup: vitest.fn<typeof import("firebase/auth").signInWithPopup>(),
   signInWithEmailAndPassword:
-    vi.fn<typeof import("firebase/auth").signInWithEmailAndPassword>(),
+    vitest.fn<typeof import("firebase/auth").signInWithEmailAndPassword>(),
   createUserWithEmailAndPassword:
-    vi.fn<typeof import("firebase/auth").createUserWithEmailAndPassword>(),
+    vitest.fn<typeof import("firebase/auth").createUserWithEmailAndPassword>(),
   sendEmailVerification:
-    vi.fn<typeof import("firebase/auth").sendEmailVerification>(),
+    vitest.fn<typeof import("firebase/auth").sendEmailVerification>(),
   sendPasswordResetEmail:
-    vi.fn<typeof import("firebase/auth").sendPasswordResetEmail>(),
-  reload: vi.fn<typeof import("firebase/auth").reload>(),
+    vitest.fn<typeof import("firebase/auth").sendPasswordResetEmail>(),
+  reload: vitest.fn<typeof import("firebase/auth").reload>(),
   reauthenticateWithCredential:
-    vi.fn<typeof import("firebase/auth").reauthenticateWithCredential>(),
+    vitest.fn<typeof import("firebase/auth").reauthenticateWithCredential>(),
   reauthenticateWithPopup:
-    vi.fn<typeof import("firebase/auth").reauthenticateWithPopup>(),
+    vitest.fn<typeof import("firebase/auth").reauthenticateWithPopup>(),
   linkWithCredential:
-    vi.fn<typeof import("firebase/auth").linkWithCredential>(),
-  linkWithPopup: vi.fn<typeof import("firebase/auth").linkWithPopup>(),
+    vitest.fn<typeof import("firebase/auth").linkWithCredential>(),
+  linkWithPopup: vitest.fn<typeof import("firebase/auth").linkWithPopup>(),
 }));
 
-vi.mock("firebase/auth", async (importOriginal) => ({
+vitest.mock("firebase/auth", async (importOriginal) => ({
   ...(await importOriginal<typeof import("firebase/auth")>()),
   ...sdk,
 }));
+
+const network = vitest.fn<typeof fetch>();
 
 function result(
   user: User,
@@ -71,14 +76,15 @@ async function setup(providers = ["google.com"]) {
     settings: { appVerificationDisabledForTesting: false },
     emulatorConfig: null,
     currentUser: fixture.user as User | null,
-    setPersistence: vi.fn<Auth["setPersistence"]>(unexpected),
-    onAuthStateChanged: vi.fn<Auth["onAuthStateChanged"]>(unexpected),
-    beforeAuthStateChanged: vi.fn<Auth["beforeAuthStateChanged"]>(unexpected),
-    onIdTokenChanged: vi.fn<Auth["onIdTokenChanged"]>(unexpected),
-    authStateReady: vi.fn<Auth["authStateReady"]>(unexpected),
-    updateCurrentUser: vi.fn<Auth["updateCurrentUser"]>(unexpected),
-    useDeviceLanguage: vi.fn<Auth["useDeviceLanguage"]>(unexpected),
-    signOut: vi.fn<Auth["signOut"]>(async () => {}),
+    setPersistence: vitest.fn<Auth["setPersistence"]>(unexpected),
+    onAuthStateChanged: vitest.fn<Auth["onAuthStateChanged"]>(unexpected),
+    beforeAuthStateChanged:
+      vitest.fn<Auth["beforeAuthStateChanged"]>(unexpected),
+    onIdTokenChanged: vitest.fn<Auth["onIdTokenChanged"]>(unexpected),
+    authStateReady: vitest.fn<Auth["authStateReady"]>(unexpected),
+    updateCurrentUser: vitest.fn<Auth["updateCurrentUser"]>(unexpected),
+    useDeviceLanguage: vitest.fn<Auth["useDeviceLanguage"]>(unexpected),
+    signOut: vitest.fn<Auth["signOut"]>(async () => {}),
   } satisfies Auth;
   sdk.getAuth.mockReturnValue(auth);
   sdk.setPersistence.mockResolvedValue();
@@ -101,18 +107,44 @@ async function setup(providers = ["google.com"]) {
   sdk.reload.mockResolvedValue();
   const service = TestBed.inject(FirebaseService);
   await service.init();
+  expect(
+    service.auth() === auth,
+    "FirebaseService must use the mocked Auth instance",
+  ).toBe(true);
+  expect(sdk.getAuth).toHaveBeenCalledExactlyOnceWith(app);
   return { ...fixture, service, auth, signal: new AbortController().signal };
 }
 
 describe("Firebase credential operations (mocked SDK)", () => {
-  beforeEach(() => vi.resetAllMocks());
+  beforeEach(() => {
+    vitest.resetAllMocks();
+    network.mockRejectedValue(
+      new Error("Unexpected network request in a Firebase SDK unit test"),
+    );
+    vitest.stubGlobal("fetch", network);
+  });
 
   afterEach(async () => {
-    TestBed.resetTestingModule();
-    await Promise.all(
-      getApps()
-        .filter(({ name }) => name === "lazyfinance-browser")
-        .map(deleteApp),
+    try {
+      TestBed.resetTestingModule();
+      await Promise.all(
+        getApps()
+          .filter(({ name }) => name === "lazyfinance-browser")
+          .map(deleteApp),
+      );
+      expect(network).not.toHaveBeenCalled();
+    } finally {
+      vitest.unstubAllGlobals();
+    }
+  });
+
+  it("initializes the mocked SDK once without contacting Firebase", async () => {
+    const { service, auth } = await setup();
+    await expect(service.init()).resolves.toBe(auth);
+    expect(sdk.getAuth).toHaveBeenCalledTimes(1);
+    expect(sdk.setPersistence).toHaveBeenCalledExactlyOnceWith(
+      auth,
+      browserLocalPersistence,
     );
   });
 
@@ -179,6 +211,7 @@ describe("Firebase credential operations (mocked SDK)", () => {
     await expect(service.sendVerification(user, signal)).rejects.toMatchObject({
       name: "AbortError",
     });
+    expect(sdk.sendEmailVerification).toHaveBeenCalledExactlyOnceWith(user);
   });
 
   it("reauthenticates with the existing user's password rather than signing into another account", async () => {
@@ -239,6 +272,10 @@ describe("Firebase credential operations (mocked SDK)", () => {
     await expect(
       service.linkPassword(user, "new-password", lifetime.signal),
     ).rejects.toMatchObject({ name: "AbortError" });
+    expect(sdk.reauthenticateWithPopup).toHaveBeenCalledExactlyOnceWith(
+      user,
+      expect.any(GoogleAuthProvider),
+    );
     expect(sdk.linkWithCredential).not.toHaveBeenCalled();
   });
 
@@ -262,6 +299,10 @@ describe("Firebase credential operations (mocked SDK)", () => {
     await expect(
       service.linkPassword(user, "new-password", signal),
     ).rejects.toMatchObject({ name: "AbortError" });
+    expect(sdk.reauthenticateWithPopup).toHaveBeenCalledExactlyOnceWith(
+      user,
+      expect.any(GoogleAuthProvider),
+    );
     expect(sdk.linkWithCredential).not.toHaveBeenCalled();
   });
 

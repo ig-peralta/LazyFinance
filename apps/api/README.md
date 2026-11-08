@@ -67,6 +67,120 @@ joined objective/tag reads, SQL sums for API-computed budget windows, narrow
 income reads and snapshot-local rule/expectation indexes. Do not fetch full
 collections just to join IDs or sum raw movements in a feature service.
 
+Explicit refunds and expense reimbursements reduce the original purchase period's
+net spending/budget cost; recovered credit-period cash is separate from earned
+income. Bank facts and balances are unchanged. See the shared
+[recovery semantics](../../docs/technical/rpc-contracts.md#expense-recovery-semantics)
+for partial/split allocations, archived budgets, income conflicts and review states.
+
+`summaries.spendingContributions` and `objectives.budgetContributions` expose
+purchase-level evidence with complete aggregate totals, exact cutoffs and explicit
+untagged coverage. They reuse the same reporting windows and eligibility as the
+reported amounts, including archived budgets and later recoveries. Read-only MCP
+tools call those same services. See [contributing purchases](../../docs/technical/rpc-contracts.md#contributing-purchases)
+for revision/observation pinning and live-page limitations; no drill-down UI is implied.
+
+### Savings contribution policy (LAZ-35)
+
+The executable [eligibility policy](src/objectives/savings-policy.ts) and its
+[reconciled fixtures](src/objectives/savings-policy.spec.ts) define **recorded goal
+allocations**, not bank balances, new wealth or earned income. LAZ-35 defines and
+tests the rule; LAZ-42 adds owned target management below. LAZ-40 connects measured
+`objectives.savingsProgress` and paginated `savingsContributions` reads, also exposed
+by the read-only MCP tools `consultar_avance_ahorro` / `consultar_aportes_ahorro`.
+They share exact eligibility/cutoffs, disclose pending-review counts and cash-account
+history coverage, preserve negative net observations and never infer a bank balance.
+Monthly/yearly goals reset by calendar period; lifetime/fixed views accumulate
+through the requested month. Evidence continuation retains the returned `asOf`;
+selection/configuration changes require a fresh page. Current-fact corrections may
+restate past views; an observation cutoff is not historical time travel.
+
+Target management uses `objectives.savingsGoal`, `savingsGoalHistory`,
+`createSavingsGoal`, `updateSavingsGoal` and `archiveSavingsGoal`. Lifetime,
+monthly/yearly and fixed inclusive dates are supported. Edits apply immediately
+to the current goal view, retaining immutable configuration/tag revisions rather
+than pretending past configurations never existed. Expected versions reject lost
+updates. Archived targets cannot be edited and retain their detail/history and
+server-timed counting cutoff. Newly selected tags must be owned and active;
+retained archived tags can remain selected. These commands never change bank facts
+or fabricate a contribution. Management UI remains a separate workstream.
+
+#### Selected tags and direction
+
+- Selecting a goal's tags gives their booked **cash movements** an allocation
+  meaning for that goal. A matching credit adds a contribution; a matching debit
+  is a withdrawal/use of allocated money. Either an owned checking or savings
+  account qualifies: a dedicated savings account is not required. Credit-card
+  movements do not represent allocated cash and are excluded.
+- A movement counts once per matching goal, regardless of how many tags the goal
+  selects. No matching tag means no contribution; neither positive amounts, tag
+  names, provider hints nor a balance creates an allocation automatically. Current
+  manual/approved-rule assignments are used; historical archived tag metadata does
+  not erase a retained assignment. Retagging moves that movement's allocation.
+- Goals sharing tags are intentionally overlapping views. The same movement can
+  appear in each; their amounts must not be added into a supposedly reserved or
+  available savings balance. Selecting a tag neither moves nor locks bank money.
+- Internal status is **not** an eligibility gate: both known internal/external and
+  unknown transfers follow the same signed rule. Tag the receiving cash leg to
+  record an addition. A tagged source debit is a withdrawal, never another positive
+  contribution. If both legs belong to the same goal, their signed amounts net to
+  zero; if they belong to different goals, they move recorded allocations between
+  goals. No counterpart matching or manual reconciliation is required. Untagged
+  counterpart legs are not invented or automatically assigned the goal's tag.
+- A tagged cash-side card payment can withdraw allocated money, but the card-side
+  credit cannot add it again. Ordinary spending/earned-income/internal-transfer
+  rules stay unchanged. A cash credit can be both allocated to a goal and confirmed
+  as income in that separate view; the views are not additive measures of cash.
+
+#### Periods, withdrawals and corrections
+
+Evaluate only `start <= bookedAt < end` and `bookedAt <= asOf`, preserving exact
+booking instants and Santiago calendar boundaries. The policy accepts an explicit
+observation window; it does not introduce or edit supported goal schedules.
+An amount-only/lifetime goal uses all available matching history through the
+report horizon (`start: null` when no start was declared), without resetting every
+month or year. Explicit monthly/yearly windows describe those periods; fixed
+windows retain their historical result after ending. Do not reuse the spending
+budget selector, which intentionally excludes savings goals and expired windows.
+
+Withdrawals and separately booked reversals use their real booking dates and
+signed values. A positive provider reversal hint does not become an invented
+negative movement. Retractions exclude the removed original; corrections use
+current facts. Review-pending matching movements remain pending, not zero-valued
+contributions, while other clear movements still count. Do not create a second
+synthetic reversal or reuse LAZ-36's original-purchase attribution: a November
+refund can add recorded cash to a November savings allocation while correcting
+October spending in that other view. Keep exact contribution/withdrawal components
+and the signed net, including negative net observations; never infer an opening
+balance or clamp away a withdrawal because earlier history is unavailable.
+
+For example, a tagged cash credit of 200 and a tagged withdrawal of 50 produce
+observed contributions 200, withdrawals 50 and net 150. A checking-to-savings
+transfer with only its receiving credit tagged adds 200; the same transfer with
+both legs tagged to the goal has net zero, not 400.
+
+#### Useful results without a completeness gate
+
+An unknown internal classification alone does not affect this signed allocation
+rule. Factual `needs_review` status does, so only the affected matching movement
+stays pending. Partial/unknown history or an unknown balance must not suppress
+known allocations or require users to reconcile every transfer first.
+
+The measured progress read identifies the observation window and available
+history separately: "recorded net contributions from imported movements", not
+"your entire savings balance". Missing history can contain additions **or**
+withdrawals, so observed net is not necessarily a lower bound. A recorded-progress
+percentage may be useful with that scope; it is not proof that all historical
+funding is known. Relevant retained history may include inactive accounts. No
+balance-derived opening amount, confidence engine or reconciliation workflow is
+introduced here.
+
+Ownership still belongs to signed persistence/RLS. Measured reads use complete,
+purpose-shaped owned aggregates and paginated evidence, not totals of a history
+browse page or downloads of every transaction to the API. Real-RPC integration
+tests cover ownership, periods, current-fact corrections and evidence reconciliation;
+pure policy tests alone do not establish database isolation or live-provider readiness.
+
 Public bodies are limited to 1 MiB and batches to 10 procedures. Private provider
 runs are bounded by 100 pages, 50,000 records, 32 MiB normalized JSON and 64 MiB
 prepared JSON/results. Oversized runs fail without partial writes/checkpoint

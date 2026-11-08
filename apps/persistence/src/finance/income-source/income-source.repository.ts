@@ -123,6 +123,9 @@ export class IncomeSourceRepository {
         "m.isInternalMovement",
         "m.reviewStatus",
         "m.removedAt",
+        sql<boolean>`EXISTS (SELECT 1 FROM finance.expense_adjustment x WHERE x.credit_transaction_id = m.id)`.as(
+          "hasExpenseAdjustments",
+        ),
       ])
       .where(movementPeriod(period))
       .orderBy("m.bookedAt")

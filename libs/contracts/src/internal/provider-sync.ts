@@ -105,6 +105,7 @@ export const ProviderMovementFactSchema = TransactionRecordSchema.extend({
   externalId,
   accountExternalId: externalId,
   hasReceipt: z.boolean(),
+  internalOverrideAcknowledged: z.boolean(),
 });
 
 export const ProviderSyncFactsSchema = z.object({

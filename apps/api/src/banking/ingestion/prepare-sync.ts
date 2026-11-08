@@ -240,8 +240,12 @@ export function prepareSync(
       (assessment === "unknown" ? null : assessment === "internal");
     const direction = movementDirection(movement.amount);
     const conflict =
-      (existing?.userInternalOverride === false && assessment === "internal") ||
-      (existing?.hasReceipt && (direction !== "credit" || effective !== false));
+      (existing?.userInternalOverride === false &&
+        !existing.internalOverrideAcknowledged &&
+        assessment === "internal") ||
+      (existing?.hasReceipt &&
+        (direction !== "credit" ||
+          (effective !== false && existing.userInternalOverride !== true)));
     const reviewStatus =
       existing?.reviewStatus === "needs_review" || conflict
         ? ("needs_review" as const)

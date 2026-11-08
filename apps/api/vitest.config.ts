@@ -8,5 +8,8 @@ export default defineConfig({
     environment: "node",
     include: ["src/**/*.spec.ts", "tests/integration/**/*.integration.spec.ts"],
     setupFiles: ["tests/setup.ts"],
+    // Bound concurrent app/DB fixtures; these workflows are not latency benchmarks.
+    maxWorkers: 4,
+    testTimeout: process.env.TEST_PERSISTENCE_RPC_URL ? 15000 : 5000,
   },
 });

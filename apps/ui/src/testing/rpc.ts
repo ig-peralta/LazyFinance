@@ -47,6 +47,12 @@ export const emptySummary = {
   month: "2026-09",
   receivedIncome: "0.00",
   spending: "0.00",
+  grossSpending: "0.00",
+  refunds: "0.00",
+  reimbursements: "0.00",
+  unresolvedAdjustmentCount: 0,
+  recoveredExpenseCredits: { amount: "0.00", count: 0, needsReviewCount: 0 },
+  adjustmentsAsOf: "2026-11-07T15:00:00Z",
   tags: [],
   unresolvedMovementCount: 0,
   expectedIncome: {

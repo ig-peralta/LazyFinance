@@ -1,6 +1,11 @@
 import type { ObjectiveSummary } from "@lazyfinance/contracts";
+import type { BudgetPeriodRecord } from "@lazyfinance/contracts/internal";
 import { monthBounds } from "../utils/period";
-import { santiagoTimestamp } from "../utils/santiago-time";
+import { santiagoMonth } from "../utils/santiago-time";
+import {
+  compareObjectiveBoundaries,
+  objectiveLocalTime,
+} from "./objective-time";
 
 export type BudgetPeriod = "monthly" | "yearly" | "fixed";
 
@@ -15,12 +20,8 @@ export function budgetPeriod(
     return null;
 
   const { start: monthStart, end: monthEnd } = monthBounds(month);
-  const startsAt = objective.startDate
-    ? santiagoTimestamp(new Date(objective.startDate))
-    : null;
-  const endsAt = objective.endDate
-    ? santiagoTimestamp(new Date(objective.endDate))
-    : null;
+  const startsAt = objective.startDate;
+  const endsAt = objective.endDate;
   let start: string;
   let end = monthEnd;
   let period: BudgetPeriod;
@@ -38,12 +39,37 @@ export function budgetPeriod(
     return null;
   }
 
-  if (startsAt) start = start > startsAt ? start : startsAt;
+  if (startsAt && compareObjectiveBoundaries(startsAt, start) > 0)
+    start = startsAt;
 
-  if (endsAt) end = end < endsAt ? end : endsAt;
+  if (endsAt && compareObjectiveBoundaries(endsAt, end) < 0) end = endsAt;
 
-  if (start >= end || start >= monthEnd || (endsAt && endsAt <= monthStart))
+  if (
+    compareObjectiveBoundaries(start, end) >= 0 ||
+    compareObjectiveBoundaries(start, monthEnd) >= 0 ||
+    (endsAt && compareObjectiveBoundaries(endsAt, monthStart) <= 0)
+  )
     return null;
 
   return { start, end, period };
+}
+
+/** Shared selection for a reported budget and its contributing movements. */
+export function reportedBudgetPeriod(
+  objective: BudgetPeriodRecord,
+  month: string,
+  now: Date,
+) {
+  const window = budgetPeriod(objective, month);
+  if (
+    !window ||
+    !objective.tags.length ||
+    (objective.archivedAt &&
+      objectiveLocalTime(objective.archivedAt) <=
+        objectiveLocalTime(monthBounds(month).start)) ||
+    (month === santiagoMonth(now) &&
+      compareObjectiveBoundaries(window.start, now.toISOString()) > 0)
+  )
+    return null;
+  return window;
 }

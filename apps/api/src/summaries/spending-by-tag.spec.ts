@@ -1,11 +1,13 @@
 import type { TaggedMovementAggregate } from "@lazyfinance/contracts/internal";
 import { describe, expect, it } from "vitest";
+import { movementAggregate } from "../../tests/fixtures/movement-aggregate";
 import { spendingByTag } from "./spending-by-tag";
 
 function group(
   update: Partial<TaggedMovementAggregate> = {},
 ): TaggedMovementAggregate {
   return {
+    ...movementAggregate(update),
     type: "debit",
     isInternalMovement: false,
     reviewStatus: "clear",
@@ -28,8 +30,22 @@ describe("spendingByTag", () => {
         group({ tag: archived, amount: "-0.01", hasReceipt: true }),
       ]),
     ).toEqual([
-      { ...archived, amount: "9007199254740.99", count: 3 },
-      { ...other, amount: "9007199254740.99", count: 1 },
+      {
+        ...archived,
+        amount: "9007199254740.99",
+        grossAmount: "9007199254740.99",
+        refunds: "0.00",
+        reimbursements: "0.00",
+        count: 3,
+      },
+      {
+        ...other,
+        amount: "9007199254740.99",
+        grossAmount: "9007199254740.99",
+        refunds: "0.00",
+        reimbursements: "0.00",
+        count: 1,
+      },
     ]);
   });
 
@@ -44,8 +60,50 @@ describe("spendingByTag", () => {
         group({ reviewStatus: "needs_review" }),
       ]),
     ).toEqual([
-      { id: "food", name: "Comida", color: null, amount: "10.01", count: 1 },
+      {
+        id: "food",
+        name: "Comida",
+        color: null,
+        amount: "10.01",
+        grossAmount: "10.01",
+        refunds: "0.00",
+        reimbursements: "0.00",
+        count: 1,
+      },
     ]);
     expect(spendingByTag([])).toEqual([]);
+  });
+
+  it("orders by net cost while retaining exact gross and recovery components", () => {
+    const other = { id: "other", name: "Other", color: null };
+    expect(
+      spendingByTag([
+        group({
+          amount: "-100.03",
+          refundAmount: "30.01",
+          reimbursementAmount: "60.02",
+        }),
+        group({ tag: other, amount: "-20.00" }),
+      ]),
+    ).toEqual([
+      {
+        ...other,
+        amount: "20.00",
+        grossAmount: "20.00",
+        refunds: "0.00",
+        reimbursements: "0.00",
+        count: 1,
+      },
+      {
+        id: "food",
+        name: "Comida",
+        color: null,
+        amount: "10.00",
+        grossAmount: "100.03",
+        refunds: "30.01",
+        reimbursements: "60.02",
+        count: 1,
+      },
+    ]);
   });
 });

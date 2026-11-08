@@ -20,20 +20,9 @@ export const TransactionRecordsPageSchema = cursorPageSchema(
   RecentTransactionRecordSchema,
 );
 
-export const TransactionCursorSchema = z.strictObject({
-  version: z.literal(1),
-  bookedAt: z.iso
-    .datetime({ precision: 6 })
-    .refine((value) => !value.startsWith("0000-")),
-  id: z.uuid(),
-  accountId: z.uuid().nullable(),
-});
-
 export type RecentTransactionRecord = z.infer<
   typeof RecentTransactionRecordSchema
 >;
-
-export type TransactionCursor = z.infer<typeof TransactionCursorSchema>;
 
 export const MovementAggregateSchema = z.object({
   type: z.enum(["debit", "credit"]),
@@ -42,6 +31,14 @@ export const MovementAggregateSchema = z.object({
   hasReceipt: z.boolean(),
   amount: z.string(),
   count: z.number().int().nonnegative(),
+  refundAmount: z.string(),
+  reimbursementAmount: z.string(),
+  purchaseAdjustmentReviewCount: z.number().int().nonnegative(),
+  reservedCreditAmount: z.string(),
+  expenseCreditAmount: z.string(),
+  expenseCreditCount: z.number().int().nonnegative(),
+  creditAdjustmentReviewCount: z.number().int().nonnegative(),
+  unclassifiedCreditCount: z.number().int().nonnegative(),
 });
 
 // 2 directions × 3 internal states × 2 review states × 2 receipt states.

@@ -103,6 +103,11 @@ export class ProviderConnectionRepository {
       .select([
         "a.externalId as accountExternalId",
         sql<boolean>`r.transaction_id IS NOT NULL`.as("hasReceipt"),
+        sql<boolean>`m.user_internal_override IS FALSE AND EXISTS (SELECT 1 FROM finance.provider_movement_conflict c
+          WHERE c.transaction_id=m.id AND c.reason='internal_override_disagrees' AND c.resolved_at IS NOT NULL
+          AND c.incoming_facts->>'providerInternalAssessment'=m.provider_internal_assessment::text)`.as(
+          "internalOverrideAcknowledged",
+        ),
       ])
       .where("a.providerConnectionId", "=", scope.connectionId)
       .where(sql<boolean>`EXISTS (SELECT 1 FROM jsonb_to_recordset(${keys}::jsonb) AS k("accountExternalId" text, "externalId" text)
@@ -288,13 +293,15 @@ export class ProviderConnectionRepository {
 
       if (
         previous?.userInternalOverride === false &&
+        !previous.internalOverrideAcknowledged &&
         prepared.providerInternalAssessment === "internal"
       )
         reasons.push("internal_override_disagrees");
 
       if (
         previous?.hasReceipt &&
-        (prepared.type !== "credit" || effective !== false)
+        (prepared.type !== "credit" ||
+          (effective !== false && previous.userInternalOverride !== true))
       )
         reasons.push("receipt_incompatible");
 

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { MonthSchema } from "../summaries/month.schema";
+import { RecoveredExpenseCreditsSchema } from "../transactions/expense-adjustment.schema";
 import {
   ExpectedIncomePaymentSchema,
   ExpectedIncomeTotalsSchema,
@@ -31,6 +32,7 @@ export const IncomeSummarySchema = z.object({
   expectedIncome: ExpectedIncomeTotalsSchema,
   receivedIncome: z.string(),
   unclassifiedCredits: UnclassifiedCreditsSchema,
+  recoveredExpenseCredits: RecoveredExpenseCreditsSchema,
   unresolvedMovementCount: z.number().int().nonnegative().optional(),
   expectedPayments: z.array(ExpectedIncomePaymentSchema),
   receipts: z.array(IncomeReceiptSchema),

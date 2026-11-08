@@ -13,7 +13,7 @@ import { z } from "zod";
 
 const t = initTRPC.create();
 const publicProcedure = t.procedure;
-import { RpcEmptySchema, AccountsResultSchema, AuthConfigSchema, MockLoginInputSchema, MockLoginResultSchema, AuthPrincipalSchema, IncomeSourcesResultSchema, RpcIdSchema, IncomeSourceSchema, IncomeSourceInputSchema, ReplaceIncomeSourceSchema, IncomeExpectationsResultSchema, CreateIncomeExpectationSchema, IncomeExpectationSchema, ReplaceIncomeExpectationSchema, RpcVoidSchema, RpcMonthSchema, ExpectedIncomeSchema, IncomeReceiptsResultSchema, ConfirmIncomeReceiptSchema, IncomeReceiptSchema, IncomeSummarySchema, ObjectivesResultSchema, BudgetProgressResultSchema, MonthlySummarySchema, MonthlyComparisonSchema, TagsResultSchema, TagCreateInputSchema, TagSummarySchema, SuggestionsResultSchema, SetTagSchema, TagDecisionSchema, TagRulesResultSchema, TagRuleInputSchema, TagRuleResultSchema, ReplaceTagRuleSchema, ApplyTagRuleSchema, AppliedTagRuleSchema, RecentTransactionsResultSchema, TransactionsInputSchema, TransactionsPageSchema } from "@lazyfinance/contracts";
+import { RpcEmptySchema, AccountsResultSchema, AuthConfigSchema, MockLoginInputSchema, MockLoginResultSchema, AuthPrincipalSchema, IncomeSourcesResultSchema, RpcIdSchema, IncomeSourceSchema, IncomeSourceInputSchema, ReplaceIncomeSourceSchema, IncomeExpectationsResultSchema, CreateIncomeExpectationSchema, IncomeExpectationSchema, ReplaceIncomeExpectationSchema, RpcVoidSchema, RpcMonthSchema, ExpectedIncomeSchema, IncomeReceiptsResultSchema, ConfirmIncomeReceiptSchema, IncomeReceiptSchema, IncomeSummarySchema, BudgetContributionsInputSchema, SpendingContributionsPageSchema, SavingsProgressInputSchema, SavingsProgressSchema, SavingsEvidenceInputSchema, SavingsEvidencePageSchema, SavingsGoalSchema, SavingsHistoryInputSchema, SavingsHistoryPageSchema, CreateSavingsGoalSchema, UpdateSavingsGoalSchema, SavingsGoalVersionSchema, ObjectivesResultSchema, BudgetDetailSchema, BudgetHistoryInputSchema, BudgetHistoryPageSchema, CreateBudgetInputSchema, UpdateBudgetInputSchema, BudgetVersionInputSchema, BudgetProgressResultSchema, SpendingContributionsInputSchema, MonthlySummarySchema, MonthlyComparisonSchema, UpdateTagSchema, ManagedTagSchema, TagsResultSchema, TagCreateInputSchema, TagSummarySchema, SuggestionsResultSchema, SetTagSchema, TagDecisionSchema, TagRulesResultSchema, TagRuleInputSchema, TagRuleResultSchema, ReplaceTagRuleSchema, ApplyTagRuleSchema, AppliedTagRuleSchema, SetInternalMovementSchema, InternalMovementDecisionSchema, ExpenseAdjustmentsInputSchema, ExpenseAdjustmentsPageSchema, SetExpenseAdjustmentSchema, ExpenseAdjustmentSchema, ExpenseAdjustmentPairSchema, RecentTransactionsResultSchema, TransactionsInputSchema, TransactionsPageSchema } from "@lazyfinance/contracts";
 
 const appRouter = t.router({
   accounts: t.router({
@@ -95,16 +95,72 @@ const appRouter = t.router({
       .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
     }),
   objectives: t.router({
+    budgetContributions: publicProcedure
+      .input(BudgetContributionsInputSchema)
+      .output(SpendingContributionsPageSchema)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    savingsProgress: publicProcedure
+      .input(SavingsProgressInputSchema)
+      .output(SavingsProgressSchema)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    savingsContributions: publicProcedure
+      .input(SavingsEvidenceInputSchema)
+      .output(SavingsEvidencePageSchema)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    savingsGoal: publicProcedure
+      .input(RpcIdSchema)
+      .output(SavingsGoalSchema)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    savingsGoalHistory: publicProcedure
+      .input(SavingsHistoryInputSchema)
+      .output(SavingsHistoryPageSchema)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    createSavingsGoal: publicProcedure
+      .input(CreateSavingsGoalSchema)
+      .output(SavingsGoalSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    updateSavingsGoal: publicProcedure
+      .input(UpdateSavingsGoalSchema)
+      .output(SavingsGoalSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    archiveSavingsGoal: publicProcedure
+      .input(SavingsGoalVersionSchema)
+      .output(SavingsGoalSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
     list: publicProcedure
       .input(RpcEmptySchema)
       .output(ObjectivesResultSchema)
       .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    budget: publicProcedure
+      .input(RpcIdSchema)
+      .output(BudgetDetailSchema)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    budgetHistory: publicProcedure
+      .input(BudgetHistoryInputSchema)
+      .output(BudgetHistoryPageSchema)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    createBudget: publicProcedure
+      .input(CreateBudgetInputSchema)
+      .output(BudgetDetailSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    updateBudget: publicProcedure
+      .input(UpdateBudgetInputSchema)
+      .output(BudgetDetailSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    archiveBudget: publicProcedure
+      .input(BudgetVersionInputSchema)
+      .output(BudgetDetailSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
     progress: publicProcedure
       .input(RpcMonthSchema)
       .output(BudgetProgressResultSchema)
       .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
     }),
   summaries: t.router({
+    spendingContributions: publicProcedure
+      .input(SpendingContributionsInputSchema)
+      .output(SpendingContributionsPageSchema)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
     monthly: publicProcedure
       .input(RpcMonthSchema)
       .output(MonthlySummarySchema)
@@ -115,6 +171,14 @@ const appRouter = t.router({
       .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
     }),
   tags: t.router({
+    update: publicProcedure
+      .input(UpdateTagSchema)
+      .output(ManagedTagSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    archive: publicProcedure
+      .input(RpcIdSchema)
+      .output(ManagedTagSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
     list: publicProcedure
       .input(RpcEmptySchema)
       .output(TagsResultSchema)
@@ -159,6 +223,22 @@ const appRouter = t.router({
       .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
     }),
   transactions: t.router({
+    setInternalMovement: publicProcedure
+      .input(SetInternalMovementSchema)
+      .output(InternalMovementDecisionSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    expenseAdjustments: publicProcedure
+      .input(ExpenseAdjustmentsInputSchema)
+      .output(ExpenseAdjustmentsPageSchema)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    setExpenseAdjustment: publicProcedure
+      .input(SetExpenseAdjustmentSchema)
+      .output(ExpenseAdjustmentSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    removeExpenseAdjustment: publicProcedure
+      .input(ExpenseAdjustmentPairSchema)
+      .output(RpcVoidSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
     recent: publicProcedure
       .input(RpcEmptySchema)
       .output(RecentTransactionsResultSchema)

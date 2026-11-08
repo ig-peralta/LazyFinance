@@ -7,7 +7,6 @@ import {
 const boundary = {
   id: "00000000-0000-4000-8000-000000000011",
   bookedAt: "2026-10-15T15:00:00.123456Z",
-  accountId: null,
 };
 
 const encodeRaw = (value: unknown) =>
@@ -17,25 +16,35 @@ describe("transaction cursor", () => {
   it("round-trips both ordering keys without losing timestamp precision", () => {
     const cursor = encodeTransactionCursor(boundary);
     expect(cursor).toMatch(/^[A-Za-z0-9_-]+$/);
-    expect(decodeTransactionCursor(cursor)).toEqual({
-      version: 1,
-      ...boundary,
-    });
+    expect(decodeTransactionCursor(cursor)).toMatchObject(boundary);
   });
 
-  it("binds continuation to the original account filter", () => {
+  it("binds continuation to every normalized filter, but not page size", () => {
     const accountId = "00000000-0000-4000-8000-000000000021";
-    const cursor = encodeTransactionCursor({ ...boundary, accountId });
-    expect(decodeTransactionCursor(cursor, accountId).accountId).toBe(
+    const filters = {
       accountId,
-    );
-    for (const changed of [undefined, "00000000-0000-4000-8000-000000000022"])
+      bookedFrom: "2026-09-01",
+      bookedBefore: "2026-10-01",
+      tagId: null,
+      type: "debit" as const,
+      isInternalMovement: false,
+      merchant: "Store",
+    };
+    const cursor = encodeTransactionCursor(boundary, filters);
+    expect(decodeTransactionCursor(cursor, filters)).toMatchObject(boundary);
+    for (const changed of [
+      {},
+      { accountId: boundary.id },
+      { bookedFrom: "2026-09-02" },
+      { bookedBefore: "2026-10-02" },
+      { tagId: boundary.id },
+      { type: "credit" as const },
+      { isInternalMovement: null },
+      { merchant: "Other" },
+    ])
       expect(() => decodeTransactionCursor(cursor, changed)).toThrow(
-        "Invalid transaction cursor",
+        /changed selection/,
       );
-    expect(() =>
-      decodeTransactionCursor(encodeTransactionCursor(boundary), accountId),
-    ).toThrow("Invalid transaction cursor");
   });
 
   it.each([
@@ -67,7 +76,7 @@ describe("transaction cursor", () => {
     expect(() => decodeTransactionCursor(cursor)).toThrow(
       expect.objectContaining({
         code: "BAD_REQUEST",
-        message: "Invalid transaction cursor; restart pagination",
+        message: "Invalid cursor or changed selection; restart pagination",
       }),
     );
   });
