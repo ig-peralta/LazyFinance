@@ -50,8 +50,10 @@ login retain their existing system-aware theme.
 
 Navigation has four primary areas: **Resumen**, **Mi dinero** (movements, accounts,
 tags), **Planificación** (budgets, savings, income and sources), and **Mi cuenta**
-(access/security, plus a resume link only for skipped setup). Direct contextual links appear above the
-page, wrap rather than scroll, and retain the active destination on detail routes.
+(access/security, bank connections, plus a resume link only for skipped setup).
+Bank connection settings stay reachable regardless of whether setup is active,
+skipped or completed. Direct contextual links appear above the page, wrap rather
+than scroll, and retain the active destination on detail routes.
 The sidebar has no internal scrolling or expandable lists. Narrow or short
 viewports replace it with a compact native modal menu, including a two-column
 layout on short screens, focus containment and Escape handling. A skip link and
@@ -147,14 +149,53 @@ explicit. Evidence retains its booking cutoff and rejects mismatched goal
 versions; it is current-fact evidence, not historical time travel. Dashboard tag
 decisions invalidate savings allocations as well as spending/budget reads.
 
-`/cuentas` reads stored active-account balances and last-synchronization dates.
-It does not refresh the bank. Connection pending/failed/revoked state is not
-available from the current public API; linking, refresh, relink and disconnect
-are explicitly unavailable. A timestamp older than 24 hours is labelled by age,
-not treated as proof of a connection state. **LAZ-62 remains blocked/open** until
-the separate banking backend and live verification exist.
+`/cuentas` (**Mi dinero → Cuentas**) owns stored account balances, last-sync dates
+and links into movement history. It does not load banking settings or contact
+Fintoc. A **Conectar banco** shortcut and the empty state link to the separate
+connection settings; they do not launch authorization themselves.
 
-`/comenzar` is optional setup navigation without automatic financial writes.
+`/conexiones-bancarias` (**Mi cuenta → Conexiones bancarias**) supports owned Fintoc
+authorization, explicit access checks, same-bank/same-holder relinking and confirmed
+disconnect. The page links back to stored accounts. Server configuration determines
+whether linking is enabled and whether the Widget uses test or live mode. Test
+mode warns against real credentials and links to Fintoc's public test identities.
+The hosted Widget loads only after **Abrir Fintoc**; its callback is bound to the
+backend-created intent, and only backend confirmation establishes a saved connection.
+Navigation, cancellation and credential replacement close the Widget and discard
+late results. A failed/uncertain exchange offers read reconciliation, not replay.
+Disconnect preserves financial history and shows pending remote cleanup when needed;
+local disconnect remains available if provider configuration is disabled/mismatched.
+
+Connection access is separate from stored active-account balances and last-sync
+dates. Public account summaries do not identify their provider connection, so the
+page does not imply that a listed balance belongs to a particular Fintoc connection.
+A timestamp older than 24 hours is labelled by age, not as a connection failure.
+Access checks do not import or refresh financial data. **Import and bank refresh
+remain unavailable** (LAZ-51/LAZ-48), and LAZ-62 remains open for its full refresh/
+recovery acceptance. See the [backend contract/setup](../api/src/banking/linking/README.md).
+
+Before the navigation split, browser verification on 8 November 2026 exercised
+the actual authenticated app, hosted Fintoc sandbox Widget, API, signed persistence and an isolated PostgreSQL
+database. Initial authorization, access check, same-ID relink and confirmed remote
+disconnect passed. Stored credentials were encrypted and cleared on disconnect;
+no accounts/movements were imported. Only the newly created sandbox Link was
+removed; pre-existing provider Links were preserved. Desktop and 390px layout,
+keyboard focus/cancel, provider exit, navigation/logout cleanup and a deliberately
+failed access-check response were verified. The accounts screen had no automated
+axe WCAG A/AA violations in that check; this is not an audit of Fintoc's iframe,
+screen-reader coverage, live-bank consent, financial refresh or production readiness.
+
+The navigation split was separately verified against production static output
+with mocked RPC: accounts/settings return links, skipped/completed onboarding,
+desktop/mobile **Mi cuenta** navigation and authorization focus/cancellation.
+Widths 320/390/768/1440 had no horizontal overflow, and the new connection-settings
+screen had no automated axe WCAG A/AA violations in the tested state. This used
+an ephemeral non-default loopback port, shut down afterward; it did not rerun
+the real provider flow or access the user's development database.
+
+`/comenzar` is optional setup navigation without automatic financial writes. Its
+bank shortcut opens `/conexiones-bancarias` directly; skipping or completing the
+guide never removes access to connection settings.
 Checklist progress comes from persisted owned accounts, sources and objectives;
 failed reads are unverified, not completed or empty imports. Small credential-
 scoped `OnboardingData` metadata is shared by shell/hint/guide and persisted per
@@ -185,6 +226,9 @@ Under `src/app/pages`, related components, templates and tests stay together:
   `savings/` (with its editor), and `forms/` shared by both objective workflows.
 - `transactions/`: `history/` owns the ledger and filters; `detail/` owns the
   movement page and its `corrections/` component.
+- `accounts/`: stored balances and shortcuts to connection settings/history.
+- `banking/`: the bank-connections settings page owns access reads/checks/disconnect;
+  `bank-link-flow/` owns one cancellable intent/Widget/completion.
 - `dashboard/`: overview panels; `summary/` owns the distribution chart and its
   exact-amount presentation calculation/tests. Navigation configuration belongs
   to `layout/app-shell/`, not to individual financial workflows.

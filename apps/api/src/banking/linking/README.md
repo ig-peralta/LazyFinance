@@ -1,9 +1,10 @@
 # Owned Fintoc linking (LAZ-49)
 
-This slice exposes the **connection lifecycle**, not account/movement import,
-refresh scheduling or a production banking UI. LAZ-51 owns the normalized adapter
-and first import; LAZ-48 owns refresh/recovery; LAZ-62 owns the app's banking
-controls. No payment or money-moving Fintoc endpoint is used.
+This backend exposes the **connection lifecycle**, not account/movement import or
+refresh scheduling. LAZ-51 owns the normalized adapter and first import; LAZ-48
+owns refresh/recovery. The LAZ-62 UI exposes the available lifecycle subset in
+`/conexiones-bancarias` under **Mi cuenta**, without claiming its remaining refresh
+acceptance is complete. No payment or money-moving Fintoc endpoint is used.
 
 ## Configuration and migration
 
@@ -62,9 +63,11 @@ owner IDs. These are public tRPC, not standalone REST endpoints:
    clears the encrypted credential. Disconnection is terminal; a later connection
    is new, not a resurrection of the old identity.
 
-The app UI is unchanged in this backend-only review slice. Use the generated
-`ApiRouter` client and an explicit Widget harness; do not treat the existing
-`/cuentas` placeholder as connected banking.
+The authenticated `/conexiones-bancarias` settings page follows this flow through
+the generated `ApiRouter` client. `/cuentas` separately displays stored balances
+and links to those settings. Financial import/refresh remain explicitly unavailable.
+See the [UI guide](../../../../ui/README.md)
+and [Widget lifetime](../../../../../docs/technical/ui-data-lifecycle.md#explicit-banking-authorization).
 
 ## Races, failures and limits
 

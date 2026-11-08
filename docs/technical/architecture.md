@@ -139,12 +139,17 @@ and optional setup navigation. Financial resources remain page/component-owned.
 Small account-level onboarding metadata is read by a credential-scoped UI service
 and persisted in `identity.onboarding`, not browser storage or protected hydration
 payloads. Completion is terminal; skipped guides are resumable without recurring
-reminders. The accounts page exposes stored balances/freshness without inventing
-connection states or provider actions. The authenticated `banking` RPC now supports
-the [Fintoc connection lifecycle](../../apps/api/src/banking/linking/README.md),
-but its application UI, financial adapter/import and refresh remain separate work.
-LAZ-62 and the LAZ-30 parent are not closed by this backend slice. Conversational
-agents and external MCP authorization remain separate.
+reminders. **Mi dinero → Cuentas** exposes stored balances/freshness; **Mi cuenta →
+Conexiones bancarias** exposes the owned
+[Fintoc connection lifecycle](../../apps/api/src/banking/linking/README.md): explicit
+hosted authorization, access checks, same-identity relink and confirmed disconnect
+with pending cleanup recovery. Its cancellable Widget flow waits for backend
+confirmation and is separate from stored balances/freshness; access is not proof
+of current financial data. The financial adapter/import and refresh remain separate
+work. Accounts and onboarding link to connection settings without requiring guide
+completion. LAZ-62 stays open for its refresh/recovery acceptance, and this UI subset
+does not close the LAZ-30 parent. Conversational agents and external MCP authorization
+remain separate.
 
 ## Operations
 
