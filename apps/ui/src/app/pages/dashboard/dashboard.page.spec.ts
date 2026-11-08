@@ -93,6 +93,9 @@ describe("DashboardPage data ownership", () => {
       cards.map((card) => card.querySelector("strong")?.textContent),
     ).toEqual(["$123.456,78", "$1.500.000,01", "$1.700.000,02"]);
     expect(cards[1].textContent).toContain("No es tu saldo");
+    expect(
+      cards[1].querySelector('a[href="/ingresos"]')?.textContent,
+    ).toContain("Revisar ingresos recibidos");
     expect(cards[2].textContent).toContain("no es dinero disponible");
     expect(cards[2].textContent).toContain("$200.000 en estimaciones");
     expect(cards[2].textContent).toContain("2 importes por definir");
