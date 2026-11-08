@@ -3,7 +3,7 @@
     [loading]="saving()" [attr.aria-expanded]="opened()" aria-haspopup="dialog"
     [attr.aria-controls]="'tag-picker-' + transaction().id"
     class="!px-3 !py-1.5 !text-xs"
-    [attr.aria-label]="'Elegir etiqueta para ' + (transaction().merchant || transaction().description || 'movimiento')"
+    [attr.aria-label]="(transaction().tag?.name || '+ Etiquetar') + ': elegir etiqueta para ' + (transaction().merchant || transaction().description || 'movimiento')"
     (click)="togglePicker()">
     {{ transaction().tag?.name || '+ Etiquetar' }}
   </button>
@@ -21,12 +21,13 @@
     </button>
   }
   @if (error()) {
-    <p role="alert" class="w-full rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-200">{{ error() }}</p>
+    <p role="alert" class="notice danger">{{ error() }}</p>
   }
   @if (opened()) {
     <div #panel [id]="'tag-picker-' + transaction().id" role="dialog"
+      [style.margin-left.px]="horizontalOffset()"
       [attr.aria-label]="'Etiquetar ' + (transaction().merchant || transaction().description || 'movimiento')"
-      class="absolute left-0 top-full z-50 mt-2 w-[min(22rem,calc(100vw-6rem))] rounded-2xl border border-surface bg-surface-0 shadow-xl dark:border-surface-700 dark:bg-surface-900">
+      class="absolute left-0 top-full z-50 mt-2 w-[min(22rem,calc(100vw-6rem))] rounded-2xl border border-surface bg-surface-0 shadow-xl">
       <p-card styleClass="!border-0 !bg-transparent !shadow-none">
         <div class="space-y-2.5">
           <div>
@@ -37,8 +38,8 @@
           </div>
           @if (loadingTags()) {
             <div role="status" aria-label="Cargando etiquetas" class="space-y-2 animate-pulse">
-              <div class="h-10 rounded-xl bg-surface-100 dark:bg-surface-800"></div>
-              <div class="h-20 rounded-xl bg-surface-100 dark:bg-surface-800"></div>
+              <div class="h-10 rounded-xl bg-surface-100"></div>
+              <div class="h-20 rounded-xl bg-surface-100"></div>
             </div>
           } @else {
             <input pInputText type="search" [value]="searchTerm()" (input)="searchTags($event)"
@@ -61,7 +62,7 @@
                 [disabled]="saving()" class="!w-full !justify-center !text-xs"
                 (click)="createAndTag()">Crear «{{ searchTerm().trim() }}» y usar</button>
             }
-            <div class="flex flex-wrap gap-1 border-t border-surface pt-1 dark:border-surface-700">
+            <div class="flex flex-wrap gap-1 border-t border-surface pt-1">
               <button pButton type="button" severity="secondary" [text]="true" size="small"
                 [disabled]="saving()" (click)="chooseTag(null)">Dejar sin etiqueta</button>
               @if (transaction().tagDecisionOrigin !== 'unreviewed') {
@@ -70,12 +71,12 @@
               }
             </div>
             @if (transaction().merchant) {
-              <div class="rounded-xl bg-surface-50 px-3 py-2 dark:bg-surface-800">
+              <div class="rounded-xl bg-surface-50 px-3 py-2">
                 <label class="flex cursor-pointer items-center gap-3">
                   <span class="relative inline-flex shrink-0 items-center">
                     <input type="checkbox" class="peer sr-only" [checked]="autoForMerchant()"
                       (change)="toggleAuto($event)" aria-label="Recordar etiqueta para futuros movimientos" />
-                    <span aria-hidden="true" class="h-5 w-9 rounded-full bg-surface-300 transition-colors peer-checked:bg-primary peer-focus-visible:ring-2 peer-focus-visible:ring-primary/50 dark:bg-surface-600"></span>
+                    <span aria-hidden="true" class="h-5 w-9 rounded-full bg-surface-300 transition-colors peer-checked:bg-primary peer-focus-visible:ring-2 peer-focus-visible:ring-primary/50"></span>
                     <span aria-hidden="true" class="absolute left-0.5 size-4 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-4"></span>
                   </span>
                   <span class="text-xs leading-5 text-color">

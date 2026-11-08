@@ -1,5 +1,6 @@
 import { TestBed } from "@angular/core/testing";
 import { afterEach, describe, expect, it } from "vitest";
+import { eventsIn } from "../../../testing/dom";
 import {
   incomeSource,
   type RpcOutput,
@@ -44,16 +45,17 @@ describe("dated income expectations", () => {
     fixture.detectChanges();
     await fixture.whenStable();
     const root: HTMLElement = fixture.nativeElement;
+    const event = eventsIn(root);
     const fill = (id: string, value: string) => {
       const input = root.querySelector<HTMLInputElement>(id);
       if (!input) throw new Error(id);
       input.value = value;
-      input.dispatchEvent(new Event("input"));
+      input.dispatchEvent(event("input"));
     };
     fill("#expectation-date", "2026-11-20");
     fill("#expectation-amount", "100,50");
     root.querySelector<HTMLInputElement>('[type="checkbox"]')?.click();
-    root.querySelector("form")?.dispatchEvent(new Event("submit"));
+    root.querySelector("form")?.dispatchEvent(event("submit"));
     await fixture.whenStable();
     fixture.detectChanges();
     expect(
@@ -64,7 +66,7 @@ describe("dated income expectations", () => {
       ?.click();
     fixture.detectChanges();
     fill("#expectation-amount", "200");
-    root.querySelector("form")?.dispatchEvent(new Event("submit"));
+    root.querySelector("form")?.dispatchEvent(event("submit"));
     await fixture.whenStable();
     fixture.detectChanges();
     expect(mock.callsTo("income.updateExpectation")).toHaveLength(1);

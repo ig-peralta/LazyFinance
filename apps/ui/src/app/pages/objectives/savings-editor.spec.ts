@@ -4,6 +4,7 @@ import { RouterTestingHarness } from "@angular/router/testing";
 import { CreateSavingsGoalSchema } from "@lazyfinance/contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { deferred } from "../../../testing/deferred";
+import { eventsIn } from "../../../testing/dom";
 import {
   principal,
   type RpcOutput,
@@ -48,6 +49,7 @@ describe("owned savings target management", () => {
     await fixture.whenStable();
     fixture.detectChanges();
     const root: HTMLElement = fixture.nativeElement;
+    const event = eventsIn(root);
     for (const [id, value] of [
       ["#objective-name", "Fondo"],
       ["#objective-amount", "9007199254740,99"],
@@ -55,10 +57,10 @@ describe("owned savings target management", () => {
       const field = root.querySelector<HTMLInputElement>(id);
       if (!field) throw new Error(id);
       field.value = value;
-      field.dispatchEvent(new Event("input"));
+      field.dispatchEvent(event("input"));
     }
     root.querySelector<HTMLInputElement>('[type="checkbox"]')?.click();
-    root.querySelector("form")?.dispatchEvent(new Event("submit"));
+    root.querySelector("form")?.dispatchEvent(event("submit"));
     await fixture.whenStable();
     fixture.detectChanges();
     expect(mock.callsTo("objectives.createSavingsGoal")[0].input).toEqual({
@@ -89,9 +91,10 @@ describe("owned savings target management", () => {
     const results: string[] = [];
     fixture.componentInstance.saved.subscribe((goal) => results.push(goal.id));
     const root: HTMLElement = fixture.nativeElement;
+    const event = eventsIn(root);
     expect(root.textContent).toContain("no difiere el cambio");
-    root.querySelector("form")?.dispatchEvent(new Event("submit"));
-    root.querySelector("form")?.dispatchEvent(new Event("submit"));
+    root.querySelector("form")?.dispatchEvent(event("submit"));
+    root.querySelector("form")?.dispatchEvent(event("submit"));
     await vi.waitFor(() =>
       expect(mock.callsTo("objectives.updateSavingsGoal")).toHaveLength(1),
     );

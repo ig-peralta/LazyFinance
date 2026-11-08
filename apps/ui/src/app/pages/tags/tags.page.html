@@ -1,14 +1,48 @@
-<header class="page-header"><div><p class="eyebrow">CADA COSA EN SU LUGAR</p><h1>Etiquetas<span style="color:#91a574">.</span></h1><p class="page-description">Dale contexto a tus movimientos. Una etiqueta por compra, una manera más clara de mirar tus hábitos.</p></div><span class="badge"><app-icon name="tag" /> Tu organización, tus reglas</span></header>
+<header class="page-header">
+  <div><p class="eyebrow">CADA COSA EN SU LUGAR</p><h1>Etiquetas<span style="color:#91a574">.</span></h1><p class="page-description">Dale contexto a tus movimientos. Una etiqueta por compra, una manera más clara de mirar tus hábitos.</p></div>
+  <span class="badge"><app-icon name="tag" /> Tu organización, tus reglas</span>
+</header>
 @if (command.error()) { <p class="notice danger" role="alert">{{ command.error() }}</p> }
 @if (command.success()) { <p class="notice" role="status">{{ command.success() }}</p> }
-@if (archiving(); as tag) { <div class="notice warning" role="alert"><strong>¿Archivar «{{ tag.name }}»?</strong><p>No podrá seleccionarse de nuevo. Sus movimientos, presupuestos y metas conservarán el historial; el nombre seguirá reservado.</p><div class="button-row" style="margin-top:12px"><button class="button small danger" type="button" [disabled]="command.pending()" (click)="archive()">Sí, archivar etiqueta</button><button class="button small" type="button" [disabled]="command.pending()" (click)="archiving.set(null)">Cancelar</button></div></div> }
+@if (archiving(); as tag) {
+  <div class="notice warning" role="alert"><strong>¿Archivar «{{ tag.name }}»?</strong><p>No podrá seleccionarse de nuevo. Sus movimientos, presupuestos y metas conservarán el historial; el nombre seguirá reservado.</p><div class="button-row" style="margin-top:12px"><button class="button small danger" type="button" [disabled]="command.pending()" (click)="archive()">Sí, archivar etiqueta</button><button class="button small" type="button" [disabled]="command.pending()" (click)="archiving.set(null)">Cancelar</button></div></div>
+}
 <div class="split-layout">
-  <section class="panel"><div class="panel-heading"><div><h2>Tu colección</h2><p class="panel-subtitle">Etiquetas activas, listas para dar claridad.</p></div><span class="badge neutral">{{ data.tags.hasValue() ? data.tags.value().length : '—' }} etiquetas</span></div>
+  <section class="panel">
+    <div class="panel-heading"><div><h2>Tu colección</h2><p class="panel-subtitle">Etiquetas activas, listas para dar claridad.</p></div><span class="badge neutral">{{ data.tags.hasValue() ? data.tags.value().length : '—' }} etiquetas</span></div>
     <label class="field" style="margin-bottom:22px"><span class="sr-only">Buscar etiquetas</span><input #searchInput type="search" placeholder="Buscar una etiqueta…" [value]="search()" (input)="search.set(searchInput.value)" /></label>
     @if (data.tags.isLoading()) { <p role="status" class="notice">Cargando tus etiquetas…</p> }
     @else if (data.tags.error()) { <div class="notice danger" role="alert">No pudimos cargar tus etiquetas. <button type="button" (click)="data.tags.reload()">Reintentar</button></div> }
     @else if (!items().length) { <div class="empty-state"><span class="empty-icon"><app-icon name="tag" /></span><h3>{{ search() ? 'No encontramos esa etiqueta' : 'Tu organización empieza aquí' }}</h3><p>{{ search() ? 'Prueba con otro nombre o borra la búsqueda.' : 'Crea tu primera etiqueta: hogar, cafés, viajes… Lo que tenga sentido para ti.' }}</p></div> }
-    @else { <ul class="record-list">@for (tag of items(); track tag.id) { <li class="record-row"><div class="record-identity"><span class="record-icon" [style.color]="tag.color || '#6a855b'"><app-icon name="tag" /></span><div><h3 class="record-title">{{ tag.name }}</h3><p class="record-meta"><span [style.backgroundColor]="tag.color || '#b5c1aa'" style="display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px"></span>{{ tag.color || 'Color predeterminado' }}</p></div></div><div class="button-row"><button class="button small" type="button" [attr.aria-label]="'Editar ' + tag.name" [disabled]="command.pending()" (click)="edit(tag)">Editar</button><button class="icon-button" type="button" [attr.aria-label]="'Archivar ' + tag.name" [disabled]="command.pending()" (click)="archiving.set(tag)"><app-icon name="close" /></button></div></li> }</ul> }
+    @else {
+      <ul class="record-list">
+        @for (tag of items(); track tag.id) {
+          <li class="record-row">
+            <div class="record-identity"><span class="record-icon"><app-icon name="tag" /></span><div><h3 class="record-title">{{ tag.name }}</h3><p class="record-meta"><span class="tag-swatch" [style.backgroundColor]="tag.color || '#b5c1aa'"></span>{{ tag.color || 'Color predeterminado' }}</p></div></div>
+            <div class="button-row"><button class="button small" type="button" [attr.aria-label]="'Editar ' + tag.name" [disabled]="command.pending()" (click)="edit(tag)">Editar</button><button class="icon-button" type="button" [attr.aria-label]="'Archivar ' + tag.name" [disabled]="command.pending()" (click)="archiving.set(tag)"><app-icon name="close" /></button></div>
+          </li>
+        }
+      </ul>
+    }
   </section>
-  <div class="stack"><section class="panel"><div class="panel-heading"><div><h2>{{ editing() ? 'Editar etiqueta' : 'Una nueva etiqueta' }}</h2><p class="panel-subtitle">Pequeños detalles que hacen todo más claro.</p></div><span class="record-icon"><app-icon name="plus" /></span></div><form (ngSubmit)="save()"><fieldset [disabled]="command.pending()" style="border:0;padding:0;margin:0"><div class="form-grid"><div class="field full"><label for="tag-name">Nombre de la etiqueta</label><input id="tag-name" name="name" [(ngModel)]="name" maxlength="80" required placeholder="Por ejemplo, cafés y antojos" [attr.aria-invalid]="formError() ? 'true' : null" /><small>Los nombres distinguen mayúsculas. Los archivados siguen reservados.</small></div><div class="field full"><label for="tag-color">Un color para reconocerla</label><div class="button-row"><input id="tag-color" name="color" type="color" [(ngModel)]="color" [disabled]="noColor" /><span class="badge" [style.color]="noColor ? null : color"><app-icon name="tag" /> {{ name || 'Tu etiqueta' }}</span></div><label class="check-option"><input name="noColor" type="checkbox" [(ngModel)]="noColor" /> Usar color predeterminado</label></div></div>@if (formError()) { <p class="field-error" role="alert">{{ formError() }}</p> }<div class="form-actions">@if (editing()) { <button class="button" type="button" (click)="reset()">Cancelar edición</button> }<button class="button primary" type="submit">{{ command.pending() ? 'Guardando…' : editing() ? 'Guardar cambios' : 'Crear etiqueta' }}</button></div></fieldset></form></section><aside class="notice" style="margin:0"><strong>El nombre cambia, el historial no.</strong><p>Renombrar o cambiar un color actualiza cómo ves la etiqueta, no los importes ni los movimientos que la usan. Archivar no borra tus registros.</p></aside></div>
+  <div class="stack">
+    <section class="panel">
+      <div class="panel-heading"><div><h2>{{ editing() ? 'Editar etiqueta' : 'Una nueva etiqueta' }}</h2><p class="panel-subtitle">Pequeños detalles que hacen todo más claro.</p></div><span class="record-icon"><app-icon name="plus" /></span></div>
+      <form (ngSubmit)="save()">
+        <fieldset [disabled]="command.pending()" class="form-fieldset">
+          <div class="form-grid">
+            <div class="field full"><label for="tag-name">Nombre de la etiqueta</label><input id="tag-name" name="name" [(ngModel)]="name" maxlength="80" required placeholder="Por ejemplo, cafés y antojos" [attr.aria-invalid]="formError() ? 'true' : null" /><small>Los nombres distinguen mayúsculas. Los archivados siguen reservados.</small></div>
+            <div class="field full">
+              <label for="tag-color">Un color para reconocerla</label>
+              <div class="button-row"><input id="tag-color" name="color" type="color" [(ngModel)]="color" [disabled]="noColor" /><span class="badge"><span class="tag-swatch" [style.backgroundColor]="noColor ? '#b5c1aa' : color"></span>{{ name || 'Tu etiqueta' }}</span></div>
+              <label class="check-option"><input name="noColor" type="checkbox" [(ngModel)]="noColor" /> Usar color predeterminado</label>
+            </div>
+          </div>
+          @if (formError()) { <p class="field-error" role="alert">{{ formError() }}</p> }
+          <div class="form-actions">@if (editing()) { <button class="button" type="button" (click)="reset()">Cancelar edición</button> }<button class="button primary" type="submit">{{ command.pending() ? 'Guardando…' : editing() ? 'Guardar cambios' : 'Crear etiqueta' }}</button></div>
+        </fieldset>
+      </form>
+    </section>
+    <aside class="notice" style="margin:0"><strong>El nombre cambia, el historial no.</strong><p>Renombrar o cambiar un color actualiza cómo ves la etiqueta, no los importes ni los movimientos que la usan. Archivar no borra tus registros.</p></aside>
+  </div>
 </div>

@@ -1,6 +1,7 @@
 import { TestBed } from "@angular/core/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { deferred } from "../../../testing/deferred";
+import { eventsIn } from "../../../testing/dom";
 import { principal, type RpcOutput, setupRpc, tag } from "../../../testing/rpc";
 import { TagsPage } from "./tags.page";
 
@@ -40,13 +41,14 @@ describe("owned tag management", () => {
     fixture.detectChanges();
     await fixture.whenStable();
     const root: HTMLElement = fixture.nativeElement;
+    const event = eventsIn(root);
     const input = root.querySelector<HTMLInputElement>("#tag-name");
     if (!input) throw new Error("Missing name field");
     input.value = "Viajes";
-    input.dispatchEvent(new Event("input"));
+    input.dispatchEvent(event("input"));
     root
       .querySelector("form")
-      ?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      ?.dispatchEvent(event("submit", { bubbles: true, cancelable: true }));
     await fixture.whenStable();
     fixture.detectChanges();
     expect(mock.callsTo("tags.create")[0].input).toMatchObject({
@@ -59,14 +61,14 @@ describe("owned tag management", () => {
       ?.click();
     fixture.detectChanges();
     input.value = "Alimentación";
-    input.dispatchEvent(new Event("input"));
+    input.dispatchEvent(event("input"));
     const color = root.querySelector<HTMLInputElement>("#tag-color");
     if (!color) throw new Error("Missing color");
     color.value = "#112233";
-    color.dispatchEvent(new Event("input"));
+    color.dispatchEvent(event("input"));
     root
       .querySelector("form")
-      ?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      ?.dispatchEvent(event("submit", { bubbles: true, cancelable: true }));
     await fixture.whenStable();
     fixture.detectChanges();
     expect(mock.callsTo("tags.update")[0].input).toMatchObject({
@@ -106,17 +108,14 @@ describe("owned tag management", () => {
     fixture.detectChanges();
     await fixture.whenStable();
     const root: HTMLElement = fixture.nativeElement;
+    const event = eventsIn(root);
     const input = root.querySelector<HTMLInputElement>("#tag-name");
     if (!input) throw new Error("Missing form");
     input.value = "Privada";
-    input.dispatchEvent(new Event("input"));
+    input.dispatchEvent(event("input"));
     const form = root.querySelector("form");
-    form?.dispatchEvent(
-      new Event("submit", { bubbles: true, cancelable: true }),
-    );
-    form?.dispatchEvent(
-      new Event("submit", { bubbles: true, cancelable: true }),
-    );
+    form?.dispatchEvent(event("submit", { bubbles: true, cancelable: true }));
+    form?.dispatchEvent(event("submit", { bubbles: true, cancelable: true }));
     fixture.detectChanges();
     mock.credentials.accept(
       { ...principal, userId: "owner-b", name: "Bob" },

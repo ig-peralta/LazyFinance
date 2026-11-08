@@ -42,6 +42,11 @@ describe("AppShell", () => {
               { path: "dashboard", component: TagsStub },
               { path: "etiquetas", component: TagsStub },
               { path: "presupuestos-y-metas", component: ObjectivesStub },
+              {
+                path: "presupuestos/:id/movimientos",
+                component: ObjectivesStub,
+              },
+              { path: "metas/:id", component: ObjectivesStub },
               { path: "seguridad", component: SecurityStub },
             ],
           },
@@ -74,7 +79,8 @@ describe("AppShell", () => {
       expect.arrayContaining([
         "Resumen",
         "Etiquetas",
-        "Presupuestos y metas",
+        "Presupuestos",
+        "Metas de ahorro",
         "Acceso y seguridad",
       ]),
     );
@@ -109,6 +115,32 @@ describe("AppShell", () => {
     harness.detectChanges();
     expect(root.querySelector("#mobile-menu")).toBeNull();
     expect(TestBed.inject(Router).url).toBe("/presupuestos-y-metas");
+  });
+
+  it("moves skip-link focus into content without navigating to the public landing", async () => {
+    const { root } = await setup();
+    const url = TestBed.inject(Router).url;
+    root.querySelector<HTMLAnchorElement>(".skip-link")?.click();
+    expect(root.ownerDocument.activeElement).toBe(root.querySelector("main"));
+    expect(TestBed.inject(Router).url).toBe(url);
+  });
+
+  it("keeps nested budget and savings pages in their own active sections", async () => {
+    const { harness, root } = await setup();
+    for (const [path, label] of [
+      ["/presupuestos/example/movimientos?month=2026-11", "Presupuestos"],
+      ["/metas/example", "Metas de ahorro"],
+    ]) {
+      await harness.navigateByUrl(path);
+      harness.detectChanges();
+      const active = root.querySelectorAll(
+        '.workspace-sidebar a[aria-current="page"]',
+      );
+      expect([...active].map((link) => link.textContent?.trim())).toEqual([
+        label,
+      ]);
+      expect(active[0].getAttribute("aria-label")).toBeNull();
+    }
   });
 
   it("offers logout on desktop and mobile and returns to the landing page", async () => {

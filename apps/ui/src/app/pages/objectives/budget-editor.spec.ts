@@ -2,6 +2,7 @@ import { TestBed } from "@angular/core/testing";
 import { Router } from "@angular/router";
 import { RouterTestingHarness } from "@angular/router/testing";
 import { afterEach, describe, expect, it } from "vitest";
+import { eventsIn } from "../../../testing/dom";
 import {
   budgetDetail,
   budgetRevision,
@@ -25,6 +26,7 @@ describe("revision-aware spending budgets", () => {
     await fixture.whenStable();
     fixture.detectChanges();
     const root: HTMLElement = fixture.nativeElement;
+    const event = eventsIn(root);
     for (const [id, value] of [
       ["#objective-name", "Hogar"],
       ["#objective-amount", "9007199254740,99"],
@@ -32,10 +34,10 @@ describe("revision-aware spending budgets", () => {
       const field = root.querySelector<HTMLInputElement>(id);
       if (!field) throw new Error(id);
       field.value = value;
-      field.dispatchEvent(new Event("input"));
+      field.dispatchEvent(event("input"));
     }
     root.querySelector<HTMLInputElement>('[type="checkbox"]')?.click();
-    root.querySelector("form")?.dispatchEvent(new Event("submit"));
+    root.querySelector("form")?.dispatchEvent(event("submit"));
     await fixture.whenStable();
     expect(mock.callsTo("objectives.createBudget")[0].input).toMatchObject({
       name: "Hogar",
@@ -55,11 +57,12 @@ describe("revision-aware spending budgets", () => {
     await fixture.whenStable();
     fixture.detectChanges();
     const root: HTMLElement = fixture.nativeElement;
+    const event = eventsIn(root);
     expect(root.textContent).toContain("próximo mes o año");
     expect(
       root.querySelector<HTMLSelectElement>("#objective-period")?.disabled,
     ).toBe(true);
-    root.querySelector("form")?.dispatchEvent(new Event("submit"));
+    root.querySelector("form")?.dispatchEvent(event("submit"));
     await fixture.whenStable();
     expect(mock.callsTo("objectives.updateBudget")[0].input).toEqual({
       id: budgetDetail.id,
@@ -127,7 +130,8 @@ describe("revision-aware spending budgets", () => {
     await harness.fixture.whenStable();
     harness.detectChanges();
     const root: HTMLElement = harness.fixture.nativeElement;
-    root.querySelector("form")?.dispatchEvent(new Event("submit"));
+    const event = eventsIn(root);
+    root.querySelector("form")?.dispatchEvent(event("submit"));
     await harness.fixture.whenStable();
     harness.detectChanges();
     expect(mock.callsTo("objectives.updateBudget")).toHaveLength(1);

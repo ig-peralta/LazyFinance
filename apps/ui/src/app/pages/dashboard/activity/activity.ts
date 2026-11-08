@@ -1,6 +1,5 @@
 import { Component, computed, inject } from "@angular/core";
-import { ButtonDirective } from "primeng/button";
-import { Tag } from "primeng/tag";
+import { RouterLink } from "@angular/router";
 import { formatClp } from "../../../../utils/currency";
 import { TransactionsData } from "../../../features/transactions/transactions.data";
 import { TransactionTagSelector } from "./tag-selector/tag-selector";
@@ -14,7 +13,7 @@ const dateFormatter = new Intl.DateTimeFormat("es-CL", {
 
 @Component({
   selector: "dashboard-activity",
-  imports: [ButtonDirective, Tag, TransactionTagSelector],
+  imports: [RouterLink, TransactionTagSelector],
   templateUrl: "./activity.html",
 })
 export class Activity {

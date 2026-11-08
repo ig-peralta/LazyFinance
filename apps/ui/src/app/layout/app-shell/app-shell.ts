@@ -7,19 +7,14 @@ import {
   signal,
   viewChild,
 } from "@angular/core";
-import {
-  Router,
-  RouterLink,
-  RouterLinkActive,
-  RouterOutlet,
-} from "@angular/router";
+import { Router, RouterLink, RouterOutlet } from "@angular/router";
 import { AuthCredentials } from "../../core/auth/auth-credentials";
 import { SessionService } from "../../core/auth/session.service";
 import { Icon } from "../../shared/ui/icon";
 
 @Component({
   selector: "app-shell",
-  imports: [RouterLink, RouterLinkActive, RouterOutlet, NgTemplateOutlet, Icon],
+  imports: [RouterLink, RouterOutlet, NgTemplateOutlet, Icon],
   templateUrl: "./app-shell.html",
 })
 export class AppShell {
@@ -28,6 +23,7 @@ export class AppShell {
   private readonly credentials = inject(AuthCredentials);
   private readonly dialog =
     viewChild<ElementRef<HTMLDialogElement>>("menuDialog");
+  private readonly content = viewChild<ElementRef<HTMLElement>>("content");
   protected readonly person = computed(
     () => this.credentials.current()?.principal.name ?? "Tu espacio",
   );
@@ -75,9 +71,15 @@ export class AppShell {
     },
     {
       path: "/presupuestos-y-metas",
-      icon: "target",
-      label: "Presupuestos y metas",
+      icon: "wallet",
+      label: "Presupuestos",
       description: "Ir a presupuestos y metas",
+    },
+    {
+      path: "/metas",
+      icon: "target",
+      label: "Metas de ahorro",
+      description: "Revisar metas y asignaciones registradas",
     },
     {
       path: "/seguridad",
@@ -106,6 +108,20 @@ export class AppShell {
     this.menuOpen.set(false);
     const dialog = this.dialog()?.nativeElement;
     if (dialog?.open) dialog.close();
+  }
+
+  protected active(path: string): boolean {
+    const current = this.router.url.split(/[?#]/, 1)[0];
+    return (
+      current === path ||
+      current.startsWith(`${path}/`) ||
+      (path === "/presupuestos-y-metas" && current.startsWith("/presupuestos/"))
+    );
+  }
+
+  protected skipToContent(event: Event): void {
+    event.preventDefault();
+    this.content()?.nativeElement.focus();
   }
 
   protected async logout(): Promise<void> {

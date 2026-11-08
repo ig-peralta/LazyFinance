@@ -111,7 +111,9 @@ describe("budget contribution reconciliation", () => {
     await harness.fixture.whenStable();
     harness.detectChanges();
     expect(root.textContent).not.toContain("Primera compra");
-    await harness.navigateByUrl(path.replace("reported=120000.00", "reported=999.00"));
+    await harness.navigateByUrl(
+      path.replace("reported=120000.00", "reported=999.00"),
+    );
     await harness.fixture.whenStable();
     harness.detectChanges();
     expect(root.textContent).toContain("El total cambió");

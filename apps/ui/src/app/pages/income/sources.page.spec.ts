@@ -1,6 +1,7 @@
 import { TestBed } from "@angular/core/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { deferred } from "../../../testing/deferred";
+import { eventsIn } from "../../../testing/dom";
 import {
   incomeSource,
   principal,
@@ -36,22 +37,23 @@ describe("income source management", () => {
     fixture.detectChanges();
     await fixture.whenStable();
     const root: HTMLElement = fixture.nativeElement;
+    const event = eventsIn(root);
     const fill = (selector: string, value: string) => {
       const input = root.querySelector<HTMLInputElement>(selector);
       if (!input) throw new Error(selector);
       input.value = value;
-      input.dispatchEvent(new Event("input"));
+      input.dispatchEvent(event("input"));
     };
     fill("#source-name", "Trabajo");
     fill("#source-amount", "1234567,89");
-    root.querySelector("form")?.dispatchEvent(new Event("submit"));
+    root.querySelector("form")?.dispatchEvent(event("submit"));
     await fixture.whenStable();
     fixture.detectChanges();
     expect(mock.callsTo("income.createSource")[0].input.expectedAmount).toBe(
       "1234567.89",
     );
     fill("#source-name", "Sueldo principal");
-    root.querySelector("form")?.dispatchEvent(new Event("submit"));
+    root.querySelector("form")?.dispatchEvent(event("submit"));
     await fixture.whenStable();
     fixture.detectChanges();
     expect(mock.callsTo("income.updateSource")[0].input.source.name).toBe(
@@ -84,6 +86,7 @@ describe("income source management", () => {
     fixture.detectChanges();
     await fixture.whenStable();
     const root: HTMLElement = fixture.nativeElement;
+    const event = eventsIn(root);
     for (const [id, value] of [
       ["#source-name", "Privada"],
       ["#source-amount", "100"],
@@ -91,10 +94,10 @@ describe("income source management", () => {
       const input = root.querySelector<HTMLInputElement>(id);
       if (!input) throw new Error(id);
       input.value = value;
-      input.dispatchEvent(new Event("input"));
+      input.dispatchEvent(event("input"));
     }
-    root.querySelector("form")?.dispatchEvent(new Event("submit"));
-    root.querySelector("form")?.dispatchEvent(new Event("submit"));
+    root.querySelector("form")?.dispatchEvent(event("submit"));
+    root.querySelector("form")?.dispatchEvent(event("submit"));
     mock.credentials.accept({ ...principal, userId: "bob" }, "bob");
     pending.resolve(incomeSource);
     await fixture.whenStable();

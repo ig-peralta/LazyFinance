@@ -2,6 +2,7 @@ import { TestBed } from "@angular/core/testing";
 import { Router } from "@angular/router";
 import { RouterTestingHarness } from "@angular/router/testing";
 import { afterEach, describe, expect, it } from "vitest";
+import { eventsIn } from "../../../testing/dom";
 import {
   movement,
   principal,
@@ -46,6 +47,22 @@ describe("owned history workspace", () => {
       limit: 25,
     });
     const root: HTMLElement = harness.fixture.nativeElement;
+    const event = eventsIn(root);
+    const toggle = root.querySelector<HTMLButtonElement>(
+      'button[aria-controls="history-filters"]',
+    );
+    expect(toggle?.getAttribute("aria-expanded")).toBe("false");
+    expect(toggle?.textContent).toContain("3 aplicados");
+    const reads = mock.callsTo("transactions.list").length;
+    toggle?.click();
+    harness.detectChanges();
+    expect(toggle?.getAttribute("aria-expanded")).toBe("true");
+    expect(
+      root
+        .querySelector("#history-filters")
+        ?.classList.contains("filters-open"),
+    ).toBe(true);
+    expect(mock.callsTo("transactions.list")).toHaveLength(reads);
     const next = [...root.querySelectorAll("button")].find((button) =>
       button.textContent?.includes("Siguiente"),
     );
@@ -59,10 +76,10 @@ describe("owned history workspace", () => {
     const merchant = root.querySelector<HTMLInputElement>("#history-merchant");
     if (!merchant) throw new Error("Missing filter");
     merchant.value = "Tienda%_";
-    merchant.dispatchEvent(new Event("input"));
+    merchant.dispatchEvent(event("input"));
     root
       .querySelector("form")
-      ?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      ?.dispatchEvent(event("submit", { bubbles: true, cancelable: true }));
     await harness.fixture.whenStable();
     harness.detectChanges();
     expect(TestBed.inject(Router).url).toContain("Tienda");

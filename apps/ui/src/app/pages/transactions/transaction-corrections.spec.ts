@@ -1,6 +1,7 @@
 import { TestBed } from "@angular/core/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { deferred } from "../../../testing/deferred";
+import { eventsIn } from "../../../testing/dom";
 import {
   manualDecision,
   principal,
@@ -29,17 +30,18 @@ describe("transaction corrections", () => {
     fixture.detectChanges();
     await fixture.whenStable();
     const root: HTMLElement = fixture.nativeElement;
+    const event = eventsIn(root);
     const choose = (id: string, value: string) => {
       const select = root.querySelector<HTMLSelectElement>(id);
       if (!select) throw new Error(id);
       select.value = value;
-      select.dispatchEvent(new Event("change"));
+      select.dispatchEvent(event("change"));
     };
     const submit = async (index: number) => {
       root
         .querySelectorAll("form")
         [index].dispatchEvent(
-          new Event("submit", { bubbles: true, cancelable: true }),
+          event("submit", { bubbles: true, cancelable: true }),
         );
       await fixture.whenStable();
       fixture.detectChanges();
@@ -86,8 +88,9 @@ describe("transaction corrections", () => {
       emitted.push(message),
     );
     const form: HTMLFormElement = fixture.nativeElement.querySelector("form");
-    form.dispatchEvent(new Event("submit"));
-    form.dispatchEvent(new Event("submit"));
+    const event = eventsIn(form);
+    form.dispatchEvent(event("submit"));
+    form.dispatchEvent(event("submit"));
     mock.credentials.accept({ ...principal, userId: "other" }, "bob");
     save.resolve(manualDecision());
     await fixture.whenStable();

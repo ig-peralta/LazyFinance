@@ -1,5 +1,5 @@
 <div class="workspace">
-  <a class="skip-link" href="#workspace-content">Saltar al contenido</a>
+  <a class="skip-link" href="#workspace-content" (click)="skipToContent($event)">Saltar al contenido</a>
   <ng-template #navigation>
     <a routerLink="/dashboard" class="workspace-brand" aria-label="Inicio de LazyFinance" (click)="closeMenu()">
       <span class="brand-mark"><app-icon name="spark" /></span><span>lazy<span class="brand-light">finance</span><span class="brand-dot">.</span></span>
@@ -7,7 +7,7 @@
     <p class="nav-caption">TU ESPACIO PERSONAL</p>
     <ul class="workspace-links">
       @for (link of links; track link.path) {
-        <li><a [routerLink]="link.path" routerLinkActive="nav-active" [routerLinkActiveOptions]="{ exact: true }" ariaCurrentWhenActive="page" [attr.aria-label]="link.description" (click)="closeMenu()"><app-icon [name]="link.icon" /><span>{{ link.label }}</span><span class="nav-dot"></span></a></li>
+        <li><a [routerLink]="link.path" [class.nav-active]="active(link.path)" [attr.aria-current]="active(link.path) ? 'page' : null" [title]="link.description" (click)="closeMenu()"><app-icon [name]="link.icon" /><span>{{ link.label }}</span><span class="nav-dot"></span></a></li>
       }
     </ul>
     <div class="sidebar-note"><span class="note-orbit"><app-icon name="spark" /></span><strong>Menos enredos.<br>Más tranquilidad.</strong><p>Un espacio para entender tu dinero y avanzar a tu ritmo.</p></div>
@@ -16,7 +16,7 @@
   </ng-template>
 
   <aside class="workspace-sidebar"><nav aria-label="Navegación principal"><ng-container *ngTemplateOutlet="navigation" /></nav></aside>
-  <dialog #menuDialog class="mobile-drawer" (cancel)="closeMenu()" (close)="menuOpen.set(false)">
+  <dialog #menuDialog class="mobile-drawer" aria-label="Menú principal" (cancel)="closeMenu()" (close)="menuOpen.set(false)">
     @if (menuOpen()) {
       <button class="drawer-close" type="button" aria-label="Cerrar menú" (click)="closeMenu()"><app-icon name="close" /></button>
       <nav id="mobile-menu" aria-label="Navegación principal móvil"><ng-container *ngTemplateOutlet="navigation" /></nav>
@@ -28,7 +28,7 @@
       <div class="topbar-location"><button type="button" class="icon-button menu-toggle" aria-controls="mobile-menu" [attr.aria-expanded]="menuOpen()" (click)="toggleMenu()"><app-icon name="menu" /><span class="sr-only">{{ menuOpen() ? 'Cerrar menú' : 'Abrir menú' }}</span></button><span>Mi espacio <span class="breadcrumb-divider">/</span> <strong>Finanzas personales</strong></span></div>
       <div class="topbar-right"><span class="currency-label"><span></span> CLP · Chile</span><span class="topbar-avatar" aria-hidden="true">{{ initials() }}</span></div>
     </header>
-    <main id="workspace-content" tabindex="-1" class="workspace-content">
+    <main #content id="workspace-content" tabindex="-1" class="workspace-content">
       @if (logoutError()) { <div class="notice danger" role="alert">{{ logoutError() }}</div> }
       @else { <router-outlet /> }
     </main>

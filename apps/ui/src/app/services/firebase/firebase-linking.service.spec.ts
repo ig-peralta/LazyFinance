@@ -41,7 +41,11 @@ const sdk = vitest.hoisted(() => ({
 // Avoid emitted object-spread helpers here: hoisting can run this factory before
 // Angular's generated helper declarations have initialized.
 vitest.mock("firebase/auth", async (importOriginal) =>
-  Object.assign({}, await importOriginal<typeof import("firebase/auth")>(), sdk),
+  Object.assign(
+    {},
+    await importOriginal<typeof import("firebase/auth")>(),
+    sdk,
+  ),
 );
 
 const network = vitest.fn<typeof fetch>();

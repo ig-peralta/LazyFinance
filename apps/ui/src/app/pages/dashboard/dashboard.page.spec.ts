@@ -42,7 +42,7 @@ describe("DashboardPage data ownership", () => {
     ] as const)
       expect(callsTo(procedure)).toHaveLength(1);
 
-    await fixture.debugElement.injector
+    await fixture.componentRef.injector
       .get(TaggingData)
       .choose(movement, tag, false, new AbortController().signal);
     await fixture.whenStable();

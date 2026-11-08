@@ -34,6 +34,7 @@ export class TransactionTagSelector {
   private readonly decision = createTagDecision(this.transaction);
 
   protected readonly opened = signal(false);
+  protected readonly horizontalOffset = signal(0);
   protected readonly searchTerm = signal("");
   protected readonly autoForMerchant = signal(false);
   protected readonly saving = this.decision.saving;
@@ -96,6 +97,7 @@ export class TransactionTagSelector {
     }
 
     this.opened.set(true);
+    this.horizontalOffset.set(0);
     this.searchTerm.set("");
     this.autoForMerchant.set(false);
     this.decision.clearError();
@@ -151,7 +153,16 @@ export class TransactionTagSelector {
   private revealBelow(): void {
     if (!this.opened()) return;
 
-    const bottom = this.panel()?.nativeElement.getBoundingClientRect().bottom;
+    const bounds = this.panel()?.nativeElement.getBoundingClientRect();
+    if (
+      bounds &&
+      Number.isFinite(bounds.left) &&
+      Number.isFinite(bounds.right)
+    ) {
+      const offset = Math.min(0, window.innerWidth - 12 - bounds.right);
+      this.horizontalOffset.set(Math.max(offset, 12 - bounds.left));
+    }
+    const bottom = bounds?.bottom;
 
     if (bottom && bottom > window.innerHeight - 12) {
       window.scrollBy({

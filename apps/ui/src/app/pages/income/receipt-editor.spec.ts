@@ -1,6 +1,7 @@
 import { TestBed } from "@angular/core/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { deferred } from "../../../testing/deferred";
+import { eventsIn } from "../../../testing/dom";
 import {
   incomeSource,
   incomeSummary,
@@ -34,15 +35,22 @@ describe("received income decisions", () => {
 
   it("confirms and reassigns an eligible credit and clears a retained ineligible receipt", async () => {
     let detail: RpcOutput<"transactions.detail"> = credit;
+    const second = {
+      ...incomeSource,
+      id: "00000000-0000-4000-8000-000000000049",
+      name: "Proyecto",
+    };
     const mock = setupRpc({
       "transactions.detail": () => detail,
-      "income.sources": () => [incomeSource],
-      "income.confirm": () => {
+      "income.sources": () => [incomeSource, second],
+      "income.confirm": ({ sourceId }) => {
+        const sourceName =
+          sourceId === second.id ? second.name : incomeSource.name;
         detail = {
           ...credit,
-          receipt: { sourceId: incomeSource.id, sourceName: incomeSource.name },
+          receipt: { sourceId, sourceName },
         };
-        return receipt;
+        return { ...receipt, sourceId, sourceName };
       },
       "income.clear": () => {
         detail = credit;
@@ -54,11 +62,12 @@ describe("received income decisions", () => {
     fixture.detectChanges();
     await fixture.whenStable();
     const root: HTMLElement = fixture.nativeElement;
+    const event = eventsIn(root);
     const select = root.querySelector<HTMLSelectElement>("#receipt-source");
     if (!select) throw new Error("Missing source");
     select.value = incomeSource.id;
-    select.dispatchEvent(new Event("change"));
-    root.querySelector("form")?.dispatchEvent(new Event("submit"));
+    select.dispatchEvent(event("change"));
+    root.querySelector("form")?.dispatchEvent(event("submit"));
     await fixture.whenStable();
     fixture.detectChanges();
     expect(mock.callsTo("income.confirm")[0].input).toEqual({
@@ -66,6 +75,27 @@ describe("received income decisions", () => {
       sourceId: incomeSource.id,
     });
     fixture.destroy();
+    const reassigned = TestBed.createComponent(ReceiptEditor);
+    reassigned.componentRef.setInput("transactionId", credit.id);
+    reassigned.detectChanges();
+    await reassigned.whenStable();
+    reassigned.detectChanges();
+    const nextRoot: HTMLElement = reassigned.nativeElement;
+    const nextEvent = eventsIn(nextRoot),
+      nextSelect = nextRoot.querySelector<HTMLSelectElement>("#receipt-source");
+    if (!nextSelect) throw new Error("Missing reassign source");
+    expect(nextSelect.value).toBe(incomeSource.id);
+    nextSelect.value = second.id;
+    nextSelect.dispatchEvent(nextEvent("change"));
+    nextRoot.querySelector("form")?.dispatchEvent(nextEvent("submit"));
+    await reassigned.whenStable();
+    expect(mock.callsTo("income.confirm")[1].input).toEqual({
+      transactionId: credit.id,
+      sourceId: second.id,
+    });
+    expect(detail.bookedAt).toBe(credit.bookedAt);
+    expect(detail.amount).toBe(credit.amount);
+    reassigned.destroy();
     detail = { ...detail, isInternalMovement: true };
     const retained = TestBed.createComponent(ReceiptEditor);
     retained.componentRef.setInput("transactionId", credit.id);
@@ -135,6 +165,7 @@ describe("received income decisions", () => {
     await fixture.whenStable();
     fixture.detectChanges();
     const root: HTMLElement = fixture.nativeElement;
+    const event = eventsIn(root);
     expect(root.textContent).toContain("$1.700.000");
     expect(root.textContent).toContain("$200.000 estimados");
     expect(root.textContent).toContain("1 montos desconocidos");
@@ -147,8 +178,8 @@ describe("received income decisions", () => {
     const select = root.querySelector<HTMLSelectElement>("#receipt-source");
     if (!select) throw new Error("Missing receipt selector");
     select.value = incomeSource.id;
-    select.dispatchEvent(new Event("change"));
-    root.querySelector("form")?.dispatchEvent(new Event("submit"));
+    select.dispatchEvent(event("change"));
+    root.querySelector("form")?.dispatchEvent(event("submit"));
     await fixture.whenStable();
     fixture.detectChanges();
     expect(mock.callsTo("income.summary")).toHaveLength(2);
@@ -173,12 +204,13 @@ describe("received income decisions", () => {
       emitted.push(message),
     );
     const root: HTMLElement = fixture.nativeElement,
+      event = eventsIn(root),
       select = root.querySelector<HTMLSelectElement>("#receipt-source");
     if (!select) throw new Error("Missing selector");
     select.value = incomeSource.id;
-    select.dispatchEvent(new Event("change"));
-    root.querySelector("form")?.dispatchEvent(new Event("submit"));
-    root.querySelector("form")?.dispatchEvent(new Event("submit"));
+    select.dispatchEvent(event("change"));
+    root.querySelector("form")?.dispatchEvent(event("submit"));
+    root.querySelector("form")?.dispatchEvent(event("submit"));
     mock.credentials.accept({ ...principal, userId: "bob" }, "bob");
     pending.resolve(receipt);
     await fixture.whenStable();

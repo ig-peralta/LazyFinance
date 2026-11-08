@@ -1,4 +1,4 @@
-import { Component, effect, inject, signal } from "@angular/core";
+import { Component, computed, effect, inject, signal } from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
 import { FormsModule } from "@angular/forms";
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
@@ -27,6 +27,22 @@ export class HistoryPage {
   });
   protected fields = emptyHistoryFields();
   protected readonly error = signal<string | null>(null);
+  protected readonly filtersOpen = signal(false);
+  protected readonly activeFilters = computed(
+    () =>
+      [
+        "account",
+        "from",
+        "before",
+        "tag",
+        "direction",
+        "internal",
+        "merchant",
+      ].filter((key) => {
+        const value = this.query().get(key);
+        return !!value && value !== "all";
+      }).length,
+  );
   protected readonly money = formatClp;
   protected readonly date = (value: string) => formatDate(new Date(value));
 
