@@ -39,6 +39,13 @@ Its paginated external-credit browser opens one owned detail to validate facts;
 confirmation/reassignment and explicit clearing preserve booked amounts/dates.
 Retained links remain clearable even when current facts no longer count as income.
 
+`/presupuestos-y-metas` creates spending budgets and shows backend net progress;
+`/presupuestos/:id` separates effective/pending revisions, paginated history and
+version-checked edit/archive. Started recurring edits apply next month/year;
+started fixed budgets are read-only apart from archival. New schedules use aligned
+monthly/yearly starts or inclusive fixed dates. Overlapping budgets are not summed
+as a combined allowance, and no command reserves cash or changes banking facts.
+
 Detailed references: [session/resource lifetimes](../../docs/technical/ui-data-lifecycle.md),
 [provider-neutral identity](../../docs/technical/identity.md),
 [RPC contracts](../../docs/technical/rpc-contracts.md) and

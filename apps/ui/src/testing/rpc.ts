@@ -156,6 +156,53 @@ export const incomeSummary = {
   receipts: [],
 } satisfies RpcOutput<"income.summary">;
 
+export const budgetRevision = {
+  id: "00000000-0000-4000-8000-000000000062",
+  budgetId: "00000000-0000-4000-8000-000000000061",
+  version: 1,
+  name: "Gastos del hogar",
+  amount: "300000.00",
+  kind: "time_based",
+  isRecurring: true,
+  period: "monthly",
+  startDate: "2020-01-01T03:00:00.000Z",
+  endDate: null,
+  tags: [tag],
+  effectiveFrom: "2020-01-01T03:00:00.000Z",
+  recordedAt: "2020-01-01T03:00:00.000Z",
+  supersededAt: null,
+} satisfies NonNullable<RpcOutput<"objectives.budget">["effective"]>;
+
+export const budgetDetail = {
+  id: budgetRevision.budgetId,
+  version: 1,
+  archivedAt: null,
+  effective: budgetRevision,
+  pending: null,
+} satisfies RpcOutput<"objectives.budget">;
+
+export const budgetProgress = {
+  id: budgetDetail.id,
+  name: budgetRevision.name,
+  month: "2026-11",
+  period: "monthly",
+  limit: "300000.00",
+  spent: "120000.00",
+  grossSpent: "150000.00",
+  refunds: "20000.00",
+  reimbursements: "10000.00",
+  unresolvedAdjustmentCount: 0,
+  adjustmentsAsOf: "2026-11-07T15:00:00.000Z",
+  remaining: "180000.00",
+  percentage: 40,
+  revisionId: budgetRevision.id,
+  tracking: {
+    start: "2026-11-01T03:00:00.000Z",
+    end: "2026-12-01T03:00:00.000Z",
+    archivedAt: null,
+  },
+} satisfies RpcOutput<"objectives.progress">[number];
+
 export const manualDecision = (
   transactionId = movement.id,
   tagId: string | null = tag.id,

@@ -1,6 +1,7 @@
 import {
   computed,
   DestroyRef,
+  effect,
   inject,
   PendingTasks,
   signal,
@@ -11,7 +12,7 @@ import { RpcClient, type RpcScope } from "./rpc-client";
 import { isCancelled, isUnauthorized } from "./rpc-error";
 
 /** One component's explicit writes. Cancellation never claims a server rollback. */
-export function createScopedCommand() {
+export function createScopedCommand(owner: () => unknown = () => undefined) {
   const rpc = inject(RpcClient),
     tasks = inject(PendingTasks),
     lifetime = new AbortController();
@@ -19,6 +20,8 @@ export function createScopedCommand() {
   const state = signal<
     | {
         scope: RpcScope;
+        owner: unknown;
+        controller: AbortController;
         pending: boolean;
         error: string | null;
         success: string | null;
@@ -26,8 +29,20 @@ export function createScopedCommand() {
     | undefined
   >(undefined);
   const current = computed(() =>
-    state()?.scope === rpc.authenticatedScope() ? state() : undefined,
+    state()?.scope === rpc.authenticatedScope() && state()?.owner === owner()
+      ? state()
+      : undefined,
   );
+  effect(() => {
+    const operation = state(),
+      scope = rpc.authenticatedScope(),
+      key = owner();
+    if (
+      operation?.pending &&
+      (operation.scope !== scope || operation.owner !== key)
+    )
+      operation.controller.abort();
+  });
 
   async function run<Result>(
     operation: (scope: RpcScope, signal: AbortSignal) => Promise<Result>,
@@ -36,16 +51,28 @@ export function createScopedCommand() {
   ): Promise<boolean> {
     const scope = rpc.authenticatedScope();
     if (!scope || current()?.pending || lifetime.signal.aborted) return false;
-    const execution = { scope, pending: true, error: null, success: null };
+    const execution = {
+      scope,
+      owner: owner(),
+      controller: new AbortController(),
+      pending: true,
+      error: null,
+      success: null,
+    };
     state.set(execution);
     const finish = tasks.add();
     try {
-      const result = await operation(scope, lifetime.signal);
+      const result = await operation(
+        scope,
+        AbortSignal.any([lifetime.signal, execution.controller.signal]),
+      );
       if (
         state() !== execution ||
         scope.signal.aborted ||
         lifetime.signal.aborted ||
-        rpc.authenticatedScope() !== scope
+        execution.controller.signal.aborted ||
+        rpc.authenticatedScope() !== scope ||
+        owner() !== execution.owner
       )
         return false;
       saved(result);
@@ -56,6 +83,7 @@ export function createScopedCommand() {
       if (
         scope.signal.aborted ||
         lifetime.signal.aborted ||
+        execution.controller.signal.aborted ||
         isCancelled(error) ||
         isUnauthorized(error)
       ) {

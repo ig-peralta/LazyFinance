@@ -1,17 +1,37 @@
-<div class="max-w-2xl">
-  <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Tus objetivos</p>
-  <h1 class="mt-4 text-4xl font-semibold tracking-[-0.05em] text-color-emphasis sm:text-5xl">
-    Presupuestos y metas
-  </h1>
-  <p class="mt-4 text-base leading-7 text-muted-color">
-    Aquí podrás definir tus presupuestos de gasto y tus metas de ahorro.
-  </p>
-</div>
-
-<div
-  role="status"
-  class="mt-10 rounded-3xl border border-dashed border-surface bg-surface-0 p-8 text-sm text-muted-color dark:border-surface-700 dark:bg-surface-900"
->
-  La configuración de presupuestos y metas aún no está disponible. Por ahora esta sección es solo
-  un espacio reservado.
+<header class="page-header">
+  <div><p class="eyebrow">ESPACIO PARA LO QUE IMPORTA</p><h1>Presupuestos y metas<span style="color:#91a574">.</span></h1><p class="page-description">Pon límites con intención. El gasto de cada presupuesto lo calcula el backend con tus etiquetas y su período.</p></div>
+  <label class="button"><app-icon name="calendar" /><span class="sr-only">Mes de presupuestos</span><input #picker type="month" [value]="data.month()" [max]="maxMonth" (change)="month(picker.value)" style="border:0;max-width:155px;background:none" /></label>
+</header>
+<nav class="section-tabs" aria-label="Tipos de objetivos"><a routerLink="/presupuestos-y-metas" class="active" aria-current="page">Presupuestos de gasto</a><a routerLink="/metas">Metas de ahorro</a></nav>
+@if (savedId(); as id) { <p class="notice" role="status">Presupuesto guardado. <a class="text-link" [routerLink]="['/presupuestos', id]">Ver su configuración e historial →</a></p> }
+<div class="split-layout">
+  <div class="stack">
+    <section class="panel">
+      <div class="panel-heading"><div><h2>Tus límites en perspectiva</h2><p class="panel-subtitle">Compras netas de devoluciones y reembolsos atribuidos a la compra original.</p></div><button class="icon-button" type="button" aria-label="Recargar presupuestos" (click)="data.progress.reload(); data.objectives.reload()"><app-icon name="refresh" /></button></div>
+      @if (data.progress.isLoading()) { <p class="notice" role="status">Calculando el gasto de tus presupuestos…</p> }
+      @else if (data.progress.error()) { <p class="notice danger" role="alert">No pudimos calcular el avance. <button type="button" (click)="data.progress.reload()">Reintentar</button></p> }
+      @else if (data.progress.hasValue()) {
+        <ul class="record-list">
+          @for (budget of data.progress.value(); track budget.id) {
+            <li>
+              <div class="record-row"><div><a class="record-title text-link" [routerLink]="['/presupuestos', budget.id]">{{ budget.name }}</a><p class="record-meta">{{ budget.period === 'monthly' ? 'Mes' : budget.period === 'yearly' ? 'Año hasta el mes seleccionado' : 'Fechas definidas, hasta el mes seleccionado' }}{{ budget.tracking.archivedAt ? ' · archivado' : '' }}</p></div><span class="badge" [class.warning]="budget.percentage >= 90">{{ budget.percentage }}% usado</span></div>
+              <div class="progress-track" role="img" [attr.aria-label]="budget.percentage + '% del límite utilizado'"><div class="progress-fill" [style.width.%]="width(budget.spent, budget.limit)"></div></div>
+              <div class="record-row"><strong class="record-amount">{{ money(budget.spent) }} <span class="record-meta">de {{ money(budget.limit) }}</span></strong><span class="record-meta">Disponible en el límite: {{ money(budget.remaining) }}</span></div>
+              <p class="record-meta">Compras {{ money(budget.grossSpent) }} − devoluciones {{ money(budget.refunds) }} − reembolsos {{ money(budget.reimbursements) }}.</p>
+              @if (budget.unresolvedAdjustmentCount) { <p class="notice warning">{{ budget.unresolvedAdjustmentCount }} ajustes por revisar; no se aplican como reducciones confirmadas.</p> }
+            </li>
+          } @empty {
+            <li><div class="empty-state"><span class="empty-icon"><app-icon name="wallet" /></span><h3>Un límite que te dé libertad</h3><p>Crea un presupuesto con una o más etiquetas. Los períodos futuros o no compatibles no tienen avance en este mes.</p></div></li>
+          }
+        </ul>
+      }
+    </section>
+    <section class="panel">
+      <div class="panel-heading"><div><h2>Configuraciones activas</h2><p class="panel-subtitle">Las revisiones pendientes aparecen al abrir cada presupuesto.</p></div></div>
+      @if (data.objectives.isLoading()) { <p role="status">Cargando configuraciones…</p> }
+      @else if (data.objectives.error()) { <p class="notice danger" role="alert">No pudimos cargar las configuraciones. <button type="button" (click)="data.objectives.reload()">Reintentar</button></p> }
+      @else { <ul class="record-list">@for (item of items(); track item.id) { <li class="record-row"><div><a class="record-title text-link" [routerLink]="['/presupuestos', item.id]">{{ item.name }}</a><p class="record-meta">{{ period(item) }} · {{ item.tags.length }} etiquetas</p></div><strong class="record-amount">{{ money(item.amount) }}</strong></li> } @empty { <li><p class="record-meta">Todavía no hay presupuestos activos.</p></li> }</ul> }
+    </section>
+  </div>
+  <div class="stack">@for (key of [editorKey()]; track key) { <budget-editor (saved)="created($event.id)" /> }<p class="notice" style="margin:0">Los límites no reservan dinero ni modifican tu saldo. Si las etiquetas de varios presupuestos se superponen, sus cifras no son aditivas.</p></div>
 </div>
