@@ -337,10 +337,18 @@ Install dependencies from the [monorepo root](../../README.md), then start the U
 
 ```bash
 pnpm install
+pnpm exec turbo build --filter=ui^...
 pnpm --filter ui dev
 ```
 
 Open <http://localhost:4200>. Angular's development server reloads as you edit. To run the API and private persistence too, follow the [root development instructions](../../README.md#run-locally).
+
+The dev server bundles `@lazyfinance/contracts` and its Zod runtime with application
+code rather than prebundling this mutable workspace package as a third-party
+dependency. Rebuild the shared package after contract changes. After changing
+dev-server options, restart the UI task once and reload the browser; an
+already-running server keeps its previous prebundle configuration. Do not reset
+data or rotate OAuth keys to resolve a stale UI bundle.
 
 ## Session and API requests
 
