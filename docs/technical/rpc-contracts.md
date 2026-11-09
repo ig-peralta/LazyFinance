@@ -10,7 +10,7 @@ guide describes their source of truth and change workflow, not a REST API. See
 | --- | --- | --- |
 | `@lazyfinance/contracts` | Public Zod schemas and inferred domain/input/output types | UI, API, persistence |
 | `@lazyfinance/contracts/internal` | Private stored facts and named command schemas | API and persistence only |
-| `@lazyfinance/contracts/context` | Strict user/bootstrap service contexts | Server-side authentication/transport |
+| `@lazyfinance/contracts/context` | Strict user/bootstrap/OAuth-purpose service contexts | Server-side authentication/transport |
 | `@lazyfinance/rpc-api` | Type-only `ApiRouter` facade | UI and server-side tests/clients |
 | `@lazyfinance/rpc-persistence` | Type-only `PersistenceRouter` facade | API and private-boundary tests |
 | `@lazyfinance/rpc-auth` | Node-only JWT signing/verification | API and persistence, never UI |
@@ -44,12 +44,13 @@ inferred Promises; there is no cross-app source import or HTTP/Observable adapte
 ## Public surface
 
 The [generated public router](../../libs/rpc-api/src/generated/server.ts) currently
-contains **66 procedures**. Prefix each method below with its router name.
+contains **69 procedures**. Prefix each method below with its router name.
 
 | Router | Methods | Responsibility |
 | --- | --- | --- |
 | `auth` | `config`, `loginMock`, `principal` | Provider selection, local mock login, verified principal |
 | `onboarding` | `state`, `finish` | Owned optional-guide state and terminal completion |
+| `mcpAccess` | `configuration`, `grants`, `revoke` | First-party authenticated external-client settings; no token issuance through RPC |
 | `accounts` | `list` | Active accounts, balances and freshness |
 | `banking` | `configuration`, `connections`, `createLinkIntent`, `completeLink`, `checkConnection`, `disconnect`, `importInitial`, `refresh`, `syncStatus` | Owned lifecycle, bounded snapshot import/refresh and readonly sync/source-freshness reporting; no forced/scheduled bank refresh |
 | `transactions` | `recent`, `list`, `detail`, `setInternalMovement`, `expenseAdjustments`, `setExpenseAdjustment`, `removeExpenseAdjustment` | History, owned source/classification detail, internal-status corrections and purchase-attributed recoveries |
@@ -72,19 +73,23 @@ HTTP exposing eleven read-only tools through the same services:
 `consultar_resumen_gastos_mensuales`, `comparar_gastos_mensuales`, and
 `consultar_ingresos`, `consultar_avance_ahorro`, `consultar_aportes_ahorro`,
 `consultar_compras_del_gasto`, and `consultar_compras_presupuesto`.
-External-client OAuth, a first-party agent and write tools
-are not implemented by this RPC cutover.
+External clients use separate OAuth grants, never Firebase/development app bearers.
+Discovery, authorization/token/registration/revocation endpoints and the browser
+interaction HTTP bridge are documented in [MCP authorization](mcp-authorization.md).
+The first-party agent and write tools remain unimplemented.
 
 ## Private surface
 
 The [generated private router](../../libs/rpc-persistence/src/generated/server.ts)
-currently contains **72 procedures**. They expose owned facts and authoritative
+currently contains **81 procedures**. They expose owned facts and authoritative
 commands rather than copying public screen calculations into persistence.
 
 | Router | Methods |
 | --- | --- |
 | `identity` | `resolve` (bootstrap only) |
 | `onboarding` | `state`, `finish` |
+| `mcpGrants` | `list`, `bind`, `revoke` (user context) |
+| `mcpArtifacts` | `find`, `save`, `consume`, `destroy`, `identity`, `revoke` (dedicated OAuth purpose only) |
 | `accounts` | `listActive` |
 | `transactions` | `recent`, `list`, `detail`, `setInternalMovement`, `aggregates`, `taggedAggregates`, `spendingEvidence`, `expenseAdjustments`, `setExpenseAdjustment`, `removeExpenseAdjustment` |
 | `objectives` | `list` (effective definitions/nested tags), `forPeriod` (optional owned ID selection), `spending` (revision-pinned sums/windows), `budgetEvidence`, `budget`, `budgetHistory`, `createBudget`, `updateBudget`, `archiveBudget`, `savingsGoal`, `savingsGoalHistory`, `createSavingsGoal`, `updateSavingsGoal`, `archiveSavingsGoal`, `savingsFacts`, `savingsEvidence` |
@@ -96,8 +101,10 @@ commands rather than copying public screen calculations into persistence.
 | `providerSync` | `begin`, `status`, `facts`, `commit`, `failure`, `review` |
 | `providerLinks` | `list`, `connection`, `createIntent`, `claim`, `complete`, `fail`, `status`, `beginDisconnect`, `finishDisconnect` |
 
-Every private procedure uses user context except `identity.resolve`. The latter
-cannot be called with user context; bootstrap cannot call finance procedures.
+Every private procedure uses user context except `identity.resolve` and the six
+`mcpArtifacts` procedures. Bootstrap may only resolve identity; `mcp-authorization`
+may only call the explicitly allowlisted OAuth procedures and has no financial
+or user-assertion authority. User contexts cannot call either privileged purpose.
 `GET /health` is liveness, not a database/admin RPC. Provider synchronization is an
 API-internal workflow; these procedures are not public bank-linking endpoints.
 `providerLinks` stores owner-bound intents, encrypted credentials and versioned

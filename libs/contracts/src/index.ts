@@ -2,6 +2,7 @@ export * from "./accounts";
 export * from "./auth";
 export * from "./banking";
 export * from "./income";
+export * from "./mcp-authorization";
 export * from "./objectives";
 export * from "./onboarding";
 export * from "./pagination";

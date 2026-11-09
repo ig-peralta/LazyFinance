@@ -29,6 +29,12 @@ class SecurityStub {}
 })
 class BankConnectionsStub {}
 
+@Component({
+  selector: "mcp-access-stub",
+  template: "<h1>Aplicaciones conectadas</h1>",
+})
+class McpAccessStub {}
+
 describe("AppShell", () => {
   afterEach(() => TestBed.resetTestingModule());
 
@@ -64,6 +70,8 @@ describe("AppShell", () => {
               { path: "metas/:id", component: ObjectivesStub },
               { path: "metas", component: ObjectivesStub },
               { path: "seguridad", component: SecurityStub },
+              { path: "aplicaciones-conectadas", component: McpAccessStub },
+              { path: "autorizar-mcp", component: McpAccessStub },
               { path: "conexiones-bancarias", component: BankConnectionsStub },
               { path: "comenzar", component: SecurityStub },
             ],
@@ -194,6 +202,12 @@ describe("AppShell", () => {
       ["/ingresos/fuentes", "Planificación", "Fuentes de ingreso"],
       ["/movimientos/example", "Mi dinero", "Movimientos"],
       ["/conexiones-bancarias", "Mi cuenta", "Conexiones bancarias"],
+      ["/aplicaciones-conectadas", "Mi cuenta", "Aplicaciones conectadas"],
+      [
+        "/autorizar-mcp?interaction=fixture",
+        "Mi cuenta",
+        "Aplicaciones conectadas",
+      ],
       ["/comenzar", "Mi cuenta", "Retomar configuración"],
     ]) {
       await harness.navigateByUrl(path);
@@ -233,7 +247,11 @@ describe("AppShell", () => {
         [...root.querySelectorAll(".workspace-subnav a")].map((link) =>
           link.getAttribute("href"),
         ),
-      ).toEqual(["/seguridad", "/conexiones-bancarias"]);
+      ).toEqual([
+        "/seguridad",
+        "/aplicaciones-conectadas",
+        "/conexiones-bancarias",
+      ]);
     }
   });
 
@@ -289,6 +307,7 @@ describe("AppShell", () => {
       }
     }
     expect([...destinations].sort()).toEqual([
+      "/aplicaciones-conectadas",
       "/comenzar",
       "/conexiones-bancarias",
       "/cuentas",

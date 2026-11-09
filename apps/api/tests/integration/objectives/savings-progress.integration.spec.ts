@@ -1,13 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
+import { oauthAppFixture } from "../../fixtures/mcp/oauth-app";
 import { fixture, integration, startApi } from "../../fixtures/persistence";
 
 describe.skipIf(!integration)(
   "measured savings and reconciled evidence",
   () => {
     it("reconciles signed cash allocations, pending facts, overlapping goals and incomplete history without income/internal gates", async () => {
-      const f = await fixture(true),
-        api = await startApi(f, true);
+      const f = await oauthAppFixture(),
+        api = f.api;
       try {
         const client = api.client(),
           other = api.client(f.otherToken);
@@ -186,7 +187,7 @@ describe.skipIf(!integration)(
         const response = await fetch(`${api.url}/mcp`, {
           method: "POST",
           headers: {
-            authorization: `Bearer ${f.token}`,
+            authorization: `Bearer ${(await f.authorize()).access_token}`,
             "content-type": "application/json",
             accept: "application/json, text/event-stream",
           },

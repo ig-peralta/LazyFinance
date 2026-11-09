@@ -63,6 +63,11 @@
         },
         "serve": {
           "builder": "@angular/build:dev-server",
+          "options": {
+            "prebundle": {
+              "exclude": ["@lazyfinance/contracts", "zod"]
+            }
+          },
           "configurations": {
             "production": {
               "buildTarget": "ui:build:production"

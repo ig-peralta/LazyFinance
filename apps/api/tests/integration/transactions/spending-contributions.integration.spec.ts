@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { fromCents, toCents } from "../../../src/utils/money";
+import { oauthAppFixture } from "../../fixtures/mcp/oauth-app";
 import {
   type Fixture,
   fixture,
@@ -52,8 +53,8 @@ async function budget(
 
 describe.skipIf(!integration)("traceable spending and budget totals", () => {
   it("reconciles complete gross/recovery/net aggregates, untagged coverage and revision-specific archived budgets across pages", async () => {
-    const f = await fixture(true),
-      api = await startApi(f, true);
+    const f = await oauthAppFixture(),
+      api = f.api;
     try {
       const client = api.client(),
         tag = await client.tags.create.mutate({ name: "Purchases" }),
@@ -281,7 +282,7 @@ describe.skipIf(!integration)("traceable spending and budget totals", () => {
       const mcp = await fetch(`${api.url}/mcp`, {
         method: "POST",
         headers: {
-          authorization: `Bearer ${f.token}`,
+          authorization: `Bearer ${(await f.authorize()).access_token}`,
           "content-type": "application/json",
           accept: "application/json, text/event-stream",
         },

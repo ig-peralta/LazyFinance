@@ -1,8 +1,8 @@
 # Implemented database model
 
 This reference describes the checked-in Kysely migrations, not a conceptual
-product model. PostgreSQL 18 holds **24 application tables** in fixed `identity`
-and `finance` schemas. Twenty-three sensitive tables force user/identity RLS;
+product model. PostgreSQL 18 holds **26 application tables** in fixed `identity`
+and `finance` schemas. Twenty-five sensitive tables force user/identity/OAuth-purpose RLS;
 `finance.provider` is the shared read-only catalog exception. There is no tenancy,
 membership or account-sharing model. See [security and RLS](persistence-security.md)
 for policy/grant details.
@@ -25,6 +25,8 @@ All unqualified table names in the finance section below belong to `finance`.
 | `identity.user` | `id`; unique email, including a case-insensitive unique index | Stable financial owner; normal runtime self-read only |
 | `identity.external_identity` | PK `(provider, issuer, provider_subject)`; unique `(user_id, provider, issuer)` | External subject → user; bootstrap-only access, no stored bearer token |
 | `identity.onboarding` | PK `user_id` → user | Optional-guide skip/completion; self-owned read/insert and status/timestamp update, no runtime delete |
+| `identity.mcp_grant` | Opaque text `id`; unique `interaction_id`; `user_id` → user | Immutable owner/client/resource/scopes/maximum-30-day expiry; self-owned listing and monotonic revocation |
+| `identity.mcp_artifact` | PK `(model, key)` with SHA-256 key; optional `account_id` → user | Allowlisted OAuth provider state encrypted by API; expiry/consumption/UID/grant indexes, dedicated-purpose writes |
 | `provider` | `id`; unique `identifier` | Shared catalog; runtime SELECT only |
 | `provider_connection` | `id` → provider; `user_id`; unique provider/mode/external Link ID | Owned access status, API-encrypted credential/version, institution/holder and terminal disconnect/remote-cleanup state; legacy fixture fields remain nullable |
 | `provider_link_intent` | `id`; unique provider intent ID; optional original/completed connection FKs | Owner-bound, expiring callback claims with hashed exchange token, version-pinned relink and durable completion |
@@ -63,6 +65,8 @@ source-verified reference, not generated DDL or an ownership-policy diagram.
 erDiagram
     identity_user ||--o{ identity_external_identity : maps
     identity_user ||--o| identity_onboarding : records
+    identity_user ||--o{ identity_mcp_grant : authorizes
+    identity_user o|--o{ identity_mcp_artifact : identifies
     identity_user ||--o{ finance_provider_connection : owns
     identity_user ||--o{ finance_provider_link_intent : initiates
     identity_user ||--o{ finance_account : owns
@@ -117,6 +121,23 @@ erDiagram
         uuid user_id PK, FK
         string status
         timestamptz completed_at
+    }
+    identity_mcp_grant {
+        string id PK
+        string interaction_id UK
+        uuid user_id FK
+        string client_id
+        string resource
+        timestamptz expires_at
+        timestamptz revoked_at
+    }
+    identity_mcp_artifact {
+        string model PK
+        string key PK
+        uuid account_id FK
+        string grant_id
+        string ciphertext
+        timestamptz consumed_at
     }
     finance_provider {
         uuid id PK
@@ -231,6 +252,10 @@ The many-to-many relationship is objective-to-tag. A receipt references a source
 not a generated payday or expectation. Tombstone external IDs are intentionally
 not local account/movement FKs. Provider relation IDs in transactions are source
 evidence, not guaranteed local relational links.
+OAuth artifact `grant_id` is deliberately not an FK: provider state can precede
+owner-bound consent, and a persistent revocation record outlives deleted tokens.
+Only client-registration artifacts have no expiry. Unbound artifacts grant no
+financial access. See [OAuth persistence and lifecycle](mcp-authorization.md).
 
 ## Financial representation and constraints
 
@@ -322,7 +347,7 @@ is distinct from permanent tombstones, which replay never reactivates.
 
 ## Migration and seed lifecycle
 
-Twenty-six migrations are globally ordered across `migrations/identity` and
+Twenty-seven migrations are globally ordered across `migrations/identity` and
 `migrations/finance`: schema/bootstrap foundations plus the table migrations.
 Kysely's PostgreSQL migrator owns locking and transactional DDL/ledger updates.
 Each new sensitive table brings its constraints, indexes, grants and RLS together;
@@ -335,6 +360,12 @@ must not be edited to upgrade a live database; add ordered migrations for future
 changes and validate them on a disposable target. Identity foundation `down`
 paths intentionally refuse destructive rollback. Database roles are cluster-wide,
 so a fresh database does not eliminate unsafe pre-existing role collisions.
+
+Migration 027 upgrades the current 026 schema by adding the two OAuth tables and
+their protections without rewriting prior application rows or policies. Its
+`down` refuses data-destroying rollback; plan revocation/recovery explicitly.
+Do not migrate an existing review or development database just because a test
+database upgrade passed.
 
 Seeding is explicit owner-only demo tooling, never startup or migration work.
 Stable fixture IDs allow repeatable updates and preserve existing transaction

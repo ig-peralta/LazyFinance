@@ -29,6 +29,12 @@ changes and review the diff. `pnpm rpc:check` generates temporary files and reje
 drift/import violations without starting an app. See the full
 [RPC change recipe](rpc-contracts.md#changing-a-contract-or-procedure).
 
+The UI dev server excludes the mutable `@lazyfinance/contracts` workspace package
+and its Zod runtime from Vite prebundling. They are bundled with application code
+so rebuilt runtime schemas do not remain frozen in a third-party dependency cache.
+Rebuild shared dependencies after contract edits. Restart the UI task after
+changing dev-server options; existing processes keep their original configuration.
+
 `pnpm check:architecture` checks API/database separation, qualified persistence
 tables and raw-pool boundaries, browser/private imports, contract dependencies,
 explicit RPC schemas/policies and obsolete UI data-access/transfer-state patterns.

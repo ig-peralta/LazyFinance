@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
+import { oauthAppFixture } from "../../fixtures/mcp/oauth-app";
 import {
   type Fixture,
   fixture,
@@ -30,8 +31,8 @@ describe.skipIf(!integration)(
   "purchase-attributed refunds and expense reimbursements",
   () => {
     it("reconciles gross/net spending, archived budgets, credit-period receipts and MCP without rewriting bank facts", async () => {
-      const f = await fixture(true);
-      const api = await startApi(f, true);
+      const f = await oauthAppFixture();
+      const api = f.api;
       try {
         const client = api.client();
         const tag = await client.tags.create.mutate({ name: "Purchases" });
@@ -202,7 +203,7 @@ describe.skipIf(!integration)(
         const mcp = await fetch(`${api.url}/mcp`, {
           method: "POST",
           headers: {
-            authorization: `Bearer ${f.token}`,
+            authorization: `Bearer ${(await f.authorize()).access_token}`,
             "content-type": "application/json",
             accept: "application/json, text/event-stream",
           },

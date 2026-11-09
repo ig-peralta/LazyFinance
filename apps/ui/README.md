@@ -50,7 +50,7 @@ login retain their existing system-aware theme.
 
 Navigation has four primary areas: **Resumen**, **Mi dinero** (movements, accounts,
 tags), **Planificación** (budgets, savings, income and sources), and **Mi cuenta**
-(access/security, bank connections, plus a resume link only for skipped setup).
+(access/security, connected applications, bank connections, plus a resume link only for skipped setup).
 Bank connection settings stay reachable regardless of whether setup is active,
 skipped or completed. Direct contextual links appear above the page, wrap rather
 than scroll, and retain the active destination on detail routes.
@@ -72,6 +72,15 @@ use the page's reload action to reconcile an uncertain result before retrying.
 Source editing and irregular-payment planning are separate actions; expected
 payments expand under their source and open their own editor, never a nested
 modal. Filters, month selectors and sign-in forms stay in place.
+
+`/autorizar-mcp?interaction=…` is a private, cookie-bound OAuth consent page, not
+an external-client login form. It displays the accepted account, declared client,
+actual callback hostname and read-only financial permission before explicit
+approval/denial. `/aplicaciones-conectadas` lists owned grants and requires explicit
+revoke confirmation. Neither page exposes OAuth tokens to the UI or modifies bank
+connections/financial facts. Reads/commands are scope-cancelled, obsolete results
+cannot navigate or expire a newer login, and uncertain decisions are not replayed.
+See [OAuth browser/site configuration and compatibility](../../docs/technical/mcp-authorization.md).
 
 The dashboard leads with selected-month net spending, received income and the
 full-month income plan, followed by workflow shortcuts, spending analysis,
@@ -328,10 +337,18 @@ Install dependencies from the [monorepo root](../../README.md), then start the U
 
 ```bash
 pnpm install
+pnpm exec turbo build --filter=ui^...
 pnpm --filter ui dev
 ```
 
 Open <http://localhost:4200>. Angular's development server reloads as you edit. To run the API and private persistence too, follow the [root development instructions](../../README.md#run-locally).
+
+The dev server bundles `@lazyfinance/contracts` and its Zod runtime with application
+code rather than prebundling this mutable workspace package as a third-party
+dependency. Rebuild the shared package after contract changes. After changing
+dev-server options, restart the UI task once and reload the browser; an
+already-running server keeps its previous prebundle configuration. Do not reset
+data or rotate OAuth keys to resolve a stale UI bundle.
 
 ## Session and API requests
 

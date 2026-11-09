@@ -2,6 +2,7 @@ export * from "./accounts";
 export * from "./common";
 export * from "./identity";
 export * from "./income";
+export * from "./mcp-authorization";
 export * from "./objectives";
 export * from "./provider-links";
 export * from "./provider-sync";

@@ -1,8 +1,12 @@
 import "reflect-metadata";
-import { generateKeyPairSync, randomUUID } from "node:crypto";
+import { createHash, generateKeyPairSync, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import type { CommitProviderSync } from "@lazyfinance/contracts/internal";
+import type { PersistenceContext as SignedContext } from "@lazyfinance/contracts/context";
+import type {
+  CommitProviderSync,
+  SaveMcpArtifact,
+} from "@lazyfinance/contracts/internal";
 import {
   createContextSigner,
   createContextVerifier,
@@ -16,7 +20,12 @@ import {
   httpLink,
 } from "@trpc/client";
 import { TRPCError } from "@trpc/server";
-import { type Kysely, type QueryExecutorProvider, sql } from "kysely";
+import {
+  CamelCasePlugin,
+  type Kysely,
+  type QueryExecutorProvider,
+  sql,
+} from "kysely";
 import { Migrator } from "kysely/migration";
 import { AppRouterHost, Ctx, Input, Mutation, Router } from "nestjs-trpc";
 import { z } from "zod";
@@ -34,6 +43,8 @@ import {
   withRequestContext,
 } from "../../src/database/rls";
 import { RLS_DB } from "../../src/database/tokens";
+import { McpAuthorizationRepository } from "../../src/identity/mcp-authorization/mcp-authorization.repository";
+import type { McpAuthorizationTables } from "../../src/identity/mcp-authorization/mcp-authorization.tables";
 import type { PersistenceRequestContext } from "../../src/rpc/persistence.context";
 
 @Router({ alias: "failure" })
@@ -114,6 +125,36 @@ describe.skipIf(!ownerUrl)(
       kind: "user" as const,
       userId,
       requestId: randomUUID(),
+    });
+    const oauthContext = () => ({
+      kind: "mcp-authorization" as const,
+      requestId: randomUUID(),
+    });
+    const purposeClient = (identity: SignedContext) =>
+      createTRPCClient<PersistenceRouter>({
+        links: [
+          httpLink({
+            url: `${url}/trpc`,
+            headers: async () => ({
+              authorization: `Bearer ${await sign(identity)}`,
+            }),
+          }),
+        ],
+      });
+    const hash = (id: string) => createHash("sha256").update(id).digest("hex");
+    const artifactKey = ({ model, key }: SaveMcpArtifact) => ({ model, key });
+    const oauthArtifact = (
+      overrides: Partial<SaveMcpArtifact> = {},
+    ): SaveMcpArtifact => ({
+      model: "Interaction",
+      key: hash(randomUUID()),
+      ciphertext: "fixture-encrypted-payload",
+      expiresIn: 600,
+      grantId: null,
+      accountId: null,
+      clientId: null,
+      uidHash: null,
+      ...overrides,
     });
 
     beforeAll(async () => {
@@ -269,15 +310,20 @@ describe.skipIf(!ownerUrl)(
           .filter((name) => !name.startsWith("failure."))
           .sort(),
       ).toEqual(expected.sort());
-      expect(expected).toHaveLength(72);
+      expect(expected).toHaveLength(81);
 
       for (const name of expected)
         expect(procedures[name]._def.meta).toMatchObject({
-          context: name === "identity.resolve" ? "identity-bootstrap" : "user",
+          context:
+            name === "identity.resolve"
+              ? "identity-bootstrap"
+              : name.startsWith("mcpArtifacts.")
+                ? "mcp-authorization"
+                : "user",
         });
     });
 
-    it("migrates idempotently and enables/forces RLS on all 23 sensitive tables", async () => {
+    it("migrates idempotently and enables/forces RLS on all 25 sensitive tables", async () => {
       expect(await migrate(owner, migrationProvider())).toEqual([]);
       const { rows } = await sql<{
         relrowsecurity: boolean;
@@ -286,10 +332,263 @@ describe.skipIf(!ownerUrl)(
       from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname in ('identity','finance') and c.relkind='r' and c.relname != 'provider'`.execute(
         owner,
       );
-      expect(rows).toHaveLength(23);
+      expect(rows).toHaveLength(25);
       expect(
         rows.every((row) => row.relrowsecurity && row.relforcerowsecurity),
       ).toBe(true);
+    });
+
+    it("admits OAuth state only for the dedicated purpose, with no financial or identity-bootstrap authority", async () => {
+      const state = purposeClient(oauthContext()),
+        user = purposeClient(ctx(a));
+      for (const work of [
+        () => state.accounts.listActive.query(),
+        () => state.onboarding.state.query(),
+        () => state.identity.resolve.mutate({ mode: "existing" }),
+        () => state.mcpGrants.list.query(),
+        () =>
+          user.mcpArtifacts.find.query({
+            model: "Client",
+            key: hash("unknown"),
+            byUid: false,
+          }),
+      ])
+        await expect(work()).rejects.toMatchObject({
+          data: { code: "FORBIDDEN" },
+        });
+
+      await withRequestContext(runtime, oauthContext(), async (tx) => {
+        const { rows: tables } = await sql<{
+          schema: string;
+          name: string;
+        }>`select n.nspname as schema,c.relname as name
+          from pg_class c join pg_namespace n on n.oid=c.relnamespace where c.relkind='r'
+          and n.nspname in ('identity','finance') and c.relname not in ('provider','external_identity','mcp_artifact','mcp_grant')`.execute(
+          tx,
+        );
+        for (const table of tables) {
+          const result =
+            await sql`select * from ${sql.id(table.schema, table.name)}`.execute(
+              tx,
+            );
+          expect(result.rows, `${table.schema}.${table.name}`).toEqual([]);
+        }
+      });
+      await expect(
+        withRequestContext(runtime, oauthContext(), (tx) =>
+          sql`select * from identity.external_identity`.execute(tx),
+        ),
+      ).rejects.toThrow(/permission denied/);
+      await expect(
+        withRequestContext(runtime, oauthContext(), (tx) =>
+          sql`select * from identity.resolve_external_identity(
+        'mock','https://mock.lazyfinance.cl','untrusted',null,null,false)`.execute(
+            tx,
+          ),
+        ),
+      ).rejects.toThrow(/bootstrap|context|permission/i);
+    });
+
+    it("binds immutable grants only to the matching provider artifact and owner, then revokes monotonically without touching finances", async () => {
+      const state = purposeClient(oauthContext()),
+        user = purposeClient(ctx(a)),
+        other = purposeClient(ctx(b));
+      const id = randomUUID(),
+        record = oauthArtifact({
+          model: "Grant",
+          key: hash(id),
+          grantId: id,
+          accountId: a,
+          clientId: "fixture-client",
+        });
+      expect(await state.mcpArtifacts.save.mutate(record)).toEqual({
+        saved: true,
+      });
+      expect(await state.mcpArtifacts.identity.query({ id })).toBeNull();
+      const input = {
+        id,
+        key: record.key,
+        interactionId: randomUUID(),
+        clientId: "fixture-client",
+        clientName: "Fixture client",
+        resource: "https://api.example/mcp",
+        scopes: ["finance:read" as const],
+      };
+      await expect(other.mcpGrants.bind.mutate(input)).rejects.toMatchObject({
+        data: { code: "FORBIDDEN" },
+      });
+      await expect(
+        user.mcpGrants.bind.mutate({ ...input, clientId: "foreign-client" }),
+      ).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
+      const grant = await user.mcpGrants.bind.mutate(input);
+      expect((await state.mcpArtifacts.identity.query({ id }))?.userId).toBe(a);
+      expect(
+        (await other.mcpGrants.list.query()).some((row) => row.id === id),
+      ).toBe(false);
+      expect(await other.mcpGrants.revoke.mutate({ id })).toEqual({
+        revoked: false,
+      });
+      await expect(user.mcpGrants.bind.mutate(input)).rejects.toMatchObject({
+        data: { code: "CONFLICT" },
+      });
+      await expect(
+        withRequestContext(runtime, ctx(a), (tx) =>
+          sql`update identity.mcp_grant set user_id=${b} where id=${id}`.execute(
+            tx,
+          ),
+        ),
+      ).rejects.toThrow(/permission denied/);
+      const before = await user.accounts.listActive.query();
+      expect(await user.mcpGrants.revoke.mutate({ id })).toEqual({
+        revoked: true,
+      });
+      const revokedAt = (await user.mcpGrants.list.query()).find(
+        (row) => row.id === id,
+      )?.revokedAt;
+      await withRequestContext(runtime, ctx(a), (tx) =>
+        sql`update identity.mcp_grant set revoked_at=null where id=${id}`.execute(
+          tx,
+        ),
+      );
+      expect(
+        (await user.mcpGrants.list.query()).find((row) => row.id === id)
+          ?.revokedAt,
+      ).toBe(revokedAt);
+      expect(await state.mcpArtifacts.save.mutate(record)).toEqual({
+        saved: false,
+      });
+      expect(await state.mcpArtifacts.identity.query({ id })).toBeNull();
+      expect(await user.accounts.listActive.query()).toEqual(before);
+      expect(Date.parse(grant.expiresAt) - Date.parse(grant.createdAt)).toBe(
+        30 * 24 * 60 * 60 * 1000,
+      );
+    });
+
+    it("preserves consumption across upserts and rejects concurrent decisions and JWT replay atomically", async () => {
+      const state = purposeClient(oauthContext()),
+        record = oauthArtifact();
+      await state.mcpArtifacts.save.mutate(record);
+      const attempts = await Promise.all(
+        Array.from({ length: 8 }, () =>
+          state.mcpArtifacts.consume.mutate(artifactKey(record)),
+        ),
+      );
+      expect(attempts.filter((result) => result.consumed)).toHaveLength(1);
+      await state.mcpArtifacts.save.mutate(record);
+      expect(
+        (
+          await state.mcpArtifacts.find.query({
+            ...artifactKey(record),
+            byUid: false,
+          })
+        )?.consumedAt,
+      ).not.toBeNull();
+      expect(
+        await state.mcpArtifacts.consume.mutate(artifactKey(record)),
+      ).toEqual({ consumed: false });
+      const jwt = oauthArtifact({ model: "ReplayDetection" });
+      const replay = await Promise.all(
+        Array.from({ length: 8 }, () => state.mcpArtifacts.save.mutate(jwt)),
+      );
+      expect(replay.filter((result) => result.saved)).toHaveLength(1);
+    });
+
+    it("commits family revocation on concurrent credential replay and refuses token resurrection", async () => {
+      const state = purposeClient(oauthContext()),
+        user = purposeClient(ctx(a));
+      const id = randomUUID(),
+        grantArtifact = oauthArtifact({
+          model: "Grant",
+          key: hash(id),
+          grantId: id,
+          accountId: a,
+          clientId: "replay-client",
+        });
+      await state.mcpArtifacts.save.mutate(grantArtifact);
+      await user.mcpGrants.bind.mutate({
+        id,
+        key: hash(id),
+        interactionId: randomUUID(),
+        clientId: "replay-client",
+        clientName: "Replay fixture",
+        resource: "https://api.example/mcp",
+        scopes: ["finance:read"],
+      });
+      const refresh = oauthArtifact({
+        model: "RefreshToken",
+        grantId: id,
+        accountId: a,
+        clientId: "replay-client",
+      });
+      await state.mcpArtifacts.save.mutate(refresh);
+      const results = await Promise.all([
+        state.mcpArtifacts.consume.mutate(artifactKey(refresh)),
+        state.mcpArtifacts.consume.mutate(artifactKey(refresh)),
+      ]);
+      expect(results.filter((result) => result.consumed)).toHaveLength(1);
+      expect(await state.mcpArtifacts.identity.query({ id })).toBeNull();
+      expect(
+        (await user.mcpGrants.list.query()).find((row) => row.id === id)
+          ?.revokedAt,
+      ).toEqual(expect.any(String));
+      expect(
+        await state.mcpArtifacts.save.mutate({
+          ...refresh,
+          key: hash(randomUUID()),
+        }),
+      ).toEqual({ saved: false });
+    });
+
+    it("rolls back failed OAuth writes, enforces expiry and refuses a destructive migration rollback", async () => {
+      const repository = new McpAuthorizationRepository(
+        createRlsDbProxy<McpAuthorizationTables>(),
+      );
+      const state = purposeClient(oauthContext()),
+        record = oauthArtifact();
+      await expect(
+        withRequestContext(
+          runtime.withPlugin(new CamelCasePlugin()),
+          oauthContext(),
+          async () => {
+            await repository.save(record);
+            throw new Error("OAuth rollback probe");
+          },
+        ),
+      ).rejects.toThrow("OAuth rollback probe");
+      expect(
+        await state.mcpArtifacts.find.query({
+          ...artifactKey(record),
+          byUid: false,
+        }),
+      ).toBeNull();
+      await state.mcpArtifacts.save.mutate(record);
+      await sql`update identity.mcp_artifact set expires_at=clock_timestamp()-interval '1 second' where model=${record.model} and key=${record.key}`.execute(
+        owner,
+      );
+      expect(
+        await state.mcpArtifacts.find.query({
+          ...artifactKey(record),
+          byUid: false,
+        }),
+      ).toBeNull();
+      expect(
+        await state.mcpArtifacts.consume.mutate(artifactKey(record)),
+      ).toEqual({ consumed: false });
+      const before = (
+        await sql`select * from finance.account order by id`.execute(owner)
+      ).rows;
+      const rollback = await new Migrator({
+        db: owner,
+        provider: migrationProvider(),
+      }).migrateDown();
+      expect(String(rollback.error)).toContain(
+        "explicit revocation and recovery plan",
+      );
+      expect(await migrate(owner, migrationProvider())).toEqual([]);
+      expect(
+        (await sql`select * from finance.account order by id`.execute(owner))
+          .rows,
+      ).toEqual(before);
     });
 
     it("persists account onboarding, keeps completion terminal and preserves its first timestamp across races", async () => {

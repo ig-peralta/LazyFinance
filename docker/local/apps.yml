@@ -57,6 +57,11 @@ services:
       FIREBASE_PROJECT_ID:
       FIREBASE_CLIENT_EMAIL:
       FIREBASE_PRIVATE_KEY:
+      MCP_OAUTH_ISSUER:
+      MCP_OAUTH_UI_ORIGIN:
+      MCP_OAUTH_STATE_KEY:
+      MCP_OAUTH_JWKS:
+      MCP_OAUTH_TRUST_PROXY: '${MCP_OAUTH_TRUST_PROXY:-false}'
     ports: ['3000:3000']
     networks: [services, edge]
     depends_on:

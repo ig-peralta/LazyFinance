@@ -16,6 +16,7 @@ export const IdentityBootstrapContextSchema = z.strictObject({
 export const PersistenceContextSchema = z.discriminatedUnion("kind", [
   UserContextSchema,
   IdentityBootstrapContextSchema,
+  z.strictObject({ kind: z.literal("mcp-authorization"), requestId: z.uuid() }),
 ]);
 
 export type UserContext = z.infer<typeof UserContextSchema>;

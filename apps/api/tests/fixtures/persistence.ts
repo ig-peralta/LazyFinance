@@ -1,15 +1,18 @@
 import "reflect-metadata";
 import { randomUUID } from "node:crypto";
 import type { ApiRouter } from "@lazyfinance/rpc-api";
-import type { INestApplication } from "@nestjs/common";
+import type { NestExpressApplication } from "@nestjs/platform-express";
 import { Test } from "@nestjs/testing";
 import { MCP_STRATEGY, type McpStrategy } from "@rekog/mcp-nest";
 import { createTRPCClient, httpLink } from "@trpc/client";
 import { AppModule } from "../../src/app.module";
 import { MockAuthService } from "../../src/auth/mock/mock-auth.service";
 import { FINTOC_FETCH } from "../../src/banking/fintoc/client/fintoc-client";
+import { configureCors } from "../../src/cors";
 import { EnvironmentService } from "../../src/environment/environment.service";
+import { MCP_OAUTH_FETCH } from "../../src/mcp/authorization/oauth-provider";
 import { PersistenceClient } from "../../src/persistence/persistence.client";
+import { configureRequestBodies } from "../../src/request-bodies";
 import { testMockAuth } from "./auth/mock-auth";
 import { FixtureDatabase } from "./database";
 import { testEnvironment } from "./environment";
@@ -99,6 +102,8 @@ export async function startApi(
   f: Fixture,
   mcp = false,
   fintocFetch?: typeof fetch,
+  port = 0,
+  oauthFetch?: typeof fetch,
 ) {
   const { verifier } = testMockAuth({
     [f.token]: {
@@ -118,8 +123,18 @@ export async function startApi(
     .overrideProvider(MockAuthService)
     .useValue(verifier);
   if (fintocFetch) builder.overrideProvider(FINTOC_FETCH).useValue(fintocFetch);
+  if (oauthFetch)
+    builder.overrideProvider(MCP_OAUTH_FETCH).useValue(oauthFetch);
   const module = await builder.compile();
-  const app: INestApplication = module.createNestApplication({ logger: false });
+  const app = module.createNestApplication<NestExpressApplication>({
+    logger: false,
+  });
+  configureRequestBodies(app);
+  configureCors(
+    app,
+    f.environment.get("CORS_ORIGINS"),
+    f.environment.get("MCP_OAUTH_UI_ORIGIN"),
+  );
 
   if (mcp) {
     const strategy = app.get<McpStrategy>(MCP_STRATEGY);
@@ -128,7 +143,7 @@ export async function startApi(
     await app.startAllMicroservices();
   }
 
-  await app.listen(0, "127.0.0.1");
+  await app.listen(port, "127.0.0.1");
   const url = await app.getUrl();
   const client = (token: string = f.token) =>
     createTRPCClient<ApiRouter>({

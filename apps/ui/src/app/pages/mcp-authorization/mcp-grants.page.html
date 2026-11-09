@@ -1,0 +1,59 @@
+<header class="page-heading">
+  <div>
+    <p class="eyebrow">MI CUENTA · ACCESO EXTERNO</p>
+    <h1 #heading tabindex="-1">Aplicaciones conectadas</h1>
+    <p class="subtitle">Controla qué aplicaciones pueden consultar tu información financiera.</p>
+  </div>
+  <button class="button" type="button" [disabled]="command.pending() || grants.isLoading()" (click)="reload()">Consultar accesos</button>
+</header>
+<p class="notice">Los permisos son de solo lectura. Revocar una conexión no desconecta tus bancos, no modifica datos financieros y no cierra tus otras aplicaciones. Cerrar sesión en LazyFinance no revoca estos permisos.</p>
+<p class="field-hint">Revocar bloquea nuevas consultas y renovaciones. No borra copias de información ya recibidas por la aplicación ni necesariamente interrumpe una consulta que ya estaba en curso. Fechas en Santiago.</p>
+@if (configuration.hasValue() && !configuration.value().enabled) {
+  <p class="notice warning">Las nuevas conexiones externas no están habilitadas. Puedes seguir revocando los permisos guardados.</p>
+}
+@if (command.success()) {
+  <p class="notice" role="status">{{ command.success() }}</p>
+}
+@if (command.error()) {
+  <p class="notice danger" role="alert">{{ command.error() }} Consulta los accesos antes de volver a intentar; no repetimos solicitudes automáticamente.</p>
+}
+@if (grants.isLoading()) {
+  <p class="notice" role="status">Consultando los permisos guardados…</p>
+} @else if (grants.error()) {
+  <p class="notice danger" role="alert">No pudimos consultar tus accesos. Esto no confirma que estén revocados o que no haya aplicaciones conectadas.</p>
+} @else if (!grants.value().length) {
+  <div class="empty-state">
+    <h2>No hay permisos guardados para mostrar</h2>
+    <p>Conecta desde una aplicación compatible con MCP y confirma sus permisos en LazyFinance. No necesitas compartir tu contraseña ni un token de Firebase.</p>
+  </div>
+} @else {
+  <ul class="record-list" aria-label="Permisos de aplicaciones externas">
+    @for (grant of grants.value(); track grant.id) {
+      <li class="panel" style="overflow-wrap:anywhere">
+        <h2 class="record-title">{{ grant.clientName }}</h2>
+        <p class="record-meta">{{ grant.clientId }}</p>
+        <p class="badge neutral">Solo lectura</p>
+        <p class="record-meta">Autorizado: {{ time(grant.createdAt) }} · vence: {{ time(grant.expiresAt) }}.</p>
+        @if (grant.revokedAt) {
+          <p class="notice">Acceso revocado el {{ time(grant.revokedAt) }}.</p>
+        } @else {
+          <p class="field-hint">La fecha de vencimiento y el servidor determinan si el permiso sigue vigente.</p>
+          <button class="button small" type="button" [disabled]="command.pending() || !!command.error()"
+            [attr.aria-label]="'Revocar acceso de ' + grant.clientName" (click)="select(grant, $event)">Revocar acceso</button>
+        }
+        @if (selected() === grant.id) {
+          <div class="notice warning" role="alert">
+            <strong>¿Revocar el acceso de {{ grant.clientName }}?</strong>
+            <p>Esta conexión tendrá que solicitar una nueva autorización para consultar tus datos.</p>
+            <div class="button-row">
+              <button class="button small" type="button" [disabled]="command.pending() || !!command.error()" (click)="revoke(grant.id)">
+                {{ command.pending() ? 'Esperando confirmación…' : 'Confirmar revocación' }}
+              </button>
+              <button #cancelRevoke class="button small" type="button" [disabled]="command.pending()" (click)="cancel()">Cancelar</button>
+            </div>
+          </div>
+        }
+      </li>
+    }
+  </ul>
+}

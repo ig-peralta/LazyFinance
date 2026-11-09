@@ -2,10 +2,11 @@
 
 Private NestJS/tRPC service using Kysely, `pg`, `identity`/`finance` schemas and
 PostgreSQL user RLS. The API and UI now use the matching RPC boundaries; no API
-database fallback remains. Its 72 private procedures expose identity resolution,
+database fallback remains. Its 81 private procedures expose identity resolution,
 bounded financial facts, revisioned budget/income commands, expense-adjustment
 allocations, tag decisions/rules, owned onboarding/banking lifecycle and prepared
-atomic provider sync. Product calculations remain in the API. Read the
+atomic provider sync, plus purpose-isolated OAuth artifacts and owned grants.
+Product calculations and OAuth cryptography/protocol remain in the API. Read the
 [private RPC/RLS reference](../../docs/technical/persistence-security.md),
 [implemented schema/ERD](../../docs/technical/database-model.md) and
 [contract workflow](../../docs/technical/rpc-contracts.md).
@@ -58,6 +59,13 @@ protected/TLS service channel in deployment.
 
 ## Boundaries
 
+- Migration 027 adds encrypted OAuth-artifact storage and owner-bound grants, not
+  financial data changes. The dedicated `mcp-authorization` context can call only
+  the six `mcpArtifacts` procedures; it has no financial/profile access or owner
+  assertion. User-scoped binding checks provider ownership. Consumption/replay and
+  revocation commit atomically; runtime cannot undo revocation. It deliberately
+  refuses destructive `down`. See the [OAuth operations guide](../../docs/technical/mcp-authorization.md).
+
 - Migration 025 adds owned Fintoc Link Intent claims, stable provider references,
   encrypted credentials and lifecycle versions. Provider calls/encryption remain
   in the API; disconnect disables access before remote cleanup and preserves
@@ -72,7 +80,7 @@ protected/TLS service channel in deployment.
   interpretation must not be copied into a second implementation.
 - Only migration/seed tooling receives owner credentials.
 - Feature repositories inject `RLS_DB`, which fails outside a scoped transaction.
-- Each RPC verifies the signed user/bootstrap identity before opening a transaction.
+- Each RPC verifies the signed user/bootstrap/OAuth purpose before opening a transaction.
 - `set_config(..., true)` sets user context locally; pool reuse cannot retain it.
 - Context kind and procedure metadata are default-deny. Bootstrap can call only
   `identity.resolve`, and its function owner has no finance-schema access.

@@ -84,6 +84,20 @@ export const routes: Routes = [
                 (m) => m.SecurityPage,
               ),
           }),
+          workspaceRoute("autorizar-mcp", {
+            heading: "Autorizar una aplicación",
+            load: () =>
+              import("./pages/mcp-authorization/mcp-consent.page").then(
+                (m) => m.McpConsentPage,
+              ),
+          }),
+          workspaceRoute("aplicaciones-conectadas", {
+            heading: "Aplicaciones conectadas",
+            load: () =>
+              import("./pages/mcp-authorization/mcp-grants.page").then(
+                (m) => m.McpGrantsPage,
+              ),
+          }),
           workspaceRoute("conexiones-bancarias", {
             heading: "Conexiones bancarias",
             load: () =>

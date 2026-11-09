@@ -5,10 +5,11 @@ import { MCP_STRATEGY, McpStrategy } from "@rekog/mcp-nest";
 import { AppModule } from "./app.module";
 import { configureCors } from "./cors";
 import { EnvironmentService } from "./environment/environment.service";
+import { configureRequestBodies } from "./request-bodies";
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  app.useBodyParser("json", { limit: 1024 * 1024 });
+  configureRequestBodies(app);
   app.enableShutdownHooks();
   app.getHttpServer().requestTimeout = 120000;
   app.getHttpServer().headersTimeout = 15000;
@@ -19,7 +20,11 @@ async function bootstrap() {
 
   const environment = app.get(EnvironmentService);
   const port = environment.get("PORT");
-  configureCors(app, environment.get("CORS_ORIGINS"));
+  configureCors(
+    app,
+    environment.get("CORS_ORIGINS"),
+    environment.get("MCP_OAUTH_UI_ORIGIN"),
+  );
 
   await app.startAllMicroservices();
   await app.listen(port);

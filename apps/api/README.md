@@ -1,11 +1,13 @@
 # LazyFinance API
 
 NestJS financial workflow service exposing public tRPC at `/trpc` and read-only
-MCP at `/mcp`. The only ordinary HTTP route is the public `GET /` listening check.
-Business REST controllers have been retired; Angular uses vanilla tRPC clients.
+MCP at `/mcp`. Ordinary HTTP also serves OAuth discovery/protocol/browser interaction
+and the public `GET /` listening check. Business REST controllers have been retired;
+Angular uses vanilla tRPC clients apart from the cookie-bound OAuth interaction.
 
 Technical references: [architecture](../../docs/technical/architecture.md),
 [provider-neutral identity](../../docs/technical/identity.md),
+[external MCP authorization/compatibility](../../docs/technical/mcp-authorization.md),
 [RPC contracts/code generation](../../docs/technical/rpc-contracts.md),
 [private RPC/RLS](../../docs/technical/persistence-security.md) and
 [development/verification](../../docs/technical/development-workflow.md).
@@ -41,6 +43,8 @@ ignored `apps/api/.env`, and configure:
 | `FIREBASE_PROJECT_ID` | Required in Firebase mode. |
 | `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` | Optional paired Admin credentials. |
 | `FINTOC_PUBLIC_KEY`, `FINTOC_SECRET_KEY`, `FINTOC_TOKEN_ENCRYPTION_KEY` | Optional matched-mode Movements keys plus a separate 32-byte hex token-encryption key; API-only. |
+| `MCP_OAUTH_ISSUER`, `MCP_OAUTH_UI_ORIGIN`, `MCP_OAUTH_STATE_KEY`, `MCP_OAUTH_JWKS` | Optional all-or-none external MCP OAuth; canonical origins and independent stable API-only state/signing secrets (`pnpm mcp:keys`). |
+| `MCP_OAUTH_TRUST_PROXY` | Default `false`; enable only behind a trusted TLS edge replacing forwarded headers. |
 
 The API needs the private RPC URL/signing key, not database configuration.
 App-local dotenv files are not the root Compose `.env`.
@@ -61,6 +65,15 @@ available. Public auth procedures are `auth.config` and `auth.loginMock`; all
 others require a verified bearer. Mock login uses `demo@lazyfinance.cl` /
 `password` only after an explicit persistence demo seed. The SSR cookie is not
 accepted directly as API authentication.
+
+External `/mcp` no longer accepts Firebase/development application tokens. It uses
+`oidc-provider@9.13.3` with S256 PKCE, resource binding, CIMD/DCR, ten-minute opaque
+access tokens, rotating refresh credentials and maximum-thirty-day owner-bound
+grants. Without complete OAuth configuration, MCP rejects access instead of falling
+back. `/autorizar-mcp` and `/aplicaciones-conectadas` provide first-party consent
+and confirmed revocation; OAuth credentials cannot call first-party management RPC.
+Apply migration 027 and follow the [setup/security/client matrix](../../docs/technical/mcp-authorization.md).
+Official SDK 2.4.0 verification does not claim live ChatGPT, Claude or OpenCode support.
 
 ## Contracts and checks
 
@@ -201,7 +214,8 @@ browse page or downloads of every transaction to the API. Real-RPC integration
 tests cover ownership, periods, current-fact corrections and evidence reconciliation;
 pure policy tests alone do not establish database isolation or live-provider readiness.
 
-Public bodies are limited to 1 MiB and batches to 10 procedures. Private provider
+Public JSON bodies are limited to 1 MiB and batches to 10 procedures. OAuth
+JSON/form bodies are limited to 56 KiB. Private provider
 runs are bounded by 100 pages, 50,000 records, 32 MiB normalized JSON and 64 MiB
 prepared JSON/results. Oversized runs fail without partial writes/checkpoint
 advancement; they are never silently split into independent commits. The private

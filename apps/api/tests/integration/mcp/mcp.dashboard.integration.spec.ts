@@ -23,6 +23,7 @@ import { AppModule } from "../../../src/app.module";
 import { AuthService } from "../../../src/auth/auth.service";
 import { SpendingEvidenceService } from "../../../src/finance/spending-evidence.service";
 import { IncomeService } from "../../../src/income/income.service";
+import { McpAuthorizationService } from "../../../src/mcp/authorization/mcp-authorization.service";
 import { ObjectivesService } from "../../../src/objectives/objectives.service";
 import { SavingsProgressService } from "../../../src/objectives/savings-progress.service";
 import { PersistenceClient } from "../../../src/persistence/persistence.client";
@@ -300,6 +301,27 @@ describe("Dashboard MCP tools", () => {
     const module = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(PersistenceClient)
       .useValue({})
+      // These tests exercise tool schemas/domain delegation. The complete OAuth
+      // protocol and grant ownership have their own real-RPC integration suite.
+      .overrideProvider(McpAuthorizationService)
+      .useValue({
+        settings: undefined,
+        authenticate: async (authorization?: string) => {
+          const token = authorization?.replace("Bearer ", "");
+          return token === "alice" || token === "bob"
+            ? {
+                status: "authorized",
+                userId: token,
+                clientId: "fixture-client",
+                scopes: ["finance:read"],
+              }
+            : { status: "invalid" };
+        },
+        originAllowed: async () => true,
+      } satisfies Pick<
+        McpAuthorizationService,
+        "settings" | "authenticate" | "originAllowed"
+      >)
       .overrideProvider(AuthService)
       .useValue({
         authenticate: async (authorization?: string) => {
