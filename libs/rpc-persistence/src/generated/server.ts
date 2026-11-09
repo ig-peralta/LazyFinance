@@ -13,8 +13,8 @@ import { z } from "zod";
 
 const t = initTRPC.create();
 const publicProcedure = t.procedure;
-import { EmptyInputSchema, AccountRecordsSchema, IdInputSchema, ExpectationRecordsSchema, ExpectationCreateSchema, ExpectationRecordSchema, ExpectationUpdateSchema, VoidResultSchema, ReceiptConfirmSchema, ReceiptFactSchema, IncomeSourceRecordsSchema, IncomeSourceRecordSchema, IncomeSourceCreateSchema, IncomeSourceUpdateSchema, AtIdInputSchema, PeriodInputSchema, ExpectedIncomeFactsSchema, ReceiptFactsSchema, IncomeFactsSchema, BudgetSpendingEvidenceInputSchema, SpendingEvidenceFactsSchema, SavingsReadSchema, SavingsFactsSchema, SavingsEvidenceReadSchema, SavingsEvidenceRecordsSchema, CreateSavingsCommandSchema, UpdateSavingsCommandSchema, ObjectiveRecordsSchema, BudgetPeriodInputSchema, BudgetPeriodRecordsSchema, CreateBudgetCommandSchema, UpdateBudgetCommandSchema, ObjectiveSpendingInputSchema, ObjectiveSpendingFactsSchema, BeginProviderSyncSchema, ProviderSyncBeginSchema, ProviderSyncStatusFactsSchema, ProviderSyncScopeSchema, ProviderSyncFactsSchema, CommitProviderSyncSchema, ProviderSyncOutcomeSchema, RecordProviderFailureSchema, ProviderReviewRecordsSchema, ProviderLinkSecretSchema, SaveProviderIntentSchema, ProviderIntentSavedSchema, ClaimProviderIntentSchema, ProviderIntentClaimSchema, CompleteProviderIntentSchema, FailProviderIntentSchema, ProviderIntentStateSchema, UpdateProviderLinkSchema, FinishProviderDisconnectSchema, TagRecordSchema, TagRecordsSchema, TagCreateSchema, TagRuleRecordsSchema, TagRuleCreateSchema, TagRuleRecordSchema, TagRuleReplaceSchema, TaggingFactsSchema, ManualTagCommandSchema, RuleCandidatesInputSchema, RuleCandidatesSchema, CommitRuleDecisionsSchema, ChangedCountSchema, TransactionDetailRecordSchema, SummarySpendingEvidenceInputSchema, RecentTransactionRecordsSchema, TransactionRecordsPageSchema, MovementAggregatesSchema, TaggedMovementAggregatesSchema, IdentityResolutionInputSchema } from "@lazyfinance/contracts/internal";
-import { SavingsGoalSchema, SavingsHistoryInputSchema, SavingsHistoryPageSchema, SavingsGoalVersionSchema, BudgetDetailSchema, BudgetHistoryInputSchema, BudgetHistoryPageSchema, BudgetVersionInputSchema, RpcIdSchema, BankingConnectionsSchema, BankingConnectionSchema, UpdateTagSchema, TagDecisionSchema, SetInternalMovementSchema, InternalMovementDecisionSchema, ExpenseAdjustmentsInputSchema, ExpenseAdjustmentsPageSchema, SetExpenseAdjustmentSchema, ExpenseAdjustmentSchema, ExpenseAdjustmentPairSchema, TransactionsInputSchema, AuthPrincipalSchema, RpcEmptySchema, OnboardingStateSchema, FinishOnboardingSchema } from "@lazyfinance/contracts";
+import { EmptyInputSchema, AccountRecordsSchema, IdInputSchema, ExpectationRecordsSchema, ExpectationCreateSchema, ExpectationRecordSchema, ExpectationUpdateSchema, VoidResultSchema, ReceiptConfirmSchema, ReceiptFactSchema, IncomeSourceRecordsSchema, IncomeSourceRecordSchema, IncomeSourceCreateSchema, IncomeSourceUpdateSchema, AtIdInputSchema, PeriodInputSchema, ExpectedIncomeFactsSchema, ReceiptFactsSchema, IncomeFactsSchema, BudgetSpendingEvidenceInputSchema, SpendingEvidenceFactsSchema, SavingsReadSchema, SavingsFactsSchema, SavingsEvidenceReadSchema, SavingsEvidenceRecordsSchema, CreateSavingsCommandSchema, UpdateSavingsCommandSchema, ObjectiveRecordsSchema, BudgetPeriodInputSchema, BudgetPeriodRecordsSchema, CreateBudgetCommandSchema, UpdateBudgetCommandSchema, ObjectiveSpendingInputSchema, ObjectiveSpendingFactsSchema, BeginProviderSyncSchema, ProviderSyncBeginSchema, ProviderSyncStatusFactsSchema, ProviderSyncScopeSchema, ProviderSyncFactsSchema, CommitProviderSyncSchema, ProviderSyncOutcomeSchema, RecordProviderFailureSchema, ProviderReviewRecordsSchema, ProviderLinkSecretSchema, SaveProviderIntentSchema, ProviderIntentSavedSchema, ClaimProviderIntentSchema, ProviderIntentClaimSchema, CompleteProviderIntentSchema, FailProviderIntentSchema, ProviderIntentStateSchema, UpdateProviderLinkSchema, FinishProviderDisconnectSchema, TagRecordSchema, TagRecordsSchema, TagCreateSchema, TagRuleRecordsSchema, TagRuleCreateSchema, TagRuleRecordSchema, TagRuleReplaceSchema, TaggingFactsSchema, ManualTagCommandSchema, RuleCandidatesInputSchema, RuleCandidatesSchema, CommitRuleDecisionsSchema, ChangedCountSchema, TransactionDetailRecordSchema, SummarySpendingEvidenceInputSchema, RecentTransactionRecordsSchema, TransactionRecordsPageSchema, MovementAggregatesSchema, TaggedMovementAggregatesSchema, IdentityResolutionInputSchema, FindMcpArtifactSchema, McpArtifactSchema, SaveMcpArtifactSchema, McpArtifactSaveResultSchema, McpArtifactKeySchema, McpArtifactConsumeResultSchema, McpArtifactDestroyResultSchema, McpGrantIdentitySchema, BindMcpGrantSchema } from "@lazyfinance/contracts/internal";
+import { SavingsGoalSchema, SavingsHistoryInputSchema, SavingsHistoryPageSchema, SavingsGoalVersionSchema, BudgetDetailSchema, BudgetHistoryInputSchema, BudgetHistoryPageSchema, BudgetVersionInputSchema, RpcIdSchema, BankingConnectionsSchema, BankingConnectionSchema, UpdateTagSchema, TagDecisionSchema, SetInternalMovementSchema, InternalMovementDecisionSchema, ExpenseAdjustmentsInputSchema, ExpenseAdjustmentsPageSchema, SetExpenseAdjustmentSchema, ExpenseAdjustmentSchema, ExpenseAdjustmentPairSchema, TransactionsInputSchema, AuthPrincipalSchema, McpGrantIdSchema, McpRevokeResultSchema, RpcEmptySchema, McpGrantsSchema, McpGrantSchema, OnboardingStateSchema, FinishOnboardingSchema } from "@lazyfinance/contracts";
 
 const appRouter = t.router({
   accounts: t.router({
@@ -317,6 +317,46 @@ const appRouter = t.router({
     resolve: publicProcedure
       .input(IdentityResolutionInputSchema)
       .output(AuthPrincipalSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
+    }),
+  mcpArtifacts: t.router({
+    find: publicProcedure
+      .input(FindMcpArtifactSchema)
+      .output(McpArtifactSchema.nullable())
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    save: publicProcedure
+      .input(SaveMcpArtifactSchema)
+      .output(McpArtifactSaveResultSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    consume: publicProcedure
+      .input(McpArtifactKeySchema)
+      .output(McpArtifactConsumeResultSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    destroy: publicProcedure
+      .input(McpArtifactKeySchema)
+      .output(McpArtifactDestroyResultSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    identity: publicProcedure
+      .input(McpGrantIdSchema)
+      .output(McpGrantIdentitySchema.nullable())
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    revoke: publicProcedure
+      .input(McpGrantIdSchema)
+      .output(McpRevokeResultSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
+    }),
+  mcpGrants: t.router({
+    list: publicProcedure
+      .input(RpcEmptySchema)
+      .output(McpGrantsSchema)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    bind: publicProcedure
+      .input(BindMcpGrantSchema)
+      .output(McpGrantSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    revoke: publicProcedure
+      .input(McpGrantIdSchema)
+      .output(McpRevokeResultSchema)
       .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
     }),
   onboarding: t.router({

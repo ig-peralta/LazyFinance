@@ -8,7 +8,7 @@ import { RUNTIME_DB } from "../database/tokens";
 import type { PersistenceRequestContext } from "./persistence.context";
 
 type ProcedureMeta = {
-  context: "user" | "identity-bootstrap";
+  context: "user" | "identity-bootstrap" | "mcp-authorization";
   snapshot?: boolean;
 };
 
@@ -28,10 +28,21 @@ export class RlsMiddleware implements TRPCMiddleware<ProcedureMeta> {
   ) {
     if (
       !options.meta ||
-      !["user", "identity-bootstrap"].includes(options.meta.context) ||
+      !["user", "identity-bootstrap", "mcp-authorization"].includes(
+        options.meta.context,
+      ) ||
       options.ctx.identity.kind !== options.meta.context ||
       (options.meta.context === "identity-bootstrap" &&
-        options.path !== "identity.resolve")
+        options.path !== "identity.resolve") ||
+      (options.meta.context === "mcp-authorization" &&
+        ![
+          "mcpArtifacts.find",
+          "mcpArtifacts.save",
+          "mcpArtifacts.consume",
+          "mcpArtifacts.destroy",
+          "mcpArtifacts.identity",
+          "mcpArtifacts.revoke",
+        ].includes(options.path))
     ) {
       throw new TRPCError({
         code: "FORBIDDEN",

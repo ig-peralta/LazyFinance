@@ -65,6 +65,46 @@ describe("private middleware denial and result budgets (scaled byte limit)", () 
     ).rejects.toMatchObject({ code: "PAYLOAD_TOO_LARGE" });
   });
 
+  it("admits OAuth state only on its explicit procedure allowlist, never finance or identity bootstrap", async () => {
+    const scoped = {
+      ...options(null),
+      ctx: {
+        identity: {
+          kind: "mcp-authorization" as const,
+          requestId: randomUUID(),
+        },
+      },
+      meta: { context: "mcp-authorization" as const },
+    };
+    for (const path of [
+      "accounts.listActive",
+      "identity.resolve",
+      "mcpArtifacts.arbitrary",
+      "mcpGrants.bind",
+    ])
+      await expect(middleware.use({ ...scoped, path })).rejects.toMatchObject({
+        code: "FORBIDDEN",
+      });
+    for (const path of [
+      "mcpArtifacts.find",
+      "mcpArtifacts.save",
+      "mcpArtifacts.consume",
+      "mcpArtifacts.destroy",
+      "mcpArtifacts.identity",
+      "mcpArtifacts.revoke",
+    ])
+      await expect(middleware.use({ ...scoped, path })).resolves.toMatchObject({
+        ok: true,
+      });
+    await expect(
+      middleware.use({
+        ...options(null),
+        path: "mcpArtifacts.find",
+        meta: scoped.meta,
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
   it("preserves wrapped input/application codes from a different tRPC instance", async () => {
     const foreign = Object.assign(new Error("Duplicate budget windows"), {
       code: "BAD_REQUEST" as const,

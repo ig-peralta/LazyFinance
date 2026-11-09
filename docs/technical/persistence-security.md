@@ -42,11 +42,12 @@ not the signing key. Generate a pair with `pnpm rpc:keys`; do not commit its out
 | Lifetime | Issued-at and expiry required; maximum age and lifetime 30 seconds |
 | Context | Strict discriminated union from `@lazyfinance/contracts/context` |
 
-The two allowed context shapes are:
+The three allowed context shapes are:
 
 ```ts
 { kind: "user", userId: "<internal UUID>", requestId: "<UUID>" }
 { kind: "identity-bootstrap", identity: verifiedIdentity, requestId: "<UUID>" }
+{ kind: "mcp-authorization", requestId: "<UUID>" }
 ```
 
 The API creates these from verified server-side state, never a client-proposed
@@ -63,6 +64,9 @@ then requires matching procedure metadata:
 - `context: "user"` accepts only user context.
 - `context: "identity-bootstrap"` accepts only bootstrap context and only on
   `identity.resolve`.
+- `context: "mcp-authorization"` accepts only that purpose and the six named
+  `mcpArtifacts` procedures. It cannot assert a user, bootstrap identity or read
+  financial/profile tables. Ordinary user contexts cannot call it.
 - Missing, unknown or mismatched policy is forbidden.
 
 **Limits of the assertion:** it authenticates context, not an encrypted request.
@@ -151,7 +155,7 @@ incorrectly commit. Result-size failures also throw before commit.
 
 ## RLS and related ownership
 
-All 23 sensitive application tables enable **and force** RLS. The twenty-fourth,
+All 25 sensitive application tables enable **and force** RLS. The twenty-sixth,
 `finance.provider`, is a shared runtime-read-only catalog. Runtime grants and RLS
 are both required: a policy alone is not permission to access a table.
 
@@ -172,6 +176,23 @@ status/completion time. Runtime cannot delete or reassign those records, and
 neither bootstrap nor unscoped requests can access them. This grants no profile
 or external-identity write permission. Its named upsert makes completion terminal
 and retains the first server timestamp; no financial facts are changed.
+
+`identity.mcp_artifact` permits dedicated-purpose OAuth state writes only, with
+an explicit model allowlist, hashed IDs, API-encrypted payloads and expiry/atomic
+consumption. User scopes see only their matching provider grant or bound artifacts
+and can delete only artifacts belonging to their grants during revocation.
+`identity.mcp_grant` permits owned creation/listing and column-limited revocation;
+binding rechecks the provider artifact's owner/client, and a trigger retains the
+first revocation timestamp. The OAuth purpose can resolve/revoke grants but cannot
+insert an owner-bound grant. These tables confer no banking privileges.
+
+Consent decisions, code/refresh consumption and JWT replay detection are atomic.
+Per-grant advisory locks coordinate token writes and revocation; writes cannot
+resurrect a revoked/expired bound family. A failed replay returns `consumed: false`
+**after committing** family revocation rather than throwing and rolling it back.
+The provider adapter then returns the OAuth error. A global short quota lock
+bounds artifact storage, with bounded expiry cleanup; per-owner user locks protect
+the 50-live-grant limit. See [OAuth protocol and operational limits](mcp-authorization.md).
 
 `finance.provider_link_intent` checks both optional connection FKs against its
 owner in addition to direct owner RLS, and runtime DELETE is revoked. Lifecycle
@@ -194,6 +215,7 @@ or generic transaction scripts.
 | Command | Authoritative persistence work | API work outside SQL |
 | --- | --- | --- |
 | Onboarding finish | Upsert only the scoped user's skip/completion; retain terminal completion and its first timestamp under concurrent writes | Authenticated optional-guide intent; no financial prerequisites or writes |
+| External-client grant | Validate provider-artifact ownership, bind immutable consent; atomically consume credentials and revoke/delete a family | Verify first-party consent, run the OAuth protocol, encrypt/decrypt artifacts and enforce resource/scope/owner on MCP |
 | Income confirmation | Lock/check source and eligible movement; reject any retained expense allocation; upsert one receipt | Calendar/money calculations and response composition |
 | Expense adjustment set/remove | Lock both owned movements; check eligibility, income exclusivity and credit/purchase capacity including retained review allocations; atomically upsert/remove one pair | Validate exact positive money and explicit refund/reimbursement intent; interpret gross/net aggregates |
 | Tag decision | Decision and append-only event together | Normalize/rank rules and calculate suggestions |
@@ -228,6 +250,7 @@ atomic cross-procedure unit, and client cancellation does not prove server rollb
 | Boundary | Budget |
 | --- | --- |
 | Public JSON body / batch | 1 MiB / at most 10 procedures |
+| OAuth JSON/form bodies | 56 KiB; duplicated resource values are rejected, not collapsed |
 | Private JSON body / per-procedure serialized result | 64 MiB / 64 MiB |
 | Private batch | At most one procedure; clients use non-batched `httpLink` |
 | Provider run | 100 pages; 50,000 combined account/movement/removal/suspension records; 32 MiB normalized JSON; Fintoc fetch budget 60s |
