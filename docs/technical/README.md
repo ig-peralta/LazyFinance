@@ -43,13 +43,17 @@ target is not evidence of a delivered capability.
   quality targets, not proof of production readiness or maximum-size load tests.
 - [Conceptual UML PNGs](../diagrams/README.md): historical product sketches with
   explicit inaccuracies. Use the implemented ERD above for the actual data model.
-- [Dated backlog](../planning/snapshots/backlog-2026-11-02.md) and
-  [Stage A closure](../planning/stage-a/closure.md): historical delivery
-  evidence; references to the then-current Drizzle stack are intentionally dated.
+- [Latest backlog](../planning/snapshots/backlog-2026-11-09.md) and
+  [Stage B closure](../planning/stage-b/closure.md): completed development-stage
+  inventory, evidence and accepted carryovers. The [earlier checkpoint](../planning/snapshots/backlog-2026-11-02.md)
+  and [Stage A closure](../planning/stage-a/closure.md) retain their original
+  issue states and financial-model scope.
 - [Stage-organized planning](../planning/README.md) separates stage scope, gates
   and evidence. The [platform-evolution rationale](../planning/stage-b/platform-evolution.md)
   explains how PRs #26–#28 support the product while Stage B was being built;
-  it is not a stage-completion or live-provider readiness claim.
+  it concerns that earlier implementation, not the final private-CSR/action
+  baseline or a live-provider readiness claim. Stage B's [retrospective](../planning/stage-b/retrospective.md)
+  records the review and Stage C improvements.
 
 Current source/configuration and migrations take precedence when a guide becomes
 stale. Update the corresponding references, generated contracts and tests together;

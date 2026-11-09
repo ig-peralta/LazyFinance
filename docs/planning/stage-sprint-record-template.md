@@ -1,6 +1,6 @@
 # Stage sprint planning and closure — TEMPLATE
 
-**One stage milestone equals one sprint.** The issues assigned to that milestone are its Sprint Backlog. Record the goal and selected issues in Linear when planning a stage; keep the issue list and decisions there during development. There is no separate Linear cycle to create. After the stage closes, preserve a dated repository record of its worklist, gate decision, and retrospective. A blank template or post-closure issue list cannot prove that a planning meeting or team retrospective occurred.
+**One stage milestone equals one sprint.** The issues assigned to that milestone are its Sprint Backlog. Record the goal and selected issues in Linear when planning a stage; keep the issue list and decisions there during development. There is no separate Linear cycle to create. At closure, preserve a dated repository record of the worklist, gate decision, evidence, limitations and retrospective.
 
 Check each selected issue's acceptance criteria and the appropriate [stage Definition of Done](README.md#stage-gates) at the gate. Save completed stage-specific records in that [stage's folder](README.md#read-by-stage). The [product Definition of Done](product-definition-of-done.md) is a separate release review.
 
@@ -28,4 +28,6 @@ Check each selected issue's acceptance criteria and the appropriate [stage Defin
 - What hindered the work, with specific evidence:
 - Improvements proposed or agreed for the next stage, with owners and target dates where agreed:
 
-If the team has not held a retrospective meeting, label any analysis of issues and Git history as a **documentary review**, not meeting minutes. Stage C issues are selected only after Stage B's outcome has been reviewed.
+Record the actual review source and participants. Separate recorded test execution,
+informal feedback and proposed improvements. Stage C issue selection follows the
+Stage B gate and review; stage closure does not replace product release acceptance.

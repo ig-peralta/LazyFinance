@@ -2,7 +2,7 @@
 
 This is a **living, incremental document**. It starts with the journeys needed to validate the financial core and grows as each stage of the [product vision](product-vision.md#development-sequence-and-decision-gates) begins. The [product requirements](product-requirements.md) specify expected behavior; the journeys are not an exhaustive description of the finished product or a commitment to design every future feature upfront.
 
-Each journey describes a user's situation, the experience they need, and an observable outcome. Stage A journeys are detailed enough to test with controlled CLP demo data and reference acceptance stories tracked in Linear; their IDs and outcomes appear in the [backlog snapshot](../planning/snapshots/backlog-2026-11-02.md). Stage B and C journeys are intentionally brief until their work is planned; we will expand them with examples, acceptance criteria, and issue IDs as we learn more. Keep validated journeys here as a record, and revise assumptions explicitly when the financial model changes.
+Each journey describes a user's situation, needed experience and observable outcome. Stage A checks retain the financial-model gate's scope. Stage B journeys below reflect its [2026-11-09 development closure](../planning/stage-b/closure.md), including explicit validation exceptions; the [latest snapshot](../planning/snapshots/backlog-2026-11-09.md) records the associated workstreams. Stage C candidates become detailed acceptance stories only when selected. Revise assumptions explicitly when financial meaning changes.
 
 ## Stage A - Core financial understanding
 
@@ -56,19 +56,74 @@ Each journey describes a user's situation, the experience they need, and an obse
 
 **Stage A check:** Demonstrate the source, expectation, receipt, ownership, and period scenarios from LAZ-25 in the [Stage A closure record](../planning/stage-a/closure.md) through the backend API and read-only MCP tool.
 
-## Later journeys - Detail shortly before implementation
+## Stage B - Connected financial workflows
 
-### Stage B - Ask our own text agent
+### J6 - Access my own financial workspace
 
-I ask a question about balances, spending or budgets and get an answer grounded in my data, with the period, relevant assumptions and uncertainty made clear. The agent uses the same financial logic as the dashboard and MCP tools. Write detailed stories when the text experience is taken up in Stage B.
+**Situation:** I want to sign in, return to my workspace or connect another supported sign-in method without changing who owns my records.
 
-### Stage C - Continue the conversation by voice
+**Journey:** Use Google or verified email/password through Firebase; restore or end the browser session; explicitly link supported credentials from the security page.
 
-I ask the same types of questions by voice after the text flow is reliable. The voice channel retains the meaning and access boundaries of the text experience. Detail this journey when voice work is planned.
+**Observable outcome:** The backend maps the verified subject to one internal owner. An account/token change cannot adopt another session's late results. Only public content is prerendered; private pages use browser-owned verified sessions. Email equality does not merge users. **Evidence:** LAZ-29 and its children; the closure retains rigorous live-Firebase acceptance as a separate check.
+
+### J7 - Manage and trace my financial information
+
+**Situation:** I want to organize movements and plans, then understand why a budget, income or savings figure changed.
+
+**Journey:** Browse/filter history, inspect a movement, correct its tag/internal classification, manage budgets/goals and income plans, confirm eligible receipts, and follow reported totals into contributing records. Optional onboarding can be skipped or resumed without blocking normal management.
+
+**Observable outcome:** Owned changes persist after reload without altering booked amounts or reported balances. Gross spending, purchase-attributed recoveries, planned/received income and signed savings allocations retain their distinct meanings. Revision/period/cutoff context and paginated evidence explain the results; displayed page rows are not substituted for complete totals. **Evidence:** LAZ-31/LAZ-32–LAZ-42 and LAZ-30/LAZ-24/LAZ-60–LAZ-70.
+
+### J8 - Connect my bank and understand synchronization
+
+**Situation:** I want stored balances and movements without mistaking successful authorization or an old snapshot for fresh bank data.
+
+**Journey:** Explicitly link through the hosted Widget, import/refresh the available snapshot, inspect source freshness and failures, relink the same identity or disconnect. Read balances in Cuentas and connection/sync state in Conexiones bancarias.
+
+**Observable outcome:** Stable identifiers prevent duplicates; refresh preserves manual decisions and last-good facts on failure. Tracking starts on the original first-link day in Santiago without automatic earlier backfill. Empty imported history does not erase an independent reported balance. Access checks/status/navigation do not import or force a new bank refresh. **Evidence:** LAZ-28/LAZ-47–LAZ-51 and LAZ-62; current-policy/provider validation is distinguished from earlier sandbox results.
+
+### J9 - Ask our own text assistant
+
+**Situation:** I want an explanation of balances, spending, budgets, savings or expected/received income in Spanish.
+
+**Journey:** Ask a question, continue within bounded saved history, inspect separate financial references, follow trusted record/section links, stop a response or explicitly reload history after an uncertain stream outcome.
+
+**Observable outcome:** The agent uses the same owned services as the UI and MCP, preserves periods, uncertainty and evidence, and cannot select another owner. A forecast or incomplete-data request does not become an invented fact. Provider/model configuration is disclosed and credentials remain server-side. **Evidence:** LAZ-26/LAZ-56–LAZ-59; controlled evaluation validates the pipeline, not independent live-model answer quality.
+
+### J10 - Review an exact proposed change
+
+**Situation:** I want help creating a budget/goal, managing a tag or changing one movement's tag, without authorizing a model to act on conversation alone.
+
+**Journey:** Review a saved action card, inspect exact fields and actual tag colors, edit/cancel it or explicitly approve the current version. If confirmation is lost, read its status before another write.
+
+**Observable outcome:** Only saved-version approval executes; edits invalidate earlier approval and stale/expired proposals make no financial change. Dependent tags and the financial command commit with a durable receipt. Duplicate approval does not duplicate the result; stopping/deleting chat does not undo it. **Evidence:** PR #36 and the [action lifecycle](../technical/financial-assistant.md#confirmed-actions-and-independent-mcp-delegation), recorded as an explicit Stage B scope extension.
+
+### J11 - Delegate bounded access to an external MCP client
+
+**Situation:** I want a compatible external assistant to use my permitted financial capabilities without sharing my first-party login token or granting every write.
+
+**Journey:** Review the client/callback and requested permissions, leave optional writes off or select only needed capabilities, use supported tools, inspect the grant and revoke it when no longer needed.
+
+**Observable outcome:** Reads and changes remain owner-scoped; a read-only grant never silently gains writes. Current bounded direct changes need their specific OAuth scopes, stable request IDs and current preview fingerprints for existing records, not chat approval. Revocation rejects subsequent access without undoing committed finance. **Evidence:** LAZ-27/LAZ-52–LAZ-55 and PR #36; required external-client write combinations still need dedicated validation.
+
+## Stage C - Detail selected extensions before implementation
+
+### Broader management through MCP
+
+I want my external client to perform additional explicitly supported management
+operations beyond the current bounded creation/tagging commands. The Stage B
+review identifies this follow-up; exact operations, permissions and acceptance
+checks must be selected before claiming support.
+
+### Continue the conversation by voice, if selected
+
+I ask supported questions by voice after the text experience is reliable. The new
+channel must retain financial meaning, access boundaries and explicit approval
+requirements. Voice is a candidate, not an already selected Stage C issue.
 
 ## Using this document
 
-Keep acceptance criteria and implementation work in Linear issues; the repository's [dated backlog snapshot](../planning/snapshots/backlog-2026-11-02.md) makes the issue inventory accessible to reviewers. For Stage A, the corresponding user stories are child issues of the existing model-review and missing-flows issues; completing a story means its outcome was demonstrated, not merely that a screen or schema field exists. The [Stage A closure record](../planning/stage-a/closure.md) captures LAZ-18's gate decision and its nonblocking limitations.
+Keep acceptance criteria and implementation work in Linear issues; the [latest snapshot](../planning/snapshots/backlog-2026-11-09.md) makes the inventory accessible to reviewers. A journey's implementation, recorded verification and remaining limitations must stay distinguishable. The [Stage A closure](../planning/stage-a/closure.md) captures the financial-model gate, and the [Stage B closure](../planning/stage-b/closure.md) records the connected development increment without asserting product release readiness.
 
 ## Stage A user stories
 

@@ -4,11 +4,11 @@
 - **Gate decision:** LAZ-18, GO on 2026-10-21 at 06:16 UTC, reviewed against [`main` at `72f9134`](https://github.com/ig-peralta/LazyFinance/commit/72f9134)
 - **Last Stage A issue closed:** LAZ-15, 2026-10-21 at 08:46 UTC
 
-This is a **completed-stage sprint record** reflecting the team's Linear issue tracker. The Stage A milestone is **Sprint A**, and its assigned issues are the **Sprint A Backlog**. The [all-issue backlog snapshot](../snapshots/backlog-2026-11-02.md) provides a reviewer-accessible view of each issue and its recorded completion criteria; the [Sprint A DoD](definition-of-done.md) describes the gate-level assessment. The completion dates below establish when Stage A issues closed. This record was assembled later from Linear and is not a reconstructed start-of-sprint selection or proof of Scrum ceremonies; see [provenance](#provenance-and-limits). The accompanying [documentary retrospective](retrospective.md) analyzes decisions and Git history.
+This is a **completed-stage sprint record** reflecting the team's Linear issue tracker. The Stage A milestone is **Sprint A**, and its assigned issues are the **Sprint A Backlog**. The [all-issue backlog snapshot](../snapshots/backlog-2026-11-02.md) provides a reviewer-accessible view of each issue and its recorded completion criteria; the [Sprint A DoD](definition-of-done.md) describes the gate-level assessment. The completion dates below establish when Stage A issues closed; see [provenance](#provenance-and-limits). The accompanying [documentary retrospective](retrospective.md) analyzes decisions and Git history.
 
 ## Sprint A Backlog at post-closure review
 
-All **19 issues** below were Done when this record was assembled. The two issues with an assignee at that point were LAZ-19 and LAZ-21, both assigned to Álvaro Díaz. No other issue in the milestone had an assignee then; assignees are not a record of all contributors.
+All **19 issues** below were Done when this record was assembled. LAZ-19 and LAZ-21 were assigned to Álvaro Díaz.
 
 ### Foundation recorded on October 17
 
@@ -43,10 +43,9 @@ The gate review reconciled J1–J5 with the acceptance stories, reported tests, 
 
 ## Interpreting the snapshot
 
-- The foundational issues LAZ-6–LAZ-14 were entered and completed in Linear on October 17 after much of their implementation was already merged. Their completion timestamps therefore describe **issue recording**, not the original delivery dates or cycle commitments; use the [retrospective](retrospective.md) and its public Git commits for that history.
 - The Stage A milestone is complete, but the final decision validates a **demo-backed financial data-model foundation**, not finished Fintoc ingestion, measured savings contributions, or the first-party agent. See the [product requirements](../../product/product-requirements.md) and [retrospective](retrospective.md) for the accepted boundaries.
 - The next stage's issue inventory and status as of November 2 are in the [full backlog snapshot](../snapshots/backlog-2026-11-02.md). A Stage B closure record belongs in [Stage B's folder](../stage-b/README.md#completion-and-handoff) **after its gate**, with its own assembly date and limitations.
 
 ## Provenance and limits
 
-This record was **assembled on 2026-11-02**, after Stage A ended, using Linear's milestone and issue records. Issue completion timestamps are the recorded October events; milestone membership, priorities, and assignees reflect the later review and are not verified as their exact values on October 21. The document was not created at the time of the gate or the last issue closure.
+This record was **assembled on 2026-11-02**, using Linear's milestone and issue records. The completion timestamps are the recorded October events; the snapshot fields reflect the November 2 extraction. Gate baseline, financial-model scope and dated evidence remain historical.

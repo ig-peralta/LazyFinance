@@ -1,5 +1,10 @@
 # Platform evolution alongside Stage B
 
+**Historical scope:** this rationale concerns PRs #26–#28 and their then-current
+implementation. Stage B subsequently closed on 2026-11-09; use the
+[closure](closure.md) for final outcomes, private-CSR rendering, action scope and
+remaining limitations, and the technical guides for current runtime behavior.
+
 This work was carried out **while Stage B was being built**. PRs
 [#26](https://github.com/ig-peralta/LazyFinance/pull/26),
 [#27](https://github.com/ig-peralta/LazyFinance/pull/27) and

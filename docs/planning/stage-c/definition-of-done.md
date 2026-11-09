@@ -1,10 +1,10 @@
 # Stage C — Definition of Done
 
-**Sprint C / Stage C is planned after Stage B closes.** Its specific issue
-commitments and measures will be written from that review rather than invented
-in advance. The [stage overview](README.md) distinguishes candidate directions
-from a selected backlog. A scope change or deferral must be explicit in the gate
-record.
+**Stage B closed on 2026-11-09 with GO to Stage C planning.** Sprint C's specific
+commitments and measures are the next planning decision; the
+[stage overview](README.md) distinguishes the broader-MCP-management follow-up
+and candidate directions from a selected backlog. The November 9 snapshot has no
+Stage C issues. A scope change or deferral must be explicit in its gate record.
 
 Once agreed, Sprint C is Done when:
 

@@ -16,7 +16,7 @@ more conversational without necessarily making the answer trustworthy.
 
 The innovation we aim for is **financial understanding that can be reused across
 interfaces and ecosystems**. A user-scoped backend owns consistent calculations,
-provenance and uncertainty. LazyFinance's dashboard, its planned conversational
+provenance and uncertainty. LazyFinance's dashboard, its first-party text
 agent and authorized external tools can use those same meanings instead of
 reimplementing them for each screen, bank or model.
 
@@ -27,7 +27,7 @@ reimplementing them for each screen, bank or model.
 Provider adapters translate accounts, balances and movements into a common model
 with explicit identifiers, date precision, signs, freshness and provenance. User
 interpretations remain separate from provider facts, so a correction need not
-erase a classification or confirmed receipt. Fintoc is the intended first bank
+erase a classification or confirmed receipt. Fintoc is the first implemented bank
 adapter; further sources require their own mapping and validation rather than
 being assumed interchangeable.
 
@@ -38,7 +38,7 @@ uses. That agent can combine financial context with **its own** tools and
 knowledge. LazyFinance remains responsible for the meaning and ownership of its
 results; it does not acquire every capability of the connected agent.
 
-The first-party dashboard and planned text/voice experiences remain valuable
+The first-party dashboard and text chat, with voice as a possible extension, remain valuable
 destinations themselves. External integrations complement them rather than
 replacing the product with a transport protocol.
 
@@ -51,24 +51,26 @@ fit the returned budget constraints and data limitations. The person decides
 whether to buy.
 
 This is a future interoperability scenario, not a promise that LazyFinance
-implements shopping, web search or purchases. MCP alone does not establish user
-consent, client discovery, permissions or safe financial advice. A later workflow
-that prepares an action would require a new contract and explicit approval;
-executing transactions is outside the initial agent scope.
+implements shopping, web search or purchases. Stage B supplies actual OAuth
+discovery/grants and a bounded action contract: first-party proposals need explicit
+saved-version approval; MCP execution needs separately consented write permissions.
+Those controls do not establish safe financial advice, shopping capability or
+money movement. Broader MCP management remains a next-stage follow-up.
 
 ## Foundation versus unvalidated opportunity
 
 | Present technical foundation | Opportunity still requiring delivery/validation |
 | --- | --- |
-| Shared financial services, dashboard and authenticated read-only MCP capabilities | Authorized external-client discovery/grants and a reference-client end-to-end flow |
-| Provider-neutral normalization and atomic owned ingestion tested with controlled data | Real provider linking/mapping and operational refresh behavior |
+| Shared financial services, management UI, MCP OAuth/grants, official reference-client checks and a local OpenCode read/revocation check | Broader MCP management coverage, required hosted-client write interoperability and useful multi-tool external workflows |
+| Provider-neutral normalization, owned Fintoc linking and manual import/refresh/recovery; controlled and dated sandbox evidence | Current tracking-policy/provider acceptance, live-bank/production conventions and additional adapters |
 | Internal user identity, signed private RPC and user-level RLS | Broader shared/family/organization or adviser ownership and permission models |
-| Exact financial facts, explicit declarations and review/unknown states | Useful grounded text-agent explanations, then voice and advanced analysis |
+| Exact financial facts, explicit declarations, grounded text-chat pipeline, reference cards and bounded approved actions | Rigorous live-model quality/value evaluation, then any selected voice or advanced analysis |
 
 The current [architecture](../technical/architecture.md) and
 [banking boundary](../../apps/api/src/banking/README.md) describe what exists.
-Neither a catalog row nor a conceptual diagram proves a live adapter, external
-authorization, conversational agent or production-ready platform.
+The [Stage B closure](../planning/stage-b/closure.md) distinguishes these delivered
+capabilities from their remaining verification and operational limits. Technical
+implementation is not proof of product value or a production-ready platform.
 
 ## What would demonstrate the value
 

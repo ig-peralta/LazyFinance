@@ -1,18 +1,29 @@
 # Stage B — Definition of Done
 
-These checks apply to closing **Sprint B / Stage B**, not to an individual issue
-or the whole product. The [workstreams](README.md#workstreams-from-linear) and
-[issue snapshot](../snapshots/backlog-2026-11-02.md#sprint-b-stage-b--parallel-product-tracks-in-progress)
-provide scope and individual acceptance criteria. A scope change or deferral must
-be explicit in the gate record, not hidden by a Done label.
+These checks apply to **Sprint B / Stage B**, not to an individual issue or the
+whole product. **Gate reviewed 2026-11-09: GO to Stage C planning**, against
+`main` at `1cda504`, with the [closure's explicit exceptions](closure.md).
+The [workstreams](README.md#workstreams-from-linear) and
+[fresh issue snapshot](../snapshots/backlog-2026-11-09.md#sprint-b-stage-b--parallel-product-tracks)
+provide scope and recorded issue outcomes.
 
-Sprint B is Done when:
+## Assessed stage criteria
 
-- [ ] The six workstreams in the [Sprint B Backlog](../snapshots/backlog-2026-11-02.md#sprint-b-stage-b--parallel-product-tracks-in-progress) have their committed child outcomes demonstrated or explicitly re-scoped at the gate: financial management/query semantics, usable web workflows, Firebase identity, external MCP authorization, provider-neutral Fintoc connectivity, and the first-party text assistant.
-- [ ] An authenticated user can exercise the delivered flows end to end. Financial calculations and identifiers remain consistent across backend, UI, agent, and MCP; provider data and demo data are not confused. Two-user ownership, error/freshness states, and initial read-only boundaries are tested.
-- [ ] Issue-specific completion checks and dependencies are verified with recorded tests/builds and linked implementation evidence; any blocked, unfinished, or deferred issue keeps its actual status and a documented reason.
-- [ ] A stage gate records which workstream results passed, the Git baseline, unresolved product limitations, and the scope decision. A **dated work snapshot and retrospective** preserve what was learned and what needs attention in the next sprint.
-- [ ] Only **after** reviewing Sprint B's actual results does the team select and create Sprint C issues, goal, priorities, and acceptance criteria. The current Sprint C milestone is a direction, not a pre-filled backlog.
+- [x] The six workstreams have delivered development outcomes or explicit gate exceptions: financial semantics/management, usable web workflows, identity, external MCP authorization, neutral Fintoc connectivity and the text assistant. All 46 tracked Stage B issues are Done; see the [outcome matrix](closure.md#delivered-workstreams).
+- [x] Recorded integration/browser checks exercise the delivered flows and preserve shared financial meanings, ownership and truthful error/freshness states. **Accepted exceptions:** current live-Firebase acceptance, independent live-model quality, the final bank-cutoff policy against the provider and required external-client write combinations remain unverified.
+- [x] Implementation and verification evidence is linked, with controlled, sandbox/live, informal and skipped checks distinguished. The original read-only scope is explicitly extended to bounded chat-approved actions and separately scoped MCP execution; broader MCP management is not claimed complete.
+- [x] The [gate record](closure.md), [dated snapshot](../snapshots/backlog-2026-11-09.md) and [retrospective](retrospective.md) preserve the baseline, decision, lessons and [accepted carryovers](closure.md#accepted-limitations-and-carryovers).
+
+The checked items record **acceptance of the stated development scope and
+exceptions**, not a claim that deferred checks passed. No production-release
+approval or exhaustive live-integration certification follows from these marks.
+
+## Next-stage selection
+
+Stage C selection follows this completed review. Broader MCP management is an
+identified follow-up; exact operations and other candidates require their own
+acceptance criteria. No Stage C issues exist in the November 9 snapshot. Selecting
+that backlog is a subsequent planning step, not unfinished Stage B implementation.
 
 The [platform-evolution record](platform-evolution.md) explains supporting changes
 made while the stage was being built; it does not close this checklist. The

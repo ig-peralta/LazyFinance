@@ -8,7 +8,7 @@ LazyFinance helps people understand their finances and make better decisions wit
 
 Personal finance analysis is the starting point, not the limit of the product. We want a trustworthy financial foundation from which to grow into richer analysis, new ways to interact, additional data sources and potentially other financial capabilities. The architecture should make these directions possible without presenting unvalidated use cases as release commitments.
 
-Questions that motivate the initial experience include “How much have I spent this month, and on what?”, “Am I spending more than last month?”, “How am I doing against my grocery budget?”, “Will I have enough money to reach the end of the month?”, “Is this charge unusual or duplicated?”, and “What could I change to reach my savings goal?” The initial agent reads, explains and recommends. Any future ability to prepare a financial action for user approval needs its own requirements, permissions and validation; executing transactions is not part of the initial experience.
+Questions that motivate the experience include “How much have I spent this month, and on what?”, “Am I spending more than last month?”, “How am I doing against my grocery budget?”, “Will I have enough money to reach the end of the month?”, “Is this charge unusual or duplicated?”, and “What could I change to reach my savings goal?” Some require later analysis, not just existing reads. The delivered text-agent pipeline reads, explains and prepares bounded proposals for explicit approval; it cannot approve or execute them itself. MCP has separately consented bounded writes. Moving money is outside this scope, and live-model answer quality remains a separate validation gate.
 
 The separate [innovation reference](innovation.md) explains the reusable financial
 capability layer, complementary source/destination integrations, example workflows
@@ -42,7 +42,9 @@ Use representative demo scenarios to build and revisit the model. The goal is **
 
 ### Stage B — advance several tracks after core validation
 
-Advance the financial API, web workflows, real-user identity, external MCP authorization, provider connectivity and our own text agent as parallel tracks. Define a neutral bank connector and implement Fintoc as its first adapter. Establish client discovery and user authorization to enable third-party MCP workflows. The first-party agent should draw on the same user-scoped financial capabilities; MCP access for other agents complements it rather than replacing it.
+Stage B delivered the financial API, web workflows, identity boundary, external MCP authorization, provider connectivity and the first-party text-agent pipeline. Fintoc is the first adapter behind a neutral banking boundary. Client discovery and user grants enable external MCP access to the same financial capabilities; that access complements LazyFinance's own interfaces rather than replacing them.
+
+**Gate:** [Stage B closed on 2026-11-09](../planning/stage-b/closure.md), with GO to Stage C planning against `main` at `1cda504`. The gate explicitly accepts live-validation and operational limitations for continued development, not public release. Bounded chat-approved actions and independently scoped MCP execution extend the original read-only plan; broader MCP management remains follow-up work.
 
 While Stage B was being built, the [platform direction evolved](../planning/stage-b/platform-evolution.md)
 to make persistence, contracts, ownership and session boundaries explicit. That
@@ -53,8 +55,8 @@ to their gate criteria.
 
 ### Stage C — broaden the experience
 
-Voice can extend a useful, reliable text experience. Advanced analysis (such as projections, anomalies, duplicate charges, price changes and goal simulations), further provider adapters and other financial capabilities are possible directions as their data needs and value become clear. MCP-enabled use cases can be considered alongside them. **Stage C work is selected only after Stage B is closed and reviewed**, so these examples do not prescribe its scope.
+The completed Stage B review identifies **broader MCP management tools** as a follow-up beyond the current bounded command set. Voice can extend a useful, reliable text experience. Advanced analysis (projections, anomalies, duplicate charges, price changes and goal simulations), further adapters and other financial capabilities remain possible directions as their data needs and value become clear. **Select Stage C's exact scope from the review**, rather than treating every candidate as committed. The November 9 snapshot contains no Stage C issues; its November 20 target remains tentative.
 
 ## Scope boundaries
 
-Personal financial understanding is the starting point. The initial agent reads, explains and recommends; moving money is outside that first experience. A broader financial platform, new audiences and action-oriented capabilities would require their own product decisions and user controls.
+Personal financial understanding is the starting point. Current actions change bounded application records, not money or bank facts. First-party models have no execution authority; external MCP changes require separately granted permissions. Additional operations and broader ownership models require explicit product decisions, user controls and validation.

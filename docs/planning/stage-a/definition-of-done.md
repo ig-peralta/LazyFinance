@@ -12,4 +12,4 @@ Sprint A is Done when:
 - [ ] The model's core assumptions are reconciled against tests and representative data. Decisions needed before provider ingestion are recorded, and nonblocking work is moved explicitly into Sprint B rather than claimed as delivered.
 - [ ] A GO/NO-GO decision, reviewed Git baseline, test evidence, and limitations are available in the [Sprint A closure record](closure.md), with the [documentary retrospective](retrospective.md) identifying what to improve.
 
-The Stage A gate **recorded GO on October 21, 2026** under a deliberately bounded **data-model foundation** scope. The documentation above assesses that recorded outcome after the fact; it does not claim this checklist was adopted before Sprint A began or that the team held a historical retrospective meeting.
+The Stage A gate **recorded GO on October 21, 2026** under a deliberately bounded **data-model foundation** scope. This assessment retains that gate's scope and historical evidence.

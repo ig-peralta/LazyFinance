@@ -2,19 +2,24 @@
 
 These **product quality requirements** apply to LazyFinance's authenticated dashboard, connected banking, MCP access and first-party text agent. Each requirement sets an acceptance target for the planned product. The [product requirements](product-requirements.md) define the capabilities and the [product vision](product-vision.md) sets their sequence; these targets balance trustworthiness with the time constraints of a capstone project.
 
+Stage B's [2026-11-09 closure](../planning/stage-b/closure.md) records development
+evidence and accepted exceptions. It does not certify every target below;
+live-provider/model, performance and operational gaps retain their release
+implications.
+
 Prioritize **NFR-01 through NFR-05** before exposing real-user or provider data. **NFR-06 through NFR-08** define a practical quality bar for the usable product; revisit their exact thresholds if the chosen agent runtime or deployment environment changes. Voice and additional providers inherit these rules when they enter Sprint C scope.
 
 ## NFR-01 — User isolation and access control
 
 **Goal:** A user sees or changes only their own financial records through the UI, HTTP API, MCP tools, first-party agent and bank connections. A third-party MCP client receives only the permissions explicitly authorized for that user.
 
-**Acceptance target:** Missing, invalid or expired credentials cannot access protected operations. Requests referencing another user's account, movement, tag, objective, income source, provider connection or conversation return an authorization/not-found response **without revealing that user's data**. Every agent/tool call is bound to the server-resolved user, not a user ID supplied by a model or client. Local mock credentials are unavailable in production mode.
+**Acceptance target:** Missing, invalid or expired credentials cannot access protected operations. Requests referencing another user's account, movement, tag, objective, income source, provider connection, conversation or saved action return an authorization/not-found response **without revealing that user's data**. Every agent/tool call is bound to the server-resolved user, not a model/client-selected owner. First-party action execution requires explicit saved-version approval; MCP execution requires its separately selected scopes and a current grant. Local mock credentials are unavailable in production mode.
 
 ## NFR-02 — Confidentiality and session privacy
 
 **Goal:** Banking and identity credentials, financial records and session state do not leak across clients, logs or deployments.
 
-**Acceptance target:** Provider secrets and administrative credentials remain server-side and outside the repository and browser bundles. Protected responses are marked private/non-cacheable and SSR revalidates the token before rendering user data; a change of browser account does not inherit another user's financial response. Sign-out removes local access; expired or known-revoked external-client credentials are rejected according to the selected authorization scheme. Demo fixtures use synthetic data.
+**Acceptance target:** Provider secrets and administrative credentials remain server-side and outside the repository/browser bundles. Only public content is prerendered; private pages use browser-owned verified sessions and CSR, with no protected transfer-state payload. Protected responses are private/non-cacheable, and account changes cannot inherit another user's financial response. Sign-out clears local access; invalid/expired/revoked external-client grants are rejected. Demo fixtures use synthetic data. Model-provider retention and operator chat/receipt/account-deletion policies must be explicit before rollout; expiry must not be advertised as guaranteed physical deletion.
 
 ## NFR-03 — Financial integrity and explainability
 
@@ -32,13 +37,15 @@ Prioritize **NFR-01 through NFR-05** before exposing real-user or provider data.
 
 **Goal:** The product remains understandable when a provider, identity service, model or financial read is unavailable.
 
-**Acceptance target:** A failed refresh leaves previously confirmed data labelled with its age rather than presenting it as a fresh balance. Empty, loading, error and retry states distinguish “no data” from “cannot retrieve data.” The first-party agent declines unsupported questions or incomplete-data claims instead of fabricating figures; a model/tool timeout produces a recoverable error without a partial financial write. A temporary integration outage does not silently change stored financial facts.
+**Acceptance target:** A failed refresh leaves last-good data labelled with its age. Empty, loading, error and retry states distinguish “no data” from “cannot retrieve data.” The assistant handles unsupported/incomplete claims explicitly; model/tool failure cannot approve or partially execute finance. Explicit approved/MCP commands and receipts commit atomically. Cancellation or a lost response never implies rollback; clients reconcile saved status instead of blindly replaying mutations. Temporary integration outages do not silently change stored financial facts.
 
 ## NFR-06 — Interactive performance
 
 **Goal:** Common financial reads remain responsive on a representative CLP demo dataset without requiring production-scale infrastructure for the capstone.
 
-**Acceptance target:** With a warmed local stack, at least 100 requests per route and up to 10 concurrent authenticated requests, p95 server/loopback response time for account balances, recent movements, monthly spending and spending-budget progress is **below 500 ms per route**. The UI shows visible progress within **one second** when an operation waits on a network/model response. Once the text-agent runtime is chosen, set and record a separate bounded response/timeout target appropriate to that runtime; this read target does not include model inference or bank synchronization.
+**Acceptance target:** With a warmed local stack, at least 100 requests per route and up to 10 concurrent authenticated requests, p95 server/loopback response time for account balances, recent movements, monthly spending and spending-budget progress is **below 500 ms per route**. The UI shows visible progress within **one second** when an operation waits on a network/model response. Record assistant response/timeout targets separately for the configured runtime/model; this read target does not include model inference or bank synchronization.
+
+The selected assistant runtime has [explicit generation, tool and stream bounds](../technical/financial-assistant.md#streaming-cancellation-and-limits), including a 60-second SDK total and 65-second HTTP signal. These are configured safety limits, not measured answer-latency results. The route-latency/load target above remains unverified at the Stage B gate.
 
 ## NFR-07 — Accessible, understandable core workflows
 

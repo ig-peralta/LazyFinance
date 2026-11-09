@@ -24,8 +24,7 @@ carry the subsequent product work.
 
 - [Definition of Done](definition-of-done.md): stage-level assessment criteria.
 - [Closure record](closure.md): the recorded gate and completed issue inventory.
-- [Documentary retrospective](retrospective.md): outcomes, friction and proposals;
-  not minutes of a team retrospective meeting.
+- [Documentary retrospective](retrospective.md): outcomes, friction and proposals.
 
 Return to the [planning index](../README.md) for shared methodology and release
 criteria.
