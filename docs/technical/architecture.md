@@ -35,11 +35,11 @@ code cannot import private schemas, signing code, Nest or database implementatio
 | PostgreSQL | Exact stored facts, constraints/keys, related-owner RLS and transaction atomicity | Firebase verification, product authorization for external MCP clients |
 
 Public/private tRPC are separate surfaces, not two routes to the same router.
-The public generated library contains 66 procedures; the private library contains
-72, including bootstrap-only `identity.resolve`. `/mcp` exposes eleven authenticated
+The public generated library contains 69 procedures; the private library contains
+81, including bootstrap-only `identity.resolve` and purpose-restricted OAuth state. `/mcp` exposes eleven authenticated
 read-only tools through the API's domain services, not direct persistence queries.
-Ordinary HTTP remains only for API `GET /`, persistence `GET /health` and MCP
-transport. Inventories and schema-change rules live in the
+Ordinary HTTP covers API `GET /`, persistence `GET /health`, MCP transport and
+OAuth discovery/protocol/browser-interaction routes. Inventories and schema-change rules live in the
 [RPC reference](rpc-contracts.md).
 
 ## Authentication, sessions and ownership
@@ -48,6 +48,15 @@ Only `auth.config` and `auth.loginMock` are anonymous public procedures. The API
 verifies Firebase/mock bearers and resolves the stable provider/issuer/subject to
 an internal UUID. First Firebase provisioning requires verified email and never
 links different subjects by email. Mock is existing-only and rejected in production.
+
+External MCP has a separate [standards-first OAuth boundary](mcp-authorization.md):
+`oidc-provider` handles discovery, CIMD/DCR, S256 PKCE and rotating credentials;
+authenticated first-party consent binds each grant to that same internal UUID.
+Every MCP request verifies audience, permission, expiry and persisted grant state.
+Firebase/app bearers are not accepted on `/mcp`, nor are MCP tokens first-party
+management credentials. Consent/settings pages do not connect banks or move money.
+OAuth artifacts use a dedicated signed purpose without financial RLS access;
+the API's encrypted adapter is distinct from banking and private-RPC keys.
 
 The API signs a short-lived assertion with the user/request UUID, or a restricted
 identity-bootstrap purpose. Persistence verifies it before starting a scoped SQL
@@ -160,7 +169,8 @@ not purged when the sync scope changes.
 Accounts and onboarding link to connection settings without requiring guide
 completion. Provider normalization and financial calculations remain backend-owned;
 the UI never reconstructs balances or marks failed imports as current data.
-Conversational agents and external MCP authorization remain separate.
+The first-party conversational agent remains separate future work. External
+client compatibility evidence is recorded in the [OAuth matrix](mcp-authorization.md#compatibility-and-verification-matrix), not inferred from documentation alone.
 
 ## Operations
 

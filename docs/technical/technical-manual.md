@@ -76,6 +76,16 @@ from the app runtimes; persistence requires a restricted runtime login.
 `pnpm rpc:keys` prints a fresh pair; private key only to API, public key only to
 persistence. Do not commit the output.
 
+External MCP OAuth is optional but has **no application-token fallback**. Apply
+migration 027 to the explicitly chosen database, generate separate stable secrets
+with `pnpm mcp:keys`, and configure API-only `MCP_OAUTH_ISSUER`,
+`MCP_OAUTH_UI_ORIGIN`, `MCP_OAUTH_STATE_KEY`, `MCP_OAUTH_JWKS` together. Use canonical
+origins and a same-site UI/API deployment for signed interaction cookies. HTTPS
+is mandatory in production; `MCP_OAUTH_TRUST_PROXY` is only for a trusted,
+header-sanitizing TLS edge. Setup, client registration, rate limits, key recovery
+and the deliberately refused destructive migration rollback are covered in the
+[MCP operations guide](mcp-authorization.md#configuration-and-operations).
+
 The `PERSISTENCE_RPC_URL` is the service base URL (the client appends `/trpc`).
 PEMs in the example dotenv files use escaped newlines; replace placeholders with
 the generated matching pair. These are service keys, not Firebase Admin keys or
@@ -134,9 +144,11 @@ not proof of every provider integration's readiness.
 Business calls use tRPC under `/trpc`: `auth.config`, `auth.loginMock`,
 `auth.principal`, accounts, transactions, objectives/progress, summaries, income,
 tags and rules. The checked-in [public generated router](../../libs/rpc-api/src/generated/server.ts)
-is the procedure inventory. Business REST routes were retired. `POST /mcp` retains
-the same verified principal and read-only tools; external-client OAuth is not
-implemented. Mock login uses `demo@lazyfinance.cl` / `password` only in development
+is the procedure inventory. Business REST routes were retired. `/mcp` retains
+eleven read-only tools through the same financial services but requires a separate
+OAuth client grant, not a Firebase/development app bearer. Discovery/protocol and
+cookie-bound interaction routes are HTTP; grant settings use authenticated
+`mcpAccess` RPC. Mock login uses `demo@lazyfinance.cl` / `password` only in development
 after seeding. Production mode requires real Firebase configuration.
 
 The liveness routes confirm a listening application, not an end-to-end provider,
@@ -158,7 +170,7 @@ API verification; an old application cookie is expired, not adopted as identity.
   Migrations/provisioning are init-job work, never runtime startup side effects.
 
 The local deployment uses development defaults. Production TLS, secret management,
-key rotation, backups and independent client authorization remain operator work.
+key rotation, backups and public OAuth abuse controls remain operator work.
 Browser API URLs remain environment-specific build configuration. Change
 `CORS_ORIGINS` to allow the actual UI origin in each environment.
 
@@ -223,6 +235,18 @@ fixture safety and live-Firebase distinctions. No real user database is a fixtur
   and authorized-domain setup, email templates, token audience/issuer and paired
   optional Admin credentials. A credential collision is not permission to merge
   UIDs or delete either account; use the existing method and explicit linking.
+- MCP 401: discover and authorize with OAuth; do not copy a Firebase/development
+  app token. Check the exact issuer/resource, scope, grant expiry/revocation and
+  stable OAuth keys. A 421 means the effective Host/protocol is not the configured
+  issuer; fix proxy/URL configuration rather than trusting arbitrary headers.
+- Consent unavailable: check the original browser, same-site API/UI hosts,
+  credentialed interaction CORS and the ten-minute interaction lifetime. After an
+  uncertain decision, inspect connected apps instead of automatically approving again.
+  If no `/oauth/interaction/…/details` request is sent and the resource error says
+  `Cannot read properties of undefined (reading 'parse')`, the UI may be serving
+  stale workspace contracts. Rebuild UI dependencies, restart the UI task and
+  reload the browser. The dev-server prebundle exclusion prevents this cache from
+  freezing contract exports; do not rotate keys or reset a database to fix it.
 - Oversized provider run: limits are 100 pages/50,000 records plus 32 MiB normalized
   and 64 MiB private JSON. It fails atomically, not as partial financial writes.
 - A failed/ambiguous mutation is not automatically retried. Only an explicit

@@ -15,6 +15,7 @@ implementation rules in their owning documents instead of duplicating them here.
 | Signing, scoped transactions, RLS, atomic commands and resource limits | [Persistence security](docs/technical/persistence-security.md) |
 | Tables, relationships, exact representations and migrations | [Database model](docs/technical/database-model.md) |
 | Authentication, providers and internal user identity | [Identity](docs/technical/identity.md) |
+| External MCP authorization, OAuth/client compatibility and grant ownership | [MCP authorization](docs/technical/mcp-authorization.md) |
 | UI resources, cancellation, browser sessions and public/private rendering | [UI data lifecycle](docs/technical/ui-data-lifecycle.md) |
 | Installation, environments, Compose and troubleshooting | [Technical manual](docs/technical/technical-manual.md) |
 | Build, formatting, injection, type safety, test layout and verification tiers | [Development workflow](docs/technical/development-workflow.md) |

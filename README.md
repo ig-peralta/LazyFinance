@@ -45,7 +45,7 @@ flowchart TB
     style privateData fill:none,stroke:#64748b,stroke-dasharray:5 5
 ```
 
-The API verifies users and owns financial rules, scheduling, tag matching and provider orchestration. It has no database connection or credentials. Persistence verifies short-lived signed service assertions and enforces user RLS in a transaction per procedure. Only migration/seed tooling receives owner credentials. There is no tenancy layer or automatic old-database adoption. Local demo data supports validation without a bank adapter. Owned Fintoc authorization, access checks, relink, disconnect, explicit first import and repeatable snapshot refresh/recovery are available in the app. Bank settings distinguish readonly synchronization status and bank-source freshness from access; stored balances remain in Cuentas. Bank-forced/scheduled refresh, external-client authorization and the conversational agent remain later work. See the [architecture](docs/technical/architecture.md), [RPC/RLS security](docs/technical/persistence-security.md) and [banking boundary](apps/api/src/banking/README.md).
+The API verifies users and owns financial rules, scheduling, tag matching and provider orchestration. It has no database connection or credentials. Persistence verifies short-lived signed service assertions and enforces user RLS in a transaction per procedure. Only migration/seed tooling receives owner credentials. There is no tenancy layer or automatic old-database adoption. Local demo data supports validation without a bank adapter. Owned Fintoc authorization, access checks, relink, disconnect, explicit first import and repeatable snapshot refresh/recovery are available in the app. Bank settings distinguish readonly synchronization status and bank-source freshness from access; stored balances remain in Cuentas. External MCP uses separate OAuth grants, browser consent and per-client revocation; Firebase/development app tokens no longer authenticate `/mcp`. See the [authorization/setup/compatibility guide](docs/technical/mcp-authorization.md). Bank-forced/scheduled refresh and the conversational agent remain later work. See also the [architecture](docs/technical/architecture.md), [RPC/RLS security](docs/technical/persistence-security.md) and [banking boundary](apps/api/src/banking/README.md).
 
 Bank movement tracking begins on each connection's first-link day in Santiago;
 there is no automatic pre-link backfill. Reported balances stay independent of
@@ -90,10 +90,11 @@ reading order and distinction between implementation, evidence and targets.
 | --- | --- |
 | [Architecture](docs/technical/architecture.md) | Three-app/runtime boundaries, responsibility split and implementation scope |
 | [Private RPC, transactions and RLS](docs/technical/persistence-security.md) | Assertions, bootstrap, runtime roles, related-owner policies, atomicity and budgets |
-| [Database model and implemented ERD](docs/technical/database-model.md) | All 24 tables, relationships/keys, representation and fresh-migration lifecycle |
+| [Database model and implemented ERD](docs/technical/database-model.md) | All 26 tables, relationships/keys, representation and migration lifecycle |
 | [RPC contracts and clients](docs/technical/rpc-contracts.md) | Public/private procedures, MCP tools, type-only libraries and generation workflow |
 | [Persistence read pattern](docs/technical/persistence-reads.md) | Purpose-shaped joins/aggregates, cardinality, snapshots and data-access review rules |
 | [Provider-neutral identity](docs/technical/identity.md) | External provider/issuer/subject mapping, internal principals and current provider-selection limits |
+| [External MCP authorization](docs/technical/mcp-authorization.md) | OAuth, independent grants, consent/revocation, setup and verified-versus-reviewed client compatibility |
 | [UI/session/rendering lifetimes](docs/technical/ui-data-lifecycle.md) | Verified scopes, resources, cancellation, command/read ordering and public-only hydration |
 | [Technical manual](docs/technical/technical-manual.md) | Installation, environment/credential separation, Compose, operation and troubleshooting |
 | [Development and verification](docs/technical/development-workflow.md) | Build/tooling/DI conventions and serverless, HTTP, DB and live-provider verification tiers |
@@ -183,6 +184,7 @@ These scripts run from the repository root. Turborepo runs tasks in the workspac
 | `pnpm lint` / `pnpm lint:fix`                      | Check Biome formatting, lint rules and import order / apply safe fixes.        |
 | `pnpm format` / `pnpm format:check`                | Format supported workspace files with Biome / check formatting without writing. |
 | `pnpm rpc:generate` / `pnpm rpc:check`              | Generate both router libraries / reject generated drift.                      |
+| `pnpm mcp:keys`                                   | Print new API-only OAuth state/signing secrets; never commit the output. |
 | `pnpm check:architecture`                          | Check database, service, browser and router boundaries.                       |
 | `TEST_POSTGRES_OWNER_URL=... pnpm test:integration` | Start compiled persistence and test both RPC boundaries on an isolated `_test` DB. |
 | `pnpm resources`                                  | Pass additional arguments to `docker compose -f docker/local/resources.yml`. |

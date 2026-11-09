@@ -66,7 +66,8 @@ unselected mode is not a fallback credential.
 ## Authentication and atomic resolution
 
 1. A client sends its credential as `Authorization: Bearer <token>` to protected
-   public RPC/MCP. Client presentation state is never API authentication.
+   first-party public RPC or the browser OAuth interaction. Client presentation
+   state is never API authentication; external MCP tokens use the separate flow below.
 2. `AuthService` selects the configured verifier. It validates credentials before
    producing the provider-neutral identity; callers cannot choose their owner.
 3. The API signs a short-lived **identity-bootstrap** context containing that
@@ -209,11 +210,14 @@ To support another provider:
 - Verify first/repeat/concurrent resolution, issuer separation, collisions,
   rejected credentials, two-user isolation and obsolete-session races.
 
-External MCP-client authorization remains a separate capability. A future client
-grant/token must resolve to the same internal user with its own permissions and
-expiry/revocation rules; it must not be mistaken for a Firebase ID token or choose
-a different financial-owner convention. Shared/family/organization ownership is
-also not supplied by having multiple identity namespaces.
+External MCP authorization is a [separate implemented capability](mcp-authorization.md).
+Firebase/mock verification authenticates the person at consent; the server binds
+the grant to the verified internal user. Clients receive resource-bound OAuth
+credentials, not Firebase tokens. Every MCP request checks the grant's owner,
+client, permission, audience, expiry and revocation before selecting a private
+user context. App logout is not grant revocation. Connected-app revocation does
+not change Firebase methods or bank Links. Neither flow changes the financial-owner
+convention or supplies shared/family/organization ownership.
 
 ## Verification scope
 
