@@ -1,18 +1,19 @@
 # Implemented database model
 
 This reference describes the checked-in Kysely migrations, not a conceptual
-product model. PostgreSQL 18 holds **26 application tables** in fixed `identity`
-and `finance` schemas. Twenty-five sensitive tables force user/identity/OAuth-purpose RLS;
+product model. PostgreSQL 18 holds **28 application tables** in fixed `identity`,
+`finance` and `assistant` schemas. Twenty-seven sensitive tables force user/identity/OAuth-purpose RLS;
 `finance.provider` is the shared read-only catalog exception. There is no tenancy,
 membership or account-sharing model. See [security and RLS](persistence-security.md)
 for policy/grant details.
 
 The source of truth is
 [`database/migrations`](../../apps/persistence/src/database/migrations).
-Runtime types live in schema-root `identity.tables.ts` / `finance.tables.ts` maps
+Runtime types live in schema-root `identity.tables.ts` / `finance.tables.ts` / `assistant.tables.ts` maps
 and table-local `*.tables.ts` files under
 [`identity`](../../apps/persistence/src/identity) and
-[`finance`](../../apps/persistence/src/finance). Migrations deliberately do not
+[`finance`](../../apps/persistence/src/finance) and
+[`assistant`](../../apps/persistence/src/assistant) / [`actions`](../../apps/persistence/src/actions). Migrations deliberately do not
 import those evolving runtime interfaces.
 
 ## Tables, keys and ownership
@@ -27,6 +28,8 @@ All unqualified table names in the finance section below belong to `finance`.
 | `identity.onboarding` | PK `user_id` → user | Optional-guide skip/completion; self-owned read/insert and status/timestamp update, no runtime delete |
 | `identity.mcp_grant` | Opaque text `id`; unique `interaction_id`; `user_id` → user | Immutable owner/client/resource/scopes/maximum-30-day expiry; self-owned listing and monotonic revocation |
 | `identity.mcp_artifact` | PK `(model, key)` with SHA-256 key; optional `account_id` → user | Allowlisted OAuth provider state encrypted by API; expiry/consumption/UID/grant indexes, dedicated-purpose writes |
+| `assistant.conversation` | `id`; `user_id` → user; owner/update-time index | Server-owned bounded turns and sources, generation lease and fixed maximum-30-day availability; no financial facts or credentials |
+| `assistant.action` | `id`; `user_id` → user; nullable `conversation_id` → conversation; unique `(user_id, origin, request_id)` | Versioned proposals and immutable finalized receipts; client/grant-bound direct execution; chat deletion only nulls its reference |
 | `provider` | `id`; unique `identifier` | Shared catalog; runtime SELECT only |
 | `provider_connection` | `id` → provider; `user_id`; unique provider/mode/external Link ID | Owned access status, API-encrypted credential/version, institution/holder and terminal disconnect/remote-cleanup state; legacy fixture fields remain nullable |
 | `provider_link_intent` | `id`; unique provider intent ID; optional original/completed connection FKs | Owner-bound, expiring callback claims with hashed exchange token, version-pinned relink and durable completion |
@@ -56,7 +59,7 @@ policy independently rejects it.
 
 ## Implemented relationship diagram
 
-The Mermaid ERD uses `identity_` / `finance_` entity prefixes for SQL schema names.
+The Mermaid ERD uses `identity_` / `finance_` / `assistant_` entity prefixes for SQL schema names.
 It shows every application-table FK, optional references and selected key columns;
 it omits other columns, indexes, check constraints and RLS expressions. It is a
 source-verified reference, not generated DDL or an ownership-policy diagram.
@@ -67,6 +70,9 @@ erDiagram
     identity_user ||--o| identity_onboarding : records
     identity_user ||--o{ identity_mcp_grant : authorizes
     identity_user o|--o{ identity_mcp_artifact : identifies
+    identity_user ||--o{ assistant_conversation : owns
+    identity_user ||--o{ assistant_action : owns
+    assistant_conversation o|--o{ assistant_action : references
     identity_user ||--o{ finance_provider_connection : owns
     identity_user ||--o{ finance_provider_link_intent : initiates
     identity_user ||--o{ finance_account : owns
@@ -138,6 +144,27 @@ erDiagram
         string grant_id
         string ciphertext
         timestamptz consumed_at
+    }
+    assistant_conversation {
+        uuid id PK
+        uuid user_id FK
+        string title
+        jsonb turns
+        uuid lease
+        timestamptz lease_expires_at
+        timestamptz expires_at
+    }
+    assistant_action {
+        uuid id PK
+        uuid user_id FK
+        uuid conversation_id FK
+        uuid turn_id
+        string origin
+        uuid request_id
+        integer version
+        string status
+        jsonb results
+        timestamptz expires_at
     }
     finance_provider {
         uuid id PK
@@ -347,8 +374,9 @@ is distinct from permanent tombstones, which replay never reactivates.
 
 ## Migration and seed lifecycle
 
-Twenty-seven migrations are globally ordered across `migrations/identity` and
-`migrations/finance`: schema/bootstrap foundations plus the table migrations.
+Twenty-nine migrations are globally ordered across `migrations/identity`,
+`migrations/finance` and `migrations/assistant`: schema/bootstrap foundations plus
+the table migrations.
 Kysely's PostgreSQL migrator owns locking and transactional DDL/ledger updates.
 Each new sensitive table brings its constraints, indexes, grants and RLS together;
 do not create an unprotected intermediate migration. The owner-only Kysely ledger
@@ -361,11 +389,33 @@ changes and validate them on a disposable target. Identity foundation `down`
 paths intentionally refuse destructive rollback. Database roles are cluster-wide,
 so a fresh database does not eliminate unsafe pre-existing role collisions.
 
-Migration 027 upgrades the current 026 schema by adding the two OAuth tables and
+Migration 027 upgrades the 026 schema by adding the two OAuth tables and
 their protections without rewriting prior application rows or policies. Its
 `down` refuses data-destroying rollback; plan revocation/recovery explicitly.
 Do not migrate an existing review or development database just because a test
 database upgrade passed.
+
+Migration 028 adds only `assistant.conversation` in a new dedicated schema with
+owner RLS, column-limited updates, bounded JSON and fixed expiry. It preserves
+existing financial rows and refuses destructive rollback. Its 30-day availability
+is not a promise of physical deletion by a background job; see
+[assistant retention and cleanup](financial-assistant.md#dedicated-schema-and-bounded-persistence).
+
+Migration 029 adds `assistant.action`; the clean grant definition in 027 already
+allows the supported MCP scopes. It stores bounded request/normalized-command/
+context/result JSON (65,536 combined bytes), immutable ownership/origin/idempotency
+metadata and versioned 15-minute proposals. Runtime cannot rewrite finalized
+applied/cancelled records or delete them. Execution receipts are atomic with their
+domain changes and survive chat deletion (`ON DELETE SET NULL`). No automatic
+receipt purge exists; named commands enforce 10,000 records per owner. Pending
+expiry is derived, not physical deletion. Destructive `down` is refused. See
+[confirmed actions](financial-assistant.md#confirmed-actions-and-independent-mcp-delegation).
+
+The current unreleased assistant baseline targets fresh databases. Its migrations
+create the final shapes directly; it carries no upgrade bridge for previous
+development histories or older grant constraints. A reset of an existing database
+requires explicit authorization for that exact target, and is separate from normal
+migration/runtime startup. Do not edit migrations to upgrade a retained/live database.
 
 Seeding is explicit owner-only demo tooling, never startup or migration work.
 Stable fixture IDs allow repeatable updates and preserve existing transaction

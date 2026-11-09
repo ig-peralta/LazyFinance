@@ -19,7 +19,7 @@ Client bearer → API verifier → internal application user UUID
 The API is trusted to authenticate users and assert their identities. Persistence
 does not receive the browser's Firebase token and does not verify Firebase itself.
 Only persistence executes application SQL. There is one database, fixed
-`identity` and `finance` schemas, and user-level ownership: no tenant selection,
+`identity`, `finance` and `assistant` schemas, and user-level ownership: no tenant selection,
 organizations, shared accounts or general administrator context.
 
 The public tRPC middleware permits anonymous access only to `auth.config` and
@@ -141,7 +141,7 @@ for NestJS-tRPC provider discovery, not raw connection access.
 
 Normal procedures use read-committed. `income.expectedFacts`, `income.facts`,
 `tagRules.facts`, `tagRules.candidates`, `providerSync.facts`, `providerSync.status`, `objectives.budget`,
-`objectives.budgetHistory` and `transactions.expenseAdjustments` request
+`objectives.budgetHistory`, `financialActions.preview` and `transactions.expenseAdjustments` request
 repeatable-read snapshots.
 All user mutations acquire the same per-user advisory transaction lock. This
 serializes writes affecting prepared inputs, including rule insertion/removal
@@ -155,7 +155,7 @@ incorrectly commit. Result-size failures also throw before commit.
 
 ## RLS and related ownership
 
-All 25 sensitive application tables enable **and force** RLS. The twenty-sixth,
+All 27 sensitive application tables enable **and force** RLS. The twenty-eighth,
 `finance.provider`, is a shared runtime-read-only catalog. Runtime grants and RLS
 are both required: a policy alone is not permission to access a table.
 
@@ -176,6 +176,29 @@ status/completion time. Runtime cannot delete or reassign those records, and
 neither bootstrap nor unscoped requests can access them. This grants no profile
 or external-identity write permission. Its named upsert makes completion terminal
 and retains the first server timestamp; no financial facts are changed.
+
+`assistant.conversation` is a separate owner-RLS schema, with no runtime CREATE
+or owner/ID/retention reassignment. Its named commands enforce creation/turn quotas,
+nonce replay and lease-checked completion under the user advisory lock. Model
+calls remain outside SQL; conversation deletion changes no financial facts. See
+[assistant persistence, cancellation and retention limits](financial-assistant.md).
+
+`assistant.action` forces owner RLS and checks the optional conversation's owner.
+Runtime cannot update ownership/origin/request/grant/client metadata or delete
+records; a trigger forbids rewriting finalized applied/cancelled records. Chat
+deletion only nulls its FK. Preparation/revision is not a financial write. Approval
+requires a completed originating turn, exact current version, unexpired proposal,
+current schedule policy and matching factual fingerprints under the user write
+lock. Named domain commands and the durable receipt commit atomically. Stale
+proposals change no finance; ambiguous responses are reconciled by read, not replay.
+Normalized command targets, values and dependent tags must match the previewed
+request, so an undeclared command cannot bypass its scope checks.
+MCP direct execution separately rechecks granted write scopes under a stored-grant
+`FOR SHARE` lock, binding idempotency to owner, origin, request UUID, payload and
+client grant. Existing-record changes require a current preview fingerprint, not
+a model-supplied approval flag. No model/provider call occurs in this transaction.
+Identical committed requests return receipts even after their original schedule
+can no longer be created; invalid fresh commands still fail without a write.
 
 `identity.mcp_artifact` permits dedicated-purpose OAuth state writes only, with
 an explicit model allowlist, hashed IDs, API-encrypted payloads and expiry/atomic
@@ -216,6 +239,7 @@ or generic transaction scripts.
 | --- | --- | --- |
 | Onboarding finish | Upsert only the scoped user's skip/completion; retain terminal completion and its first timestamp under concurrent writes | Authenticated optional-guide intent; no financial prerequisites or writes |
 | External-client grant | Validate provider-artifact ownership, bind immutable consent; atomically consume credentials and revoke/delete a family | Verify first-party consent, run the OAuth protocol, encrypt/decrypt artifacts and enforce resource/scope/owner on MCP |
+| Financial action | Recheck saved approval/version/fingerprint or MCP grant; execute bounded named commands and record one durable receipt, including dependent tags and decision events | Normalize exact money/schedules, prepare proposals, authenticate explicit UI approval or separately scoped MCP execution; no model execution authority |
 | Income confirmation | Lock/check source and eligible movement; reject any retained expense allocation; upsert one receipt | Calendar/money calculations and response composition |
 | Expense adjustment set/remove | Lock both owned movements; check eligibility, income exclusivity and credit/purchase capacity including retained review allocations; atomically upsert/remove one pair | Validate exact positive money and explicit refund/reimbursement intent; interpret gross/net aggregates |
 | Tag decision | Decision and append-only event together | Normalize/rank rules and calculate suggestions |

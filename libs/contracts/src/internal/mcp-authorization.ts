@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { McpPermissionSchema } from "../financial-actions";
 import { McpGrantSchema } from "../mcp-authorization";
 
 // Only enabled oidc-provider models. Financial data never enters this store.
@@ -57,10 +58,7 @@ export const BindMcpGrantSchema = z.strictObject({
   clientId: z.string().min(1).max(2048),
   clientName: z.string().min(1).max(200),
   resource: z.url().max(2048),
-  scopes: z
-    .array(z.enum(["finance:read", "openid", "offline_access"]))
-    .min(1)
-    .max(3),
+  scopes: z.array(McpPermissionSchema).min(1).max(7),
 });
 
 export const McpGrantIdentitySchema = McpGrantSchema.extend({

@@ -1,5 +1,7 @@
 export * from "./accounts";
+export * from "./assistant";
 export * from "./common";
+export * from "./financial-actions";
 export * from "./identity";
 export * from "./income";
 export * from "./mcp-authorization";
