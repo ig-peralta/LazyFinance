@@ -16,5 +16,6 @@ import { SavingsProgressService } from "./savings-progress.service";
     SavingsProgressService,
     ObjectivesRpc,
   ],
+  exports: [ObjectivesService, SavingsProgressService],
 })
 export class ObjectivesModule {}

@@ -1,4 +1,5 @@
 import {
+  FinancialWriteScopeSchema,
   McpConsentDecisionSchema,
   McpConsentResultSchema,
 } from "@lazyfinance/contracts";
@@ -74,6 +75,7 @@ export class McpInteractionHttp {
           decision.data.approve,
           req,
           res,
+          decision.data.scopes ?? [],
         ),
       ),
     );
@@ -96,7 +98,7 @@ export class McpOAuthHttp {
       resource: settings.resource,
       authorization_servers: [settings.issuer],
       bearer_methods_supported: ["header"],
-      scopes_supported: [MCP_READ_SCOPE],
+      scopes_supported: [MCP_READ_SCOPE, ...FinancialWriteScopeSchema.options],
       resource_name: "LazyFinance · Consultas financieras",
     });
   }

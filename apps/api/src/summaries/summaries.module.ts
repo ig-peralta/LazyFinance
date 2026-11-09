@@ -10,5 +10,6 @@ import { SummariesService } from "./summaries.service";
   imports: [PersistenceModule, IncomeModule, FinancialEvidenceModule],
   controllers: [SummariesMcpController],
   providers: [SummariesService, SummariesRpc],
+  exports: [SummariesService],
 })
 export class SummariesModule {}

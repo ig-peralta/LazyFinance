@@ -121,12 +121,13 @@ export async function startOAuthApi(f: Fixture, oauthFetch?: typeof fetch) {
       redirectUri?: string;
     },
     token = f.token,
+    scopes: string[] = [],
   ) => {
     const response = await pending.agent
       .post(`/oauth/interaction/${pending.id}/decision`)
       .set("Origin", uiOrigin)
       .set("Authorization", `Bearer ${token}`)
-      .send({ approve: true })
+      .send({ approve: true, ...(scopes.length ? { scopes } : {}) })
       .expect(201);
     const { redirectTo } = McpConsentResultSchema.parse(response.body);
     const resumed = await pending.agent

@@ -89,7 +89,13 @@ describe.skipIf(!integration)("official MCP SDK 2.4 reference client", () => {
         { versionNegotiation: { mode: "legacy" } },
       );
       await client.connect(transport);
-      expect((await client.listTools()).tools).toHaveLength(11);
+      const tools = (await client.listTools()).tools;
+      expect(tools).toHaveLength(16);
+      for (const tool of tools) expect(tool.inputSchema.type).toBe("object");
+      expect(
+        tools.find((tool) => tool.name === "previsualizar_accion_financiera")
+          ?.inputSchema.required,
+      ).toEqual(["action"]);
       const result = await client.callTool({
         name: "consultar_saldos_cuentas",
         arguments: {},

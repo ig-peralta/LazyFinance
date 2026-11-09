@@ -1,9 +1,11 @@
 # LazyFinance API
 
-NestJS financial workflow service exposing public tRPC at `/trpc` and read-only
+NestJS financial workflow service exposing public tRPC at `/trpc` and scoped
 MCP at `/mcp`. Ordinary HTTP also serves OAuth discovery/protocol/browser interaction
-and the public `GET /` listening check. Business REST controllers have been retired;
-Angular uses vanilla tRPC clients apart from the cookie-bound OAuth interaction.
+and the public `GET /` listening check. The first-party assistant streams bearer-only
+NDJSON at `POST /assistant/turns`; configuration/history use tRPC. Business REST
+controllers have been retired. Angular otherwise uses vanilla tRPC clients apart
+from the cookie-bound OAuth interaction.
 
 Technical references: [architecture](../../docs/technical/architecture.md),
 [provider-neutral identity](../../docs/technical/identity.md),
@@ -45,6 +47,8 @@ ignored `apps/api/.env`, and configure:
 | `FINTOC_PUBLIC_KEY`, `FINTOC_SECRET_KEY`, `FINTOC_TOKEN_ENCRYPTION_KEY` | Optional matched-mode Movements keys plus a separate 32-byte hex token-encryption key; API-only. |
 | `MCP_OAUTH_ISSUER`, `MCP_OAUTH_UI_ORIGIN`, `MCP_OAUTH_STATE_KEY`, `MCP_OAUTH_JWKS` | Optional all-or-none external MCP OAuth; canonical origins and independent stable API-only state/signing secrets (`pnpm mcp:keys`). |
 | `MCP_OAUTH_TRUST_PROXY` | Default `false`; enable only behind a trusted TLS edge replacing forwarded headers. |
+| `ASSISTANT_PROVIDER` | Default `disabled`; `openai`, `anthropic`, `google`, `openai-compatible`, or explicit offline development `demo`. |
+| `ASSISTANT_MODEL`, `ASSISTANT_API_KEY`, `ASSISTANT_BASE_URL` | Explicit model/provider credentials; compatible endpoint URL only. See the provider-neutral assistant guide. |
 
 The API needs the private RPC URL/signing key, not database configuration.
 App-local dotenv files are not the root Compose `.env`.
@@ -72,8 +76,23 @@ access tokens, rotating refresh credentials and maximum-thirty-day owner-bound
 grants. Without complete OAuth configuration, MCP rejects access instead of falling
 back. `/autorizar-mcp` and `/aplicaciones-conectadas` provide first-party consent
 and confirmed revocation; OAuth credentials cannot call first-party management RPC.
-Apply migration 027 and follow the [setup/security/client matrix](../../docs/technical/mcp-authorization.md).
+MCP now exposes fourteen financial/supporting reads plus action preview/direct
+execution. New write scopes require explicit consent and default off; existing
+read grants remain read-only. Existing-record changes pin a preview fingerprint,
+and a stable request UUID prevents duplicate execution. Apply migrations through
+029 only to a separately authorized target and follow the [setup/security/client matrix](../../docs/technical/mcp-authorization.md).
 Official SDK 2.4.0 verification does not claim live ChatGPT, Claude or OpenCode support.
+
+The [first-party financial assistant](../../docs/technical/financial-assistant.md)
+reuses financial/supporting read services through bounded provider-neutral AI SDK
+orchestration. It accepts no browser history/owner. Models prepare proposals and
+read status, but only explicit UI approval executes the saved ID/version after
+revalidation. Budget/goal creation, tag lifecycle and individual tag/no-tag/reset
+decisions share an atomic executor with separately scoped MCP writes. Conversations
+(migration 028) and independent durable action receipts (029) live in `assistant`;
+deleting chat does not undo finance. Provider keys remain API-only. It defaults disabled, with
+live provider/model quality and operational cost/privacy review still separate
+release gates.
 
 ## Contracts and checks
 

@@ -7,8 +7,9 @@ evidence that every named client or a production deployment has been verified.
 ## Decision: standards first, compatibility by evidence
 
 Implement one OAuth authorization server profile, not separate authentication
-schemes for ChatGPT, Claude, OpenCode or another client. Keep the existing eleven
-Spanish read-only financial tools and their calculations unchanged.
+schemes for ChatGPT, Claude, OpenCode or another client. Keep the original eleven
+financial read tools and their calculations unchanged. Three supporting reads and
+two explicitly scoped action tools extend that surface to sixteen tools.
 
 The baseline is the published [MCP authorization specification](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization),
 reviewed 8 November 2026. Authorization compatibility is separate from the MCP
@@ -51,7 +52,7 @@ negotiation; this is not a complete modern-transport conformance claim.
   fetches. Bound response bytes/time and caching. Never replace its secure fetch
   dispatcher with an unrestricted production fetch or follow unsafe redirects.
 - Advertise `finance:read` as the protected resource's required permission. It
-  covers the existing financial read tools and permits no writes. Identity and
+  covers the financial/supporting read tools and permits no writes. Identity and
   offline scopes, if exposed by the authorization server, do not authorize a tool.
 - Issue opaque ten-minute access tokens, single-use sixty-second authorization
   codes, rotating refresh tokens and a maximum 30-day grant. Refresh-token reuse revokes the grant
@@ -67,7 +68,8 @@ financial management RPC. Conversely, Firebase/development tokens are not extern
 MCP grants.
 
 The first-party `/autorizar-mcp?interaction=…` interaction displays the authenticated account, client identity,
-callback hostname and read-only capabilities. Client names from registration are
+callback hostname, read capabilities and any requested optional write permissions.
+Write choices are unchecked by default. Client names from registration are
 claims, not an endorsement. Approval and denial are explicit and bound to the
 provider's browser interaction; cancellation, account replacement and ambiguous
 responses never automatically replay approval. Do not enable the provider's
@@ -79,6 +81,49 @@ access and refresh credentials without disconnecting a bank or changing financia
 records, Firebase methods or another client's grant. App logout is not implicit
 external-client revocation. Already-running requests need not be cancelled, but
 new requests after confirmed revocation must fail.
+
+## Optional financial write delegation
+
+`finance:read` remains required. No existing grant is upgraded automatically.
+New connections may request these independently selectable capabilities:
+
+| Scope | Permitted action |
+| --- | --- |
+| `finance:budgets:write` | Create a budget |
+| `finance:goals:write` | Create a savings goal |
+| `finance:tags:write` | Create, edit or archive tags |
+| `finance:movements:tag` | Tag, explicitly leave untagged, or reset one movement |
+
+Consent persists only selected permissions and records rejected scopes in the
+provider grant so resuming cannot loop or silently restore declined writes.
+Connected-app settings display granted capabilities. Token scopes are intersected
+with the stored grant, and each write checks its required scopes again. An
+objective with `newTags` also requires `finance:tags:write`. Reconnect with fresh
+explicit consent to change capabilities; refresh cannot upgrade a read-only grant.
+
+`previsualizar_accion_financiera({ action })` returns owned current context and a
+selection fingerprint without changing finance. It is read-only but requires the
+action's write permissions. `ejecutar_accion_financiera` executes directly with
+those permissions: it does **not** create a chat approval request or require
+LazyFinance's card buttons. The external host owns its confirmation UX. Tool
+annotations identify execution as destructive/write and idempotent.
+
+Execution needs a stable request UUID. Retry the same intent with the same UUID
+after an uncertain response, never a new one just because confirmation was lost.
+Reuse with another payload/client grant conflicts. Existing-record changes also
+require `expectedFingerprint` from preview; changed facts reject without a
+financial write. This pins selection, not human approval. Ownership, scopes and
+the live grant are rechecked inside the transaction. Dependent tags, the financial
+change and durable receipt commit together. Receipts survive chat deletion and
+grant revocation; no automatic purge exists.
+
+Migration **029** adds the action ledger. The clean grant table definition in
+**027** already includes all supported scopes, rather than carrying an upgrade-only
+constraint replacement. This unreleased baseline targets fresh databases, not
+earlier development schemas. Rebuilding an existing database requires an explicit
+operator decision about the exact target; runtime never resets data automatically.
+Money transfers, bank operations, income confirmation, bulk classification,
+automatic rules and editing existing budgets/goals are not exposed.
 
 ## Persistence and process boundaries
 
@@ -178,7 +223,8 @@ bearers at `/mcp` is not a secure OAuth rollback; block that endpoint at ingress
 Configure an HTTP MCP server URL of `https://<issuer-host>/mcp`, not `/trpc` or an
 OAuth endpoint. A conforming client follows the 401 resource-metadata challenge,
 discovers the authorization server, chooses CIMD/DCR/reused registration, opens
-the browser and requests `finance:read`. Authorization and token/refresh requests
+the browser and requests `finance:read`, optionally with explicitly needed write
+scopes. Authorization and token/refresh requests
 must include that exact MCP resource. Native and confidential clients both need
 S256 PKCE; a client secret does not replace PKCE.
 

@@ -313,6 +313,7 @@ describe("Dashboard MCP tools", () => {
                 status: "authorized",
                 userId: token,
                 clientId: "fixture-client",
+                grantId: "fixture-grant",
                 scopes: ["finance:read"],
               }
             : { status: "invalid" };
@@ -360,7 +361,7 @@ describe("Dashboard MCP tools", () => {
     await app.close();
   });
 
-  it("advertises eleven Spanish, read-only tools with discoverable input/output schemas", async () => {
+  it("advertises financial reads and explicitly annotated permission-gated action tools", async () => {
     const initialized = await post("alice", "initialize", {
       protocolVersion: "2025-06-18",
       capabilities: {},
@@ -383,25 +384,32 @@ describe("Dashboard MCP tools", () => {
       inputSchema: { properties?: { month?: { description: string } } };
       outputSchema: { type: string; properties?: Record<string, unknown> };
     }>;
-    expect(tools.map(({ name }) => name).sort()).toEqual([
-      "comparar_gastos_mensuales",
-      "consultar_aportes_ahorro",
-      "consultar_avance_ahorro",
-      "consultar_avance_presupuestos",
-      "consultar_compras_del_gasto",
-      "consultar_compras_presupuesto",
-      "consultar_ingresos",
-      "consultar_movimientos_recientes",
-      "consultar_presupuestos_y_metas",
-      "consultar_resumen_gastos_mensuales",
-      "consultar_saldos_cuentas",
-    ]);
+    expect(tools.map(({ name }) => name).sort()).toEqual(
+      [
+        "buscar_movimientos",
+        "comparar_gastos_mensuales",
+        "consultar_aportes_ahorro",
+        "consultar_avance_ahorro",
+        "consultar_avance_presupuestos",
+        "consultar_compras_del_gasto",
+        "consultar_compras_presupuesto",
+        "consultar_ingresos",
+        "consultar_etiquetas",
+        "consultar_movimiento",
+        "consultar_movimientos_recientes",
+        "consultar_presupuestos_y_metas",
+        "consultar_resumen_gastos_mensuales",
+        "consultar_saldos_cuentas",
+        "ejecutar_accion_financiera",
+        "previsualizar_accion_financiera",
+      ].sort(),
+    );
 
     for (const tool of tools) {
       expect(tool.description.length).toBeGreaterThan(90);
       expect(tool.annotations).toMatchObject({
-        readOnlyHint: true,
-        destructiveHint: false,
+        readOnlyHint: tool.name !== "ejecutar_accion_financiera",
+        destructiveHint: tool.name === "ejecutar_accion_financiera",
       });
       expect(tool.annotations.title.length).toBeGreaterThan(5);
       expect(tool.outputSchema, JSON.stringify(tool)).toBeDefined();

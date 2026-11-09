@@ -24,6 +24,19 @@ export const ENV_SCHEMA = z
     FIREBASE_PROJECT_ID: z.string().trim().min(1).optional(),
     FIREBASE_CLIENT_EMAIL: z.string().trim().pipe(z.email()).optional(),
     FIREBASE_PRIVATE_KEY: z.string().trim().min(1).optional(),
+    ASSISTANT_PROVIDER: z
+      .enum([
+        "disabled",
+        "demo",
+        "openai",
+        "anthropic",
+        "google",
+        "openai-compatible",
+      ])
+      .default("disabled"),
+    ASSISTANT_MODEL: z.string().trim().min(1).max(200).optional(),
+    ASSISTANT_API_KEY: z.string().trim().min(1).optional(),
+    ASSISTANT_BASE_URL: z.url().optional(),
     MCP_OAUTH_ISSUER: corsOrigin.optional(),
     MCP_OAUTH_UI_ORIGIN: corsOrigin.optional(),
     MCP_OAUTH_STATE_KEY: z
@@ -51,6 +64,42 @@ export const ENV_SCHEMA = z
       .pipe(z.array(corsOrigin).min(1)),
   })
   .superRefine((values, context) => {
+    const provider = values.ASSISTANT_PROVIDER;
+    const issue = (message: string) =>
+      context.addIssue({
+        code: "custom",
+        path: ["ASSISTANT_PROVIDER"],
+        message,
+      });
+    if (provider === "demo" && values.NODE_ENV === "production")
+      issue("The assistant demonstration runtime is development-only");
+    if (!["disabled", "demo"].includes(provider)) {
+      if (!values.ASSISTANT_MODEL)
+        issue("An explicit assistant model is required");
+      if (provider !== "openai-compatible" && !values.ASSISTANT_API_KEY)
+        issue("The selected assistant provider requires an API key");
+      if (provider === "openai-compatible" && !values.ASSISTANT_BASE_URL)
+        issue("The compatible assistant provider requires a base URL");
+    }
+    if (values.ASSISTANT_BASE_URL) {
+      const url = new URL(values.ASSISTANT_BASE_URL);
+      if (
+        provider !== "openai-compatible" ||
+        url.username ||
+        url.password ||
+        url.search ||
+        url.hash ||
+        (url.protocol !== "https:" &&
+          !(
+            values.NODE_ENV !== "production" &&
+            url.protocol === "http:" &&
+            ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)
+          ))
+      )
+        issue(
+          "Assistant base URLs must be trusted HTTPS endpoints or explicit development loopback HTTP",
+        );
+    }
     const oauth = [
       values.MCP_OAUTH_ISSUER,
       values.MCP_OAUTH_UI_ORIGIN,

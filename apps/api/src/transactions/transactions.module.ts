@@ -8,5 +8,6 @@ import { TransactionsService } from "./transactions.service";
   imports: [PersistenceModule],
   controllers: [TransactionsMcpController],
   providers: [TransactionsService, TransactionsRpc],
+  exports: [TransactionsService],
 })
 export class TransactionsModule {}
