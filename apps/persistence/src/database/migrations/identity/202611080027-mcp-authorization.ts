@@ -9,7 +9,7 @@ export async function up(db: MigrationDatabase) {
     client_id text NOT NULL CHECK (length(client_id) BETWEEN 1 AND 2048),
     client_name text NOT NULL CHECK (length(client_name) BETWEEN 1 AND 200),
     resource text NOT NULL CHECK (length(resource) BETWEEN 1 AND 2048),
-    scopes text[] NOT NULL CHECK (cardinality(scopes) BETWEEN 1 AND 3 AND scopes <@ ARRAY['finance:read','openid','offline_access']::text[] AND 'finance:read' = ANY(scopes)),
+    scopes text[] NOT NULL CHECK (cardinality(scopes) BETWEEN 1 AND 7 AND scopes <@ ARRAY['finance:read','openid','offline_access','finance:budgets:write','finance:goals:write','finance:tags:write','finance:movements:tag']::text[] AND 'finance:read' = ANY(scopes)),
     created_at timestamptz NOT NULL DEFAULT statement_timestamp(),
     expires_at timestamptz NOT NULL DEFAULT (statement_timestamp() + interval '2592000 seconds'),
     revoked_at timestamptz,

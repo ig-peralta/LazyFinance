@@ -1,0 +1,140 @@
+<section class="assistant" aria-labelledby="assistant-title">
+  <header class="assistant-heading">
+    <div class="assistant-brand">
+      <span class="assistant-mark"><app-icon name="spark" /></span>
+      <div>
+        <p class="eyebrow">TU ASISTENTE FINANCIERO</p>
+        <h1 id="assistant-title">Una conversación. Más claridad<span class="accent-text">.</span></h1>
+      </div>
+    </div>
+    <span class="readonly"><span></span> Cambios con tu aprobación</span>
+  </header>
+
+  <div class="chat-layout">
+    <aside class="chat-history" aria-label="Conversaciones guardadas">
+      <button type="button" class="button new-chat" [disabled]="busy()" (click)="newConversation()">
+        <app-icon name="plus" /> Nueva conversación
+      </button>
+      <p class="history-label">TU HISTORIAL <span>{{ history().length }}/10</span></p>
+      @if (conversations.isLoading()) {
+        <p class="history-empty" role="status">Consultando conversaciones…</p>
+      } @else if (conversations.error()) {
+        <p class="history-empty">No pudimos cargar el historial.
+          <button type="button" class="text-link" (click)="conversations.reload()">Volver a consultar</button>
+        </p>
+      } @else if (!history().length) {
+        <p class="history-empty">Aquí quedarán tus conversaciones. Empieza con una pregunta, a tu ritmo.</p>
+      }
+      <nav aria-label="Elegir conversación">
+        @for (chat of history(); track chat.id) {
+          <a routerLink="/asistente" [queryParams]="{ conversacion: chat.id }"
+            [class.selected]="id() === chat.id" [attr.aria-current]="id() === chat.id ? 'page' : null">
+            <app-icon name="activity" />
+            <span>{{ chat.title }}
+              <small>{{ chat.turnCount }} {{ chat.turnCount === 1 ? 'mensaje' : 'mensajes' }} · {{ time(chat.updatedAt) }}</small>
+            </span>
+          </a>
+        }
+      </nav>
+      <div class="history-privacy">
+        <app-icon name="security" />
+        <p>Solo para tu cuenta.<br>Hasta 24 preguntas por conversación y 30 días de historial. Puedes eliminarlo cuando quieras; los cambios aprobados y sus recibos se conservan aparte.</p>
+      </div>
+    </aside>
+
+    <div class="chat-surface">
+      <div class="chat-toolbar">
+        <div>
+          <span class="assistant-online"></span><strong>Lazy, tu asistente</strong>
+          <span class="chat-toolbar-sub">Contexto financiero, no suposiciones</span>
+        </div>
+        @if (id()) {
+          <button type="button" class="text-link delete-chat" [disabled]="busy()"
+            (click)="confirmDelete.set(!confirmDelete())">Eliminar conversación</button>
+        }
+      </div>
+      @if (confirmDelete()) {
+        <div class="notice warning delete-confirm" role="alert">
+          <p>¿Eliminar esta conversación y sus respuestas guardadas? No se eliminan cuentas ni movimientos.</p>
+          <div class="button-row">
+            <button type="button" class="button small" [disabled]="busy()" (click)="confirmDelete.set(false)">Cancelar</button>
+            <button type="button" class="button danger small" [disabled]="busy()" (click)="remove()">Confirmar eliminación</button>
+          </div>
+        </div>
+      }
+
+      <div class="chat-messages" (scroll)="scroll($event)">
+        @if (configuration.isLoading()) {
+          <p class="notice" role="status">Preparando tu asistente…</p>
+        } @else if (configuration.error()) {
+          <p class="notice danger" role="alert">No pudimos comprobar la disponibilidad.
+            <button type="button" class="text-link" (click)="configuration.reload()">Volver a consultar</button>
+          </p>
+        } @else if (invalidId()) {
+          <p class="notice danger" role="alert">El enlace de esta conversación no es válido. Abre una conversación de tu historial o empieza una nueva.</p>
+        } @else if (conversation.error()) {
+          <div class="notice danger" role="alert">Esta conversación no está disponible para tu cuenta o no se pudo consultar.
+            <button type="button" class="text-link" (click)="refresh()">Consultar de nuevo</button>
+          </div>
+        } @else if (conversation.isLoading() && !live()) {
+          <p class="notice" role="status">Recuperando la conversación…</p>
+        }
+        @if (!turns().length && !conversation.isLoading() && !conversation.error() && !invalidId()) {
+          <assistant-welcome [name]="greeting()" [busy]="busy()" (choose)="suggest($event)" />
+        }
+        <div class="turns" role="log" aria-label="Mensajes de la conversación" aria-live="off">
+          @for (turn of turns(); track turn.id) {
+            <assistant-reply [turn]="turn" [busy]="busy()" (askAgain)="suggest($event)" (actionChanged)="actionChanged($event)" />
+          }
+        </div>
+        <div #bottom class="chat-bottom" aria-hidden="true"></div>
+      </div>
+
+      @if (!follow() && turns().length) {
+        <button type="button" class="jump-bottom" (click)="jump()">Ir al último mensaje ↓</button>
+      }
+      <div class="chat-status" role="status" aria-live="polite" aria-atomic="true">{{ live()?.pending ? live()?.status : '' }}</div>
+      @if (live()?.error || command.error()) {
+        <div class="stream-error notice warning" role="alert">{{ live()?.error || command.error() }}
+          <button type="button" class="text-link" [disabled]="busy()" (click)="refresh()">Consultar estado</button>
+        </div>
+      }
+      @if (awaitingConfirmation()) {
+        <div class="stream-error notice" role="status">Esta respuesta aún no está confirmada. No se reenviará automáticamente.
+          <button type="button" class="text-link" [disabled]="busy()" (click)="refresh()">Consultar historial</button>
+        </div>
+      }
+      @if (turns().length >= 24) {
+        <p class="stream-error notice">Esta conversación alcanzó su límite. Empieza una nueva para continuar.</p>
+      }
+      @if (configuration.hasValue() && !configuration.value().enabled) {
+        <div class="assistant-unavailable notice">El asistente todavía no está configurado en el servidor. No se enviará tu información a ningún modelo. Puedes seguir consultando tus datos en las secciones de la aplicación.</div>
+      }
+      @if (configuration.hasValue() && configuration.value().demonstration) {
+        <div class="demo-notice">MODO DEMOSTRACIÓN · Sin modelo externo. Solo consultas predefinidas; no interpreta preguntas complejas.</div>
+      }
+
+      <form class="chat-composer" (submit)="$event.preventDefault(); send()">
+        <label class="sr-only" for="assistant-message">Tu pregunta financiera</label>
+        <div class="composer-box">
+          <textarea #composer id="assistant-message" rows="1" [maxLength]="maxInput" [value]="draft()"
+            (input)="input($event)" (keydown)="keydown($event)"
+            [disabled]="busy() || !configuration.hasValue() || !configuration.value().enabled"
+            placeholder="¿Qué te gustaría entender de tus finanzas?" aria-describedby="composer-help"></textarea>
+          <div class="composer-controls">
+            <span><app-icon name="security" /> Conversación privada <small>{{ draft().length }}/{{ maxInput }}</small></span>
+            @if (live()?.pending) {
+              <button type="button" class="send-button stop-button" (click)="stop()" aria-label="Detener respuesta">■</button>
+            } @else {
+              <button type="submit" class="send-button" [disabled]="!canSend()" aria-label="Enviar pregunta"><app-icon name="arrow" /></button>
+            }
+          </div>
+        </div>
+        <p id="composer-help" class="composer-help">Enter para enviar · Shift + Enter para una nueva línea. La IA puede equivocarse: revisa las fuentes.</p>
+        @if (configuration.hasValue() && configuration.value().enabled && !configuration.value().demonstration) {
+          <p class="provider-disclosure">Al enviar, compartes el mensaje, contexto reciente y datos consultados con {{ configuration.value().provider }} ({{ configuration.value().model }}). No se envían credenciales bancarias.</p>
+        }
+      </form>
+    </div>
+  </div>
+</section>

@@ -1,3 +1,7 @@
+import {
+  FinancialWriteScopeSchema,
+  McpPermissionSchema,
+} from "@lazyfinance/contracts";
 import type { Request } from "express";
 import type { Configuration } from "oidc-provider";
 import { z } from "zod";
@@ -79,7 +83,7 @@ export async function createOAuthProvider(
       "private_key_jwt",
     ],
     responseTypes: ["code"],
-    scopes: ["openid", "offline_access", MCP_READ_SCOPE],
+    scopes: McpPermissionSchema.options,
     pkce: { required: () => true },
     acceptQueryParamAccessTokens: false,
     enableHttpPostMethods: false,
@@ -119,7 +123,9 @@ export async function createOAuthProvider(
           if (!mcpResourceMatches(resource, settings.resource))
             throw new errors.InvalidTarget();
           return {
-            scope: MCP_READ_SCOPE,
+            scope: [MCP_READ_SCOPE, ...FinancialWriteScopeSchema.options].join(
+              " ",
+            ),
             audience: settings.resource,
             accessTokenFormat: "opaque",
             accessTokenTTL: MCP_ACCESS_SECONDS,

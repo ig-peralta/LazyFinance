@@ -1,5 +1,5 @@
 import "@angular/compiler";
-import { PLATFORM_ID } from "@angular/core";
+import { PLATFORM_ID, type Provider } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
 import { provideRouter, Router } from "@angular/router";
 import type { ApiRouter } from "@lazyfinance/rpc-api";
@@ -405,6 +405,7 @@ export function setupRpc(
   overrides: RpcHandlers = {},
   platform = "browser",
   authenticated = true,
+  providers: Provider[] = [],
 ) {
   const mock = createRpcFetch(overrides);
   TestBed.configureTestingModule({
@@ -419,6 +420,7 @@ export function setupRpc(
       SummariesData,
       TaggingData,
       TransactionsData,
+      ...providers,
     ],
   });
   const credentials = TestBed.inject(AuthCredentials);

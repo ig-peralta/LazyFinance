@@ -31,6 +31,7 @@ export class OAuthInteractionClient {
     id: string,
     signal: AbortSignal,
     approve?: boolean,
+    scopes: string[] = [],
   ) {
     if (!/^[A-Za-z0-9_-]{1,256}$/.test(id))
       throw new Error("Solicitud de autorización inválida.");
@@ -47,7 +48,14 @@ export class OAuthInteractionClient {
             ? {}
             : { "content-type": "application/json" }),
         },
-        ...(approve === undefined ? {} : { body: JSON.stringify({ approve }) }),
+        ...(approve === undefined
+          ? {}
+          : {
+              body: JSON.stringify({
+                approve,
+                ...(scopes.length ? { scopes } : {}),
+              }),
+            }),
       },
     );
     if (response.status === 401) this.credentials.expire(owner);
@@ -73,9 +81,10 @@ export class OAuthInteractionClient {
     id: string,
     approve: boolean,
     signal: AbortSignal,
+    scopes: string[] = [],
   ) {
     const result = McpConsentResultSchema.parse(
-      await this.request(owner, id, signal, approve),
+      await this.request(owner, id, signal, approve, scopes),
     );
     const resume = new URL(result.redirectTo),
       api = new URL(this.api);

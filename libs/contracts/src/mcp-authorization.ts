@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { FinancialWriteScopeSchema } from "./financial-actions";
 
 export const McpGrantIdSchema = z.strictObject({
   id: z.string().min(1).max(256),
@@ -33,5 +34,6 @@ export const McpConsentSchema = z.object({
 
 export const McpConsentDecisionSchema = z.strictObject({
   approve: z.boolean(),
+  scopes: z.array(FinancialWriteScopeSchema).max(4).optional(),
 });
 export const McpConsentResultSchema = z.object({ redirectTo: z.url() });

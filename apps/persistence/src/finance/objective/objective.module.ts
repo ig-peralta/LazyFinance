@@ -16,5 +16,6 @@ import { ObjectiveRpc } from "./objective.rpc";
     SavingsReadRepository,
     ObjectiveRpc,
   ],
+  exports: [BudgetRepository, SavingsGoalRepository],
 })
 export class ObjectiveModule {}

@@ -9,7 +9,11 @@ import {
   signal,
   viewChild,
 } from "@angular/core";
-import type { McpGrant } from "@lazyfinance/contracts";
+import {
+  FinancialWriteScopeSchema,
+  MCP_PERMISSION_LABELS,
+  type McpGrant,
+} from "@lazyfinance/contracts";
 import {
   initialReadSettled,
   reportWorkspaceReadiness,
@@ -22,6 +26,11 @@ import { createScopedCommand } from "../../core/rpc/scoped-command";
   templateUrl: "./mcp-grants.page.html",
 })
 export class McpGrantsPage {
+  protected readonly writes = (grant: McpGrant) =>
+    grant.scopes.flatMap((scope) => {
+      const value = FinancialWriteScopeSchema.safeParse(scope);
+      return value.success ? [MCP_PERMISSION_LABELS[value.data]] : [];
+    });
   private readonly rpc = inject(RpcClient);
   private readonly injector = inject(Injector);
   private readonly cancelButton =

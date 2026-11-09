@@ -8,5 +8,6 @@ import { AccountsService } from "./accounts.service";
   imports: [PersistenceModule],
   controllers: [AccountsMcpController],
   providers: [AccountsService, AccountsRpc],
+  exports: [AccountsService],
 })
 export class AccountsModule {}

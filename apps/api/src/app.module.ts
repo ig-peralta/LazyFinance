@@ -3,6 +3,7 @@ import { APP_GUARD } from "@nestjs/core";
 import { TRPCModule } from "nestjs-trpc";
 import { AccountsModule } from "./accounts/accounts.module";
 import { AppHttpController } from "./app.http";
+import { AssistantModule } from "./assistant/assistant.module";
 import { AuthModule } from "./auth/auth.module";
 import { HttpAuthGuard } from "./auth/http.guard";
 import { BankingIngestionModule } from "./banking/ingestion/banking-ingestion.module";
@@ -21,6 +22,7 @@ import { TransactionsModule } from "./transactions/transactions.module";
 @Module({
   imports: [
     EnvironmentModule,
+    AssistantModule,
     McpModule,
     AuthModule,
     AccountsModule,

@@ -1,0 +1,43 @@
+<section class="action-card" [class.applied]="current().status === 'applied'" [attr.aria-label]="label().title">
+  <header><div><p class="eyebrow">{{ current().status === 'applied' ? 'RESULTADO GUARDADO' : 'PROPUESTA DE CAMBIO' }}</p><h2>{{ label().title }}</h2></div><span class="action-status">{{ status() }}</span></header>
+  @if (editing() && fields(); as form) {
+    <form (submit)="$event.preventDefault(); save()">
+      @if (objective() || tagEditor()) {
+        <label>Nombre<input name="action-name" [ngModel]="form.name" (ngModelChange)="field('name', $event)" maxlength="80" required /></label>
+      }
+      @if (objective()) {
+        <label>Importe CLP<input name="action-amount" inputmode="decimal" [ngModel]="form.amount" (ngModelChange)="field('amount', $event)" required /></label>
+        <label>Período<select name="action-period" [ngModel]="form.period" (ngModelChange)="field('period', $event)"><option value="monthly">Mensual</option><option value="yearly">Anual</option><option value="fixed">Fechas definidas</option>@if (current().request.kind === 'create_savings_goal') { <option value="lifetime">Acumulada, sin reinicio</option> }</select></label>
+        @if (form.period !== 'lifetime') { <label>Fecha de inicio<input name="action-start" type="date" [ngModel]="form.start" (ngModelChange)="field('start', $event)" required /></label> }
+        @if (form.period === 'fixed') { <label>Último día incluido<input name="action-end" type="date" [ngModel]="form.end" (ngModelChange)="field('end', $event)" required /></label> }
+        <fieldset><legend>Etiquetas seleccionadas</legend>@if (tags.hasValue()) { @for (tag of tags.value(); track tag.id) { <label class="check"><input type="checkbox" [checked]="form.tagIds.includes(tag.id)" (change)="toggleTag(tag.id)" />{{ tag.name }}</label> } }</fieldset>
+        <label>Etiquetas nuevas, una por línea<textarea name="action-new-tags" [ngModel]="form.newTags" (ngModelChange)="field('newTags', $event)" rows="2"></textarea></label>
+        <p class="field-hint">Los períodos mensuales comienzan el día 1; los anuales, el 1 de enero. Las etiquetas nuevas se guardan junto al objetivo.</p>
+      }
+      @if (tagEditor()) {
+        <label>Color de la etiqueta<input name="action-color" type="color" [ngModel]="form.color" (ngModelChange)="field('color', $event)" [disabled]="form.noColor" /></label>
+        <label class="check"><input name="action-no-color" type="checkbox" [ngModel]="form.noColor" (ngModelChange)="field('noColor', $event)" />Sin color</label>
+      }
+      @if (current().request.kind === 'tag_movement') { <label>Nueva decisión<select name="action-tag" [ngModel]="form.tagId" (ngModelChange)="field('tagId', $event)"><option value="">Sin etiqueta, decisión manual</option>@if (tags.hasValue()) { @for (tag of tags.value(); track tag.id) { <option [value]="tag.id">{{ tag.name }}</option> } }</select></label> }
+      @if (tags.error()) { <p role="alert">No pudimos consultar tus etiquetas. <button type="button" (click)="tags.reload()">Volver a consultar</button></p> }
+      @if (invalid()) { <p role="alert">Revisa el importe, las fechas, el color y la selección de etiquetas.</p> }
+      <p class="action-note">Guardar la revisión no aplica el cambio. Tendrás que aprobar la nueva versión.</p>
+      <div class="action-buttons"><button type="submit" class="primary" [disabled]="!mutable() || tags.isLoading() || !!tags.error()">Guardar revisión</button><button type="button" [disabled]="command.pending()" (click)="editing.set(false)">Volver a la propuesta</button></div>
+    </form>
+  } @else {
+    <dl>@for (row of details().rows; track row.label) { <div><dt>{{ row.label }}</dt><dd [class.color-detail]="row.color !== undefined">@if (row.color !== undefined) { <span class="action-color-swatch" [class.no-color]="row.color === null" [style.backgroundColor]="row.color" aria-hidden="true"></span> }{{ row.value }}</dd></div> }</dl>
+    @for (note of details().notes; track $index) { <p class="action-note">{{ note }}</p> }
+    @if (current().status === 'applied') {
+      <ul class="action-results">@for (result of current().results; track $index) { <li><a [routerLink]="result.path">{{ result.title }} →</a></li> }</ul>
+      <p class="action-note">Este cambio ya se guardó. Detener el chat o eliminar la conversación no lo revierte.</p>
+    } @else if (current().status !== 'cancelled') {
+      @if (!confirmedTurn()) { <p class="action-note">Esta propuesta pertenece a una respuesta sin completar. No se puede aprobar.</p> }
+      @if (current().status === 'stale' || expired()) { <p class="action-note">Revisa y guarda una nueva versión antes de aprobar. No se aplicó ningún cambio.</p> }
+      <div class="action-buttons"><button type="button" class="primary" [disabled]="!mutable() || expired() || current().status !== 'proposed'" (click)="approve()">{{ label().approve }}</button><button type="button" [disabled]="!mutable()" (click)="edit()">{{ current().status === 'stale' || expired() ? 'Revisar propuesta' : 'Editar' }}</button><button type="button" [disabled]="!mutable()" (click)="cancel()">Cancelar</button></div>
+      <p class="action-note">Solo el botón aplica esta propuesta exacta. Una respuesta en el chat no es aprobación. Las propuestas vencen en 15 minutos.</p>
+    }
+  }
+  @if (command.pending()) { <p role="status">Comprobando el resultado…</p> }
+  @if (command.error()) { <p role="alert">{{ command.error() }}</p> }
+  @if (needsReconciliation()) { <p class="action-note">El resultado es incierto. Consulta el estado antes de volver a actuar.</p><button type="button" [disabled]="command.pending()" (click)="reconcile()">Consultar estado de la acción</button> }
+</section>

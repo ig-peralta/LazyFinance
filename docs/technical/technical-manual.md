@@ -86,6 +86,24 @@ header-sanitizing TLS edge. Setup, client registration, rate limits, key recover
 and the deliberately refused destructive migration rollback are covered in the
 [MCP operations guide](mcp-authorization.md#configuration-and-operations).
 
+First-party chat defaults to `ASSISTANT_PROVIDER=disabled`. After explicitly
+choosing the target database and applying migrations through 029, configure only the API
+with a supported provider and explicit model/key, or a trusted compatible endpoint.
+`demo` is labelled offline development mode and is rejected in production.
+No banking/OAuth keys are reused or exposed to the UI. Proxies must permit
+incremental NDJSON at `POST /assistant/turns`; provider cost/retention controls and
+live-model quality need separate validation. See the
+[assistant setup, limits and evaluation guide](financial-assistant.md).
+
+Migration 029 adds financial proposals/receipts; migration 027 directly defines
+the final MCP scope constraint for this clean development baseline. Apply all
+migrations to a fresh database before starting. Resetting an existing development
+database requires explicit authorization for that target, not automatic startup
+cleanup or compatibility migration code. First-party
+chat requires exact saved-proposal approval; MCP can directly execute bounded
+commands only with separately selected write scopes. Chat deletion does not remove
+durable receipts or undo finance; action retention has no automatic purge.
+
 The `PERSISTENCE_RPC_URL` is the service base URL (the client appends `/trpc`).
 PEMs in the example dotenv files use escaped newlines; replace placeholders with
 the generated matching pair. These are service keys, not Firebase Admin keys or
@@ -144,8 +162,9 @@ not proof of every provider integration's readiness.
 Business calls use tRPC under `/trpc`: `auth.config`, `auth.loginMock`,
 `auth.principal`, accounts, transactions, objectives/progress, summaries, income,
 tags and rules. The checked-in [public generated router](../../libs/rpc-api/src/generated/server.ts)
-is the procedure inventory. Business REST routes were retired. `/mcp` retains
-eleven read-only tools through the same financial services but requires a separate
+is the procedure inventory. Business REST routes were retired. `/mcp` exposes
+fourteen financial/supporting reads plus preview/direct-execution tools through
+the same services, with separately granted write permissions. It requires a separate
 OAuth client grant, not a Firebase/development app bearer. Discovery/protocol and
 cookie-bound interaction routes are HTTP; grant settings use authenticated
 `mcpAccess` RPC. Mock login uses `demo@lazyfinance.cl` / `password` only in development

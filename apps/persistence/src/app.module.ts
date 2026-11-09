@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { TRPCModule } from "nestjs-trpc";
+import { AssistantModule } from "./assistant/assistant.module";
 import { DatabaseModule } from "./database/database.module";
 import { FinanceModule } from "./finance/finance.module";
 import { HealthHttp } from "./health.http";
@@ -12,6 +13,7 @@ import { RlsMiddleware } from "./rpc/rls.middleware";
     DatabaseModule,
     FinanceModule,
     IdentityModule,
+    AssistantModule,
     TRPCModule.forRoot({
       basePath: "/trpc",
       context: PersistenceContext,

@@ -6,6 +6,10 @@ import { Test } from "@nestjs/testing";
 import { MCP_STRATEGY, type McpStrategy } from "@rekog/mcp-nest";
 import { createTRPCClient, httpLink } from "@trpc/client";
 import { AppModule } from "../../src/app.module";
+import {
+  ASSISTANT_RUNTIME,
+  type AssistantRuntime,
+} from "../../src/assistant/assistant-runtime";
 import { MockAuthService } from "../../src/auth/mock/mock-auth.service";
 import { FINTOC_FETCH } from "../../src/banking/fintoc/client/fintoc-client";
 import { configureCors } from "../../src/cors";
@@ -104,6 +108,7 @@ export async function startApi(
   fintocFetch?: typeof fetch,
   port = 0,
   oauthFetch?: typeof fetch,
+  options: { assistantRuntime?: AssistantRuntime } = {},
 ) {
   const { verifier } = testMockAuth({
     [f.token]: {
@@ -125,6 +130,10 @@ export async function startApi(
   if (fintocFetch) builder.overrideProvider(FINTOC_FETCH).useValue(fintocFetch);
   if (oauthFetch)
     builder.overrideProvider(MCP_OAUTH_FETCH).useValue(oauthFetch);
+  if (options.assistantRuntime)
+    builder
+      .overrideProvider(ASSISTANT_RUNTIME)
+      .useValue(options.assistantRuntime);
   const module = await builder.compile();
   const app = module.createNestApplication<NestExpressApplication>({
     logger: false,

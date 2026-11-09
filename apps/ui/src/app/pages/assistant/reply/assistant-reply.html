@@ -1,0 +1,30 @@
+<article class="chat-turn">
+  <div class="user-message"><span class="message-author">TÚ</span><p>{{ turn().question }}</p></div>
+  <div class="assistant-message">
+    <span class="reply-avatar" aria-hidden="true"><app-icon name="spark" /></span>
+    <div class="reply-content">
+      <div class="reply-heading"><strong>Lazy</strong><span>{{ time(turn().createdAt) }}</span>
+        @if (turn().status === 'failed' || turn().status === 'interrupted') { <span class="reply-incomplete">{{ turn().status === 'failed' ? 'Respuesta incompleta' : 'Interrumpida' }}</span> }
+      </div>
+      @if (!turn().text && turn().status === 'pending') { <div class="typing" aria-label="Consultando tus datos"><i></i><i></i><i></i></div> }
+      @if (text()) { <assistant-markdown class="reply-markdown" [text]="text()" /> }
+      @if (turn().status === 'failed' || turn().status === 'interrupted') { <p class="incomplete-note">Esta respuesta no se completó. No tomes sus afirmaciones como un resultado confirmado.</p> }
+      @for (action of turn().actions; track action.id) {
+        <assistant-action-card [action]="action" [confirmedTurn]="turn().status === 'complete'" [busy]="busy()" (changed)="actionChanged.emit($event)" />
+      }
+      @if (turn().sources.length) {
+        <section class="reply-sources" aria-label="Referencias de la respuesta">
+          <div class="sources-heading"><h2 class="sources-label">Referencias</h2><span>{{ turn().sources.length }} {{ turn().sources.length === 1 ? 'consulta' : 'consultas' }}</span></div>
+          <div class="reference-grid">
+            @for (source of turn().sources; track source.id) { <assistant-reference [source]="source" /> }
+          </div>
+        </section>
+      }
+      @if (turn().text && turn().status !== 'pending') {
+        <div class="reply-actions"><button type="button" (click)="copy()">{{ copied() ? 'Copiado' : 'Copiar respuesta' }}</button>
+          @if (turn().status !== 'complete') { <button type="button" [disabled]="busy()" (click)="askAgain.emit(turn().question)">Preparar una nueva pregunta</button> }
+        </div>
+      }
+    </div>
+  </div>
+</article>

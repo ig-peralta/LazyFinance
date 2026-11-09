@@ -12,6 +12,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "4.0.99",
+    "@ai-sdk/google": "4.0.114",
+    "@ai-sdk/openai": "4.0.111",
+    "@ai-sdk/openai-compatible": "3.0.87",
     "@lazyfinance/contracts": "workspace:*",
     "@lazyfinance/rpc-auth": "workspace:*",
     "@lazyfinance/rpc-persistence": "workspace:*",
@@ -25,6 +29,7 @@
     "@rekog/mcp-nest": "^2.0.2",
     "@trpc/client": "11.24.0",
     "@trpc/server": "11.24.0",
+    "ai": "7.0.165",
     "dotenv": "^17.4.2",
     "firebase-admin": "^14.5.0",
     "nestjs-trpc": "2.14.0",

@@ -48,7 +48,7 @@ and pill actions aligned with the public landing's visual language. Its dark
 tokens are workspace-scoped, including PrimeNG controls; the public landing and
 login retain their existing system-aware theme.
 
-Navigation has four primary areas: **Resumen**, **Mi dinero** (movements, accounts,
+Navigation includes **Asistente**, **Resumen**, **Mi dinero** (movements, accounts,
 tags), **Planificación** (budgets, savings, income and sources), and **Mi cuenta**
 (access/security, connected applications, bank connections, plus a resume link only for skipped setup).
 Bank connection settings stay reachable regardless of whether setup is active,
@@ -75,12 +75,32 @@ modal. Filters, month selectors and sign-in forms stay in place.
 
 `/autorizar-mcp?interaction=…` is a private, cookie-bound OAuth consent page, not
 an external-client login form. It displays the accepted account, declared client,
-actual callback hostname and read-only financial permission before explicit
+actual callback hostname, read permission and optional requested write capabilities
+(unchecked by default) before explicit
 approval/denial. `/aplicaciones-conectadas` lists owned grants and requires explicit
 revoke confirmation. Neither page exposes OAuth tokens to the UI or modifies bank
 connections/financial facts. Reads/commands are scope-cancelled, obsolete results
 cannot navigate or expire a newer login, and uncertain decisions are not replayed.
 See [OAuth browser/site configuration and compatibility](../../docs/technical/mcp-authorization.md).
+
+`/asistente` provides financial questions, explicit suggestions, streamed replies,
+Stop, server-owned history, separate financial reference cards, copy and confirmed
+chat deletion. Cards replace raw JSON with formatted amounts, periods, uncertainty
+and bounded previews, and link to the relevant app section or owned detail. Inline
+source codes are hidden in saved/streamed replies and copied text. Markdown cannot
+create active model links, images or HTML. No provider
+key, financial history or draft enters browser storage or protected hydration.
+Accepted-scope/selection/component cancellation suppresses late events; an
+uncertain stream result requires a history read, never automatic resend. The UI
+labels disabled and offline-demo states and discloses the configured external
+provider/model before sending. Separate action cards show exact proposals for
+budget/goal creation, tag management and single-movement tagging. Tag colors use
+visual swatches and native color pickers, not displayed hex codes. Approve submits
+only a saved ID/version; Edit saves a new unapproved version, and Cancel is not an
+undo. Stale/expired proposals require review. Ambiguous action outcomes block
+another write until an explicit status read; stopping/deleting chat never reverses
+committed finance or deletes durable receipts. MCP consent delegates separately
+selected capabilities without these chat buttons. See [configuration, limits, privacy and evaluation](../../docs/technical/financial-assistant.md).
 
 The dashboard leads with selected-month net spending, received income and the
 full-month income plan, followed by workflow shortcuts, spending analysis,

@@ -44,12 +44,14 @@ inferred Promises; there is no cross-app source import or HTTP/Observable adapte
 ## Public surface
 
 The [generated public router](../../libs/rpc-api/src/generated/server.ts) currently
-contains **69 procedures**. Prefix each method below with its router name.
+contains **78 procedures**. Prefix each method below with its router name.
 
 | Router | Methods | Responsibility |
 | --- | --- | --- |
 | `auth` | `config`, `loginMock`, `principal` | Provider selection, local mock login, verified principal |
 | `onboarding` | `state`, `finish` | Owned optional-guide state and terminal completion |
+| `assistant` | `configuration`, `conversations`, `conversation`, `createConversation`, `deleteConversation` | First-party authenticated configuration and server-owned chat history |
+| `financialActions` | `get`, `approve`, `revise`, `cancel` | Owned saved proposals; approval accepts only the exact ID/version, never caller-supplied execution payloads |
 | `mcpAccess` | `configuration`, `grants`, `revoke` | First-party authenticated external-client settings; no token issuance through RPC |
 | `accounts` | `list` | Active accounts, balances and freshness |
 | `banking` | `configuration`, `connections`, `createLinkIntent`, `completeLink`, `checkConnection`, `disconnect`, `importInitial`, `refresh`, `syncStatus` | Owned lifecycle, bounded snapshot import/refresh and readonly sync/source-freshness reporting; no forced/scheduled bank refresh |
@@ -67,27 +69,45 @@ financial owner scope. Method schemas in the generated file and
 shapes; counts/tables here are a navigation aid, not a second schema definition.
 
 The API's ordinary `GET /` is a liveness check. `/mcp` is authenticated Streamable
-HTTP exposing eleven read-only tools through the same services:
+HTTP exposing sixteen tools through the same services. Fourteen are reads:
 `consultar_saldos_cuentas`, `consultar_movimientos_recientes`,
 `consultar_presupuestos_y_metas`, `consultar_avance_presupuestos`,
 `consultar_resumen_gastos_mensuales`, `comparar_gastos_mensuales`, and
 `consultar_ingresos`, `consultar_avance_ahorro`, `consultar_aportes_ahorro`,
-`consultar_compras_del_gasto`, and `consultar_compras_presupuesto`.
+`consultar_compras_del_gasto`, `consultar_compras_presupuesto`,
+`consultar_etiquetas`, `buscar_movimientos`, and `consultar_movimiento`, plus
+read-only `previsualizar_accion_financiera` and destructive-write
+`ejecutar_accion_financiera`. Preview and execution require the action's explicitly
+granted write scopes. Preview takes `{ action }`; execution takes a stable
+`requestId`, `action` and, for existing records, `expectedFingerprint`.
 External clients use separate OAuth grants, never Firebase/development app bearers.
 Discovery, authorization/token/registration/revocation endpoints and the browser
 interaction HTTP bridge are documented in [MCP authorization](mcp-authorization.md).
-The first-party agent and write tools remain unimplemented.
+The first-party [financial assistant](financial-assistant.md) uses those same
+fourteen read services, without an external MCP/OAuth round trip. Its bearer-only
+`POST /assistant/turns` streams validated NDJSON using shared assistant contracts;
+it accepts only conversation ID, request nonce and question. Models can prepare
+proposals/read their status, not approve or execute. Action events and saved snapshots
+use shared contracts; first-party approval uses the separate ID/version RPC.
+Stored/streamed source contracts retain bounded original
+data and internal evidence IDs; `recordId` is a successful owned target UUID or
+explicit null. Turns always include `actions`, even when empty. There are no
+missing-field compatibility defaults for earlier development histories. The UI
+projects these results into separate financial cards, not inline citation codes or
+raw JSON panels; no model-authored URLs are trusted.
 
 ## Private surface
 
 The [generated private router](../../libs/rpc-persistence/src/generated/server.ts)
-currently contains **81 procedures**. They expose owned facts and authoritative
+currently contains **94 procedures**. They expose owned facts and authoritative
 commands rather than copying public screen calculations into persistence.
 
 | Router | Methods |
 | --- | --- |
 | `identity` | `resolve` (bootstrap only) |
 | `onboarding` | `state`, `finish` |
+| `assistantConversations` | `list`, `get`, `create`, `begin`, `finish`, `remove` (user context only) |
+| `financialActions` | `get`, `preview`, `prepare`, `revise`, `apply`, `cancel`, `execute` (user context only; atomic ledger/domain commands) |
 | `mcpGrants` | `list`, `bind`, `revoke` (user context) |
 | `mcpArtifacts` | `find`, `save`, `consume`, `destroy`, `identity`, `revoke` (dedicated OAuth purpose only) |
 | `accounts` | `listActive` |
@@ -208,7 +228,17 @@ idempotent, cancels pending revisions and preserves historical configuration.
 Progress includes its revision ID and exact tracking bounds/archival state; late
 eligible financial facts and confirmed recoveries can reconcile earlier purchases,
 including in archived budgets. No purchase booked at or after archival is admitted.
-The web app exposes this management policy; no MCP write tools are added.
+The web app exposes this management policy. Assistant/MCP actions support creation
+only for budgets/goals; their existing edit/archive workflows remain separate.
+
+Financial action approval revalidates the saved ID/version, originating completed
+turn, expiry, schedule and current selection fingerprint. Edits invalidate prior
+versions; stale approval applies nothing. The financial command and immutable receipt
+commit together, and repeats return that receipt. Direct MCP execution uses the
+same executor but requires an explicit write grant and stable UUID, not chat approval.
+The bounded action union permits only objective creation, tag lifecycle and individual
+tag/no-tag/reset decisions. No general command payload, money transfer or bulk rule
+operation is accepted. See [action lifecycle and retention](financial-assistant.md#confirmed-actions-and-independent-mcp-delegation).
 
 - Money is an exact decimal string, not a floating-point JSON number. Nullable
   balances stay nullable; unknown is not zero. PostgreSQL numeric/int8 parsers
@@ -216,8 +246,10 @@ The web app exposes this management policy; no MCP write tools are added.
 - Calendar dates stay date strings; timestamp values cross RPC as ISO strings.
   Santiago calendar/money interpretation lives in the API. Nested JSON keys are
   preserved by the database CamelCasePlugin.
-- No-input procedures use `z.void()`, not `{}`. Pass no input (or `undefined` with
-  request options). Object inputs are explicitly shaped; do not inject `userId`.
+- No-input queries use `z.void()`, not `{}`. Pass no input (or `undefined` with
+  request options). The empty `assistant.createConversation` command accepts
+  undefined or a strict empty object because Express normalizes an absent POST
+  JSON body to `{}`. Object inputs are explicitly shaped; do not inject `userId`.
 - Both clients use standard non-batched `httpLink`. The public server allows up
   to 10 procedures per batch; this is not a transaction guarantee. Private RPC
   permits one procedure per request. `providerSync.facts` and `objectives.spending`

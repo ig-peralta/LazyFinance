@@ -1,4 +1,7 @@
-import { McpConsentSchema } from "@lazyfinance/contracts";
+import {
+  FinancialWriteScopeSchema,
+  McpConsentSchema,
+} from "@lazyfinance/contracts";
 import {
   BadRequestException,
   Inject,
@@ -138,8 +141,26 @@ export class McpAuthorizationService implements OnModuleInit {
     approve: boolean,
     req: Request,
     res: Response,
+    approvedWrites: string[] = [],
   ) {
-    const { client, scopes, resource } = await this.interaction(id, req, res);
+    const {
+      client,
+      scopes: requested,
+      resource,
+    } = await this.interaction(id, req, res);
+    if (
+      approvedWrites.some(
+        (scope) =>
+          !requested.some((value) => value === scope) ||
+          !FinancialWriteScopeSchema.safeParse(scope).success,
+      )
+    )
+      throw new BadRequestException("Permission was not requested");
+    const scopes = requested.filter(
+      (scope) =>
+        !FinancialWriteScopeSchema.safeParse(scope).success ||
+        approvedWrites.includes(scope),
+    );
     // Approval and denial compete for the same persisted single-use decision,
     // including across processes. Never replay an interrupted decision.
     const claimed = await this.persistence
@@ -167,7 +188,15 @@ export class McpAuthorizationService implements OnModuleInit {
       clientId: client.clientId,
     });
     grant.addOIDCScope(scopes);
-    grant.addResourceScope(resource, MCP_READ_SCOPE);
+    grant.addResourceScope(
+      resource,
+      scopes.filter((scope) => scope.startsWith("finance:")).join(" "),
+    );
+    // Remember explicit scope denials so resume cannot prompt again or restore
+    // requested-but-unselected write permissions from the authorization request.
+    const rejected = requested.filter((scope) => !scopes.includes(scope));
+    grant.rejectOIDCScope(rejected);
+    grant.rejectResourceScope(resource, rejected);
     const grantId = await grant.save();
     await this.persistence.user(userId).mcpGrants.bind.mutate({
       id: grantId,
@@ -230,7 +259,8 @@ export class McpAuthorizationService implements OnModuleInit {
       status: "authorized" as const,
       userId: grant.userId,
       clientId: grant.clientId,
-      scopes: [...token.scopes],
+      grantId: token.grantId,
+      scopes: [...token.scopes].filter((scope) => grant.scopes.includes(scope)),
     };
   }
 

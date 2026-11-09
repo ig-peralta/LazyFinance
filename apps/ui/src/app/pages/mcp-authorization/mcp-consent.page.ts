@@ -2,6 +2,10 @@ import { Component, computed, inject, resource, signal } from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
 import { ActivatedRoute, RouterLink } from "@angular/router";
 import {
+  FinancialWriteScopeSchema,
+  MCP_PERMISSION_LABELS,
+} from "@lazyfinance/contracts";
+import {
   AuthCredentials,
   type VerifiedCredentials,
 } from "../../core/auth/auth-credentials";
@@ -30,6 +34,27 @@ export class McpConsentPage {
     return value && /^[A-Za-z0-9_-]{1,256}$/.test(value) ? value : undefined;
   });
   protected readonly command = createScopedCommand(() => this.id());
+  private readonly writeSelection = signal<{
+    owner: VerifiedCredentials;
+    id: string;
+    scopes: string[];
+  } | null>(null);
+  protected readonly requestedWrites = computed(
+    () =>
+      this.consent()?.scopes.filter(
+        (scope) => FinancialWriteScopeSchema.safeParse(scope).success,
+      ) ?? [],
+  );
+  protected readonly selectedWrites = computed(() =>
+    this.writeSelection()?.owner === this.credentials.current() &&
+    this.writeSelection()?.id === this.id()
+      ? (this.writeSelection()?.scopes ?? [])
+      : [],
+  );
+  protected readonly permissionLabel = (scope: string) => {
+    const value = FinancialWriteScopeSchema.safeParse(scope);
+    return value.success ? MCP_PERMISSION_LABELS[value.data] : scope;
+  };
   private readonly uncertain = signal<{
     owner: VerifiedCredentials;
     id: string;
@@ -89,7 +114,14 @@ export class McpConsentPage {
       id = this.id();
     if (!owner || !id || !this.canDecide()) return;
     const confirmed = await this.command.run(
-      (_scope, signal) => this.interaction.decide(owner, id, approve, signal),
+      (_scope, signal) =>
+        this.interaction.decide(
+          owner,
+          id,
+          approve,
+          signal,
+          approve ? this.selectedWrites() : [],
+        ),
       (result) => this.navigate(result.redirectTo),
       "Autorización confirmada.",
     );
@@ -100,5 +132,24 @@ export class McpConsentPage {
       this.id() === id
     )
       this.uncertain.set({ owner, id });
+  }
+
+  protected toggleWrite(scope: string) {
+    const owner = this.credentials.current(),
+      id = this.id();
+    if (
+      !owner ||
+      !id ||
+      !this.canDecide() ||
+      !this.requestedWrites().includes(scope)
+    )
+      return;
+    this.writeSelection.set({
+      owner,
+      id,
+      scopes: this.selectedWrites().includes(scope)
+        ? this.selectedWrites().filter((value) => value !== scope)
+        : [...this.selectedWrites(), scope],
+    });
   }
 }

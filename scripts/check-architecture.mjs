@@ -55,7 +55,7 @@ for (const file of files("apps/persistence/src").filter((name) =>
 
   if (
     !file.endsWith(".spec.ts") &&
-    /(?:selectFrom|insertInto|updateTable|deleteFrom)\(['"](?!identity\.|finance\.)/.test(
+    /(?:selectFrom|insertInto|updateTable|deleteFrom)\(['"](?!identity\.|finance\.|assistant\.)/.test(
       text,
     )
   )

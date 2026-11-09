@@ -171,6 +171,9 @@ but a fixed cookie-bound HTTP interaction rather than generic RPC. Its dedicated
 client includes API cookies only on that path, validates the interaction ID and
 issuer resume destination, and expires only the exact snapshot that received a
 401. Approval/denial is explicit and an uncertain result is not resubmitted.
+Requested financial write scopes start unchecked and remain bound to the accepted
+owner/interaction. Only selected capabilities are submitted; connected-app settings
+show actual grants. MCP writes do not use the first-party chat approval cards.
 Connected-app settings use page-owned RPC resources and a scoped revoke command
 with confirmation and keyboard focus return. Neither page stores external access/
 refresh tokens or serializes protected data into hydration. Server-side persisted
@@ -225,6 +228,44 @@ resource to the confirmed result cancels an older read so it cannot restore a
 prompt. Ambiguous failures remain unconfirmed and offer an explicit state check,
 not automatic mutation replay. Completion closes the optional guide, not a claim
 that optional financial steps or bank import are complete.
+
+## Financial assistant lifetime
+
+`AssistantPage` owns configuration/history/detail resources and a credential-,
+selection- and component-bound streamed turn. Creation, deletion and duplicate-send
+suppression retain their operation owner across route updates. The NDJSON client
+uses bearer/no-store requests with no cookies, expires only its exact accepted
+snapshot on 401, validates matching turn IDs/questions and requires a persisted
+non-pending `done`. Fragmented UTF-8 is supported; malformed, excessive, foreign or
+out-of-order events fail closed. No browser history or owner is sent to the model.
+
+Stop, logout, credential replacement, chat navigation and destruction abort old
+work and suppress late callbacks. Stop/disconnection never implies rollback;
+failed/missing confirmation is reconciled through an explicit history read, not
+generation replay. Pending saved turns block another question. User/answer/source
+data and drafts are not stored in cookies, browser storage or transfer state.
+References are separate financial cards projected from validated stored results,
+not raw JSON or model-authored markup. They retain uncertainty/cutoff disclosures,
+show at most four rows with a preview notice, and use service totals rather than
+page sums. Trusted links open the relevant section or owned detail; budget evidence
+retains the revision, month and observation cutoffs. Current sources explicitly use
+null for section-level targets; all turns include their action array. Missing fields
+are not upgraded from earlier development formats. Model-generated source codes
+are hidden in rendered/copied replies; original evidence remains stored.
+Action cards are separate from prose/reference cards. They show saved fields,
+current decisions and effects; only an explicit button submits the saved ID/version.
+Editing saves a new unapproved revision, and stale/expired selections require
+review. A model answer or conversational agreement cannot authorize execution.
+Component-owned scoped commands prevent duplicate clicks and suppress obsolete
+results. After ambiguous responses the card blocks further writes and offers an
+explicit action-status read, never an automatic mutation retry. Confirmed outcomes
+reload chat snapshots from the ledger and link to saved results. Deleting chat or
+stopping a stream does not undo financial changes or delete durable receipts.
+
+Model-generated HTML/links/images are inactive. The small Markdown presentation
+component prefixes its unencapsulated styles with its own host tag so sanitized
+generated markup receives typography without altering unrelated screens. See
+[provider, persistence, privacy and evaluation limits](financial-assistant.md).
 
 ## Explicit banking authorization
 
@@ -409,6 +450,6 @@ scope in protected query params, forward abort signals, avoid protected hydratio
 IDs, invalidate only actual dependencies, and test out-of-order completions. Do
 not restore the removed catch-all API service, RxJS compatibility facade or fake
 HTTP errors. Delivered management workflows are indexed in the UI README;
-conversational features and bank-forced/scheduled refresh remain unavailable,
+voice features and bank-forced/scheduled refresh remain unavailable,
 not missing client aliases or simulated success paths. Real-provider browser
 verification is separate evidence from mocked UI resource/command tests.

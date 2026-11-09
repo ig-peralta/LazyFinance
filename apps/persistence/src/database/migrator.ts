@@ -17,7 +17,7 @@ export class MultiMigrationProvider implements MigrationProvider {
   async getMigrations() {
     const result: Record<string, Migration> = {};
 
-    for (const schema of ["identity", "finance"]) {
+    for (const schema of ["identity", "finance", "assistant"]) {
       const folder = path.join(__dirname, "migrations", schema);
       const files = (await readdir(folder)).filter(
         (name) => /\.(ts|js)$/.test(name) && !name.endsWith(".d.ts"),

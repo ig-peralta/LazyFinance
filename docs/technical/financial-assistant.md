@@ -1,0 +1,417 @@
+# First-party financial assistant
+
+`/asistente` is the authenticated text-chat experience. It reads the same financial
+services as the dashboard and MCP. It can prepare budget/savings-goal creation,
+tag management and individual movement-tag decisions. Preparing changes no
+financial data: the user must approve the saved proposal with its card's button.
+The model cannot approve or execute. Neither interface moves money, connects banks,
+confirms income, changes banking facts or creates automatic classification rules.
+
+## Provider-neutral configuration
+
+All configuration is **API-only**. Nothing belongs in Angular, persistence or a
+committed secret file. The default is closed:
+
+```dotenv
+ASSISTANT_PROVIDER=disabled
+```
+
+Select `openai`, `anthropic`, `google`, or `openai-compatible`, with an explicit
+`ASSISTANT_MODEL`. The first three also require `ASSISTANT_API_KEY`; there is no
+default production model or automatic provider fallback. Compatible endpoints
+require `ASSISTANT_BASE_URL`; an API key is optional for a local server. HTTPS is
+required except explicit loopback HTTP outside production. URL credentials, query
+strings and fragments are rejected. Only trusted operators configure endpoints;
+there is no browser/model-controlled URL or key selection.
+
+```dotenv
+# Example only: choose a model actually supported by your trusted server.
+ASSISTANT_PROVIDER=openai-compatible
+ASSISTANT_MODEL=your-installed-tool-capable-model
+ASSISTANT_BASE_URL=http://127.0.0.1:11434/v1
+```
+
+The provider-neutral AI SDK runtime owns tool execution and text streaming; small
+adapters select the configured model. Changing provider does not change chat
+contracts, persistence, financial services or the UI. Models must support tools
+and multi-step responses. Adapter construction tests are not evidence that every
+model/compatible endpoint supports this protocol.
+
+`ASSISTANT_PROVIDER=demo` is an explicitly labelled **offline development aid**,
+rejected in production. It maps simple keywords to one read and shows the source;
+it is not an LLM or a substitute for live-model quality evaluation. Disabled mode
+does not send anything to a model. No provider key is included in configuration
+responses. Owned history and deletion remain available when generation is disabled.
+Existing banking/OAuth/RPC keys are unrelated and must not be reused.
+
+## Request, history and trust boundaries
+
+Five authenticated tRPC procedures expose configuration, conversation summaries,
+one conversation, creation and deletion. Four separate `financialActions` procedures
+read, approve, revise or cancel saved proposals. `POST /assistant/turns` uses the same
+first-party bearer verification, not an MCP OAuth grant or cookies. Its strict
+body contains only `{ conversationId, requestId, text }`. Neither browser history,
+system messages, tool definitions nor a caller-selected owner are accepted.
+
+The API claims the turn through signed private RPC before invoking a model.
+Persistence returns authoritative server history. Only completed user/answer pairs
+enter recent context: at most eight pairs and 32,000 characters. Tool payloads and
+reasoning are not replayed from old turns. Bounded historical action IDs/statuses
+allow follow-up questions but do not prove current execution. Historical answers
+provide conversational context, not current financial truth; the prompt requires fresh reads for personal
+financial claims. Each model step receives system instructions separately from
+untrusted questions, merchant descriptions, tag names and tool data.
+
+The runtime offers the eleven financial reads plus the owned tag catalog, filtered
+movement browsing and movement detail. It can prepare proposals and read their
+current status, never approve/execute/cancel them. Arguments and
+outputs are schema-validated; the authenticated internal UUID is closed over by
+the service, never an LLM argument. Domain services retain all money, schedule,
+calendar, eligibility and evidence calculations. Tool results preserve exact CLP
+strings, nulls, cutoffs, pagination, review states and coverage.
+
+The policy distinguishes expected/received income from available balances, cash
+from credit-card debt, a declared savings target from measured allocations,
+partial-month comparisons from full months, and purchase-attributed recoveries
+from income. Overlapping budgets/goals and evidence pages are not additive.
+Unavailable or oversized evidence is explicit, never an invented zero.
+
+Each source has an internal `F1`–`F8` identifier, tool, status, query timestamp,
+optional requested month, original bounded JSON and an allowlisted internal section
+link. Every source has a `recordId`: an owned record UUID after a successful detail
+read, otherwise null. Every turn has an `actions` array, including when empty.
+These are required current shapes, not compatibility defaults for earlier
+development histories. Failed or foreign reads cannot supply target metadata.
+Query time is not bank freshness.
+
+Answers use natural prose, without inline source codes, reference lists or JSON.
+The UI shows references separately as financial cards. Available evidence, a
+validated proposal or an observed receipt is required for numeric answers;
+invented/unavailable citations and incomplete model finishes fail the turn.
+**These checks do not verify every statement or
+calculation.** A model can still misuse valid evidence; reference cards and the
+incomplete-answer warning remain visible.
+
+## Confirmed actions and independent MCP delegation
+
+`preparar_accion_financiera` accepts `{ action }` with a typed, bounded command.
+Missing or ambiguous amounts, periods, dates and tag selections require clarification;
+owned reads supply real IDs. Budget/goal proposals may include up to five new tags.
+Those tags and the objective commit together; existing active names are reused
+without changing their color. Bulk tagging, automatic rules, editing objectives,
+income confirmation and banking operations are outside this action slice.
+
+Cards show exact fields, current decisions, impact notes and **Approve / Edit /
+Cancel** controls. Conversational “yes” is not approval. Approval sends only the
+saved ID/version and requires a completed saved turn in an available owned chat.
+Failed/interrupted generations cannot authorize proposals. Editing stores a new
+version and requires fresh approval. Each revision expires after 15 minutes;
+stale/expired proposals must be reviewed again. At most four proposals belong to
+one turn.
+
+Tag colors appear as swatches, not hexadecimal text. Editing uses a native color
+picker and an explicit no-color choice; exact hexadecimal values remain internal
+to the saved request. Reused active tags preview their existing color unchanged.
+
+Persistence rechecks ownership, expiry, factual fingerprints and the API's current
+schedule policy under the common user write lock. Changed tag metadata, archival,
+manual decisions, provider facts or removed movements cannot be silently overwritten.
+A stale proposal makes no financial change. Tagging creates a manual decision,
+including deliberate no-tag; reset separately returns a movement to unreviewed.
+
+Existing named repositories execute the command and save the receipt in one scoped
+transaction, including dependent tags and decision events. Database/output-validation
+failures roll back together. Duplicate approvals return the same receipt. Cancel
+after a committed approval reports the applied outcome, not an undo. Ambiguous
+responses require an explicit status read; the UI never automatically retries a
+mutation. Approval makes no additional model call. `consultar_estado_accion` is
+restricted to the current conversation, and only `applied` proves execution.
+
+Migration **029** adds owner-scoped `assistant.action`, independently of chat JSON.
+It retains immutable ownership/origin/idempotency metadata, normalized commands,
+bounded context, versions and results. Runtime cannot delete records or rewrite
+finalized applied/cancelled records. Deleting chat nulls its FK without deleting
+receipts or undoing finance. Availability/cleanup of chat is not receipt retention:
+there is no automatic action purge, and storage is capped at 10,000 records per
+owner. Define operator retention/account-deletion policy before public rollout.
+
+MCP shares the bounded executor and receipts, not the chat approval workflow.
+Existing `finance:read` grants stay read-only. Optional write scopes default off
+at consent and are checked against both token and stored grant; execution rechecks
+the grant under a row lock. A budget/goal with new tags also needs tag-write
+permission. Direct requests require a stable request UUID; reuse with another
+payload/client grant conflicts. Existing-record changes require the fingerprint
+from `previsualizar_accion_financiera`. This pins selection, not human approval:
+the external host controls its own confirmation UX. See [MCP permissions](mcp-authorization.md).
+
+## Dedicated schema and bounded persistence
+
+Migration **028** creates `assistant.conversation`, separate from `identity` and
+`finance`. It references the immutable internal user and forces owner RLS.
+Runtime has schema USAGE but not CREATE, and can update only title, turns, lease
+and update time—not ID, owner, creation time or expiry. Bootstrap and OAuth-purpose
+contexts have no access. Conversation deletion changes no financial data.
+
+Creation and turn claims share the existing short per-user advisory transaction
+lock. At most ten unexpired conversations exist per owner, and only one answer
+can hold an active lease across that owner's conversations. Each conversation
+permits up to 24 questions, with an additional cumulative byte budget that can
+require an earlier new conversation. Nonces are unique within a conversation:
+same nonce/question returns the stored turn without another model call; changed
+text conflicts. There is no automatic generation replay.
+
+A claim commits a pending turn and a 90-second lease. Model/network work happens
+outside SQL. Completion is a separate transaction and must match the current
+lease, pending turn, question and creation time. Late completions cannot overwrite
+a newer run. Expired pending leases read as interrupted and are normalized when a
+new turn is claimed. A failed finish is an uncertain outcome, not success.
+
+Conversation availability ends 30 days after creation and is not extended by
+activity. Explicit deletion removes the row. Creating another conversation deletes
+that owner's expired rows. **There is no periodic global purge job**, so inactivity
+can leave expired rows physically stored until owner cleanup/operator retention
+maintenance. Do not advertise guaranteed physical deletion at day 30. Backups,
+database encryption, operator access and provider retention need separate policy.
+The migration deliberately refuses destructive rollback; use an explicit recovery
+and retention plan instead of silently deleting chat history.
+
+## Streaming, cancellation and limits
+
+NDJSON events are `turn`, `status`, `source`, `action`, `delta`, `done` and sanitized `error`.
+Only a non-pending `done` confirms persistence. The client validates event order,
+UTF-8, matching nonce/question, response bytes and output length. A closed stream
+without confirmation offers an explicit history read, never an automatic resend.
+Responses are private/no-store, with buffering disabled where supported. Proxies
+must allow incremental flushing; neither HTTP disconnect nor Stop proves rollback.
+
+The page owns accepted-credential, selection and component lifetimes. Logout,
+token/owner replacement, conversation navigation or destruction abort obsolete
+work; late events cannot update another conversation/session. Obsolete 401s cannot
+expire newer credentials. Stop aborts generation and reconciles saved history.
+Pending/ambiguous states block a new question until reconciled. Duplicate sends
+are suppressed across conversation creation and navigation too. History, messages,
+sources and drafts never enter browser storage, cookies or protected hydration.
+
+| Budget | Current bound |
+| --- | --- |
+| Question / answer | 2,000 / 16,000 characters |
+| Model steps / read calls | 6 / 8 per turn |
+| Proposals / dependent new tags | 4 per turn / 5 per objective; 15-minute expiry per revision |
+| Model output | 3,000 tokens per step |
+| Read evidence JSON | 24,000 bytes each, 64,000 bytes total |
+| Recent context | 8 completed pairs, 32,000 characters |
+| Generation | 60s SDK total; 20s chunk / 15s tool timeout; 65s HTTP signal |
+| Parallel runs | 8 per API process; 1 leased run per owner across replicas |
+| Conversation JSON | Database maximum 786,432 bytes; new turn refused above 500,000 existing bytes |
+| Model retries / SDK telemetry | Disabled |
+| Action JSON / owner storage | 65,536 combined payload bytes / 10,000 records |
+
+Timeout/cancellation stops further tools and answer adoption. Already-running
+financial reads/proposal preparation may finish; neither changes finance. Interrupted
+text, sources and proposals are saved if the lease/transport still permit completion. Rate/cost
+protection is bounded concurrency, not a daily token quota, distributed global
+admission policy or protection against an unlimited sequence of authenticated
+requests. Production exposure needs the corresponding operational controls.
+
+Markdown permits text formatting but escapes model HTML and strips active links
+and images. Angular still sanitizes generated markup; no bypass API is used.
+Only trusted reference/action cards create internal links. Copy/retry preparation and
+delete confirmation are explicit. Retry prepares a new question, not a replay of
+a nonce.
+
+### Reference presentation
+
+Cards project schema-validated stored results from all fourteen reads; they are not
+model-authored summaries and do not make additional financial requests. They show
+formatted CLP amounts, periods, bounded rows and the relevant uncertainty, review,
+coverage and cutoff disclosures. No raw JSON panel or source code is displayed.
+Model-generated source codes are removed from rendered/copied replies, including
+fragmented codes during streaming; original stored evidence remains unchanged.
+
+Cards keep account balances separate instead of summing cash and debt, distinguish
+planned/received income, declared targets/measured savings, gross/net spending and
+partial/full comparison periods. Totals come directly from services, never from
+summing the displayed rows. At most four rows are shown, with an explicit preview
+notice when rows or pages remain. Empty, unavailable, oversized and invalid
+results remain distinct rather than becoming invented zero amounts.
+
+Each card links to its original app section; validated result IDs can link to
+movement, budget or goal detail. Budget purchase evidence retains its month,
+revision and both observation cutoffs. Section-level sources have a null target.
+Navigation reads current owned data; a card remains an
+observation of the saved query, not a guarantee that today's page is unchanged.
+
+## Verification and quality release gate
+
+Focused deterministic checks:
+
+```sh
+pnpm --filter api exec vitest run src/assistant src/actions
+pnpm --filter persistence exec vitest run src/actions
+pnpm --filter ui exec ng test --watch=false --include='**/assistant/**/*.spec.ts'
+```
+
+Real signed-RPC tests live in `apps/api/tests/integration/assistant`; the
+persistence suite covers schema privileges, two-owner isolation, concurrent quotas,
+nonce replay, stale leases, retention, immutable action receipts and rejected late
+completions. Run these
+only with a fresh disposable database using the
+[integration workflow](development-workflow.md#service-starting-integration-checks).
+Passing these tests does not establish live model quality.
+
+`assistant-evaluation.integration.spec.ts` runs four synthetic Spanish cases through
+the actual SDK tool loop, API stream, domain services and signed persistence: a
+reported balance with unknown freshness, untagged spending, full-month planned
+versus confirmed income, and equivalent partial-month comparison. Controlled models
+use predetermined tool calls/text; their passing results validate the pipeline,
+not the model's ability to select tools or write those answers independently.
+The same corpus has an explicit opt-in live mode. Configure provider/model/key in
+the test process's secure environment and, **only against a fresh disposable test
+database**, run:
+
+```sh
+ASSISTANT_EVALUATE_LIVE=true pnpm test:integration
+```
+
+This incurs provider cost and sends only that suite's synthetic owned fixtures.
+It never loads the API's local secret file or chooses a provider automatically.
+Without the flag the four live cases skip. Amount/source and keyword assertions
+are a screening aid, not a complete semantic judge; review the emitted synthetic
+answers manually and extend the corpus before making a release-quality claim.
+
+Before enabling a selected provider/model, evaluate Spanish questions against a
+controlled fixture and compare every amount/period to both source JSON and the
+normal application read. Cover balances with null/stale dates, current-month
+partial comparison, planned versus received income, refunds and untagged spend,
+overlapping budgets, measured savings with partial coverage, pagination, missing
+data, tool failure, unsupported writes/predictions, prompt injection in questions
+and merchant data, follow-up references, truncation and cancellation. Require no
+foreign-owner data or secret disclosure, unsupported success claims or invented
+amounts; record provider/model/date and failures separately from fixture results.
+Never use real customer data as a convenient evaluation fixture.
+
+No live model request was made during the verification recorded below.
+Offline demonstration, scripted SDK models and deterministic grounding fixtures
+are not evidence of production model accuracy. Provider-specific quality,
+retention/cost controls and live endpoint interoperability remain release gates.
+
+### Initial local verification — 2026-11-09
+
+These results cover the initial assistant baseline, before the reference-card
+presentation update.
+
+| Check | Observed result |
+| --- | --- |
+| Build, backend typecheck, architecture and RPC drift | Passed; public/private inventories 74/87 |
+| API unit suite | 326 passed, including 14 assistant configuration/SDK cases |
+| API integration through real signed persistence | 148 passed; 4 live-model cases and 1 live-Firebase case skipped |
+| Assistant integration/evaluation subset after cancellation hardening | 16 passed; 4 opt-in live-model cases skipped |
+| UI suite | 384 passed, including 21 assistant cases |
+| Persistence unit / PostgreSQL suites | 63 / 35 passed |
+| Disposable 027 → 028 upgrade | All 26 prior application tables' synthetic rows unchanged; new assistant table forces RLS |
+| Browser smoke | 320/390/768/1440 px without horizontal overflow; keyboard send, source details, history refresh, Stop/reconciliation, foreign-owner rejection and chat-only deletion passed |
+| Browser accessibility | No WCAG A/AA scan violations in the tested welcome/reply views; not an exhaustive accessibility certification |
+
+Browser verification used synthetic identities, real restricted persistence and
+the labelled offline runtime with artificial chunk delay for cancellation. No
+live banking/model request ran. All disposable databases/listeners were cleaned
+up. No development database migration, reset, seed or backup was performed.
+
+Build warnings remain for the existing initial bundle/CommonJS dependency and
+the assistant page's 6.63 kB style warning (below the unchanged 8 kB error budget).
+The production dependency audit is **not clean**: 1 critical, 9 high, 13 moderate
+and 2 low advisories across the existing dependency graph. The new SDK paths also
+share the already-used flagged Zod version. No unrelated dependency remediation
+was included; review the audit and relevant runtime exposure before deployment.
+
+### Reference-card verification — 2026-11-09
+
+| Check | Observed result |
+| --- | --- |
+| Workspace build, backend typecheck, architecture and RPC drift | Passed; public/private inventories remain 74/87 |
+| Formatting / lint | Passed; existing 27 lint warnings and 10 informational diagnostics remain |
+| API unit suite / focused assistant rerun | 326 / 14 passed |
+| Assistant integration/evaluation through real signed persistence | 17 passed; 4 opt-in live-model cases skipped |
+| UI suite | 410 passed, including 47 assistant cases |
+| Browser reference cards | All eleven reads, separate prose/cards, large exact amounts, four-row previews and empty/unavailable/limited/older-shape fallbacks checked |
+| Browser navigation | Original section, movement, goal and revision/month/cutoff-pinned budget evidence links passed |
+| Browser compatibility | Saved legacy replies, fragmented streamed codes, clean clipboard text and history reload passed |
+| Browser layout / accessibility | 320/390/768/1440 px without document/card horizontal overflow; no WCAG A/AA scan violations in the tested welcome/reply/reference views |
+
+The browser used synthetic owned data, real restricted persistence, an offline
+runtime and explicit stored fallback fixtures. Stop/reconciliation, foreign-owner
+isolation and chat-only deletion also passed. All test listeners and freshly
+created databases were cleaned up. No live model/bank request, local key/config
+change, development-data modification or backup was part of this update.
+
+This presentation update needs no new database migration. The earlier persistence
+unit/PostgreSQL results above were not rerun for it. Existing bundle/CommonJS/style
+and Vite configuration warnings remain; neither deterministic tests nor browser
+scans establish live-model quality or an exhaustive accessibility certification.
+
+### Confirmed-action verification — 2026-11-09
+
+| Check | Observed result |
+| --- | --- |
+| Workspace build, backend typecheck, architecture and RPC drift | Passed; public/private inventories 78/94 |
+| Formatting / lint | Passed; existing 27 warnings and 10 informational diagnostics remain |
+| API unit / full signed-RPC integration | 332 / 159 passed; 4 live-model cases and 1 live-Firebase case skipped |
+| Persistence unit / PostgreSQL integration | 69 / 36 passed, including owner/purpose isolation, immutable receipts and command-selection binding |
+| UI suite | 428 passed across 55 files; an initial parallel-load run timed out, then the complete isolated rerun passed |
+| Controlled AI SDK loop | Object-root proposal preparation and current-status reads passed; approval/execution tools and forged owner/approval fields rejected |
+| MCP OAuth / official SDK | All 16 tools discoverable; partial consent, default read-only access, explicit scope enforcement, stable-UUID replay and preview fingerprints verified |
+| Disposable 028 → 029 upgrade | All 27 previous application tables' rows/grants/RLS unchanged, including synthetic bank credentials/checkpoints and read-only MCP grants; destructive downgrade refused atomically |
+| Browser actions | All seven action kinds; edited-version approval, duplicate clicks, stale facts, expiry/revision, cancellation and result navigation passed |
+| Browser uncertain outcomes | Intentionally lost an approval response after commit; explicit status read recovered the applied receipt without another mutation |
+| Browser retention / regressions | Chat deletion retained financial changes/receipts; balances unchanged; reference navigation, legacy copying, Stop and foreign-owner isolation passed |
+| Browser layout / accessibility | 320/390/768/1440 px without document/card horizontal overflow; no WCAG A/AA axe violations in the tested action/editor/reference views; no page errors |
+
+The browser used synthetic owners, real signed RPC/restricted PostgreSQL and a
+deterministic offline proposal fixture, not a live model. Test databases/listeners
+were cleaned up. No development-data migration, reset, seed, backup, credential
+change, live bank request or model-key use was performed. Migration 029 remains
+an explicit deployment decision, not an automatic development upgrade.
+
+Existing bundle/CommonJS/style and Vite warnings remain, as does the non-clean
+dependency audit recorded above. Deterministic action fixtures do not establish
+live-model tool selection/quality, hosted MCP-client write compatibility, load
+performance or complete accessibility. Those release gates remain separate.
+
+### Clean development baseline and proposal-storage fix — 2026-11-09
+
+The earlier verification records describe earlier development iterations. The
+current unreleased baseline requires explicit `actions` arrays and nullable
+`recordId` fields, with no missing-field history compatibility. Conversation reads
+use ledger state directly rather than inventing cancellation for a missing record.
+Migration 027 creates the final MCP scope constraint; 029 only creates the action
+ledger, without an older-constraint upgrade path. Safety checks for approval,
+ownership, concurrency, expiry and durable receipts remain unchanged.
+
+A proposal-saving failure was traced to the selected running development database
+remaining at 028 without `assistant.action`. After explicit authorization, that
+database was rebuilt with all 29 migrations. Only mock-login identity and shared
+provider catalogs were initialized; financial data, links, chat and MCP grants
+start empty. Existing credentials/configuration were unchanged and no backup or
+provider/model request was made.
+
+The `comida`/celeste case now has a controlled SDK integration test covering catalog
+read, saved proposal, explicit approval and the resulting tag. A separate smoke
+check used the running signed private-RPC service and rebuilt database to verify
+preparation, approval and duplicate approval under an isolated temporary owner;
+that fixture was removed afterward. Mock login and empty-account reads passed.
+
+Verification: 333 API unit, 160 API integration, 69 persistence unit, 36 PostgreSQL
+and 428 UI tests passed. The four live-model cases and one live-Firebase case were
+skipped. Build/typecheck, architecture, RPC drift and formatting/lint passed with
+the previously disclosed warnings. Responsive browser action/reference checks and
+tested WCAG A/AA scans passed without page errors. This does not validate a live
+model's tool selection or hosted-client write behavior.
+
+### Visual tag-color verification — 2026-11-09
+
+All 432 UI tests and the production UI build passed after replacing displayed hex
+codes with color swatches. Browser checks verified the native color picker, exact
+color persistence, tag-list navigation and responsive action/reference layouts.
+The tested WCAG A/AA scans reported no violations, with no page or cleanup errors.
+Formatting/lint and architecture checks passed with the previously disclosed
+warnings. No live model or bank request was made.

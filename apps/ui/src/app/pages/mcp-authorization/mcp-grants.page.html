@@ -2,11 +2,11 @@
   <div>
     <p class="eyebrow">MI CUENTA · ACCESO EXTERNO</p>
     <h1 #heading tabindex="-1">Aplicaciones conectadas</h1>
-    <p class="subtitle">Controla qué aplicaciones pueden consultar tu información financiera.</p>
+    <p class="subtitle">Controla qué aplicaciones pueden consultar o cambiar tu información financiera.</p>
   </div>
   <button class="button" type="button" [disabled]="command.pending() || grants.isLoading()" (click)="reload()">Consultar accesos</button>
 </header>
-<p class="notice">Los permisos son de solo lectura. Revocar una conexión no desconecta tus bancos, no modifica datos financieros y no cierra tus otras aplicaciones. Cerrar sesión en LazyFinance no revoca estos permisos.</p>
+<p class="notice">Cada conexión conserva los permisos que aprobaste. Los accesos anteriores de solo lectura no reciben permisos de cambio automáticamente. Revocar no desconecta bancos, revierte cambios financieros ni cierra otras aplicaciones. Cerrar sesión en LazyFinance no revoca estos permisos.</p>
 <p class="field-hint">Revocar bloquea nuevas consultas y renovaciones. No borra copias de información ya recibidas por la aplicación ni necesariamente interrumpe una consulta que ya estaba en curso. Fechas en Santiago.</p>
 @if (configuration.hasValue() && !configuration.value().enabled) {
   <p class="notice warning">Las nuevas conexiones externas no están habilitadas. Puedes seguir revocando los permisos guardados.</p>
@@ -32,7 +32,8 @@
       <li class="panel" style="overflow-wrap:anywhere">
         <h2 class="record-title">{{ grant.clientName }}</h2>
         <p class="record-meta">{{ grant.clientId }}</p>
-        <p class="badge neutral">Solo lectura</p>
+        <p class="badge neutral">{{ writes(grant).length ? 'Lectura y cambios autorizados' : 'Solo lectura' }}</p>
+        @if (writes(grant).length) { <ul class="record-meta">@for (permission of writes(grant); track permission) { <li>{{ permission }}</li> }</ul> }
         <p class="record-meta">Autorizado: {{ time(grant.createdAt) }} · vence: {{ time(grant.expiresAt) }}.</p>
         @if (grant.revokedAt) {
           <p class="notice">Acceso revocado el {{ time(grant.revokedAt) }}.</p>

@@ -1,11 +1,12 @@
 # Persistence
 
-Private NestJS/tRPC service using Kysely, `pg`, `identity`/`finance` schemas and
+Private NestJS/tRPC service using Kysely, `pg`, `identity`/`finance`/`assistant` schemas and
 PostgreSQL user RLS. The API and UI now use the matching RPC boundaries; no API
-database fallback remains. Its 81 private procedures expose identity resolution,
+database fallback remains. Its 94 private procedures expose identity resolution,
 bounded financial facts, revisioned budget/income commands, expense-adjustment
 allocations, tag decisions/rules, owned onboarding/banking lifecycle and prepared
-atomic provider sync, plus purpose-isolated OAuth artifacts and owned grants.
+atomic provider sync, plus purpose-isolated OAuth artifacts, owned grants and
+bounded server-owned assistant conversations and atomic financial-action receipts.
 Product calculations and OAuth cryptography/protocol remain in the API. Read the
 [private RPC/RLS reference](../../docs/technical/persistence-security.md),
 [implemented schema/ERD](../../docs/technical/database-model.md) and
@@ -58,6 +59,23 @@ authenticated service may call `/trpc`; do not publish it to browsers. Use a
 protected/TLS service channel in deployment.
 
 ## Boundaries
+
+- Migration 029 adds owner-RLS `assistant.action` and immutable finalized receipts.
+  The clean MCP grant definition in migration 027 includes the full scope allowlist;
+  it does not need an action-era constraint replacement. Named commands
+  recheck version/expiry/fingerprints or the explicit MCP write grant, then execute
+  existing domain commands and save the receipt in one transaction. Chat deletion
+  does not undo financial changes or remove receipts. Runtime cannot delete ledger
+  records; storage is capped at 10,000 per owner, without automatic receipt purge.
+  This unreleased baseline targets fresh databases, not upgrades from earlier
+  development iterations. Any reset must explicitly identify its disposable target;
+  runtime and migration startup never reset data automatically.
+
+- Migration 028 creates the dedicated `assistant` schema and owner-RLS conversation
+  table. Claims, quotas and lease-checked completion are short atomic commands;
+  model calls remain in the API, outside transactions. It does not change financial
+  tables or seed data and refuses destructive rollback. See
+  [assistant retention and recovery](../../docs/technical/financial-assistant.md).
 
 - Migration 027 adds encrypted OAuth-artifact storage and owner-bound grants, not
   financial data changes. The dedicated `mcp-authorization` context can call only

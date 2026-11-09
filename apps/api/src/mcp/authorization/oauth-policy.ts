@@ -1,3 +1,5 @@
+import { McpPermissionSchema } from "@lazyfinance/contracts";
+
 export const MCP_READ_SCOPE = "finance:read";
 export const MCP_GRANT_SECONDS = 30 * 24 * 60 * 60;
 export const MCP_ACCESS_SECONDS = 10 * 60;
@@ -18,12 +20,8 @@ export function oauthRedirectAllowed(value: string): boolean {
 
 export function mcpScopes(value: string) {
   const scopes = [...new Set(value.split(" ").filter(Boolean))].map((scope) => {
-    if (
-      scope === MCP_READ_SCOPE ||
-      scope === "openid" ||
-      scope === "offline_access"
-    )
-      return scope;
+    const permission = McpPermissionSchema.safeParse(scope);
+    if (permission.success) return permission.data;
     throw new Error("Unsupported MCP permissions");
   });
   if (!scopes.includes(MCP_READ_SCOPE))

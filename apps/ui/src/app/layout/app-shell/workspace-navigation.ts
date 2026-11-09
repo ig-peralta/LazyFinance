@@ -16,6 +16,13 @@ interface NavigationArea {
 
 export const workspaceNavigation: readonly NavigationArea[] = [
   {
+    path: "/asistente",
+    label: "Asistente",
+    icon: "spark",
+    description: "Una conversación para entender tus finanzas",
+    destinations: [{ path: "/asistente", label: "Tu conversación" }],
+  },
+  {
     path: "/dashboard",
     label: "Resumen",
     icon: "overview",

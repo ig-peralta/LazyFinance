@@ -12,8 +12,8 @@ export async function assertRuntimeRole<DB>(database: Kysely<DB>) {
       (powerful.rolsuper OR powerful.rolbypassrls OR powerful.rolcreaterole OR powerful.rolcreatedb OR powerful.rolreplication)
       AND pg_has_role(current_user, powerful.oid, 'member'))
     AND NOT EXISTS (SELECT 1 FROM pg_class t JOIN pg_namespace n ON n.oid = t.relnamespace
-      WHERE n.nspname IN ('identity','finance') AND pg_has_role(current_user, t.relowner, 'member'))
-    AND NOT EXISTS (SELECT 1 FROM pg_namespace n WHERE n.nspname IN ('identity','finance')
+      WHERE n.nspname IN ('identity','finance','assistant') AND pg_has_role(current_user, t.relowner, 'member'))
+    AND NOT EXISTS (SELECT 1 FROM pg_namespace n WHERE n.nspname IN ('identity','finance','assistant')
       AND has_schema_privilege(current_user, n.oid, 'CREATE'))
     AS safe FROM pg_roles r WHERE r.rolname = current_user`.execute(database);
   if (!role?.safe)
@@ -52,8 +52,8 @@ export async function provisionRuntime<DB>(
           (powerful.rolsuper OR powerful.rolbypassrls OR powerful.rolcreaterole OR powerful.rolcreatedb OR powerful.rolreplication)
           AND pg_has_role(target.rolname, powerful.oid, 'member'))
         AND NOT EXISTS (SELECT 1 FROM pg_class t JOIN pg_namespace n ON n.oid=t.relnamespace
-          WHERE n.nspname IN ('identity','finance') AND pg_has_role(target.rolname, t.relowner, 'member'))
-        AND NOT EXISTS (SELECT 1 FROM pg_namespace n WHERE n.nspname IN ('identity','finance')
+          WHERE n.nspname IN ('identity','finance','assistant') AND pg_has_role(target.rolname, t.relowner, 'member'))
+        AND NOT EXISTS (SELECT 1 FROM pg_namespace n WHERE n.nspname IN ('identity','finance','assistant')
           AND has_schema_privilege(target.rolname, n.oid, 'CREATE'))) as safe
       from pg_roles target where rolname = ${login}`.execute(tx);
     if (existing) {

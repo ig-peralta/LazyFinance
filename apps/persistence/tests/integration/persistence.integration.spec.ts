@@ -310,7 +310,7 @@ describe.skipIf(!ownerUrl)(
           .filter((name) => !name.startsWith("failure."))
           .sort(),
       ).toEqual(expected.sort());
-      expect(expected).toHaveLength(81);
+      expect(expected).toHaveLength(94);
 
       for (const name of expected)
         expect(procedures[name]._def.meta).toMatchObject({
@@ -323,16 +323,16 @@ describe.skipIf(!ownerUrl)(
         });
     });
 
-    it("migrates idempotently and enables/forces RLS on all 25 sensitive tables", async () => {
+    it("migrates idempotently and enables/forces RLS on all 27 sensitive tables", async () => {
       expect(await migrate(owner, migrationProvider())).toEqual([]);
       const { rows } = await sql<{
         relrowsecurity: boolean;
         relforcerowsecurity: boolean;
       }>`select relrowsecurity, relforcerowsecurity
-      from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname in ('identity','finance') and c.relkind='r' and c.relname != 'provider'`.execute(
+      from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname in ('identity','finance','assistant') and c.relkind='r' and c.relname != 'provider'`.execute(
         owner,
       );
-      expect(rows).toHaveLength(25);
+      expect(rows).toHaveLength(27);
       expect(
         rows.every((row) => row.relrowsecurity && row.relforcerowsecurity),
       ).toBe(true);
@@ -346,6 +346,7 @@ describe.skipIf(!ownerUrl)(
         () => state.onboarding.state.query(),
         () => state.identity.resolve.mutate({ mode: "existing" }),
         () => state.mcpGrants.list.query(),
+        () => state.assistantConversations.list.query(),
         () =>
           user.mcpArtifacts.find.query({
             model: "Client",
@@ -363,7 +364,7 @@ describe.skipIf(!ownerUrl)(
           name: string;
         }>`select n.nspname as schema,c.relname as name
           from pg_class c join pg_namespace n on n.oid=c.relnamespace where c.relkind='r'
-          and n.nspname in ('identity','finance') and c.relname not in ('provider','external_identity','mcp_artifact','mcp_grant')`.execute(
+          and n.nspname in ('identity','finance','assistant') and c.relname not in ('provider','external_identity','mcp_artifact','mcp_grant')`.execute(
           tx,
         );
         for (const table of tables) {
@@ -581,14 +582,340 @@ describe.skipIf(!ownerUrl)(
         db: owner,
         provider: migrationProvider(),
       }).migrateDown();
-      expect(String(rollback.error)).toContain(
-        "explicit revocation and recovery plan",
-      );
+      expect(String(rollback.error)).toMatch(/explicit .*recovery plan/);
       expect(await migrate(owner, migrationProvider())).toEqual([]);
       expect(
         (await sql`select * from finance.account order by id`.execute(owner))
           .rows,
       ).toEqual(before);
+    });
+
+    it("isolates assistant storage in its own schema and forbids owner or retention reassignment", async () => {
+      const first = purposeClient(ctx(a)).assistantConversations;
+      const other = purposeClient(ctx(b)).assistantConversations;
+      const chat = await first.create.mutate();
+      try {
+        expect(
+          (await first.list.query()).some((row) => row.id === chat.id),
+        ).toBe(true);
+        expect(
+          (await other.list.query()).some((row) => row.id === chat.id),
+        ).toBe(false);
+        await expect(other.get.query({ id: chat.id })).rejects.toMatchObject({
+          data: { code: "NOT_FOUND" },
+        });
+        expect(await other.remove.mutate({ id: chat.id })).toEqual({
+          removed: false,
+        });
+        expect(
+          (await sql`select * from assistant.conversation`.execute(runtime))
+            .rows,
+        ).toEqual([]);
+        const privileges = await sql<{
+          usage: boolean;
+          create: boolean;
+        }>`select has_schema_privilege(current_user,'assistant','USAGE') as usage, has_schema_privilege(current_user,'assistant','CREATE') as create`.execute(
+          runtime,
+        );
+        expect(privileges.rows[0]).toEqual({ usage: true, create: false });
+        await sql`grant create on schema assistant to lazyfinance_test_runtime`.execute(
+          owner,
+        );
+        try {
+          await expect(assertRuntimeRole(runtime)).rejects.toThrow(/non-owner/);
+        } finally {
+          await sql`revoke create on schema assistant from lazyfinance_test_runtime`.execute(
+            owner,
+          );
+        }
+        for (const column of ["user_id", "id", "expires_at"]) {
+          await expect(
+            withRequestContext(runtime, ctx(a), (tx) =>
+              sql`update assistant.conversation set ${sql.id(column)}=${column === "expires_at" ? new Date() : b} where id=${chat.id}`.execute(
+                tx,
+              ),
+            ),
+          ).rejects.toThrow(/permission denied/);
+        }
+        await expect(
+          withRequestContext(runtime, ctx(a), (tx) =>
+            sql`insert into assistant.conversation(user_id) values (${b})`.execute(
+              tx,
+            ),
+          ),
+        ).rejects.toThrow(/row-level security/);
+      } finally {
+        await first.remove.mutate({ id: chat.id });
+      }
+    });
+
+    it("protects action approvals and immutable receipts with owner RLS and column grants independently of chat deletion", async () => {
+      const userId = randomUUID();
+      await sql`insert into identity."user"(id,email,name) values (${userId},${`${userId}@example.test`},'Action owner')`.execute(
+        owner,
+      );
+      const client = purposeClient(ctx(userId));
+      const chat = await client.assistantConversations.create.mutate();
+      const lease = randomUUID(),
+        turnId = randomUUID();
+      const started = await client.assistantConversations.begin.mutate({
+        conversationId: chat.id,
+        requestId: turnId,
+        text: "Prepara una etiqueta",
+        lease,
+      });
+      const request = {
+        kind: "create_tag" as const,
+        tag: { name: `Approved ${userId}`, color: null },
+      };
+      await expect(
+        client.financialActions.prepare.mutate({
+          conversationId: chat.id,
+          turnId,
+          action: request,
+          command: {
+            kind: "create_tag",
+            tag: { name: "Not the previewed selection", color: null },
+          },
+        }),
+      ).rejects.toMatchObject({ data: { code: "BAD_REQUEST" } });
+      const proposal = await client.financialActions.prepare.mutate({
+        conversationId: chat.id,
+        turnId,
+        action: request,
+        command: request,
+      });
+      await expect(
+        client.financialActions.apply.mutate({
+          id: proposal.id,
+          version: 1,
+          command: request,
+        }),
+      ).rejects.toMatchObject({ data: { code: "CONFLICT" } });
+      expect(await client.tags.list.query()).toEqual([]);
+      await client.assistantConversations.finish.mutate({
+        conversationId: chat.id,
+        lease,
+        turn: {
+          ...started.turn,
+          text: "Propuesta pendiente de aprobación",
+          status: "complete",
+          actions: [proposal],
+        },
+      });
+      const applied = await client.financialActions.apply.mutate({
+        id: proposal.id,
+        version: 1,
+        command: request,
+      });
+      expect(applied.status).toBe("applied");
+      expect(
+        await client.financialActions.apply.mutate({
+          id: proposal.id,
+          version: 1,
+          command: request,
+        }),
+      ).toEqual(applied);
+      await expect(
+        purposeClient(ctx(b)).financialActions.get.query({ id: proposal.id }),
+      ).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
+      await expect(
+        purposeClient(oauthContext()).financialActions.get.query({
+          id: proposal.id,
+        }),
+      ).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
+      await withRequestContext(runtime, ctx(b), async (tx) => {
+        expect(
+          (
+            await sql`select * from assistant.action where id=${proposal.id}`.execute(
+              tx,
+            )
+          ).rows,
+        ).toEqual([]);
+      });
+      await expect(
+        withRequestContext(runtime, ctx(userId), (tx) =>
+          sql`update assistant.action set user_id=${b} where id=${proposal.id}`.execute(
+            tx,
+          ),
+        ),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(
+        withRequestContext(runtime, ctx(userId), (tx) =>
+          sql`update assistant.action set status='proposed' where id=${proposal.id}`.execute(
+            tx,
+          ),
+        ),
+      ).rejects.toMatchObject({ code: "23514" });
+      await expect(
+        withRequestContext(runtime, ctx(userId), (tx) =>
+          sql`delete from assistant.action where id=${proposal.id}`.execute(tx),
+        ),
+      ).rejects.toMatchObject({ code: "42501" });
+      await client.assistantConversations.remove.mutate({ id: chat.id });
+      expect(
+        await client.financialActions.get.query({ id: proposal.id }),
+      ).toMatchObject({
+        status: "applied",
+        conversationId: null,
+        results: applied.results,
+      });
+      expect(await client.tags.list.query()).toHaveLength(1);
+    });
+
+    it("claims assistant turns once, bounds concurrent conversations and rejects stale finishers", async () => {
+      const client = purposeClient(ctx(a)).assistantConversations;
+      const chat = await client.create.mutate();
+      const second = await client.create.mutate();
+      const input = {
+        conversationId: chat.id,
+        requestId: randomUUID(),
+        text: "¿Qué saldos tengo?",
+        lease: randomUUID(),
+      };
+      try {
+        const results = await Promise.all([
+          client.begin.mutate(input),
+          client.begin.mutate(input),
+        ]);
+        expect(results.map((row) => row.acquired).sort()).toEqual([
+          false,
+          true,
+        ]);
+        const started = results.find((row) => row.acquired);
+        if (!started) throw new Error("Missing acquired turn");
+        await expect(
+          client.begin.mutate({ ...input, text: "Otra pregunta" }),
+        ).rejects.toMatchObject({ data: { code: "CONFLICT" } });
+        await expect(
+          client.begin.mutate({
+            ...input,
+            conversationId: second.id,
+            requestId: randomUUID(),
+          }),
+        ).rejects.toMatchObject({ data: { code: "CONFLICT" } });
+        const turn = {
+          ...started.turn,
+          text: "Respuesta guardada",
+          status: "complete" as const,
+        };
+        expect(
+          await client.finish.mutate({
+            conversationId: chat.id,
+            lease: randomUUID(),
+            turn,
+          }),
+        ).toEqual({ saved: false });
+        expect(
+          await client.finish.mutate({
+            conversationId: chat.id,
+            lease: input.lease,
+            turn,
+          }),
+        ).toEqual({ saved: true });
+        expect(
+          await client.finish.mutate({
+            conversationId: chat.id,
+            lease: input.lease,
+            turn,
+          }),
+        ).toEqual({ saved: false });
+        const replay = await client.begin.mutate(input);
+        expect(replay.acquired).toBe(false);
+        expect(replay.turn.text).toBe("Respuesta guardada");
+        expect(replay.conversation.turnCount).toBe(1);
+      } finally {
+        await client.remove.mutate({ id: chat.id });
+        await client.remove.mutate({ id: second.id });
+      }
+    });
+
+    it("recovers expired assistant leases without replaying old turns or adopting late answers", async () => {
+      const client = purposeClient(ctx(a)).assistantConversations;
+      const chat = await client.create.mutate();
+      const input = {
+        conversationId: chat.id,
+        requestId: randomUUID(),
+        text: "Una pregunta",
+        lease: randomUUID(),
+      };
+      try {
+        const first = await client.begin.mutate(input);
+        await sql`update assistant.conversation set lease_expires_at=clock_timestamp()-interval '1 second' where id=${chat.id}`.execute(
+          owner,
+        );
+        expect((await client.get.query({ id: chat.id })).turns[0].status).toBe(
+          "interrupted",
+        );
+        expect((await client.begin.mutate(input)).acquired).toBe(false);
+        const next = await client.begin.mutate({
+          ...input,
+          requestId: randomUUID(),
+          lease: randomUUID(),
+        });
+        expect(next.acquired).toBe(true);
+        expect(next.conversation.turns.map((turn) => turn.status)).toEqual([
+          "interrupted",
+          "pending",
+        ]);
+        expect(
+          await client.finish.mutate({
+            conversationId: chat.id,
+            lease: input.lease,
+            turn: { ...first.turn, text: "Late", status: "complete" },
+          }),
+        ).toEqual({ saved: false });
+      } finally {
+        await client.remove.mutate({ id: chat.id });
+      }
+    });
+
+    it("bounds assistant history and conversation creation atomically", async () => {
+      const client = purposeClient(ctx(a)).assistantConversations;
+      const outcomes = await Promise.allSettled(
+        Array.from({ length: 12 }, () => client.create.mutate()),
+      );
+      const chats = outcomes.flatMap((outcome) =>
+        outcome.status === "fulfilled" ? [outcome.value] : [],
+      );
+      try {
+        expect(chats).toHaveLength(10);
+        expect(
+          outcomes.filter((outcome) => outcome.status === "rejected"),
+        ).toHaveLength(2);
+        const chat = chats[0];
+        const turns = Array.from({ length: 24 }, () => ({
+          id: randomUUID(),
+          question: "Pregunta",
+          text: "Respuesta",
+          status: "complete",
+          sources: [],
+          actions: [],
+          createdAt: new Date().toISOString(),
+        }));
+        await sql`update assistant.conversation set turns=${JSON.stringify(turns)}::jsonb where id=${chat.id}`.execute(
+          owner,
+        );
+        await expect(
+          client.begin.mutate({
+            conversationId: chat.id,
+            requestId: randomUUID(),
+            text: "Más",
+            lease: randomUUID(),
+          }),
+        ).rejects.toMatchObject({ data: { code: "TOO_MANY_REQUESTS" } });
+        await sql`update assistant.conversation set created_at=clock_timestamp()-interval '2 days', expires_at=clock_timestamp()-interval '1 day' where id=${chat.id}`.execute(
+          owner,
+        );
+        await expect(client.get.query({ id: chat.id })).rejects.toMatchObject({
+          data: { code: "NOT_FOUND" },
+        });
+        chats.push(await client.create.mutate());
+      } finally {
+        await Promise.all(
+          chats.map((chat) => client.remove.mutate({ id: chat.id })),
+        );
+      }
     });
 
     it("persists account onboarding, keeps completion terminal and preserves its first timestamp across races", async () => {

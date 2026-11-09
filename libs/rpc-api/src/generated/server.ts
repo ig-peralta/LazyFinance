@@ -13,7 +13,7 @@ import { z } from "zod";
 
 const t = initTRPC.create();
 const publicProcedure = t.procedure;
-import { RpcEmptySchema, AccountsResultSchema, AuthConfigSchema, MockLoginInputSchema, MockLoginResultSchema, AuthPrincipalSchema, BankingConfigurationSchema, BankingConnectionsSchema, CreateBankingIntentSchema, BankingIntentSchema, CompleteBankingIntentSchema, BankingConnectionSchema, RpcIdSchema, BankingImportResultSchema, BankingSyncStatusSchema, IncomeSourcesResultSchema, IncomeSourceSchema, IncomeSourceInputSchema, ReplaceIncomeSourceSchema, IncomeExpectationsResultSchema, CreateIncomeExpectationSchema, IncomeExpectationSchema, ReplaceIncomeExpectationSchema, RpcVoidSchema, RpcMonthSchema, ExpectedIncomeSchema, IncomeReceiptsResultSchema, ConfirmIncomeReceiptSchema, IncomeReceiptSchema, IncomeSummarySchema, McpAccessConfigurationSchema, McpGrantsSchema, McpGrantIdSchema, McpRevokeResultSchema, BudgetContributionsInputSchema, SpendingContributionsPageSchema, SavingsProgressInputSchema, SavingsProgressSchema, SavingsEvidenceInputSchema, SavingsEvidencePageSchema, SavingsGoalSchema, SavingsHistoryInputSchema, SavingsHistoryPageSchema, CreateSavingsGoalSchema, UpdateSavingsGoalSchema, SavingsGoalVersionSchema, ObjectivesResultSchema, BudgetDetailSchema, BudgetHistoryInputSchema, BudgetHistoryPageSchema, CreateBudgetInputSchema, UpdateBudgetInputSchema, BudgetVersionInputSchema, BudgetProgressResultSchema, OnboardingStateSchema, FinishOnboardingSchema, SpendingContributionsInputSchema, MonthlySummarySchema, MonthlyComparisonSchema, UpdateTagSchema, ManagedTagSchema, TagsResultSchema, TagCreateInputSchema, TagSummarySchema, SuggestionsResultSchema, SetTagSchema, TagDecisionSchema, TagRulesResultSchema, TagRuleInputSchema, TagRuleResultSchema, ReplaceTagRuleSchema, ApplyTagRuleSchema, AppliedTagRuleSchema, TransactionDetailSchema, SetInternalMovementSchema, InternalMovementDecisionSchema, ExpenseAdjustmentsInputSchema, ExpenseAdjustmentsPageSchema, SetExpenseAdjustmentSchema, ExpenseAdjustmentSchema, ExpenseAdjustmentPairSchema, RecentTransactionsResultSchema, TransactionsInputSchema, TransactionsPageSchema } from "@lazyfinance/contracts";
+import { RpcEmptySchema, AccountsResultSchema, FinancialActionIdSchema, FinancialActionSchema, FinancialActionVersionSchema, ReviseFinancialActionSchema, AssistantConfigurationSchema, AssistantConversationsSchema, AssistantConversationIdSchema, AssistantConversationSchema, CreateAssistantConversationSchema, AssistantRemovedSchema, AuthConfigSchema, MockLoginInputSchema, MockLoginResultSchema, AuthPrincipalSchema, BankingConfigurationSchema, BankingConnectionsSchema, CreateBankingIntentSchema, BankingIntentSchema, CompleteBankingIntentSchema, BankingConnectionSchema, RpcIdSchema, BankingImportResultSchema, BankingSyncStatusSchema, IncomeSourcesResultSchema, IncomeSourceSchema, IncomeSourceInputSchema, ReplaceIncomeSourceSchema, IncomeExpectationsResultSchema, CreateIncomeExpectationSchema, IncomeExpectationSchema, ReplaceIncomeExpectationSchema, RpcVoidSchema, RpcMonthSchema, ExpectedIncomeSchema, IncomeReceiptsResultSchema, ConfirmIncomeReceiptSchema, IncomeReceiptSchema, IncomeSummarySchema, McpAccessConfigurationSchema, McpGrantsSchema, McpGrantIdSchema, McpRevokeResultSchema, BudgetContributionsInputSchema, SpendingContributionsPageSchema, SavingsProgressInputSchema, SavingsProgressSchema, SavingsEvidenceInputSchema, SavingsEvidencePageSchema, SavingsGoalSchema, SavingsHistoryInputSchema, SavingsHistoryPageSchema, CreateSavingsGoalSchema, UpdateSavingsGoalSchema, SavingsGoalVersionSchema, ObjectivesResultSchema, BudgetDetailSchema, BudgetHistoryInputSchema, BudgetHistoryPageSchema, CreateBudgetInputSchema, UpdateBudgetInputSchema, BudgetVersionInputSchema, BudgetProgressResultSchema, OnboardingStateSchema, FinishOnboardingSchema, SpendingContributionsInputSchema, MonthlySummarySchema, MonthlyComparisonSchema, UpdateTagSchema, ManagedTagSchema, TagsResultSchema, TagCreateInputSchema, TagSummarySchema, SuggestionsResultSchema, SetTagSchema, TagDecisionSchema, TagRulesResultSchema, TagRuleInputSchema, TagRuleResultSchema, ReplaceTagRuleSchema, ApplyTagRuleSchema, AppliedTagRuleSchema, TransactionDetailSchema, SetInternalMovementSchema, InternalMovementDecisionSchema, ExpenseAdjustmentsInputSchema, ExpenseAdjustmentsPageSchema, SetExpenseAdjustmentSchema, ExpenseAdjustmentSchema, ExpenseAdjustmentPairSchema, RecentTransactionsResultSchema, TransactionsInputSchema, TransactionsPageSchema } from "@lazyfinance/contracts";
 
 const appRouter = t.router({
   accounts: t.router({
@@ -21,6 +21,46 @@ const appRouter = t.router({
       .input(RpcEmptySchema)
       .output(AccountsResultSchema)
       .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
+    }),
+  financialActions: t.router({
+    get: publicProcedure
+      .input(FinancialActionIdSchema)
+      .output(FinancialActionSchema)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    approve: publicProcedure
+      .input(FinancialActionVersionSchema)
+      .output(FinancialActionSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    cancel: publicProcedure
+      .input(FinancialActionVersionSchema)
+      .output(FinancialActionSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    revise: publicProcedure
+      .input(ReviseFinancialActionSchema)
+      .output(FinancialActionSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
+    }),
+  assistant: t.router({
+    configuration: publicProcedure
+      .input(RpcEmptySchema)
+      .output(AssistantConfigurationSchema)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    conversations: publicProcedure
+      .input(RpcEmptySchema)
+      .output(AssistantConversationsSchema)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    conversation: publicProcedure
+      .input(AssistantConversationIdSchema)
+      .output(AssistantConversationSchema)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    createConversation: publicProcedure
+      .input(CreateAssistantConversationSchema)
+      .output(AssistantConversationSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    deleteConversation: publicProcedure
+      .input(AssistantConversationIdSchema)
+      .output(AssistantRemovedSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
     }),
   auth: t.router({
     config: publicProcedure

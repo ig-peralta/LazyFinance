@@ -13,6 +13,7 @@ import { MCP_READ_SCOPE } from "./oauth-policy";
 export type McpAuthenticatedRequest = Request & {
   principal: Pick<AuthPrincipal, "userId">;
   user: Pick<AuthPrincipal, "userId">;
+  mcp: { grantId: string; clientId: string; scopes: string[] };
 };
 
 @Injectable()
@@ -47,6 +48,11 @@ export class McpAccessGuard implements CanActivate {
       throw new ForbiddenException("Untrusted MCP request origin");
     req.principal = { userId: result.userId };
     req.user = req.principal;
+    req.mcp = {
+      grantId: result.grantId,
+      clientId: result.clientId,
+      scopes: result.scopes,
+    };
     return true;
   }
 }

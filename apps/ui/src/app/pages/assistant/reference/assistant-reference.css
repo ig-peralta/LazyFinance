@@ -1,0 +1,259 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+.reference-card {
+  padding: 19px 20px 16px;
+  border: 1px solid #6ee7b722;
+  border-radius: 16px;
+  background: linear-gradient(125deg, #6ee7b708, transparent 65%), #132019;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.reference-heading {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 19px;
+}
+.reference-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  background: #6ee7b711;
+  color: #9be4bd;
+  flex-shrink: 0;
+}
+.reference-icon app-icon {
+  width: 18px;
+  height: 18px;
+}
+.reference-title {
+  flex: 1;
+  min-width: 0;
+}
+.reference-section {
+  margin: 0 0 5px;
+  color: #9ac4ac;
+  font-size: 9px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.reference-section span {
+  color: #9cafa3;
+  letter-spacing: 0;
+}
+.reference-title h3 {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: #e0ede5;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.reference-period {
+  font-size: 10px;
+  color: #9fb7a8;
+  margin: 5px 0 0;
+  text-transform: capitalize;
+}
+.reference-status {
+  flex-shrink: 0;
+  padding: 4px 7px;
+  border-radius: 5px;
+  background: #6ee7b70b;
+  color: #a6d8ba;
+  font-size: 8px;
+  border: 1px solid #6ee7b719;
+}
+.reference-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 16px;
+  margin: 0 0 17px;
+}
+.reference-metrics dt {
+  color: #a1b6a9;
+  font-size: 10px;
+  line-height: 1.6;
+  margin-bottom: 5px;
+}
+.reference-metrics dd {
+  margin: 0;
+  font-size: clamp(17px, 2vw, 23px);
+  color: #e1f3e8;
+  letter-spacing: -0.5px;
+  font-weight: 500;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+.reference-metrics > div:first-child dd {
+  color: #b5f0cc;
+}
+.reference-rows {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 14px;
+}
+.reference-rows li {
+  padding: 13px 0;
+  border-top: 1px solid #ffffff0b;
+}
+.reference-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.reference-row-copy {
+  flex: 1 1 120px;
+  min-width: 0;
+}
+.reference-row-copy :is(a, strong) {
+  font-size: 11px;
+  line-height: 1.6;
+  color: #d5e5db;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.reference-row-copy a {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  text-decoration: none;
+}
+.reference-row-copy a:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.reference-row-copy app-icon {
+  width: 11px;
+  height: 11px;
+  color: #97d5b1;
+}
+.reference-row-copy p {
+  font-size: 10px;
+  color: #9db1a4;
+  line-height: 1.8;
+  margin: 4px 0 0;
+}
+.reference-value {
+  font-size: 13px;
+  font-weight: 500;
+  color: #cde8d7;
+  text-align: right;
+  max-width: 100%;
+  margin-left: auto;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+.reference-progress {
+  margin-top: 10px;
+  height: 4px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #ffffff0b;
+}
+.reference-progress span {
+  display: block;
+  height: 100%;
+  background: #80cea0;
+  border-radius: inherit;
+}
+.reference-empty {
+  font-size: 12px;
+  line-height: 1.8;
+  color: #bdcfc2;
+  margin: 0 0 14px;
+}
+.reference-note,
+.reference-preview {
+  font-size: 10px;
+  line-height: 1.8;
+  color: #a1b7a9;
+  margin: 7px 0;
+}
+.reference-preview {
+  color: #b0d5bf;
+}
+.reference-footer {
+  border-top: 1px solid #ffffff0c;
+  padding-top: 13px;
+  margin-top: 16px;
+}
+.reference-footer > p {
+  font-size: 9px;
+  color: #9db2a5;
+  line-height: 1.8;
+  margin: 0 0 12px;
+}
+.reference-open {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  font-size: 11px;
+  font-weight: 500;
+  text-decoration: none;
+  color: #b4efd0;
+  line-height: 1.8;
+  min-height: 30px;
+}
+.reference-open:hover {
+  color: #e0fbea;
+}
+.reference-open app-icon {
+  width: 14px;
+  height: 14px;
+}
+.reference-warning {
+  border-color: #e5bc7633;
+}
+.reference-warning .reference-status {
+  color: #e8c78c;
+  border-color: #e5bc7633;
+  background: #e5bc7608;
+}
+a:focus-visible {
+  outline: 2px solid #a7f3d0;
+  outline-offset: 4px;
+  border-radius: 3px;
+}
+@media (max-width: 540px) {
+  .reference-card {
+    padding: 15px 13px 12px;
+    border-radius: 13px;
+  }
+  .reference-heading {
+    gap: 9px;
+    flex-wrap: wrap;
+  }
+  .reference-title {
+    min-width: 90px;
+  }
+  .reference-icon {
+    width: 29px;
+    height: 29px;
+  }
+  .reference-status {
+    font-size: 8px;
+  }
+  .reference-metrics {
+    gap: 13px 10px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .reference-value {
+    font-size: 12px;
+  }
+  .reference-row {
+    gap: 5px 10px;
+  }
+  .reference-open {
+    width: 100%;
+  }
+}
