@@ -1,0 +1,64 @@
+@startuml bank-sync-sequence
+!include sequence.iuml
+title LazyFinance — Manual Banking Synchronization\nExplicit available snapshot, revision lease and atomic commit
+
+participant "Synchronization panel\n(browser)" as Web <<boundary>>
+participant "Banking orchestration\n(API)" as API <<application>>
+participant "Fintoc connector" as Bank <<adapter>>
+participant "Private persistence" as P <<persistence>>
+database "PostgreSQL 18" as DB
+
+Web -> API : Explicit owned import / refresh
+activate API #D5E8D4
+API -> P : begin(connectionId, expected version)
+activate P #FFE6CC
+P -> DB : Short owner-locked lease transaction
+activate DB #FFE6CC
+DB --> P : Lease / active-run / backoff state
+deactivate DB
+P --> API : Revision-bound lease or existing status
+deactivate P
+
+alt Active lease / backoff / superseded request
+  API --> Web : Existing state; no new fetch
+else Lease acquired
+  API -> Bank : Bounded available snapshot pages
+  activate Bank #F8CECC
+  Bank --> API : Snapshot or provider / data failure
+  deactivate Bank
+  alt Valid snapshot
+    API -> P : Read bounded owned facts
+    activate P #FFE6CC
+    P --> API : Consistent facts + fingerprint
+    deactivate P
+    API -> API : Normalize and prepare financial decisions\noutside SQL
+    API -> P : commit(prepared command, revision, fingerprint)
+    activate P #FFE6CC
+    P -> DB : Short locked transaction; revalidate selection
+    activate DB #FFE6CC
+    P -> DB : Facts + decisions / events + checkpoint
+    DB --> P : Atomic commit or stale-command rejection
+    deactivate DB
+    P --> API : Saved synchronization outcome
+    deactivate P
+  else Fetch / normalized-data failure
+    API -> P : failure(current revision, reason, retryAfter)
+    activate P #FFE6CC
+    P -> DB : Record attempt state; retain last-good facts / checkpoint
+    activate DB #FFE6CC
+    DB --> P : Committed failure state
+    deactivate DB
+    P --> API : Saved failure / recovery state
+    deactivate P
+  end
+  API --> Web : Confirmed outcome or explicit uncertainty
+end
+deactivate API
+
+note over API, DB
+  Provider calls / preparation never hold a SQL transaction open.
+  Preparation conflicts allow bounded recomputation, not blind mutation replay.
+  An uncertain response requires a status read; Stop does not prove rollback.
+  No scheduler, worker queue or assistant-triggered refresh is implied.
+end note
+@enduml

@@ -16,6 +16,10 @@ The apps use TypeScript/Node.js, PostgreSQL 18, Firebase identity, Zod, Vitest a
 
 ## Architecture
 
+The [implemented ER and 4+1 diagram atlas](docs/diagrams/README.md) provides
+editable sources and rendered PNGs. **Deployment is pending**; its physical view
+shows the planned Compose reference topology, not a deployed environment.
+
 ```mermaid
 flowchart TB
     subgraph interfaces["Interfaces"]
@@ -132,8 +136,9 @@ earlier validation evidence do not describe the latest runtime by themselves.
 
 ### Diagrams and academic submissions
 
-- [Conceptual UML inventory](docs/diagrams/README.md): three unchanged PNG sketches
-  with explicit scope/accuracy limits, not the implemented database model.
+- [Diagram inventory](docs/diagrams/README.md): implemented ER and logical,
+  development, process, planned physical and scenarios (+1) views, plus focused
+  assistant, approval, MCP and banking sequences.
 - [Academic submission index](docs/submissions/README.md): every available shared
   and individual document, including [Phase 1](docs/submissions/README.md#phase-1--project-definition)
   project definition/forms/presentation and [Phase 2](docs/submissions/README.md#phase-2--development-progress)

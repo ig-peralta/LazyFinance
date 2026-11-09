@@ -1,0 +1,61 @@
+@startuml physical
+!include style.iuml
+top to bottom direction
+title LazyFinance — Physical View\n<color:#991B1B>PLANNED REFERENCE · DEPLOYMENT PENDING</color>
+
+node "User device" as Device <<device>> {
+  artifact "<b>Browser</b>\nAngular private CSR / public prerender" as Browser <<browser client>>
+}
+node "External MCP client" as Client <<external client>>
+
+node "Planned Compose host\ndocker/local/deploy.yml — not a deployed environment" as Host <<planned host>> {
+  node "ui : container\nNetwork: edge" as UI <<boundary>> {
+    artifact "<b>Static Nginx :4000</b>\nUnprivileged; no Node runtime\nNo API proxy" as StaticUi <<static hosting>>
+  }
+  node "api : container\nNetworks: edge + services" as API <<application>> {
+    artifact "<b>NestJS API :3000</b>\nPrivate signing / provider / OAuth secrets" as ApiProcess <<application>>
+  }
+  node "persistence : container\nNetworks: services + data" as Persistence <<persistence>> {
+    artifact "<b>Private NestJS :3001</b>\nRestricted SQL login; public assertion key" as PersistenceProcess
+  }
+  node "postgres : container\nNetwork: data" as Postgres <<persistence>> {
+    database "<b>PostgreSQL 18 :5432</b>\nidentity / finance / assistant" as DB
+    artifact "postgres-data\nNamed persistent volume" as Volume
+  }
+  node "Owner-only jobs\nNetwork: data" as Jobs <<persistence>> {
+    artifact "<b>init</b>\nOne-shot migrate + provision\nSeparate owner credentials" as Init
+    artifact "<b>seed</b>\nOpt-in tools profile\nExplicit synthetic demo data" as Seed
+  }
+}
+
+package "Supporting external services" <<external>> {
+  component "<b>Firebase Auth</b>\nBrowser sign-in / API verification" as Firebase <<security>>
+  component "<b>Fintoc</b>\nHosted Widget / banking API" as Fintoc <<adapter>>
+  component "<b>Configured model endpoint</b>\nOptional; assistant disabled by default" as Model <<model provider>>
+}
+
+Browser -- UI : HTTP static files\nhost :4200 → :4000
+Browser -- API : direct build-configured API origin\nhost default :3000 → :3000; CORS
+Client -- API : configured OAuth issuer / resource\nand Streamable HTTP /mcp
+API -- Persistence : internal services network\nsigned HTTP tRPC :3001
+Persistence -- DB : internal data network\nSQL :5432
+Init ..> DB : migrate / provision before runtime
+Seed ..> DB : manual invocation after init
+DB -- Volume : persistent data
+API ..> Firebase : Admin verification
+API ..> Fintoc : server-side link / snapshot requests
+API ..> Model : configured SDK; outside SQL
+
+UI -[hidden]right-> API
+API -[hidden]right-> Firebase
+Firebase -[hidden]down-> Fintoc
+Fintoc -[hidden]down-> Model
+
+legend bottom
+  Private persistence and PostgreSQL publish no host ports. Network membership is written on each node.
+  Browser Firebase SDK / explicit Fintoc Widget exchanges are omitted here; they do not pass through UI Nginx.
+  The UI build's api.lazyfinance.cl is configuration, not deployment evidence; local builds need a reachable API origin / CORS.
+  Hosting, DNS/TLS, protected private transport, production auth/secrets, rotation, backup/restore, monitoring and image validation remain pending.
+  Compose defaults are development settings. No cloud provider or replica count is assumed; a volume is not a backup.
+endlegend
+@enduml

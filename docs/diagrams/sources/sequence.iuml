@@ -1,0 +1,10 @@
+!include style.iuml
+hide footbox
+skinparam padding 3
+skinparam maxMessageSize 280
+skinparam sequenceMessageSpan true
+skinparam sequence {
+  ParticipantPadding 12
+  MessagePadding 3
+}
+autonumber "<b>0</b>"

@@ -1,0 +1,65 @@
+@startuml agent-sequence
+!include sequence.iuml
+title LazyFinance — Grounded Assistant Query\nRepresentative read turn, not automatic bank refresh
+
+participant "Angular browser" as Web <<boundary>>
+participant "Assistant workflow\n(API)" as API <<first-party agent>>
+participant "Configured model" as Model <<model provider>>
+participant "Financial services\n(API)" as Finance <<application>>
+participant "Private persistence" as P <<persistence>>
+database "PostgreSQL 18" as DB
+
+Web -> API : Authenticated text + conversationId + requestId
+activate API #E1D5E7
+API -> P : begin(turn, nonce, lease)
+activate P #FFE6CC
+P -> DB : Short owner-scoped claim transaction
+activate DB #FFE6CC
+DB --> P : Committed claim + bounded saved history
+deactivate DB
+P --> API : Acquired turn or saved replay
+deactivate P
+
+alt Existing nonce
+  API --> Web : Saved / pending state; no new model run
+else Acquired turn
+  API -> Model : Instructions + bounded history + allowed tools
+  activate Model #E1D5E7
+  loop Bounded grounded reads
+    Model --> API : Read name + arguments; never owner / approval
+    API -> Finance : Validate arguments; bind trusted owner
+    activate Finance #D5E8D4
+    Finance -> P : Owned purpose-shaped factual read
+    activate P #FFE6CC
+    P -> DB : Scoped SQL read
+    activate DB #FFE6CC
+    DB --> P : Stored facts / aggregate
+    deactivate DB
+    P --> Finance : Validated factual result
+    deactivate P
+    Finance --> API : Financial result + period / coverage
+    deactivate Finance
+    API -> Model : Grounded tool result
+    API --> Web : NDJSON source / text events
+  end
+  Model --> API : Final generation status
+  deactivate Model
+  API -> API : Validate citations, limits and completeness
+  API -> P : finish(turn, lease)
+  activate P #FFE6CC
+  P -> DB : Short lease-checked completion transaction
+  activate DB #FFE6CC
+  DB --> P : Saved completion or obsolete-lease rejection
+  deactivate DB
+  P --> API : Authoritative saved state
+  deactivate P
+  API --> Web : Persisted done event, if still connected
+end
+deactivate API
+
+note over API, DB
+  No SQL transaction spans model work.
+  A model may prepare a saved proposal, but cannot approve / execute it.
+  See the separate approval and MCP sequences for financial writes.
+end note
+@enduml

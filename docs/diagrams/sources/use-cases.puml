@@ -1,0 +1,41 @@
+@startuml use-cases
+!include style.iuml
+left to right direction
+title LazyFinance — Use Cases / Scenarios View (+1)
+
+actor "Account owner" as Owner
+actor "External MCP client" as Client <<external client>>
+actor "Firebase Auth" as Firebase <<identity provider>>
+actor "Fintoc" as Fintoc <<banking provider>>
+actor "Configured model" as Model <<model provider>>
+
+rectangle "LazyFinance — implemented Stage B system" as System {
+  usecase "UC-01\n<b>Access my workspace</b>\nSign in, restore/logout and\nmanage supported credentials" as Access <<security>>
+  usecase "UC-02\n<b>Manage and trace finances</b>\nMovements, tags, income, budgets,\nmeasured savings and evidence" as Finance
+  usecase "UC-03\n<b>Connect / synchronize a bank</b>\nExplicit link, import, refresh,\nrelink and disconnect" as Bank <<banking>>
+  usecase "UC-04\n<b>Ask grounded text questions</b>\nPeriods, uncertainty, references\nand bounded saved history" as Chat <<assistant>>
+  usecase "UC-05\n<b>Review an exact saved proposal</b>\nExplicit saved-version\napprove / edit / cancel" as Approve <<assistant>>
+  usecase "UC-06\n<b>Delegate / revoke client access</b>\nRead permission; optional writes\ndefault off" as Grants <<security>>
+  usecase "UC-07\n<b>Use owned MCP reads</b>\nFinancial and supporting tools\nwith OAuth authorization" as Reads <<domain>>
+  usecase "UC-08\n<b>Execute bounded MCP changes</b>\nGranted scopes, stable request ID\nand preview for existing-record changes" as Writes <<domain>>
+}
+
+Owner -- Access
+Owner -- Finance
+Owner -- Bank
+Owner -- Chat
+Owner -- Approve
+Owner -- Grants
+Client -- Grants
+Client -- Reads
+Client -- Writes
+Access -- Firebase
+Bank -- Fintoc
+Chat -- Model
+
+legend bottom
+  Model proposals are not approval. UI card approval and MCP execution have independent authority.
+  Consent is owner/client-bound; writes default off. No money movement or autonomous bank refresh.
+  Voice / forecasting / broader MCP management are not delivered. Deployment is pending.
+endlegend
+@enduml

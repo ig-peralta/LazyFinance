@@ -11,6 +11,7 @@ target is not evidence of a delivered capability.
 | Guide | Read it for |
 | --- | --- |
 | [Architecture](architecture.md) | Runtime/dependency boundaries, responsibility split and product scope |
+| [Implemented ER and 4+1 views](../diagrams/README.md) | Editable PlantUML and rendered PNGs: ER, logical, development, process, planned physical and scenarios views; deployment pending |
 | [Private RPC, transactions and RLS](persistence-security.md) | Signed contexts, bootstrap, roles/grants, related ownership, rollback, atomic commands and limits |
 | [Implemented database model and ERD](database-model.md) | All 28 application tables, actual relationships/keys, financial representation and migrations |
 | [RPC contracts and clients](rpc-contracts.md) | Public/private exports, 78/94 procedure inventories, MCP, code generation and wire semantics |
@@ -41,8 +42,9 @@ target is not evidence of a delivered capability.
 
 - [Non-functional requirements](../product/non-functional-requirements.md):
   quality targets, not proof of production readiness or maximum-size load tests.
-- [Conceptual UML PNGs](../diagrams/README.md): historical product sketches with
-  explicit inaccuracies. Use the implemented ERD above for the actual data model.
+- [Diagram inventory](../diagrams/README.md): implemented ER/4+1 sources and PNGs,
+  with actual use cases, components and focused message sequences. The physical
+  view is planned configuration, not deployment evidence.
 - [Latest backlog](../planning/snapshots/backlog-2026-11-09.md) and
   [Stage B closure](../planning/stage-b/closure.md): completed development-stage
   inventory, evidence and accepted carryovers. The [earlier checkpoint](../planning/snapshots/backlog-2026-11-02.md)

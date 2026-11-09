@@ -1,0 +1,52 @@
+@startuml development
+!include style.iuml
+skinparam packageStyle folder
+top to bottom direction
+title LazyFinance — Development View\nSeven workspace packages; source dependencies, not network calls
+
+together {
+  package "apps/ui" as UI <<channels>> {
+  }
+  package "apps/api" as API <<application>> {
+  }
+  package "apps/persistence" as Persistence <<persistence>> {
+  }
+}
+together {
+  package "libs/rpc-api" as PublicRouter <<channels>> {
+  }
+  package "libs/rpc-auth" as Signing <<identity>> {
+  }
+  package "libs/rpc-persistence" as PrivateRouter <<persistence>> {
+  }
+}
+package "libs/contracts" as Contracts <<finance>> {
+}
+
+UI ..> PublicRouter : types only
+API ..> PrivateRouter : types only
+UI ..> Contracts : public schemas
+API ..> Contracts
+Persistence ..> Contracts
+API ..> Signing : sign
+Persistence ..> Signing : verify
+Signing ..> Contracts : context schemas
+PublicRouter ..> Contracts : type references
+PrivateRouter ..> Contracts : type references
+
+UI -[hidden]right-> API
+API -[hidden]right-> Persistence
+PublicRouter -[hidden]right-> Signing
+Signing -[hidden]right-> PrivateRouter
+
+legend bottom
+  |= Package group |= Responsibility |
+  | apps/ui / api / persistence | Angular browser / NestJS workflows / private RPC and Kysely SQL |
+  | rpc-api / rpc-persistence | Generated type-only router facades; no runtime server imports |
+  | rpc-auth / contracts | Node-only Ed25519 assertions / public, internal and context Zod schemas |
+  Services import public, internal and context schemas; the browser imports public schemas only.
+  No application imports another application's source. Test-only router dependencies are omitted.
+  scripts/rpc-generate.mjs reads API/persistence declarations and writes the two router libraries.
+  Generation is explicit; build, type, architecture and drift checks validate source boundaries.
+endlegend
+@enduml

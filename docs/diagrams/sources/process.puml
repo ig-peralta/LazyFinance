@@ -1,0 +1,64 @@
+@startuml process
+!include style.iuml
+title LazyFinance — Process View\nOne request-bound path at a time
+skinparam activity {
+  BackgroundColor #D5E8D4
+  BorderColor #64748B
+  BorderThickness 2
+  DiamondBackgroundColor #F5F9FA
+  DiamondBorderColor #64748B
+  FontSize 13
+}
+
+start
+:Explicit browser / MCP request; <<#DAE8FC>>
+:API verifies credentials / scopes\nand resolves the trusted owner; <<#FFF2CC>>
+
+switch (Request path)
+case (Financial read)
+  :Persistence: scoped factual\nprojection / aggregate; <<#FFE6CC>>
+  :API: financial interpretation,\ncalendar rules and response; <<#D5E8D4>>
+case (Assistant turn)
+  :Persistence: claim\nnonce, lease and history; <<#FFE6CC>>
+  if (New turn acquired?) then (yes)
+    :API: bounded model / tool loop outside SQL,\nowned reads / proposals use separate scoped RPCs; <<#E1D5E7>>
+    :Persistence: lease-checked\nturn completion; <<#FFE6CC>>
+  else (replay)
+    :Return saved / pending turn,\ndo not run the model again; <<#DAE8FC>>
+  endif
+case (Approved / delegated action)
+  :Saved-version UI approval OR\nseparately granted MCP write scopes; <<#FFF2CC>>
+  :Short owner-locked transaction:\nrecheck authority, facts and idempotency; <<#FFE6CC>>
+  :Domain command + receipt commit together,\nstale input changes no finance; <<#FFE6CC>>
+case (Bank synchronization)
+  :Persistence: acquire\nrevision-bound lease / honor backoff; <<#FFE6CC>>
+  if (Lease acquired?) then (yes)
+    :API: bounded provider fetch\noutside SQL; <<#F8CECC>>
+    if (Valid available snapshot?) then (yes)
+      :Persistence: consistent owned facts; <<#FFE6CC>>
+      :API: normalize and prepare\noutside SQL; <<#D5E8D4>>
+      :Atomic commit rechecks revision / fingerprint,\nsaves facts, decisions and checkpoint; <<#FFE6CC>>
+    else (failure)
+      :Record failure against current revision,\nretain last-good facts / checkpoint; <<#FFE6CC>>
+    endif
+  else (active / backoff)
+    :Return existing state,\ndo not start another fetch; <<#DAE8FC>>
+  endif
+endswitch
+
+:Return confirmed state,\nsaved result or explicit uncertainty; <<#DAE8FC>>
+note right
+  Uncertain write response → read status.
+  Never automatically replay a mutation.
+  Stop / disconnect does not prove rollback.
+end note
+stop
+
+legend bottom
+  Representative financial paths, not an exhaustive router inventory.
+  All user writes share a short per-owner advisory lock.
+  Leases coalesce request-driven work; there is no scheduler or worker queue.
+  Model / provider calls and financial preparation never run inside SQL.
+  Focused message sequences are documented separately.
+endlegend
+@enduml

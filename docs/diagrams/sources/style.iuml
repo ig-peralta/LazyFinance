@@ -1,0 +1,184 @@
+' Shared visual language from the unchanged conceptual PNGs.
+' UML roles, not deployment status, determine colour. Status is written explicitly.
+' Graphviz supplies layout locally; no diagram server or application service is used.
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam dpi 120
+skinparam defaultFontName SansSerif
+skinparam defaultFontSize 14
+skinparam defaultFontColor #0F172A
+skinparam defaultTextAlignment center
+skinparam stereotypeFontStyle italic
+skinparam ArrowColor #334155
+skinparam ArrowThickness 1.5
+skinparam roundcorner 8
+skinparam padding 8
+skinparam nodesep 35
+skinparam ranksep 45
+skinparam linetype polyline
+skinparam componentStyle uml2
+skinparam packageStyle rectangle
+skinparam titleFontSize 22
+skinparam titleFontStyle bold
+skinparam captionFontSize 12
+skinparam legendFontSize 12
+skinparam legendBackgroundColor #F5F9FA
+skinparam legendBorderColor #64748B
+skinparam noteBackgroundColor #FFF2CC
+skinparam noteBorderColor #D6B656
+skinparam noteFontColor #334155
+skinparam noteFontSize 12
+skinparam noteBorderThickness 1.5
+
+skinparam component {
+  BackgroundColor #D5E8D4
+  BorderColor #82B366
+  BorderThickness 2
+  BackgroundColor<<boundary>> #DAE8FC
+  BorderColor<<boundary>> #6C8EBF
+  BackgroundColor<<security>> #FFF2CC
+  BorderColor<<security>> #D6B656
+  BackgroundColor<<first-party agent>> #E1D5E7
+  BorderColor<<first-party agent>> #9673A6
+  BackgroundColor<<model provider>> #E1D5E7
+  BorderColor<<model provider>> #9673A6
+  BackgroundColor<<adapter>> #F8CECC
+  BorderColor<<adapter>> #B85450
+  BackgroundColor<<persistence>> #FFE6CC
+  BorderColor<<persistence>> #D79B00
+  BackgroundColor<<external client>> #FFF2CC
+  BorderColor<<external client>> #D6B656
+}
+skinparam package {
+  BackgroundColor #F5F9FA
+  BorderColor #64748B
+  BorderThickness 2
+  FontStyle bold
+  BackgroundColor<<channels>> #F5F9FA
+  BorderColor<<channels>> #6C8EBF
+  BackgroundColor<<application>> #F0FAF2
+  BorderColor<<application>> #82B366
+  BackgroundColor<<persistence>> #FFF8ED
+  BorderColor<<persistence>> #D79B00
+  BackgroundColor<<identity>> #FFFBEF
+  BorderColor<<identity>> #D6B656
+  BackgroundColor<<finance>> #F0FAF2
+  BorderColor<<finance>> #82B366
+  BackgroundColor<<assistant>> #F7F2FA
+  BorderColor<<assistant>> #9673A6
+}
+skinparam interface {
+  BackgroundColor #FFFFFF
+  BorderColor #334155
+  BorderThickness 2
+}
+skinparam artifact {
+  BackgroundColor #FFE6CC
+  BorderColor #D79B00
+  BorderThickness 2
+  BackgroundColor<<browser bundle>> #DAE8FC
+  BorderColor<<browser bundle>> #6C8EBF
+  BackgroundColor<<browser client>> #DAE8FC
+  BorderColor<<browser client>> #6C8EBF
+  BackgroundColor<<static hosting>> #DAE8FC
+  BorderColor<<static hosting>> #6C8EBF
+  BackgroundColor<<public contract>> #DAE8FC
+  BorderColor<<public contract>> #6C8EBF
+  BackgroundColor<<schema library>> #D5E8D4
+  BorderColor<<schema library>> #82B366
+  BackgroundColor<<application>> #D5E8D4
+  BorderColor<<application>> #82B366
+  BackgroundColor<<security>> #FFF2CC
+  BorderColor<<security>> #D6B656
+}
+skinparam node {
+  BackgroundColor #F5F9FA
+  BorderColor #64748B
+  BorderThickness 2
+  BackgroundColor<<boundary>> #DAE8FC
+  BorderColor<<boundary>> #6C8EBF
+  BackgroundColor<<application>> #D5E8D4
+  BorderColor<<application>> #82B366
+  BackgroundColor<<persistence>> #FFE6CC
+  BorderColor<<persistence>> #D79B00
+}
+skinparam database {
+  BackgroundColor #FFE6CC
+  BorderColor #D79B00
+  BorderThickness 2
+}
+skinparam rectangle {
+  BackgroundColor #F5F9FA
+  BorderColor #334155
+  BorderThickness 2
+}
+skinparam usecase {
+  BackgroundColor #DAE8FC
+  BorderColor #6C8EBF
+  BorderThickness 2
+  BackgroundColor<<security>> #FFF2CC
+  BorderColor<<security>> #D6B656
+  BackgroundColor<<assistant>> #E1D5E7
+  BorderColor<<assistant>> #9673A6
+  BackgroundColor<<banking>> #F8CECC
+  BorderColor<<banking>> #B85450
+  BackgroundColor<<domain>> #D5E8D4
+  BorderColor<<domain>> #82B366
+}
+skinparam actor {
+  BackgroundColor #FFFFFF
+  BorderColor #1E3A8A
+  BorderThickness 2
+  FontStyle bold
+  BorderColor<<external client>> #5B21B6
+  BorderColor<<identity provider>> #854D0E
+  BorderColor<<banking provider>> #991B1B
+  BorderColor<<model provider>> #6B21A8
+}
+skinparam class {
+  BackgroundColor #D5E8D4
+  BorderColor #82B366
+  BorderThickness 2
+  AttributeFontSize 12
+  AttributeFontColor #0F172A
+  BackgroundColor<<identity>> #FFF2CC
+  BorderColor<<identity>> #D6B656
+  BackgroundColor<<assistant>> #E1D5E7
+  BorderColor<<assistant>> #9673A6
+  BackgroundColor<<banking>> #F8CECC
+  BorderColor<<banking>> #B85450
+}
+skinparam sequence {
+  ArrowColor #334155
+  ArrowThickness 1.5
+  LifeLineBorderColor #64748B
+  LifeLineBackgroundColor #FFFFFF
+  ParticipantBackgroundColor #D5E8D4
+  ParticipantBorderColor #82B366
+  ParticipantBorderThickness 2
+  ParticipantFontStyle bold
+  ParticipantBackgroundColor<<boundary>> #DAE8FC
+  ParticipantBorderColor<<boundary>> #6C8EBF
+  ParticipantBackgroundColor<<security>> #FFF2CC
+  ParticipantBorderColor<<security>> #D6B656
+  ParticipantBackgroundColor<<model provider>> #E1D5E7
+  ParticipantBorderColor<<model provider>> #9673A6
+  ParticipantBackgroundColor<<first-party agent>> #E1D5E7
+  ParticipantBorderColor<<first-party agent>> #9673A6
+  ParticipantBackgroundColor<<persistence>> #FFE6CC
+  ParticipantBorderColor<<persistence>> #D79B00
+  ParticipantBackgroundColor<<adapter>> #F8CECC
+  ParticipantBorderColor<<adapter>> #B85450
+  ParticipantPadding 18
+  BoxBackgroundColor #F5F9FA
+  BoxBorderColor #64748B
+  GroupBackgroundColor #F5F9FA
+  GroupBodyBackgroundColor #FFFFFF
+  GroupBorderColor #64748B
+  GroupBorderThickness 1.5
+  MessageAlign center
+  MessagePadding 8
+  ActivationBorderColor #64748B
+  ActivationBackgroundColor #D5E8D4
+}
+footer <color:#64748B>LazyFinance · Stage B code 1cda504 · Deployment pending</color>

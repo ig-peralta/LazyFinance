@@ -1,0 +1,320 @@
+@startuml er
+!include style.iuml
+top to bottom direction
+title LazyFinance — Implemented Entity–Relationship Model\n28 application tables · 44 foreign keys
+hide circle
+hide methods
+skinparam classAttributeIconSize 0
+skinparam linetype polyline
+
+' Selected attributes. Migrations remain the DDL source of truth.
+' Solid edges identify child PKs; dotted edges do not.
+' PlantUML uses |o on the left for nullable parent references.
+entity "identity.user" as identity_user <<identity>> {
+  id : uuid <<PK>>
+  --
+  email : varchar <<UK>>
+  name : varchar
+}
+entity "identity.external_identity" as identity_external_identity <<identity>> {
+  provider : varchar <<PK>>
+  issuer : varchar <<PK>>
+  provider_subject : varchar <<PK>>
+  --
+  user_id : uuid <<FK>>
+}
+entity "identity.onboarding" as identity_onboarding <<identity>> {
+  user_id : uuid <<PK, FK>>
+  --
+  status : text
+  completed_at : timestamptz
+}
+entity "identity.mcp_grant" as identity_mcp_grant <<identity>> {
+  id : text <<PK>>
+  --
+  interaction_id : text <<UK>>
+  user_id : uuid <<FK>>
+  client_id : text
+  resource : text
+  scopes : text_array
+  expires_at : timestamptz
+  revoked_at : timestamptz
+}
+entity "identity.mcp_artifact" as identity_mcp_artifact <<identity>> {
+  model : text <<PK>>
+  key : text <<PK>>
+  --
+  account_id : uuid <<FK>>
+  grant_id : text
+  ciphertext : text
+  expires_at : timestamptz
+  consumed_at : timestamptz
+}
+entity "assistant.conversation" as assistant_conversation <<assistant>> {
+  id : uuid <<PK>>
+  --
+  user_id : uuid <<FK>>
+  title : text
+  turns : jsonb
+  lease : uuid
+  lease_expires_at : timestamptz
+  expires_at : timestamptz
+}
+entity "assistant.action" as assistant_action <<assistant>> {
+  id : uuid <<PK>>
+  --
+  user_id : uuid <<FK>>
+  conversation_id : uuid <<FK>>
+  turn_id : uuid
+  origin : text
+  request_id : uuid
+  grant_id : text
+  client_id : text
+  version : integer
+  request : jsonb
+  command : jsonb
+  fingerprint : text
+  status : text
+  results : jsonb
+  expires_at : timestamptz
+}
+entity "finance.provider" as finance_provider <<banking>> {
+  id : uuid <<PK>>
+  --
+  identifier : varchar <<UK>>
+}
+entity "finance.provider_connection" as finance_provider_connection <<banking>> {
+  id : uuid <<PK>>
+  --
+  user_id : uuid <<FK>>
+  provider_id : uuid <<FK>>
+  external_id : varchar
+  mode : connection_mode
+  status : connection_status
+  encrypted_credential : text
+  credential_version : integer
+  created_at : timestamptz
+  disconnected_at : timestamptz
+}
+entity "finance.provider_link_intent" as finance_provider_link_intent <<banking>> {
+  id : uuid <<PK>>
+  --
+  user_id : uuid <<FK>>
+  provider_intent_id : varchar <<UK>>
+  connection_id : uuid <<FK>>
+  expected_version : integer
+  completed_connection_id : uuid <<FK>>
+  state : text
+  expires_at : timestamptz
+}
+entity "finance.account" as finance_account <<finance>> {
+  id : uuid <<PK>>
+  --
+  user_id : uuid <<FK>>
+  provider_connection_id : uuid <<FK>>
+  external_id : varchar
+  type : account_type
+  currency : currency
+  balance : numeric
+  last_synced_at : timestamptz
+  history_completeness : history_completeness
+}
+entity "finance.transaction" as finance_transaction <<finance>> {
+  id : uuid <<PK>>
+  --
+  account_id : uuid <<FK>>
+  tag_id : uuid <<FK>>
+  tag_rule_id : uuid <<FK>>
+  external_id : varchar
+  amount : numeric
+  type : transaction_type
+  booked_at : timestamptz
+  booked_precision : booked_precision
+  booked_on : date
+  tag_decision_origin : tag_decision_origin
+  review_status : movement_review_status
+  removed_at : timestamptz
+}
+entity "finance.tag" as finance_tag <<finance>> {
+  id : uuid <<PK>>
+  --
+  user_id : uuid <<FK>>
+  name : varchar
+  color : varchar
+  is_archived : boolean
+}
+entity "finance.tag_rule" as finance_tag_rule <<finance>> {
+  id : uuid <<PK>>
+  --
+  user_id : uuid <<FK>>
+  tag_id : uuid <<FK>>
+  account_id : uuid <<FK>>
+  match_field : tag_rule_field
+  match_value : varchar
+  mode : tag_rule_mode
+  approved_at : timestamptz
+}
+entity "finance.tag_decision_event" as finance_tag_decision_event <<finance>> {
+  id : uuid <<PK>>
+  --
+  user_id : uuid <<FK>>
+  transaction_id : uuid <<FK>>
+  previous_tag_id : uuid <<FK>>
+  tag_id : uuid <<FK>>
+  rule_id : uuid <<FK>>
+}
+entity "finance.objective" as finance_objective <<finance>> {
+  id : uuid <<PK>>
+  --
+  user_id : uuid <<FK>>
+  name : varchar
+  amount : numeric
+  intent : objective_intent
+  kind : objective_kind
+  budget_version : integer
+  goal_version : integer
+  archived_at : timestamptz
+}
+entity "finance.objective_tag" as finance_objective_tag <<finance>> {
+  objective_id : uuid <<PK, FK>>
+  tag_id : uuid <<PK, FK>>
+}
+entity "finance.budget_revision" as finance_budget_revision <<finance>> {
+  id : uuid <<PK>>
+  --
+  objective_id : uuid <<FK>>
+  version : integer
+  amount : numeric
+  effective_from : timestamptz
+  superseded_at : timestamptz
+}
+entity "finance.budget_revision_tag" as finance_budget_revision_tag <<finance>> {
+  revision_id : uuid <<PK, FK>>
+  tag_id : uuid <<PK, FK>>
+}
+entity "finance.savings_revision" as finance_savings_revision <<finance>> {
+  id : uuid <<PK>>
+  --
+  objective_id : uuid <<FK>>
+  version : integer
+  amount : numeric
+  recorded_at : timestamptz
+}
+entity "finance.savings_revision_tag" as finance_savings_revision_tag <<finance>> {
+  revision_id : uuid <<PK, FK>>
+  tag_id : uuid <<PK, FK>>
+}
+entity "finance.income_source" as finance_income_source <<finance>> {
+  id : uuid <<PK>>
+  --
+  user_id : uuid <<FK>>
+  name : varchar
+  regularity : income_regularity
+  amount_kind : income_amount_kind
+  expected_amount : numeric
+  schedule : jsonb
+  archived_at : timestamptz
+}
+entity "finance.income_expectation" as finance_income_expectation <<finance>> {
+  id : uuid <<PK>>
+  --
+  source_id : uuid <<FK>>
+  date : date
+  amount : numeric
+  is_estimate : boolean
+}
+entity "finance.income_receipt" as finance_income_receipt <<finance>> {
+  transaction_id : uuid <<PK, FK>>
+  --
+  source_id : uuid <<FK>>
+  confirmed_at : timestamptz
+}
+entity "finance.expense_adjustment" as finance_expense_adjustment <<finance>> {
+  id : uuid <<PK>>
+  --
+  credit_transaction_id : uuid <<FK>>
+  purchase_transaction_id : uuid <<FK>>
+  amount : numeric
+  kind : text
+  confirmed_at : timestamptz
+}
+entity "finance.provider_sync_state" as finance_provider_sync_state <<banking>> {
+  provider_connection_id : uuid <<PK, FK>>
+  --
+  checkpoint : varchar
+  revision : integer
+  lease_expires_at : timestamptz
+  last_success_at : timestamptz
+  retry_after : timestamptz
+}
+entity "finance.provider_movement_removal" as finance_provider_movement_removal <<banking>> {
+  provider_connection_id : uuid <<PK, FK>>
+  account_external_id : varchar <<PK>>
+  movement_external_id : varchar <<PK>>
+}
+entity "finance.provider_movement_conflict" as finance_provider_movement_conflict <<banking>> {
+  transaction_id : uuid <<PK, FK>>
+  reason : provider_movement_conflict_reason <<PK>>
+  --
+  previous_facts : jsonb
+  incoming_facts : jsonb
+  resolved_at : timestamptz
+}
+
+identity_user ||..o{ identity_external_identity
+identity_user ||--o| identity_onboarding
+identity_user ||..o{ identity_mcp_grant
+identity_user |o..o{ identity_mcp_artifact
+identity_user ||..o{ assistant_conversation
+identity_user ||..o{ assistant_action
+assistant_conversation |o..o{ assistant_action
+identity_user ||..o{ finance_provider_connection
+identity_user ||..o{ finance_provider_link_intent
+identity_user ||..o{ finance_account
+identity_user ||..o{ finance_tag
+identity_user ||..o{ finance_tag_rule
+identity_user ||..o{ finance_tag_decision_event
+identity_user ||..o{ finance_objective
+identity_user ||..o{ finance_income_source
+finance_provider ||..o{ finance_provider_connection
+finance_provider_connection |o..o{ finance_provider_link_intent : connection_id
+finance_provider_connection |o..o{ finance_provider_link_intent : completed_connection_id
+finance_provider_connection ||..o{ finance_account
+finance_provider_connection ||--o| finance_provider_sync_state
+finance_provider_connection ||--o{ finance_provider_movement_removal
+finance_account ||..o{ finance_transaction
+finance_account |o..o{ finance_tag_rule
+finance_tag ||..o{ finance_tag_rule
+finance_tag |o..o{ finance_transaction
+finance_tag_rule |o..o{ finance_transaction
+finance_transaction ||..o{ finance_tag_decision_event
+finance_tag |o..o{ finance_tag_decision_event : previous_tag_id
+finance_tag |o..o{ finance_tag_decision_event : tag_id
+finance_tag_rule |o..o{ finance_tag_decision_event
+finance_objective ||--o{ finance_objective_tag
+finance_tag ||--o{ finance_objective_tag
+finance_objective ||..o{ finance_budget_revision
+finance_budget_revision ||--o{ finance_budget_revision_tag
+finance_tag ||--o{ finance_budget_revision_tag
+finance_objective ||..o{ finance_savings_revision
+finance_savings_revision ||--o{ finance_savings_revision_tag
+finance_tag ||--o{ finance_savings_revision_tag
+finance_income_source ||..o{ finance_income_expectation
+finance_income_source ||..o{ finance_income_receipt
+finance_transaction ||--o| finance_income_receipt
+finance_transaction ||..o{ finance_expense_adjustment : credit_transaction_id
+finance_transaction ||..o{ finance_expense_adjustment : purchase_transaction_id
+finance_transaction ||--o{ finance_provider_movement_conflict
+
+legend bottom
+  |= Key / line |= Meaning |
+  | PK / FK / UK | Primary key / actual foreign key / single-column uniqueness |
+  | Solid / dotted | Identifying FK in child PK / non-identifying FK |
+  | Cardinality | Nullable reference: zero-or-one; child collections: zero-or-many |
+  | Colour | Yellow: identity · Green: finance · Purple: assistant · Red: banking facts |
+  FK columns appear in each entity. Only parallel references need line labels.
+  Turns/sources are bounded JSON. Action turn_id and action/OAuth grant_id are not FKs.
+  One optional tag per transaction. Receipts survive chat deletion (conversation_id SET NULL).
+  Other columns, composite uniqueness, exact precision, constraints and RLS: database model guide.
+endlegend
+@enduml

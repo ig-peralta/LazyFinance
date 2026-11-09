@@ -1,0 +1,43 @@
+@startuml approval-sequence
+!include sequence.iuml
+title LazyFinance — Explicit Proposal Approval\nExact saved version, atomic result and durable receipt
+
+actor "Account owner" as Owner
+participant "Action card\n(browser)" as Web <<boundary>>
+participant "Actions service\n(API)" as API <<application>>
+participant "Private persistence" as P <<persistence>>
+database "PostgreSQL 18" as DB
+
+note over Web, P : A bounded proposal is already saved. No financial change has been applied.
+Owner -> Web : Review / edit exact card; choose Approve
+Web -> API : approve(id, version)
+activate API #D5E8D4
+API -> P : Read current owned proposal
+activate P #FFE6CC
+P --> API : Saved request / version / state
+deactivate P
+API -> API : Normalize with current financial policies
+API -> P : apply(id, version, normalized command)
+activate P #FFE6CC
+P -> DB : Begin transaction + per-owner write lock
+activate DB #FFE6CC
+note over P, DB : Recheck owner, completed turn, version, expiry and factual fingerprint.
+alt Current valid proposal
+  P -> DB : Domain commands + dependent tags + receipt
+else Stale / expired proposal
+  P -> DB : Finalize ledger state; no financial write
+end
+DB --> P : Commit one authoritative outcome
+deactivate DB
+P --> API : Applied receipt or current proposal state
+deactivate P
+API --> Web : Confirmed action state
+deactivate API
+
+ref over Web, P
+  If the response is lost: explicitly read action status.
+  Never automatically replay the mutation.
+  Repeated approval returns the saved receipt, not another write.
+end ref
+note over API, DB : No model call during approval. Receipts survive chat deletion.
+@enduml

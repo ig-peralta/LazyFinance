@@ -6,6 +6,12 @@ Start here for the current system map. Detailed references:
 [provider-neutral identity](identity.md) and
 [developer verification](development-workflow.md).
 
+The [ER and 4+1 atlas](../diagrams/README.md) projects this implementation
+into stored relationships, logical responsibilities, package dependencies,
+request/process interactions, physical topology and scenarios. **Deployment is
+pending**: the physical view describes the checked-in Compose reference, not an
+installed production environment.
+
 ## Repository and runtime boundaries
 
 `apps/ui` prerenders the public landing at build time and renders login/private
@@ -197,7 +203,8 @@ is explicit.
 
 Compose supports private persistence, separate runtime environments and an owner-only
 init job. Its full stack separates data/service/edge networks; database/persistence
-ports are not published. This is local deployment evidence, not production TLS,
-secret storage, backup recovery or load profiling. See the
+ports are not published in that reference. Deployment and final environment
+verification remain pending; the configuration is not evidence of production TLS,
+secret storage, backup recovery or load readiness. See the
 [technical manual](technical-manual.md) and
 [development workflow](development-workflow.md).

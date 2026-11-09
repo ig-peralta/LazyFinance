@@ -28,7 +28,7 @@ implementation rules in their owning documents instead of duplicating them here.
 | User outcomes and quality targets | [User journeys](docs/product/user-journeys.md), [non-functional requirements](docs/product/non-functional-requirements.md) |
 | Planning, stage milestones and backlog evidence | [Planning index](docs/planning/README.md), [project method](docs/planning/project-method.md), [backlog](docs/planning/backlog.md) |
 | Product and stage completion criteria | [Product Definition of Done](docs/planning/product-definition-of-done.md), [stage gates](docs/planning/README.md#stage-gates) |
-| Academic material and conceptual diagrams | [Submissions](docs/submissions/README.md), [diagram inventory](docs/diagrams/README.md) |
+| ER/UML/4+1 views and academic material | [Diagram inventory](docs/diagrams/README.md), [submissions](docs/submissions/README.md) |
 
 Source/configuration and migrations take precedence over stale prose. Update the
 affected guides and generated contracts alongside implementation changes. Do not

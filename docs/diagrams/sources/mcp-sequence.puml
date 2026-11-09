@@ -1,0 +1,46 @@
+@startuml mcp-sequence
+!include sequence.iuml
+title LazyFinance — Delegated MCP Action\nIndependent OAuth consent, not first-party chat approval
+
+actor "External MCP client" as Client <<external client>>
+participant "MCP gateway / actions\n(API)" as API <<security>> #FFF2CC
+participant "Private persistence" as P <<persistence>>
+database "PostgreSQL 18" as DB
+
+opt Existing-record change requires a preview
+  Client -> API : action preview + MCP OAuth token
+  activate API #FFF2CC
+  API -> P : Owned bounded preview
+  activate P #FFE6CC
+  P --> API : Current selection + factual fingerprint
+  deactivate P
+  API --> Client : Preview context + fingerprint
+  deactivate API
+end
+
+Client -> API : Execute action + stable requestId\nExpected fingerprint for existing-record changes
+activate API #FFF2CC
+API -> API : Verify resource, token / grant scopes\nand tool permission; normalize command
+API -> P : execute(command, clientId, grantId, requestId)
+activate P #FFE6CC
+P -> DB : Transaction: owner lock + live grant lock
+activate DB #FFE6CC
+P -> DB : Recheck selection / scope / fingerprint / idempotency
+alt New authorized request
+  P -> DB : Domain changes + immutable receipt
+else Identical request replay
+  P -> DB : Read existing bound receipt; no second write
+end
+DB --> P : Commit one authoritative outcome
+deactivate DB
+P --> API : Durable result
+deactivate P
+API --> Client : Structured tool result / explicit rejection
+deactivate API
+
+note over Client, DB
+  Write scopes default off; a read-only grant cannot execute changes.
+  Create actions may omit the preview fingerprint.
+  Client confirmation UX is external; conversational approval is not this authority.
+end note
+@enduml

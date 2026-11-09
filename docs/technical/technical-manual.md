@@ -177,6 +177,11 @@ API verification; an old application cookie is expired, not adopted as identity.
 
 ## Compose
 
+**Deployment is pending.** These checked-in files describe supported local
+packaging/reference topologies, not a currently deployed production environment.
+The [physical architecture view](../diagrams/README.md#physical-view--deployment-pending)
+maps their containers, networks, ports and remaining deployment decisions.
+
 - `resources.yml`: local PostgreSQL on loopback port 5432; no named durable volume.
 - `apps.yml`: apps plus owner-only init job using the external `lazyfinance`
   resources network. Start resources first; only persistence/init/seed join that
