@@ -2,7 +2,7 @@
 
 LazyFinance helps people understand their finances without manually reconciling balances and transactions. Its own conversational agent (text first, voice later) and dashboard are the initial experiences built on a shared financial core. MCP opens another path: authorized agents could use permitted financial context in workflows people already know, combining it with their own capabilities. Provider-neutral data access leaves room for more sources, financial services and audiences as those uses are validated.
 
-LazyFinance is a pnpm/Turborepo monorepo with an Angular app, a NestJS API, and a private NestJS/Kysely persistence service. Browser and internal service calls use tRPC; MCP remains available over Streamable HTTP.
+LazyFinance is a pnpm/Turborepo monorepo with an Angular app, a NestJS API, and a private NestJS/Kysely persistence service. Browser calls use public tRPC and a dedicated assistant stream; internal service calls use signed private tRPC. MCP remains available over Streamable HTTP.
 
 ## Technologies
 
@@ -20,19 +20,19 @@ The apps use TypeScript/Node.js, PostgreSQL 18, Firebase identity, Zod, Vitest a
 flowchart TB
     subgraph interfaces["Interfaces"]
         ui["Angular UI<br/>Public prerender · browser workspace"]
-        mcp["MCP clients<br/>Authenticated · read-only"]
+        mcp["MCP clients<br/>OAuth · explicitly scoped actions"]
     end
 
     api["Public API · NestJS<br/>Identity verification<br/>Financial workflows"]
 
     subgraph privateData["Private data boundary"]
         persistence["Persistence · NestJS/Kysely<br/>Scoped transactions<br/>Atomic commands"]
-        postgres[("PostgreSQL 18<br/>identity + finance<br/>User-level RLS")]
+        postgres[("PostgreSQL 18<br/>identity + finance + assistant<br/>User-level RLS")]
 
         persistence -->|SQL · restricted role| postgres
     end
 
-    ui -->|Public tRPC · bearer token| api
+    ui -->|Public tRPC / NDJSON · bearer token| api
     mcp -->|MCP · Streamable HTTP| api
     api -->|Signed private tRPC| persistence
 
@@ -45,7 +45,7 @@ flowchart TB
     style privateData fill:none,stroke:#64748b,stroke-dasharray:5 5
 ```
 
-The API verifies users and owns financial rules, scheduling, tag matching and provider orchestration. It has no database connection or credentials. Persistence verifies short-lived signed service assertions and enforces user RLS in a transaction per procedure. Only migration/seed tooling receives owner credentials. There is no tenancy layer or automatic old-database adoption. Local demo data supports validation without a bank adapter. Owned Fintoc authorization, access checks, relink, disconnect, explicit first import and repeatable snapshot refresh/recovery are available in the app. Bank settings distinguish readonly synchronization status and bank-source freshness from access; stored balances remain in Cuentas. External MCP uses separate OAuth grants, browser consent and per-client revocation; Firebase/development app tokens no longer authenticate `/mcp`. See the [authorization/setup/compatibility guide](docs/technical/mcp-authorization.md). Bank-forced/scheduled refresh and the conversational agent remain later work. See also the [architecture](docs/technical/architecture.md), [RPC/RLS security](docs/technical/persistence-security.md) and [banking boundary](apps/api/src/banking/README.md).
+The API verifies users and owns financial rules, scheduling, tag matching and provider orchestration. It has no database connection or credentials. Persistence verifies short-lived signed service assertions and enforces user RLS in a transaction per procedure. Only migration/seed tooling receives owner credentials. There is no tenancy layer or automatic old-database adoption. Local demo data supports validation without a bank adapter. Owned Fintoc authorization, access checks, relink, disconnect, explicit first import and repeatable snapshot refresh/recovery are available in the app. Bank settings distinguish readonly synchronization status and bank-source freshness from access; stored balances remain in Cuentas. External MCP uses separate OAuth grants, browser consent and per-client revocation; Firebase/development app tokens no longer authenticate `/mcp`. Optional write capabilities default off, and existing read grants remain read-only. See the [authorization/setup/compatibility guide](docs/technical/mcp-authorization.md). The authenticated [financial assistant](docs/technical/financial-assistant.md) adds provider-neutral chat and bounded action proposals: budget/goal creation, tag management and single-movement tagging require explicit in-app approval. MCP can execute those commands directly only with separately granted write scopes. Financial changes and durable receipts commit together; deleting chat does not undo them. The assistant defaults disabled and live model quality remains a separate release gate. Bank-forced/scheduled refresh remains later work. See also the [architecture](docs/technical/architecture.md), [RPC/RLS security](docs/technical/persistence-security.md) and [banking boundary](apps/api/src/banking/README.md).
 
 Bank movement tracking begins on each connection's first-link day in Santiago;
 there is no automatic pre-link backfill. Reported balances stay independent of
@@ -90,11 +90,12 @@ reading order and distinction between implementation, evidence and targets.
 | --- | --- |
 | [Architecture](docs/technical/architecture.md) | Three-app/runtime boundaries, responsibility split and implementation scope |
 | [Private RPC, transactions and RLS](docs/technical/persistence-security.md) | Assertions, bootstrap, runtime roles, related-owner policies, atomicity and budgets |
-| [Database model and implemented ERD](docs/technical/database-model.md) | All 26 tables, relationships/keys, representation and migration lifecycle |
+| [Database model and implemented ERD](docs/technical/database-model.md) | All 28 tables, relationships/keys, representation and migration lifecycle |
 | [RPC contracts and clients](docs/technical/rpc-contracts.md) | Public/private procedures, MCP tools, type-only libraries and generation workflow |
 | [Persistence read pattern](docs/technical/persistence-reads.md) | Purpose-shaped joins/aggregates, cardinality, snapshots and data-access review rules |
 | [Provider-neutral identity](docs/technical/identity.md) | External provider/issuer/subject mapping, internal principals and current provider-selection limits |
 | [External MCP authorization](docs/technical/mcp-authorization.md) | OAuth, independent grants, consent/revocation, setup and verified-versus-reviewed client compatibility |
+| [First-party financial assistant](docs/technical/financial-assistant.md) | Provider-neutral configuration, grounded reads, explicit action approval, durable receipts, streaming, privacy and evaluation gates |
 | [UI/session/rendering lifetimes](docs/technical/ui-data-lifecycle.md) | Verified scopes, resources, cancellation, command/read ordering and public-only hydration |
 | [Technical manual](docs/technical/technical-manual.md) | Installation, environment/credential separation, Compose, operation and troubleshooting |
 | [Development and verification](docs/technical/development-workflow.md) | Build/tooling/DI conventions and serverless, HTTP, DB and live-provider verification tiers |

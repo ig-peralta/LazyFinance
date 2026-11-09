@@ -12,8 +12,9 @@ target is not evidence of a delivered capability.
 | --- | --- |
 | [Architecture](architecture.md) | Runtime/dependency boundaries, responsibility split and product scope |
 | [Private RPC, transactions and RLS](persistence-security.md) | Signed contexts, bootstrap, roles/grants, related ownership, rollback, atomic commands and limits |
-| [Implemented database model and ERD](database-model.md) | All 26 application tables, actual relationships/keys, financial representation and migrations |
-| [RPC contracts and clients](rpc-contracts.md) | Public/private exports, 69/81 procedure inventories, MCP, code generation and wire semantics |
+| [Implemented database model and ERD](database-model.md) | All 28 application tables, actual relationships/keys, financial representation and migrations |
+| [RPC contracts and clients](rpc-contracts.md) | Public/private exports, 78/94 procedure inventories, MCP, code generation and wire semantics |
+| [First-party financial assistant](financial-assistant.md) | Provider-neutral models, grounded reads, explicit action approval, durable receipts, streaming, privacy, limits and evaluation gates |
 | [External MCP authorization](mcp-authorization.md) | Standards-first OAuth, client interoperability/evidence, independent grants, consent, revocation and operations |
 | [Persistence read pattern](persistence-reads.md) | Purpose-shaped joins/aggregates, bounded projections, cardinality, snapshots and review checklist |
 | [UI/session/rendering lifetimes](ui-data-lifecycle.md) | Accepted credentials, candidate verification, cancellation, page resources, command/read races and public-only hydration |

@@ -12,8 +12,8 @@ Start here for the current system map. Detailed references:
 screens in the browser. Unprivileged Nginx serves only static UI assets. The
 browser calls the explicit environment-configured API base URL using the NestJS public
 tRPC API in `apps/api`; authenticated MCP tools enter that same workflow layer.
-`apps/persistence` alone uses Kysely/pg to access PostgreSQL 18. Its `identity` and
-`finance` schemas enforce user RLS with a restricted runtime login. All three apps
+`apps/persistence` alone uses Kysely/pg to access PostgreSQL 18. Its `identity`,
+`finance` and `assistant` schemas enforce user RLS with a restricted runtime login. All three apps
 build independently using committed generated type libraries; no runtime client
 imports another application's source.
 
@@ -35,11 +35,13 @@ code cannot import private schemas, signing code, Nest or database implementatio
 | PostgreSQL | Exact stored facts, constraints/keys, related-owner RLS and transaction atomicity | Firebase verification, product authorization for external MCP clients |
 
 Public/private tRPC are separate surfaces, not two routes to the same router.
-The public generated library contains 69 procedures; the private library contains
-81, including bootstrap-only `identity.resolve` and purpose-restricted OAuth state. `/mcp` exposes eleven authenticated
-read-only tools through the API's domain services, not direct persistence queries.
+The public generated library contains 78 procedures; the private library contains
+94, including bootstrap-only `identity.resolve` and purpose-restricted OAuth state.
+`/mcp` exposes fourteen financial/supporting reads and two action tools (preview
+and direct execution) through domain services, not direct persistence queries.
 Ordinary HTTP covers API `GET /`, persistence `GET /health`, MCP transport and
-OAuth discovery/protocol/browser-interaction routes. Inventories and schema-change rules live in the
+OAuth discovery/protocol/browser-interaction routes, plus the authenticated NDJSON
+assistant stream at `POST /assistant/turns`. Inventories and schema-change rules live in the
 [RPC reference](rpc-contracts.md).
 
 ## Authentication, sessions and ownership
@@ -53,6 +55,9 @@ External MCP has a separate [standards-first OAuth boundary](mcp-authorization.m
 `oidc-provider` handles discovery, CIMD/DCR, S256 PKCE and rotating credentials;
 authenticated first-party consent binds each grant to that same internal UUID.
 Every MCP request verifies audience, permission, expiry and persisted grant state.
+Optional write scopes default off at consent; existing read grants gain nothing.
+Write tools additionally require the action's scopes and recheck the stored grant
+inside execution. External clients control their own action-confirmation UX.
 Firebase/app bearers are not accepted on `/mcp`, nor are MCP tokens first-party
 management credentials. Consent/settings pages do not connect banks or move money.
 OAuth artifacts use a dedicated signed purpose without financial RLS access;
@@ -169,7 +174,17 @@ not purged when the sync scope changes.
 Accounts and onboarding link to connection settings without requiring guide
 completion. Provider normalization and financial calculations remain backend-owned;
 the UI never reconstructs balances or marks failed imports as current data.
-The first-party conversational agent remains separate future work. External
+The [first-party financial assistant](financial-assistant.md) reuses those same
+services through provider-neutral model adapters. Models can prepare bounded
+proposals and read status, not approve/execute them. First-party action cards require
+explicit ID/version approval; conversational agreement is not approval. MCP direct
+execution uses separately granted write scopes, not that chat workflow. Existing
+named domain commands and durable receipts commit together after fingerprint and
+ownership checks. Server-owned history lives in `assistant.conversation`, with
+independent `assistant.action` receipts that survive chat deletion. Model calls
+never run inside SQL transactions.
+Generation is bounded, cancellable and lease/nonce protected. It defaults disabled;
+live model quality remains a separate verification gate. External
 client compatibility evidence is recorded in the [OAuth matrix](mcp-authorization.md#compatibility-and-verification-matrix), not inferred from documentation alone.
 
 ## Operations
