@@ -3,7 +3,7 @@
   <header class="page-heading">
     <div>
       <p class="eyebrow">AUTORIZACIÓN DE APLICACIONES</p>
-      <h1 id="mcp-consent-title">Compartir consultas financieras</h1>
+      <h1 id="mcp-consent-title">Autorizar una aplicación</h1>
       <p class="subtitle">Una aplicación externa solicita acceso a tu información de LazyFinance.</p>
     </div>
   </header>
@@ -35,15 +35,22 @@
     <ul class="record-meta" style="padding-left:20px;margin-block:16px">
       <li>Consultar saldos y movimientos guardados.</li>
       <li>Consultar gastos, ingresos, presupuestos y metas con sus períodos y limitaciones.</li>
-      <li>No puede editar tus datos, conectar bancos, confirmar ingresos ni mover dinero.</li>
+      <li>La lectura no permite editar tus datos, conectar bancos, confirmar ingresos ni mover dinero.</li>
     </ul>
+    @if (requestedWrites().length) {
+      <fieldset class="notice warning" style="margin-block:20px"><legend>Permisos de cambio opcionales</legend>
+        <p>Activa solo los cambios que quieras delegar a esta aplicación. Podrá ejecutarlos sin los botones de aprobación del chat de LazyFinance. La aplicación externa decide si pide confirmación en su interfaz.</p>
+        @for (scope of requestedWrites(); track scope) { <label style="display:flex;gap:10px;margin-block:12px;align-items:flex-start"><input type="checkbox" [checked]="selectedWrites().includes(scope)" [disabled]="!canDecide()" (change)="toggleWrite(scope)" />{{ permissionLabel(scope) }}</label> }
+        <p>Ninguno de estos permisos permite mover dinero, confirmar ingresos, cambiar hechos bancarios ni crear reglas automáticas.</p>
+      </fieldset>
+    }
     <p class="field-hint">El acceso puede renovarse durante un máximo de 30 días. Puedes revocarlo en Aplicaciones conectadas sin desconectar tu banco. La aplicación externa podría conservar información que ya haya recibido.</p>
     @if (request.scopes.includes('openid')) {
       <p class="field-hint">También se comparte un identificador de tu cuenta para reconocer esta conexión; no se usa tu correo como identificador financiero.</p>
     }
     <div class="button-row" style="margin-top:24px">
       <button type="button" class="button primary" [disabled]="!canDecide()" (click)="decide(true)">
-        {{ command.pending() ? 'Esperando confirmación…' : 'Autorizar solo lectura' }}
+        {{ command.pending() ? 'Esperando confirmación…' : selectedWrites().length ? 'Autorizar permisos seleccionados' : 'Autorizar solo lectura' }}
       </button>
       <button type="button" class="button" [disabled]="!canDecide()" (click)="decide(false)">No autorizar y regresar</button>
     </div>

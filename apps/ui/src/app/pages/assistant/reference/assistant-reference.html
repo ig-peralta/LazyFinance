@@ -1,0 +1,47 @@
+<article class="reference-card" [class.reference-warning]="source().status !== 'available'" [attr.aria-label]="view().title">
+  <header class="reference-heading">
+    <span class="reference-icon"><app-icon [name]="view().icon" /></span>
+    <div class="reference-title">
+      <p class="reference-section">{{ view().section }} <span>· CLP</span></p>
+      <h3>{{ view().title }}</h3>
+      @if (view().period) { <p class="reference-period">{{ view().period }}</p> }
+    </div>
+    <span class="reference-status">{{ source().status === 'available' ? 'Consultado' : source().status === 'limited' ? 'Vista limitada' : 'No disponible' }}</span>
+  </header>
+
+  @if (view().metrics.length) {
+    <dl class="reference-metrics">
+      @for (metric of view().metrics; track metric.label) {
+        <div><dt>{{ metric.label }}</dt><dd>{{ metric.value }}</dd></div>
+      }
+    </dl>
+  }
+  @if (view().rows.length) {
+    <ul class="reference-rows">
+      @for (row of view().rows; track row.id) {
+        <li>
+          <div class="reference-row">
+            <div class="reference-row-copy">
+              @if (row.link) {
+                <a [routerLink]="row.link" [attr.aria-label]="'Abrir detalle de ' + row.title">{{ row.title }} <app-icon name="arrow" /></a>
+              } @else { <strong>{{ row.title }}</strong> }
+              <p>{{ row.detail }}</p>
+            </div>
+            <span class="reference-value">{{ row.value }}</span>
+          </div>
+          @if (row.progress !== undefined) {
+            <div class="reference-progress" aria-hidden="true"><span [style.width.%]="row.progress"></span></div>
+          }
+        </li>
+      }
+    </ul>
+  }
+  @if (view().empty) { <p class="reference-empty">{{ view().empty }}</p> }
+  @if (view().preview) { <p class="reference-preview">Vista previa de la consulta. Abre la sección para ver más información.</p> }
+  @for (notice of view().notices; track $index) { <p class="reference-note">{{ notice }}</p> }
+
+  <footer class="reference-footer">
+    <p>Consultado {{ time(source().queriedAt) }} · Santiago.<br>La consulta no actualiza los datos bancarios.</p>
+    <a class="reference-open" [routerLink]="view().link" [queryParams]="view().query">{{ view().action }} <app-icon name="arrow" /></a>
+  </footer>
+</article>

@@ -1,0 +1,162 @@
+:host {
+  display: block;
+}
+.chat-welcome {
+  max-width: 680px;
+  margin: 25px auto 32px;
+}
+.welcome-spark {
+  color: #6ee7b7;
+  width: 44px;
+  height: 44px;
+  border-radius: 15px;
+  background: #6ee7b70b;
+  border: 1px solid #6ee7b720;
+  display: grid;
+  place-items: center;
+  margin-bottom: 26px;
+}
+.welcome-spark app-icon {
+  width: 26px;
+  height: 26px;
+}
+.welcome-kicker {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: #90ad9d;
+}
+.chat-welcome h2 {
+  font-size: clamp(29px, 3.5vw, 44px);
+  line-height: 1.18;
+  letter-spacing: -1.6px;
+  font-weight: 500;
+  color: #e4eee7;
+  margin: 16px 0;
+}
+.chat-welcome h2 > span {
+  color: #6ee7b7;
+}
+.chat-welcome > p {
+  color: #96ab9e;
+  font-size: 13px;
+  line-height: 1.9;
+  max-width: 490px;
+}
+.suggestion-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 30px;
+}
+.suggestion {
+  position: relative;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 9px 12px;
+  text-align: left;
+  padding: 19px 18px 19px 16px;
+  background: #ffffff02;
+  border: 1px solid #ffffff10;
+  border-radius: 14px;
+  color: #b3c8ba;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.suggestion:hover {
+  background: #6ee7b707;
+  border-color: #6ee7b744;
+}
+.suggestion > app-icon {
+  color: #80c9a5;
+  width: 18px;
+  height: 18px;
+}
+.suggestion strong {
+  font-size: 12px;
+  font-weight: 500;
+  color: #d1e3d8;
+}
+.suggestion > span {
+  grid-column: 2;
+  font-size: 10px;
+  line-height: 1.7;
+  color: #8fa89a;
+  padding-right: 12px;
+}
+.suggestion .suggestion-arrow {
+  position: absolute;
+  right: 12px;
+  bottom: 14px;
+  width: 13px;
+  height: 13px;
+  color: #6ee7b7;
+}
+.chat-welcome > .welcome-note {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 10px;
+  color: #7c9586;
+  margin-top: 20px;
+}
+.welcome-note app-icon {
+  width: 13px;
+  height: 13px;
+}
+button:focus-visible {
+  outline: 2px solid #a7f3d0;
+  outline-offset: 4px;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+@media (max-width: 1200px) {
+  .chat-welcome h2 {
+    font-size: 35px;
+  }
+}
+@media (max-width: 540px) {
+  .chat-welcome {
+    margin: 10px auto 20px;
+  }
+  .chat-welcome h2 {
+    font-size: 30px;
+    letter-spacing: -1px;
+  }
+  .chat-welcome > p {
+    font-size: 12px;
+  }
+  .suggestion-grid {
+    gap: 8px;
+  }
+  .suggestion {
+    grid-template-columns: 18px minmax(0, 1fr);
+    gap: 8px;
+    padding: 15px 11px;
+  }
+  .suggestion strong {
+    font-size: 10px;
+  }
+  .suggestion > span {
+    font-size: 9px;
+    grid-column: 1 / -1;
+  }
+  .suggestion > app-icon {
+    width: 15px;
+    height: 15px;
+  }
+  .suggestion .suggestion-arrow {
+    display: none;
+  }
+  .welcome-kicker {
+    font-size: 8px;
+    letter-spacing: 1.5px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .suggestion {
+    transition: none;
+  }
+}

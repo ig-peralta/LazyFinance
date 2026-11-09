@@ -105,7 +105,9 @@ describe("owned external-client consent and obsolete interaction results", () =>
     expect(f.root.textContent).toContain("Cliente de prueba");
     expect(f.root.textContent).toContain("127.0.0.1:43219");
     expect(f.root.textContent).toContain(principal.email);
-    expect(f.root.textContent).toContain("No puede editar tus datos");
+    expect(f.root.textContent).toContain(
+      "La lectura no permite editar tus datos",
+    );
     expect(f.navigate).not.toHaveBeenCalled();
   });
 
@@ -133,6 +135,37 @@ describe("owned external-client consent and obsolete interaction results", () =>
     );
     expect(JSON.parse(String(f.fetch.mock.calls[1][1]?.body))).toEqual({
       approve: true,
+    });
+  });
+
+  it("defaults requested write permissions off and submits only the capabilities explicitly selected", async () => {
+    const f = setup({
+      read: async () =>
+        Response.json({
+          ...consent,
+          scopes: [
+            "finance:read",
+            "finance:tags:write",
+            "finance:budgets:write",
+          ],
+        }),
+    });
+    await render(f.fixture);
+    const boxes = [
+      ...f.root.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'),
+    ];
+    expect(boxes).toHaveLength(2);
+    expect(boxes.every((box) => !box.checked)).toBe(true);
+    expect(f.root.textContent).toContain(
+      "sin los botones de aprobación del chat",
+    );
+    boxes[0].click();
+    await render(f.fixture);
+    button(f.root, "Autorizar permisos seleccionados").click();
+    await render(f.fixture);
+    expect(JSON.parse(String(f.fetch.mock.calls[1][1]?.body))).toEqual({
+      approve: true,
+      scopes: ["finance:tags:write"],
     });
   });
 

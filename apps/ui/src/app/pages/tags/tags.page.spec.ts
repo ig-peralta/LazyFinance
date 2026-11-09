@@ -44,6 +44,10 @@ describe("owned tag management", () => {
     await fixture.whenStable();
     const root: HTMLElement = fixture.nativeElement;
     const event = eventsIn(root);
+    expect(root.textContent).not.toContain(tag.color);
+    expect(
+      root.querySelector<HTMLElement>(".tag-swatch")?.style.backgroundColor,
+    ).toBe("rgb(34, 170, 119)");
     expect(root.querySelector("form")).toBeNull();
     [...root.querySelectorAll("button")]
       .find((button) => button.textContent?.includes("Nueva etiqueta"))

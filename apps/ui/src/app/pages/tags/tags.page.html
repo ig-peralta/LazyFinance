@@ -18,7 +18,7 @@
       <ul class="record-list">
         @for (tag of items(); track tag.id) {
           <li class="record-row">
-            <div class="record-identity"><span class="record-icon"><app-icon name="tag" /></span><div><h3 class="record-title">{{ tag.name }}</h3><p class="record-meta"><span class="tag-swatch" [style.backgroundColor]="tag.color || '#b5c1aa'"></span>{{ tag.color || 'Color predeterminado' }}</p></div></div>
+            <div class="record-identity"><span class="record-icon"><app-icon name="tag" /></span><div><h3 class="record-title">{{ tag.name }}</h3><p class="record-meta"><span class="tag-swatch" [style.backgroundColor]="tag.color || '#b5c1aa'" aria-hidden="true"></span>{{ tag.color ? 'Color personalizado' : 'Color predeterminado' }}</p></div></div>
             <div class="button-row"><button class="button small" type="button" [attr.aria-label]="'Editar ' + tag.name" [disabled]="command.pending()" (click)="edit(tag)">Editar</button><button class="icon-button" type="button" [attr.aria-label]="'Archivar ' + tag.name" [disabled]="command.pending()" (click)="archiving.set(tag)"><app-icon name="close" /></button></div>
           </li>
         }

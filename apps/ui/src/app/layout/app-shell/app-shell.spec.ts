@@ -56,6 +56,7 @@ describe("AppShell", () => {
             component: AppShell,
             children: [
               { path: "dashboard", component: TagsStub },
+              { path: "asistente", component: TagsStub },
               { path: "etiquetas", component: TagsStub },
               { path: "movimientos", component: TagsStub },
               { path: "movimientos/:id", component: TagsStub },
@@ -97,7 +98,7 @@ describe("AppShell", () => {
     return { harness, clear, logout, root, onboardingStatus };
   }
 
-  it("keeps four primary areas and direct contextual links with an active destination", async () => {
+  it("keeps the assistant and four financial areas with direct contextual links", async () => {
     const { root } = await setup();
     const links = Array.from(
       root.querySelectorAll(
@@ -106,6 +107,7 @@ describe("AppShell", () => {
     );
 
     expect(links.map((a) => a.textContent?.trim())).toEqual([
+      "Asistente",
       "Resumen",
       "Mi dinero",
       "Planificación",
@@ -142,6 +144,7 @@ describe("AppShell", () => {
       "#mobile-menu .workspace-links a",
     );
     expect([...mobileLinks].map((link) => link.textContent?.trim())).toEqual([
+      "Asistente",
       "Resumen",
       "Mi dinero",
       "Planificación",

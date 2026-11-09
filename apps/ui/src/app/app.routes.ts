@@ -23,6 +23,13 @@ export const routes: Routes = [
         path: "",
         component: AppShell,
         children: [
+          workspaceRoute("asistente", {
+            heading: "Asistente financiero",
+            load: () =>
+              import("./pages/assistant/assistant.page").then(
+                (m) => m.AssistantPage,
+              ),
+          }),
           workspaceRoute("comenzar", {
             heading: "Primeros pasos",
             load: () =>

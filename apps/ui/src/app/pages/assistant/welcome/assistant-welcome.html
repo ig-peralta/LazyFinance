@@ -1,0 +1,15 @@
+<div class="chat-welcome">
+  <div class="welcome-spark"><app-icon name="spark" /></div>
+  <span class="welcome-kicker">MENOS RUIDO. MÁS PERSPECTIVA.</span>
+  <h2>Hola{{ name() ? ', ' + name() : '' }}.<br>Hablemos de tus finanzas<span>.</span></h2>
+  <p>Pregunta por tu dinero, entiende tus gastos y dale sentido a tus planes. Yo consulto los datos; tú decides el siguiente paso.</p>
+  <div class="suggestion-grid">
+    @for (suggestion of suggestions; track suggestion.title) {
+      <button type="button" class="suggestion" [disabled]="busy()" (click)="choose.emit(suggestion.question)">
+        <app-icon [name]="suggestion.icon" /><strong>{{ suggestion.title }}</strong>
+        <span>{{ suggestion.question }}</span><app-icon class="suggestion-arrow" name="arrow" />
+      </button>
+    }
+  </div>
+  <p class="welcome-note"><app-icon name="info" /> No muevo dinero ni cambio tus datos.</p>
+</div>
