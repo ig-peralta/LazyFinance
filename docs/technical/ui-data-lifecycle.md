@@ -166,6 +166,17 @@ rather than being shown as a misleading successful rule operation.
 
 ## Management command owners
 
+External MCP consent uses the same accepted-credential and component lifetimes,
+but a fixed cookie-bound HTTP interaction rather than generic RPC. Its dedicated
+client includes API cookies only on that path, validates the interaction ID and
+issuer resume destination, and expires only the exact snapshot that received a
+401. Approval/denial is explicit and an uncertain result is not resubmitted.
+Connected-app settings use page-owned RPC resources and a scoped revoke command
+with confirmation and keyboard focus return. Neither page stores external access/
+refresh tokens or serializes protected data into hydration. Server-side persisted
+single-use decisions and grant ownership remain authoritative; see
+[MCP authorization](mcp-authorization.md).
+
 `createScopedCommand()` owns explicit management writes for one component,
 registers pending tasks, prevents duplicate submissions, and hides notices/errors
 outside the accepted scope and optional record-selection key. It composes a

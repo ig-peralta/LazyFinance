@@ -56,6 +56,11 @@ export const workspaceNavigation: readonly NavigationArea[] = [
     description: "Tu cuenta, acceso y conexiones bancarias",
     destinations: [
       { path: "/seguridad", label: "Acceso y seguridad" },
+      {
+        path: "/aplicaciones-conectadas",
+        label: "Aplicaciones conectadas",
+        nestedPath: "/autorizar-mcp",
+      },
       { path: "/conexiones-bancarias", label: "Conexiones bancarias" },
       { path: "/comenzar", label: "Configuración inicial" },
     ],
