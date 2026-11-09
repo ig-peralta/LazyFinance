@@ -79,6 +79,11 @@ services:
       FINTOC_PUBLIC_KEY:
       FINTOC_SECRET_KEY:
       FINTOC_TOKEN_ENCRYPTION_KEY:
+      MCP_OAUTH_ISSUER:
+      MCP_OAUTH_UI_ORIGIN:
+      MCP_OAUTH_STATE_KEY:
+      MCP_OAUTH_JWKS:
+      MCP_OAUTH_TRUST_PROXY: '${MCP_OAUTH_TRUST_PROXY:-false}'
     ports:
       - '${API_PORT:-3000}:3000'
     depends_on:

@@ -4,6 +4,7 @@ import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { IncomeService } from "../../../src/income/income.service";
 import { SummariesService } from "../../../src/summaries/summaries.service";
+import { startOAuthApi } from "../../fixtures/mcp/oauth-app";
 import {
   type Fixture,
   fixture,
@@ -36,6 +37,7 @@ async function withApi(
         debitId: string;
         futureId: string;
         otherTransactionId: string;
+        mcpToken: string | undefined;
       },
   ) => Promise<void>,
   mcp = false,
@@ -64,7 +66,8 @@ async function withApi(
       isInternalMovement: internal,
     });
 
-  const api = await startApi(f, mcp);
+  const oauth = mcp ? await startOAuthApi(f) : undefined;
+  const api = oauth?.api ?? (await startApi(f));
 
   try {
     await work({
@@ -75,6 +78,7 @@ async function withApi(
       debitId,
       futureId,
       otherTransactionId,
+      mcpToken: oauth ? (await oauth.authorize()).access_token : undefined,
     });
   } finally {
     await api.app.close();
@@ -267,7 +271,7 @@ describe.skipIf(!integration)(
         });
         const mcp = await request(f.app.getHttpServer())
           .post("/mcp")
-          .set("Authorization", `Bearer ${f.token}`)
+          .set("Authorization", `Bearer ${f.mcpToken}`)
           .set("Accept", "application/json, text/event-stream")
           .send({
             jsonrpc: "2.0",

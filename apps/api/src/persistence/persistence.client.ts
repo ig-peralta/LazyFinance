@@ -46,6 +46,14 @@ export class PersistenceClient implements OnModuleInit {
     return this.bootstrap(identity, "provision");
   }
 
+  /** OAuth state only. This purpose cannot assert a user or read financial data. */
+  mcpAuthorization() {
+    return this.client({
+      kind: "mcp-authorization",
+      requestId: currentRequestId() ?? randomUUID(),
+    });
+  }
+
   private bootstrap(
     identity: VerifiedExternalIdentity,
     mode: "existing" | "provision",

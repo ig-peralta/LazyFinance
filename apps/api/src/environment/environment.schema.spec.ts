@@ -128,3 +128,55 @@ describe("Fintoc server credential configuration", () => {
     expect(ENV_SCHEMA.safeParse(config).success).toBe(false);
   });
 });
+
+describe("external MCP OAuth configuration", () => {
+  const oauth = {
+    MCP_OAUTH_ISSUER: "http://127.0.0.1:43371",
+    MCP_OAUTH_UI_ORIGIN: "http://127.0.0.1:43372",
+    MCP_OAUTH_STATE_KEY: "2".repeat(64),
+    MCP_OAUTH_JWKS: '{"keys":[]}',
+  };
+
+  it("is disabled without configuration and requires the complete independent key set", () => {
+    expect(ENV_SCHEMA.parse({}).MCP_OAUTH_ISSUER).toBeUndefined();
+    expect(ENV_SCHEMA.parse(oauth).MCP_OAUTH_TRUST_PROXY).toBe("false");
+    for (const key of Object.keys(oauth))
+      expect(ENV_SCHEMA.safeParse({ ...oauth, [key]: undefined }).success).toBe(
+        false,
+      );
+    expect(
+      ENV_SCHEMA.safeParse({ ...oauth, MCP_OAUTH_STATE_KEY: "short" }).success,
+    ).toBe(false);
+  });
+
+  it("requires canonical origins and HTTPS outside development loopback", () => {
+    for (const issuer of [
+      "http://api.example",
+      "https://api.example/oauth",
+      "https://api.example/",
+      "https://user:secret@api.example",
+      "https://api.example#fragment",
+    ])
+      expect(
+        ENV_SCHEMA.safeParse({ ...oauth, MCP_OAUTH_ISSUER: issuer }).success,
+      ).toBe(false);
+    expect(
+      ENV_SCHEMA.safeParse({
+        ...oauth,
+        NODE_ENV: "production",
+        AUTH_PROVIDER: "firebase",
+        FIREBASE_PROJECT_ID: "fixture",
+      }).success,
+    ).toBe(false);
+    expect(
+      ENV_SCHEMA.safeParse({
+        ...oauth,
+        NODE_ENV: "production",
+        AUTH_PROVIDER: "firebase",
+        FIREBASE_PROJECT_ID: "fixture",
+        MCP_OAUTH_ISSUER: "https://api.example",
+        MCP_OAUTH_UI_ORIGIN: "https://app.example",
+      }).success,
+    ).toBe(true);
+  });
+});

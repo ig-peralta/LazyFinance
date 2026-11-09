@@ -3,9 +3,9 @@ import { BadRequestException } from "@nestjs/common";
 import { RpcException } from "@nestjs/microservices";
 import { McpContext } from "@rekog/mcp-nest";
 import { z } from "zod";
-import type { AuthenticatedRequest } from "../auth/auth.types";
 import { checkedMonth } from "../utils/month-query";
 import { santiagoMonth } from "../utils/santiago-time";
+import type { McpAuthenticatedRequest } from "./authorization/mcp-access.guard";
 
 export const readOnlyTool = {
   readOnlyHint: true,
@@ -21,10 +21,11 @@ export const monthParameters = z.object({
 });
 
 export function mcpUserId(ctx: McpContext): string {
-  const userId = ctx.getRawRequest<AuthenticatedRequest>()?.principal?.userId;
+  const userId =
+    ctx.getRawRequest<McpAuthenticatedRequest>()?.principal?.userId;
   if (!userId)
     throw new RpcException(
-      "Se requiere una sesión autenticada para consultar datos financieros.",
+      "Se requiere una autorización MCP vigente para consultar datos financieros.",
     );
 
   return userId;

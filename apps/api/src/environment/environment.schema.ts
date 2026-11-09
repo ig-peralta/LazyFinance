@@ -24,6 +24,14 @@ export const ENV_SCHEMA = z
     FIREBASE_PROJECT_ID: z.string().trim().min(1).optional(),
     FIREBASE_CLIENT_EMAIL: z.string().trim().pipe(z.email()).optional(),
     FIREBASE_PRIVATE_KEY: z.string().trim().min(1).optional(),
+    MCP_OAUTH_ISSUER: corsOrigin.optional(),
+    MCP_OAUTH_UI_ORIGIN: corsOrigin.optional(),
+    MCP_OAUTH_STATE_KEY: z
+      .string()
+      .regex(/^[a-fA-F0-9]{64}$/)
+      .optional(),
+    MCP_OAUTH_JWKS: z.string().min(1).optional(),
+    MCP_OAUTH_TRUST_PROXY: z.enum(["true", "false"]).default("false"),
     FINTOC_PUBLIC_KEY: z
       .string()
       .regex(/^pk_(test|live)_[A-Za-z0-9_-]+$/)
@@ -43,6 +51,36 @@ export const ENV_SCHEMA = z
       .pipe(z.array(corsOrigin).min(1)),
   })
   .superRefine((values, context) => {
+    const oauth = [
+      values.MCP_OAUTH_ISSUER,
+      values.MCP_OAUTH_UI_ORIGIN,
+      values.MCP_OAUTH_STATE_KEY,
+      values.MCP_OAUTH_JWKS,
+    ];
+    if (oauth.some(Boolean) && !oauth.every(Boolean))
+      context.addIssue({
+        code: "custom",
+        path: ["MCP_OAUTH_ISSUER"],
+        message:
+          "MCP OAuth issuer, UI origin, state key and signing JWKS must be configured together",
+      });
+    for (const value of [
+      values.MCP_OAUTH_ISSUER,
+      values.MCP_OAUTH_UI_ORIGIN,
+    ].filter((value): value is string => !!value)) {
+      const url = new URL(value);
+      if (
+        url.protocol !== "https:" &&
+        (values.NODE_ENV === "production" ||
+          !["localhost", "127.0.0.1", "[::1]"].includes(url.hostname))
+      )
+        context.addIssue({
+          code: "custom",
+          path: ["MCP_OAUTH_ISSUER"],
+          message:
+            "MCP OAuth requires HTTPS except explicit development loopback origins",
+        });
+    }
     const banking = [
       values.FINTOC_PUBLIC_KEY,
       values.FINTOC_SECRET_KEY,
