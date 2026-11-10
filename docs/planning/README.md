@@ -2,7 +2,7 @@
 
 Planning follows the stages in the [product vision](../product/product-vision.md#development-sequence-and-decision-gates)
 and the milestone structure reproduced from Linear in the
-[latest backlog snapshot](snapshots/backlog-2026-11-09.md). **One stage milestone equals
+[latest backlog snapshot](snapshots/backlog-2026-11-10-stage-c-planning.md). **One stage milestone equals
 one sprint**; its assigned issues are the Sprint Backlog. These folders do not
 introduce separate Linear cycles or additional stages.
 
@@ -12,7 +12,7 @@ introduce separate Linear cycles or additional stages.
 | --- | --- | --- |
 | A — financial-core validation | Establish financial meaning with controlled data before provider integration | [Scope and evidence](stage-a/README.md), [closure](stage-a/closure.md), [documentary retrospective](stage-a/retrospective.md) |
 | B — parallel product tracks | Closed 2026-11-09 with accepted development-stage limitations; GO to Stage C planning | [Delivered scope](stage-b/README.md), [closure](stage-b/closure.md), [retrospective](stage-b/retrospective.md) |
-| C — expanded experience | Select the next scope from the Stage B outcomes, broader MCP management follow-up and remaining needs | [Direction and selection rules](stage-c/README.md) |
+| C — expanded experience | Scope selected: clearer workflows, automatic selected-account banking, persistent assistant/live voice and explicit optional extensions | [Stage overview](stage-c/README.md), [scope record](stage-c/planning.md), [validation plan](stage-c/validation-plan.md) |
 
 The Stage B platform-evolution record explains the intentions behind PRs
 [#26](https://github.com/ig-peralta/LazyFinance/pull/26),
@@ -42,7 +42,8 @@ scope changes and deferrals explicitly at the relevant gate.
 | [Backlog and evidence](backlog.md) | Linear ownership, snapshot provenance and how to publish stage records |
 | [Product Definition of Done](product-definition-of-done.md) | Release-wide exit criteria |
 | [Stage record template](stage-sprint-record-template.md) | Fields for future planning, closure and retrospective records |
-| [All-issue snapshot — November 9](snapshots/backlog-2026-11-09.md) | All 65 issues, their hierarchy and recorded fields at Stage B closure |
+| [Stage C planning snapshot — November 10 UTC](snapshots/backlog-2026-11-10-stage-c-planning.md) | All 99 issues: 65 prior Done, 29 required Todo and 5 Optional Backlog; local scope decision November 9 |
+| [Stage B closure snapshot — November 9](snapshots/backlog-2026-11-09.md) | Historical 65-issue inventory, hierarchy and recorded fields before Stage C selection |
 | [Earlier checkpoint — November 2](snapshots/backlog-2026-11-02.md) | Historical cross-stage inventory and individual completion summaries while Stage B was active |
 
 ## Where new material belongs

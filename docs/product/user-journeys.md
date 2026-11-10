@@ -2,7 +2,7 @@
 
 This is a **living, incremental document**. It starts with the journeys needed to validate the financial core and grows as each stage of the [product vision](product-vision.md#development-sequence-and-decision-gates) begins. The [product requirements](product-requirements.md) specify expected behavior; the journeys are not an exhaustive description of the finished product or a commitment to design every future feature upfront.
 
-Each journey describes a user's situation, needed experience and observable outcome. Stage A checks retain the financial-model gate's scope. Stage B journeys below reflect its [2026-11-09 development closure](../planning/stage-b/closure.md), including explicit validation exceptions; the [latest snapshot](../planning/snapshots/backlog-2026-11-09.md) records the associated workstreams. Stage C candidates become detailed acceptance stories only when selected. Revise assumptions explicitly when financial meaning changes.
+Each journey describes a user's situation, needed experience and observable outcome. Stage A checks retain the financial-model gate's scope. Stage B journeys below reflect its [2026-11-09 development closure](../planning/stage-b/closure.md), including explicit validation exceptions; the [closure snapshot](../planning/snapshots/backlog-2026-11-09.md) records those workstreams. Stage C journeys now describe the [selected plan](../planning/stage-c/planning.md), not delivered capabilities. Revise assumptions explicitly when financial meaning changes.
 
 ## Stage A - Core financial understanding
 
@@ -106,24 +106,125 @@ Each journey describes a user's situation, needed experience and observable outc
 
 **Observable outcome:** Reads and changes remain owner-scoped; a read-only grant never silently gains writes. Current bounded direct changes need their specific OAuth scopes, stable request IDs and current preview fingerprints for existing records, not chat approval. Revocation rejects subsequent access without undoing committed finance. **Evidence:** LAZ-27/LAZ-52–LAZ-55 and PR #36; required external-client write combinations still need dedicated validation.
 
-## Stage C - Detail selected extensions before implementation
+## Stage C - Selected everyday experience and live voice
 
-### Broader management through MCP
+Selected on **2026-11-09** after the Stage B review. The
+[scope record](../planning/stage-c/planning.md) and
+[validation plan](../planning/stage-c/validation-plan.md) distinguish required
+outcomes from optional candidates; none is presented as already implemented.
 
-I want my external client to perform additional explicitly supported management
-operations beyond the current bounded creation/tagging commands. The Stage B
-review identifies this follow-up; exact operations, permissions and acceptance
-checks must be selected before claiming support.
+### J12 - Connect once and control tracked accounts
 
-### Continue the conversation by voice, if selected
+**Situation:** I want bank data without repeated technical setup or manual refresh.
 
-I ask supported questions by voice after the text experience is reliable. The new
-channel must retain financial meaning, access boundaries and explicit approval
-requirements. Voice is a candidate, not an already selected Stage C issue.
+**Journey:** Optionally connect from onboarding, authorize Fintoc, choose the
+accounts to track and confirm first synchronization/automatic updates. See source
+age and recovery when needed; set/change an account's personal alias.
+
+**Observable outcome:** Skipping or cancelling banking remains valid setup.
+Authorization alone does not enroll every account, and new accounts are not
+silently added. Supported background updates work without an open browser;
+deselection/relink preserves history, aliases and owned decisions. A new fetch
+does not pretend that a stale bank source is fresh. **Issues:** LAZ-74 and children.
+
+### J13 - Organize and classify without confusion
+
+**Situation:** Tag management and correcting a movement feel harder than necessary.
+
+**Journey:** Manage the tag catalog separately from assigning a single movement's
+tag/no-tag/reset or internal-status choice, retaining the ledger's context.
+
+**Observable outcome:** Concise feedback explains confirmed effects on spending,
+budgets and savings without changing booked amounts, dates or bank balances.
+Intentional no-tag is not confused with unreviewed classification; errors do not
+trigger blind mutation replay. **Issues:** LAZ-81, LAZ-77, LAZ-78.
+
+### J14 - Read and keep the assistant nearby
+
+**Situation:** I want help while exploring the app, without losing my conversation
+or being scrolled past the beginning of an answer.
+
+**Journey:** Open/minimize a theme-aligned assistant, navigate and restore it, read
+new streamed replies from their beginning and expand references only when needed.
+
+**Observable outcome:** One accepted conversation/draft remains in memory across
+authenticated navigation, not browser storage. Deliberate scrolling is respected;
+approval cards remain explicit and evidence stays accessible. Chat has no model/
+provider labels; separate processing disclosure remains available. Logout/owner
+change clears private state. **Issues:** LAZ-93, LAZ-91, LAZ-92, LAZ-96.
+
+### J15 - Continue by live voice
+
+**Situation:** I want to speak naturally with the same grounded financial assistant.
+
+**Journey:** Explicitly start the microphone, speak and interrupt, inspect the
+transcript/references, mute/end or return to text.
+
+**Observable outcome:** Visible capture controls and defined session/response/stop
+bounds apply on documented supported browsers. Denied permission or an outage
+leaves a useful text fallback. Spoken agreement does not approve a financial
+proposal; ownership and saved-version approval remain unchanged. **Issues:**
+LAZ-95, LAZ-94.
+
+### J16 - Adapt the workspace
+
+**Situation:** I need readable text, my preferred theme and more space for content.
+
+**Journey:** Set text size/light or dark mode, compact the sidebar to icons and
+use a discoverable keyboard shortcut to open the assistant.
+
+**Observable outcome:** Meaningful icon labels, contrast, focus and mobile
+navigation remain usable. Reload retains only non-sensitive preferences, never
+private financial/chat data. **Issues:** LAZ-82, LAZ-84, LAZ-79; shared clarity LAZ-78.
+
+### J17 - Recognize delegated applications
+
+**Situation:** I want to recognize who can access my finances and revoke that access.
+
+**Journey:** Inspect clear connected-app identity, a safe logo/fallback, granted
+capabilities and expiry/state, then explicitly revoke if desired.
+
+**Observable outcome:** Client/callback facts and permission choices remain legible;
+branding is not verification or extra authority. Empty/error/revoked states are
+honest, and subsequent revoked access fails. **Issues:** LAZ-80, LAZ-83.
+
+### J18 - Compare an external quote — optional, highly desirable
+
+Use an available, permitted search/API source to compare a dated price with
+relevant owned financial context. Sources, currency, availability and unknown fees
+remain explicit; expected income is not available cash. No financial history is
+exported to a marketplace and no purchase/payment occurs. Uber/MercadoLibre are
+examples to assess, not promised integrations. **Issue:** LAZ-101.
+
+### J19 - Inspect a simulated banking action — optional
+
+Review exact synthetic accounts, amount and currency, explicitly confirm and see a
+clearly labelled mock result. The demonstration is isolated from real bank write
+credentials, imported facts and user balances, and disabled in production. It does
+not grant the assistant real money-movement capability. **Issue:** LAZ-103.
+
+### J20 - Review actionable alerts — optional
+
+Open concise in-app classification or explicitly defined critical budget/goal
+items, inspect their reason/freshness and follow a relevant correction/detail
+link. Eligibility, critical thresholds and acknowledgement/resolution rules must
+be defined. Intentional no-tag and partial savings evidence are not automatically
+failures; alert generation changes no financial facts. **Issue:** LAZ-102.
+
+### J21 - Use WhatsApp after explicit binding — optional
+
+Opt in through authenticated account binding, use only documented permitted
+capabilities and revoke/unlink access. A phone number or inbound message alone
+does not select a financial owner. Provider access/terms, privacy, retention and
+cost need validation before promising the channel. **Issue:** LAZ-104.
+
+Broader MCP management remains an identified follow-up, not selected by this
+brief. Advanced analysis, additional bank adapters, historical backfill, shared
+ownership and real money movement also remain outside the selected scope.
 
 ## Using this document
 
-Keep acceptance criteria and implementation work in Linear issues; the [latest snapshot](../planning/snapshots/backlog-2026-11-09.md) makes the inventory accessible to reviewers. A journey's implementation, recorded verification and remaining limitations must stay distinguishable. The [Stage A closure](../planning/stage-a/closure.md) captures the financial-model gate, and the [Stage B closure](../planning/stage-b/closure.md) records the connected development increment without asserting product release readiness.
+Keep acceptance criteria and implementation work in Linear issues; the [planning snapshot](../planning/snapshots/backlog-2026-11-10-stage-c-planning.md) makes the inventory accessible to reviewers. A journey's implementation, recorded verification and remaining limitations must stay distinguishable. The [Stage A closure](../planning/stage-a/closure.md) captures the financial-model gate, and the [Stage B closure](../planning/stage-b/closure.md) records the connected development increment without asserting product release readiness.
 
 ## Stage A user stories
 

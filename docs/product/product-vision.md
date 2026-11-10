@@ -55,7 +55,22 @@ to their gate criteria.
 
 ### Stage C — broaden the experience
 
-The completed Stage B review identifies **broader MCP management tools** as a follow-up beyond the current bounded command set. Voice can extend a useful, reliable text experience. Advanced analysis (projections, anomalies, duplicate charges, price changes and goal simulations), further adapters and other financial capabilities remain possible directions as their data needs and value become clear. **Select Stage C's exact scope from the review**, rather than treating every candidate as committed. The November 9 snapshot contains no Stage C issues; its November 20 target remains tentative.
+The [scope selected on 2026-11-09](../planning/stage-c/planning.md) focuses on a
+clearer everyday experience: easier tagging/classification, optional guided bank
+setup with explicit account selection, editable aliases and automatic updates,
+recognizable connected applications, accessible workspace preferences, and a
+persistent readable assistant with **live voice**. These are planned outcomes,
+not claims about the current runtime. The
+[planning snapshot](../planning/snapshots/backlog-2026-11-10-stage-c-planning.md)
+records 29 required and 5 Optional issue records; the November 20 target remains
+tentative, without agreed owners, estimates or individual deadlines.
+
+External price comparison is optional but highly desirable. A synthetic
+banking-action demo, alerts and WhatsApp are also optional; none silently expands
+the required gate. Broader MCP management remains the Stage B follow-up, but its
+additional commands/permissions are **not selected in this brief**. Advanced
+analysis, further banking adapters, historical backfill and shared ownership also
+remain future directions rather than automatic commitments.
 
 ## Scope boundaries
 

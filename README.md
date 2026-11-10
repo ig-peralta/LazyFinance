@@ -71,7 +71,7 @@ These are initial areas of responsibility, not exclusive assignments: the team s
 
 ## Methodology
 
-The project follows **iterative and incremental development with agile practices, without claiming a formal Scrum framework**. The financial core was validated with controlled data before parallel UI, identity, banking, MCP and agent delivery. **Each stage milestone is one sprint; its assigned Linear issues are its Sprint Backlog**, without separate Linear cycles. [Stage B closed on 2026-11-09](docs/planning/stage-b/closure.md) with GO to Stage C planning and explicit development-stage limitations, not production-release approval. The [latest snapshot](docs/planning/snapshots/backlog-2026-11-09.md) records all 65 issues Done (19 Stage A, 46 Stage B) and no Stage C issues. The [retrospective](docs/planning/stage-b/retrospective.md) recommends smaller coherent reviews and explicit live validation; broader MCP management is an identified follow-up. See the [planning index](docs/planning/README.md), [method](docs/planning/project-method.md) and separate [product DoD](docs/planning/product-definition-of-done.md).
+The project follows **iterative and incremental development with agile practices, without claiming a formal Scrum framework**. The financial core was validated with controlled data before parallel UI, identity, banking, MCP and agent delivery. **Each stage milestone is one sprint; its assigned Linear issues are its Sprint Backlog**, without separate Linear cycles. [Stage B closed on 2026-11-09](docs/planning/stage-b/closure.md) with GO to Stage C planning and explicit development-stage limitations, not production-release approval. [Stage C now selects](docs/planning/stage-c/planning.md) clearer workflows, automatic selected-account banking and a persistent assistant with live voice, plus explicitly optional extensions. The [planning snapshot](docs/planning/snapshots/backlog-2026-11-10-stage-c-planning.md) records 99 issues: 65 prior Done, 29 required Todo and 5 Optional Backlog. November 20 remains tentative. The [retrospective](docs/planning/stage-b/retrospective.md) recommends smaller coherent reviews and explicit live validation; broader MCP management remains an unselected follow-up. See the [planning index](docs/planning/README.md), [method](docs/planning/project-method.md) and separate [product DoD](docs/planning/product-definition-of-done.md).
 
 ## Documentation
 
@@ -83,7 +83,7 @@ The project follows **iterative and incremental development with agile practices
 | [Innovation and interoperability](docs/product/innovation.md) | Differentiation, source/destination ecosystems, example opportunities and value hypotheses |
 | [Product requirements](docs/product/product-requirements.md) | Expected capabilities and acceptance/scope boundaries, not a shipped-feature inventory |
 | [Non-functional requirements](docs/product/non-functional-requirements.md) | Privacy, isolation, correctness, recoverability, performance and usability targets |
-| [User journeys](docs/product/user-journeys.md) | Financial-core and connected Stage B outcomes, with Stage C extension candidates |
+| [User journeys](docs/product/user-journeys.md) | Financial-core/Stage B outcomes and selected Stage C required/optional journeys |
 
 ### Current technical references
 
@@ -126,9 +126,10 @@ reading order and distinction between implementation, evidence and targets.
 | [Stage A](docs/planning/stage-a/README.md) | Financial-core gate criteria, [closure](docs/planning/stage-a/closure.md) and [documentary retrospective](docs/planning/stage-a/retrospective.md) |
 | [Stage B](docs/planning/stage-b/README.md) | Six delivered workstreams, [closure](docs/planning/stage-b/closure.md), [retrospective](docs/planning/stage-b/retrospective.md) and accepted carryovers |
 | [Platform evolution alongside Stage B](docs/planning/stage-b/platform-evolution.md) | Product intentions, engineering direction and boundaries of PRs #26–#28 |
-| [Stage C](docs/planning/stage-c/README.md) | Candidate direction, post-Stage-B selection rules and gate criteria |
+| [Stage C](docs/planning/stage-c/README.md) | Selected scope, [feedback/issue traceability](docs/planning/stage-c/planning.md), [validation plan](docs/planning/stage-c/validation-plan.md) and stage gate |
 | [Stage-sprint record template](docs/planning/stage-sprint-record-template.md) | Planning, closure, evidence and retrospective record fields |
-| [Backlog snapshot — 2026-11-09](docs/planning/snapshots/backlog-2026-11-09.md) | Complete Stage B closure inventory, hierarchy and recorded issue fields |
+| [Stage C planning snapshot — 2026-11-10 UTC](docs/planning/snapshots/backlog-2026-11-10-stage-c-planning.md) | Complete 99-issue inventory after the November 9 local scope decision; required/optional selection and dependency checkpoint |
+| [Stage B closure snapshot — 2026-11-09](docs/planning/snapshots/backlog-2026-11-09.md) | Preserved 65-issue closure inventory, hierarchy and recorded issue fields |
 | [Earlier checkpoint — 2026-11-02](docs/planning/snapshots/backlog-2026-11-02.md) | Historical issue states and individual completion summaries |
 
 Historical records preserve their original context; old Drizzle references or

@@ -1,40 +1,69 @@
 # Stage C — expanded experience
 
-Stage C planning is enabled by Stage B's **2026-11-09 GO decision** against
-`main` at `1cda504`. The [closure](../stage-b/closure.md) and
-[retrospective](../stage-b/retrospective.md) define the delivered foundation,
-accepted limitations and improvements. The [product vision](../../product/product-vision.md#stage-c--broaden-the-experience)
-identifies possible directions: voice after reliable text interaction, advanced
-analysis, additional providers and other validated financial capabilities.
+**Scope selected on 2026-11-09 (America/Santiago); implementation is not claimed.**
+Make everyday financial management clear and low-friction: guided bank setup,
+chosen accounts kept up to date automatically, easier classification, a persistent
+readable assistant and live voice.
 
-## Direction is not a selected backlog
+Stage B's [closure](../stage-b/closure.md) and
+[retrospective](../stage-b/retrospective.md) supply the foundation and accepted
+limitations. Its GO was reviewed against `main` at `1cda504`; this planning review
+uses repository baseline `13f4b17`. The original
+[November 9 snapshot](../snapshots/backlog-2026-11-09.md) remains unchanged.
 
-The [November 9 snapshot](../snapshots/backlog-2026-11-09.md#sprint-c-stage-c--planning-handoff)
-contains **no Stage C issues**. Its milestone target is **2026-11-20, tentative**.
-The next decision is the precise goal, selected scope and acceptance checks under
-the existing Stage C milestone; one milestone remains one sprint.
+## Selected scope
 
-**Broader MCP management tools** are the functional follow-up identified in the
-Stage B review. Current MCP already supports bounded direct execution for
-budget/goal creation, tag management and individual tagging with optional write
-consent. Define additional operations and their permissions before expanding that
-surface; do not describe the existing direct-write foundation as missing.
+The [planning snapshot](../snapshots/backlog-2026-11-10-stage-c-planning.md)
+records **34 new issues** in the existing Stage C milestone:
 
-Voice, projections, anomaly detection and further adapters remain candidates, not
-automatic release commitments. Shared/family/organization ownership requires new
-product and permission rules. Stage B's live-validation, security and operational
-carryovers are nonblocking for planning, not certified release capabilities.
+| Workstream | Parent | Children | Selection |
+| --- | --- | --- | --- |
+| Clear workspace, tagging and preferences | LAZ-75 | 6 | Required |
+| Bank setup, account selection, aliases and automatic synchronization | LAZ-74 | 7 | Required |
+| Persistent, readable assistant and live voice | LAZ-72 | 6 | Required |
+| Recognizable connected applications | LAZ-71 | 2 | Required |
+| Validation and stage review | LAZ-76 | 3 | Required |
+| External quotes, synthetic banking-action demo, alerts and WhatsApp | LAZ-73 | 4 | Optional |
 
-## Planning and completion
+There are **29 required records** (5 parents and 24 children), initially Todo,
+and **5 Optional records** (1 parent and 4 candidates), initially Backlog.
+Optional membership does not make a candidate a completion blocker. Record an
+explicit promotion, delivery or deferral decision at review.
 
-- Use the [shared record template](../stage-sprint-record-template.md) to record
-  the agreed goal, selected issues, dependencies and acceptance evidence.
-- Apply the [Stage C Definition of Done](definition-of-done.md) to the selected
-  work, then use the separate [product release checklist](../product-definition-of-done.md).
-- Preserve any resulting closure record and retrospective in this folder rather
-  than presenting candidate scope as a completed sprint.
-- Apply the two review improvements: smaller coherent reviews and explicit
-  live-validation sessions with recorded builds, environments and results.
+One stage milestone remains one sprint; no Linear cycle is added. The existing
+**2026-11-20 target remains tentative**. Capacity, owners, estimates and individual
+due dates have not been agreed; priorities are initial relative ordering, not a
+delivery forecast. Linear owns their live values.
 
-Return to the [planning index](../README.md) for shared methodology and evidence
-rules.
+## Planning documents
+
+| Document | Responsibility |
+| --- | --- |
+| [Scope and planning record](planning.md) | All 18 feedback items, required/optional selection, dependencies, decisions and exclusions |
+| [Validation plan](validation-plan.md) | Observable journeys, appropriate evidence and unresolved live checks |
+| [Stage Definition of Done](definition-of-done.md) | Required completion and gate checks, all still open |
+| [Dated issue snapshot](../snapshots/backlog-2026-11-10-stage-c-planning.md) | Complete project inventory after selection; not a live board |
+| [Product requirements](../../product/product-requirements.md) and [journeys](../../product/user-journeys.md#stage-c---selected-everyday-experience-and-live-voice) | User-facing behavior and planned outcomes |
+
+The internal Linear document **Stage C — Scope, acceptance and validation** links
+the same workstreams and their issue-level acceptance criteria. No closure or
+retrospective is fabricated in advance; create those records after the actual
+review using the [shared template](../stage-sprint-record-template.md).
+
+## Boundaries and completion
+
+Broader MCP management was identified in the Stage B review but is **not selected
+by this scope brief**. Existing bounded assistant/MCP actions already work within
+their documented permission boundaries. Additional commands need a separate
+operation/permission decision. Advanced analysis, additional banking adapters,
+shared ownership and historical backfill also remain unselected.
+
+The optional banking-action demo is isolated simulation, not permission to move
+real money. Automatic bank updates must respect provider capabilities and must
+not disguise stale source data as fresh. Removing model/provider labels from chat
+does not remove separate processing/privacy disclosure.
+
+Apply this stage's [DoD](definition-of-done.md), then the separate
+[product release checklist](../product-definition-of-done.md). Stage B's
+live-validation/security/operational carryovers remain explicit release concerns,
+not checks that passed merely because planning began.

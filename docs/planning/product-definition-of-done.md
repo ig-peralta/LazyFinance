@@ -1,6 +1,6 @@
 # LazyFinance — Product Definition of Done
 
-This is the **exit checklist for a usable LazyFinance product release**, not a claim that the product is already complete. The [product requirements](../product/product-requirements.md) describe agreed behavior; the [latest snapshot](snapshots/backlog-2026-11-09.md) records issue-level scope, and the [stage definitions of done](README.md#stage-gates) cover staged delivery. Stage B's [GO to Stage C planning](stage-b/closure.md) accepts development-stage limitations; it does not check off this release checklist.
+This is the **exit checklist for a usable LazyFinance product release**, not a claim that the product is already complete. The [product requirements](../product/product-requirements.md) describe agreed behavior; the [planning snapshot](snapshots/backlog-2026-11-10-stage-c-planning.md) records issue-level scope, and the [stage definitions of done](README.md#stage-gates) cover staged delivery. Stage B's [GO to Stage C planning](stage-b/closure.md) accepts development-stage limitations; it does not check off this release checklist.
 
 LazyFinance is Done for its agreed release scope only when the team can demonstrate and verify **all** of the following:
 
@@ -12,4 +12,11 @@ LazyFinance is Done for its agreed release scope only when the team can demonstr
 - [ ] **The release is repeatable and verified.** A clean setup can apply checked-in migrations, start the services, load representative demo data, and reproduce a complete demonstration. Automated and targeted manual checks cover the agreed behaviors, important edge cases, user isolation, error paths, and relevant non-functional expectations; results, limitations, and fixes are recorded. Production builds and type checks pass for the release baseline.
 - [ ] **The delivered product is operable and explainable.** Current setup/configuration, deployment, architecture and data meanings, API/MCP and agent contracts, supported flows, and known limitations match the actual release. A new developer can run and verify it using the documented steps. A final product review demonstrates the committed flows on a known build and records open risks or approved deferrals before release.
 
-Voice interaction, advanced forecasts/anomalies, and additional provider adapters are **candidates for Sprint C**, not automatically part of the initial release. After Sprint B, decide explicitly which of them enter the agreed release scope; selected capabilities must meet their own issue and sprint checks, while deferred ones remain clearly identified as future work.
+Stage C now [selects live voice and everyday-experience improvements](stage-c/planning.md),
+including automatic selected-account banking, the persistent assistant and
+accessible personalization. These must meet their own issue/stage checks before
+being described as delivered. Quotes, a synthetic banking-action demo, alerts and
+WhatsApp remain optional unless explicitly promoted. Broader MCP management,
+advanced forecasts/anomalies, additional bank adapters, historical backfill and
+shared ownership are not selected; real money movement is not authorized. Stage
+selection does not replace the release review or waive its unresolved risks.

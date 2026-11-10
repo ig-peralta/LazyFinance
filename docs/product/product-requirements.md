@@ -1,6 +1,6 @@
 # LazyFinance — Product Requirements
 
-> **Status:** requirements reconciled with Stage B's 2026-11-09 development closure, not a production-release claim. The [product vision](product-vision.md) describes direction; the [latest backlog](../planning/snapshots/backlog-2026-11-09.md) records issue outcomes, the [closure](../planning/stage-b/closure.md) records scope/evidence/exceptions, and the [product DoD](../planning/product-definition-of-done.md) governs release.
+> **Status:** Stage B's development baseline is closed; Stage C scope was selected on 2026-11-09 and is not yet delivered. The [product vision](product-vision.md) describes direction; the [planning snapshot](../planning/snapshots/backlog-2026-11-10-stage-c-planning.md) records issue selection, the [Stage B closure](../planning/stage-b/closure.md) preserves delivered scope/evidence/exceptions, and the [product DoD](../planning/product-definition-of-done.md) governs release.
 
 ## Financial understanding
 
@@ -21,7 +21,9 @@ The owned Fintoc lifecycle UI supplies hosted bank-authorization flows; this alo
 does not establish live-bank readiness. The API supplies bounded
 snapshot import/refresh and source-freshness reporting, exposed as separate explicit
 web commands and readonly status checks. Bank-forced/scheduled refresh and live-bank
-readiness remain separate acceptance work.
+readiness remain separate acceptance work. Stage C selects automatic updates and
+account enrollment as new work; it does not retroactively describe the manual
+Stage B contract as failed automation.
 
 ## Integration and ecosystem capabilities
 
@@ -51,7 +53,14 @@ Ingest provider accounts, balances and booked movements through a validated, pro
 
 Expose user-scoped financial reads and only explicitly permitted bounded changes as MCP tools. Results must preserve financial meaning, period, owner and data-quality context. Stage B delivered OAuth discovery/registration, owner-bound consent/grants, expiry/revocation and reference-client verification. Existing `finance:read` grants remain read-only; optional write permissions default off and do not grow automatically. The [tool inventory](../technical/rpc-contracts.md#public-surface) includes fourteen financial/supporting reads plus action preview and direct execution. The [compatibility matrix](../technical/mcp-authorization.md#compatibility-and-verification-matrix) distinguishes actual client checks from protocol fixtures and unverified hosted clients.
 
-The [innovation reference](innovation.md#example-a-decision-in-the-users-existing-assistant) describes a possible external-agent workflow, not a requirement for LazyFinance to implement web search, shopping or purchases. Current direct MCP changes use the bounded action contract and separately granted permissions, not the first-party chat approval workflow. Broader management coverage is a Stage C follow-up requiring its own operations, permissions and acceptance cases.
+The [innovation reference](innovation.md#example-a-decision-in-the-users-existing-assistant)
+describes a possible external-agent workflow, not shopping or purchasing authority.
+Stage C separately selects **optional exploration of first-party external quotes**;
+that does not promise unrestricted search or named vendor APIs. Current direct MCP
+changes use the bounded action contract and separately granted permissions, not
+the first-party chat approval workflow. Broader management remains an identified
+follow-up but is not selected in the current Stage C brief; additional operations
+need their own permissions and acceptance cases.
 
 ### Bounded changes and approval boundaries
 
@@ -74,11 +83,68 @@ quality or hosted-client write interoperability.
 
 ## Staged validation and scope
 
+### Selected Stage C experience requirements — planned
+
+The [scope record](../planning/stage-c/planning.md) traces all 18 feedback items to
+issues, dependencies and unresolved decisions. These requirements extend the
+delivered foundation; current technical guides remain descriptions of the actual
+implementation until their associated changes ship.
+
+- **Clarity and control:** use concise Spanish copy and progressive disclosure
+  without hiding currency, periods, uncertainty, freshness or material failures.
+  Make tag-catalog management and movement tagging/internal classification easier
+  to use while preserving single-tag/no-tag/reset and financial semantics.
+- **Guided banking:** improve the existing optional onboarding and simplify the
+  authorization-to-first-sync journey. Confirm which owned Fintoc accounts to
+  track before import/automatic enrollment; authorization alone does not select
+  every account. New accounts stay unselected; deselection stops future ingestion
+  while preserving retained history and decisions. Let users set/change/clear
+  aliases without changing bank identity or losing them on refresh.
+- **Automatic synchronization:** keep selected accounts updated without an open
+  browser or routine manual settings visits. Define supported cadence/events,
+  authority, cost/rate bounds and recovery before implementation. Preserve leases,
+  atomic checkpoints, source-age honesty, first-link tracking and owner isolation;
+  never promise a bank-forced refresh unsupported by the provider.
+- **A readable assistant that stays nearby:** provide a minimizable,
+  application-themed overlay with in-memory continuity across authenticated
+  navigation. Reveal new answers from their beginning, respect deliberate scrolling
+  and collapse references by default without hiding action approvals. Remove
+  model/provider names from chat, while keeping external-processing disclosure
+  accessible outside the conversation before sending financial context.
+- **Live voice:** support an explicitly started streaming conversation with
+  interruption, visible microphone controls, transcript and text fallback on a
+  defined browser matrix. Set response/stop, cost and retention bounds. Voice
+  inherits grounding, ownership and exact saved-action approval; spoken agreement
+  is not execution authority.
+- **Accessible personalization:** offer text size, light/dark mode, an assistant
+  shortcut and compact icon-only navigation with readable contrast, accessible
+  names and predictable focus. Persist non-sensitive preferences, never private
+  messages, financial responses or drafts in browser storage.
+- **Recognizable delegation:** simplify connected applications/consent and show
+  safe client logos with fallbacks. Keep actual identity/callback, permissions,
+  status and explicit revocation clear; branding does not verify a client or
+  expand access.
+
+**Optional, not stage-gate blockers:** external quote exploration (highly
+desirable), an isolated synthetic banking-action demo, in-app classification/
+critical-plan alerts with defined eligibility, and WhatsApp with explicit identity
+binding and consent. Quotes must retain source/time/currency/unknown costs without
+exporting financial history or purchasing. The demo moves no real money. Intentional
+no-tag and incomplete savings evidence are not automatically alert failures.
+WhatsApp does not obtain financial authority from a phone number alone. Record
+delivery, deferral or explicit promotion for each candidate.
+
+### Stage decisions
+
 - **Stage A — financial-core gate:** use representative CLP demo data to demonstrate coherent account, movement, transfer, budget, savings-target and income scenarios across the available user-scoped interfaces. Record unresolved nonblocking assumptions before starting a provider adapter. The [Stage A closure record](../planning/stage-a/closure.md) documents its completed, deliberately bounded data-model gate; it is not a claim that banking, external-client authorization or the agent are finished.
 - **Stage B — parallel product tracks:** [closed on 2026-11-09](../planning/stage-b/closure.md) against `main` at `1cda504`, with all 46 issues Done and GO to Stage C planning. The final scope includes private persistence/typed RPC, private CSR/static hosting, additional access methods and bounded actions beyond the original read-only plan. Live-validation and operational exceptions are explicitly accepted for continued development, not release.
-- **Stage C — scope selection:** broader MCP management is the functional follow-up identified in the Stage B review. Select exact operations, permission boundaries and acceptance checks alongside any chosen voice, analysis or additional-provider work. The November 9 snapshot has no Stage C issues. Shared/family/organization or adviser workflows still require new ownership rules.
+- **Stage C — selected experience:** the [planning record](../planning/stage-c/planning.md), [validation plan](../planning/stage-c/validation-plan.md) and [stage DoD](../planning/stage-c/definition-of-done.md) define required/optional work under the existing milestone. The new snapshot contains 34 Stage C records; November 20 remains tentative. Broader MCP management, advanced analysis, additional banking adapters, historical backfill and shared ownership are not selected.
 
-The agreed scope does not include money movement from an agent. Bounded application-record changes are explicitly defined above; additional financial capabilities must not be inferred from their infrastructure. See [innovation and interoperability](innovation.md) for opportunities and the [product vision](product-vision.md) for direction.
+The agreed scope does not include real money movement from an agent; the optional
+demo is simulation only. Bounded application-record changes are explicitly defined
+above; additional financial capabilities must not be inferred from their
+infrastructure. See [innovation and interoperability](innovation.md) for
+opportunities and the [product vision](product-vision.md) for direction.
 
 ## Core-model decision questions
 

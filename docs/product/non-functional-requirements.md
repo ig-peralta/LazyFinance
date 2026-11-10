@@ -1,13 +1,13 @@
 # Non-functional requirements
 
-These **product quality requirements** apply to LazyFinance's authenticated dashboard, connected banking, MCP access and first-party text agent. Each requirement sets an acceptance target for the planned product. The [product requirements](product-requirements.md) define the capabilities and the [product vision](product-vision.md) sets their sequence; these targets balance trustworthiness with the time constraints of a capstone project.
+These **product quality requirements** apply to LazyFinance's authenticated dashboard, connected banking, MCP access and first-party assistant, including the selected Stage C live-voice extension. Each requirement sets an acceptance target for the planned product. The [product requirements](product-requirements.md) define the capabilities and the [product vision](product-vision.md) sets their sequence; these targets balance trustworthiness with the time constraints of a capstone project.
 
 Stage B's [2026-11-09 closure](../planning/stage-b/closure.md) records development
 evidence and accepted exceptions. It does not certify every target below;
 live-provider/model, performance and operational gaps retain their release
 implications.
 
-Prioritize **NFR-01 through NFR-05** before exposing real-user or provider data. **NFR-06 through NFR-08** define a practical quality bar for the usable product; revisit their exact thresholds if the chosen agent runtime or deployment environment changes. Voice and additional providers inherit these rules when they enter Sprint C scope.
+Prioritize **NFR-01 through NFR-05** before exposing real-user or provider data. **NFR-06 through NFR-08** define a practical quality bar for the usable product; revisit their exact thresholds if the chosen agent runtime or deployment environment changes. Live voice is selected for Stage C and inherits these rules; additional banking providers remain unselected.
 
 ## NFR-01 — User isolation and access control
 
@@ -58,3 +58,29 @@ The selected assistant runtime has [explicit generation, tool and stream bounds]
 **Goal:** A developer can reproduce the supported application and evolve its financial model without undocumented local state.
 
 **Acceptance target:** From a clean checkout and documented prerequisites, the supported local setup installs dependencies, starts PostgreSQL/API/UI, applies versioned migrations and seeds representative CLP data using documented commands and example configuration containing no real secrets. Financial contract or schema changes include a migration where needed and update the affected interfaces and technical documentation. Every run path documents the initialization steps required for an operational database.
+
+## Stage C quality checks — planned, not yet verified
+
+The [selected scope](../planning/stage-c/planning.md) and
+[validation plan](../planning/stage-c/validation-plan.md) apply these targets to the
+new experience:
+
+- **NFR-01/02:** background banking must use narrowly authorized owned eligibility,
+  not owner credentials or a general RLS bypass. Account-selection changes invalidate
+  obsolete work. Private assistant state clears on owner changes; only non-sensitive
+  appearance/navigation preferences may persist in browser storage.
+- **NFR-02/05:** live voice requires explicit microphone start/mute/end, visible
+  capture state, bounded session/cost/retention and text fallback. Removing model/
+  provider labels from chat must not remove separate processing disclosure. Remote
+  logos and optional quote sources need origin/format/resource/privacy controls.
+- **NFR-03/04:** automatic updates preserve booked facts, user decisions, first-link
+  tracking and independent source freshness. Aliases remain user-owned. Voice and
+  optional alerts/quotes inherit the same financial meanings and approval rules.
+- **NFR-06/07:** set measurable voice response/stop bounds and a supported browser
+  matrix in LAZ-95; do not reuse the financial-read p95 target as an audio SLA.
+  Verify readable themes and text sizes, compact navigation, focus/shortcut use,
+  collapsed references and non-disruptive streaming scroll at supported sizes.
+
+No quality target is marked passed by this planning update. Stage B's live,
+dependency-security, performance and operational exceptions remain visible until
+new evidence or an explicit release disposition addresses them.
