@@ -11,6 +11,7 @@ export const McpGrantSchema = z.object({
   id: z.string(),
   clientId: z.string(),
   clientName: z.string(),
+  redirectUri: z.url().max(2048).nullable().optional(),
   resource: z.url(),
   scopes: z.array(z.string()),
   createdAt: z.iso.datetime(),

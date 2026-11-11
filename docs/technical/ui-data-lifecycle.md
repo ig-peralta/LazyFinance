@@ -175,7 +175,11 @@ Requested financial write scopes start unchecked and remain bound to the accepte
 owner/interaction. Only selected capabilities are submitted; connected-app settings
 show actual grants. MCP writes do not use the first-party chat approval cards.
 Connected-app settings use page-owned RPC resources and a scoped revoke command
-with confirmation and keyboard focus return. Neither page stores external access/
+with confirmation and keyboard focus return. A failed revoke keeps writes locked
+until a successful explicit later grant read; a failed reconciliation cannot
+unlock another attempt. Local-only decorative client artwork has a two-second
+fallback deadline and never gates page readiness. Exact client IDs/callbacks and
+unverified identity remain readable even without an image. Neither page stores external access/
 refresh tokens or serializes protected data into hydration. Server-side persisted
 single-use decisions and grant ownership remain authoritative; see
 [MCP authorization](mcp-authorization.md).

@@ -18,6 +18,7 @@ export interface McpAuthorizationTables {
     userId: string;
     clientId: string;
     clientName: string;
+    redirectUri: string | null;
     resource: string;
     scopes: string[];
     createdAt: Generated<Date>;
