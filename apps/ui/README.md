@@ -182,6 +182,11 @@ decisions invalidate savings allocations as well as spending/budget reads.
 and links into movement history. It does not load banking settings or contact
 Fintoc. A **Conectar banco** shortcut and the empty state link to the separate
 connection settings; they do not launch authorization themselves.
+Personal names are owned display labels, edited in a scoped drawer and preserved
+on synchronization/relink. Removing a name requires explicit `null`, not blank
+text. An uncertain save locks the editor until the parent reloads stored accounts.
+Retained balances show selected/paused/no-access tracking separately from source
+age; deselection does not hide an account or erase its history.
 
 `/conexiones-bancarias` (**Mi cuenta → Conexiones bancarias**) supports owned Fintoc
 authorization, explicit access checks, same-bank/same-holder relinking and confirmed
@@ -202,6 +207,16 @@ failure, retry timing, conflicts, source freshness and retained history bounds.
 Its per-account movement links use the returned owned account IDs. Balances still
 belong to `/cuentas`; no client-side balance reconstruction or connection guessing
 is added to the public account-summary projection.
+
+Authorization opens the same panel from settings or optional onboarding; neither
+path imports implicitly. **Consultar cuentas disponibles** explicitly discovers
+only minimal metadata. Choose supported accounts and separately opt into future
+automatic imports. **Confirmar e importar selección** saves one versioned set
+before starting the first import. Empty selection confirms a pause without deleting
+history. New accounts stay unselected; unavailable or missing selected accounts can
+be deselected. Server-disabled automation is disclosed even when intent is saved.
+Onboarding's `from=onboarding` context provides a fixed return link to `/comenzar`;
+there is no arbitrary return URL or separate banking workflow.
 
 **Importar datos disponibles** calls the explicit initial-import command; after a
 confirmed success, **Actualizar datos disponibles** replays the backend's bounded
@@ -234,7 +249,11 @@ A confirmed outcome reloads only the selected status; confirmed lifecycle fields
 can update the page-local connection projection without destroying the outcome.
 An ambiguous transport failure requires an explicit successful status read made
 after that failure before another write is enabled. A pre-response read cannot
-unlock a retry. There is no automatic polling or mutation replay. Closing a panel
+unlock a retry. The open panel makes at most twelve provider-free observation reads:
+every five seconds while a run is active, otherwise every thirty seconds while
+automatic imports are enabled and enrolled. Errors, scope changes and teardown
+cancel observation; its expiry leaves the explicit status-read button available.
+Observation never discovers, selects, enrolls or replays a mutation. Closing a panel
 stops waiting, not server processing; reopening reconciles its durable lease.
 Other financial pages read fresh data when navigated to, without a root cache.
 Server configuration/mode and authoritative status eligibility both gate imports;

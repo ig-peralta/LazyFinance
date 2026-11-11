@@ -2,6 +2,7 @@ import type { RpcOutput } from "./rpc";
 
 export const bankingConfiguration = {
   enabled: true,
+  automaticSyncEnabled: false,
   publicKey: "pk_test_ui_fixture",
   mode: "test",
 } satisfies RpcOutput<"banking.configuration">;
@@ -27,10 +28,32 @@ export const bankingConnection = {
   updatedAt: "2026-11-08T17:00:00.000Z",
 } satisfies RpcOutput<"banking.connections">[number];
 
+export const bankingSelection = (
+  changes: Partial<RpcOutput<"banking.accountSelection">> = {},
+): RpcOutput<"banking.accountSelection"> => ({
+  connectionId: bankingConnection.id,
+  version: 0,
+  discoveryVersion: 0,
+  discoveredAt: null,
+  readRetryAfter: null,
+  accounts: [],
+  accountIds: [],
+  confirmedAt: null,
+  automaticEnrolled: false,
+  ...changes,
+});
+
 export const bankingSyncStatus = (
   changes: Partial<RpcOutput<"banking.syncStatus">> = {},
 ): RpcOutput<"banking.syncStatus"> => ({
   connectionId: bankingConnection.id,
+  automation: {
+    enrolled: false,
+    selectedAccounts: 0,
+    nextAttemptAt: null,
+    failureCount: 0,
+    pauseReason: null,
+  },
   asOf: "2026-11-08T18:00:00.000Z",
   lifecycle: "active",
   disconnectedAt: null,

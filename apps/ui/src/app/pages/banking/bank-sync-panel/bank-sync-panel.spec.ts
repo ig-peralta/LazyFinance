@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   bankingConnection,
   bankingImportResult,
+  bankingSelection,
   bankingSyncStatus,
 } from "../../../../testing/banking";
 import { deferred } from "../../../../testing/deferred";
@@ -54,6 +55,7 @@ function setup(
   const mock = setupRpc(
     {
       "banking.syncStatus": () => state,
+      "banking.accountSelection": () => bankingSelection(),
       "banking.importInitial": () => {
         state = imported();
         return bankingImportResult;
@@ -100,7 +102,158 @@ function button(root: HTMLElement, text: string) {
 describe("explicit owned snapshot import, refresh and read reconciliation", () => {
   afterEach(() => {
     TestBed.resetTestingModule();
+    vi.useRealTimers();
     vi.restoreAllMocks();
+  });
+
+  it("continues confirmed versioned selection into exactly one first import, never from discovery alone", async () => {
+    const selected = bankingSelection({
+      discoveryVersion: 1,
+      discoveredAt: "2026-11-08T18:00:00.000Z",
+      accounts: [
+        {
+          externalId: "acc_checking",
+          name: "Cuenta corriente",
+          currency: "CLP",
+          numberSuffix: "1234",
+          unavailableReason: null,
+        },
+      ],
+    });
+    const confirmation = deferred<RpcOutput<"banking.selectAccounts">>();
+    const f = setup(
+      {
+        "banking.accountSelection": () => selected,
+        "banking.selectAccounts": () => confirmation.promise,
+      },
+      bankingSyncStatus({ canRefresh: false }),
+    );
+    await render(f.fixture);
+    expect(f.callsTo("banking.importInitial")).toHaveLength(0);
+    const choice = f.root.querySelector<HTMLInputElement>(
+      'input[type="checkbox"]',
+    );
+    if (!choice) throw new Error("Missing account choice");
+    choice.click();
+    await render(f.fixture);
+    const confirm = button(f.root, "Confirmar e importar selección");
+    confirm.click();
+    confirm.click();
+    await vi.waitFor(() =>
+      expect(f.callsTo("banking.selectAccounts")).toHaveLength(1),
+    );
+    expect(f.callsTo("banking.importInitial")).toHaveLength(0);
+    expect(f.callsTo("banking.selectAccounts")[0].input).toEqual({
+      id: bankingConnection.id,
+      expectedVersion: 0,
+      discoveryVersion: 1,
+      accountIds: ["acc_checking"],
+      automaticEnrolled: false,
+    });
+    f.setState(bankingSyncStatus());
+    confirmation.resolve({
+      ...selected,
+      version: 1,
+      accountIds: ["acc_checking"],
+      confirmedAt: "2026-11-08T18:01:00.000Z",
+    });
+    await render(f.fixture);
+    expect(f.callsTo("banking.importInitial")).toHaveLength(1);
+    expect(f.callsTo("banking.refresh")).toHaveLength(0);
+    expect(f.root.textContent).toContain("Importación completada.");
+  });
+
+  it("saves selection without inventing a superseded import when a current waiting period blocks it", async () => {
+    const selected = bankingSelection({
+      discoveryVersion: 1,
+      accounts: [
+        {
+          externalId: "acc_checking",
+          name: "Cuenta",
+          currency: "CLP",
+          numberSuffix: null,
+          unavailableReason: null,
+        },
+      ],
+      accountIds: ["acc_checking"],
+    });
+    const f = setup(
+      {
+        "banking.accountSelection": () => selected,
+        "banking.selectAccounts": () => ({
+          ...selected,
+          version: 1,
+          confirmedAt: "2026-11-08T18:01:00.000Z",
+        }),
+      },
+      bankingSyncStatus({ canRefresh: false }),
+    );
+    await render(f.fixture);
+    button(f.root, "Confirmar e importar selección").click();
+    await render(f.fixture);
+    expect(f.callsTo("banking.selectAccounts")).toHaveLength(1);
+    expect(f.callsTo("banking.importInitial")).toHaveLength(0);
+    expect(f.callsTo("banking.refresh")).toHaveLength(0);
+    expect(f.root.textContent).not.toContain("La conexión o el intento cambió");
+    expect(f.root.textContent).not.toContain("Importación completada.");
+  });
+
+  it("observes an active run through at most twelve readonly queries and cancels on destruction", async () => {
+    const f = setup(
+      {},
+      imported({
+        activity: "in_progress",
+        canRefresh: false,
+        leaseExpiresAt: "2026-11-08T18:05:00.000Z",
+      }),
+    );
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    await render(f.fixture);
+    for (let read = 0; read < 12; read++) {
+      await vi.advanceTimersByTimeAsync(5000);
+      await render(f.fixture);
+    }
+    expect(f.callsTo("banking.syncStatus")).toHaveLength(13);
+    expect(f.root.textContent).toContain("Terminó la observación automática");
+    await vi.advanceTimersByTimeAsync(60_000);
+    await render(f.fixture);
+    expect(f.callsTo("banking.syncStatus")).toHaveLength(13);
+    expect(f.callsTo("banking.refresh")).toHaveLength(0);
+    expect(f.callsTo("banking.importInitial")).toHaveLength(0);
+    expect(f.callsTo("banking.discoverAccounts")).toHaveLength(0);
+    f.fixture.destroy();
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(f.callsTo("banking.syncStatus")).toHaveLength(13);
+  });
+
+  it("observes enrolled automatic work without enabling it and cancels the old owner's timer", async () => {
+    const f = setup(
+      {},
+      imported({
+        automation: {
+          enrolled: true,
+          selectedAccounts: 1,
+          nextAttemptAt: "2026-11-08T18:05:00.000Z",
+          pauseReason: null,
+          failureCount: 0,
+        },
+      }),
+    );
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    await render(f.fixture);
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(f.callsTo("banking.syncStatus")).toHaveLength(1);
+    f.fixture.componentRef.setInput("automaticEnabled", true);
+    await render(f.fixture);
+    await vi.advanceTimersByTimeAsync(30_000);
+    await render(f.fixture);
+    expect(f.callsTo("banking.syncStatus")).toHaveLength(2);
+    f.credentials.clear();
+    await render(f.fixture);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(f.callsTo("banking.syncStatus")).toHaveLength(2);
+    expect(f.callsTo("banking.selectAccounts")).toHaveLength(0);
+    expect(f.callsTo("banking.refresh")).toHaveLength(0);
   });
 
   it("does not query before authentication, then reads only the selected connection without importing", async () => {
@@ -211,7 +364,7 @@ describe("explicit owned snapshot import, refresh and read reconciliation", () =
     expect(f.root.textContent).not.toContain("Último intento fallido");
   });
 
-  it("uses readonly status to follow another in-progress attempt and never polls or retries it automatically", async () => {
+  it("uses readonly status to follow another in-progress attempt without automatically retrying its mutation", async () => {
     const f = setup(
       {
         "banking.refresh": () => {
@@ -267,7 +420,9 @@ describe("explicit owned snapshot import, refresh and read reconciliation", () =
     await render(f.fixture);
     button(f.root, "Actualizar datos disponibles").click();
     await render(f.fixture);
-    expect(f.root.textContent).toContain("Fintoc solicitó esperar");
+    expect(f.root.textContent).toContain(
+      "La siguiente consulta está permitida",
+    );
     expect(button(f.root, "Actualizar datos disponibles").disabled).toBe(true);
     f.setState(imported());
     button(f.root, "Consultar estado").click();

@@ -94,7 +94,7 @@ reading order and distinction between implementation, evidence and targets.
 | --- | --- |
 | [Architecture](docs/technical/architecture.md) | Three-app/runtime boundaries, responsibility split and implementation scope |
 | [Private RPC, transactions and RLS](docs/technical/persistence-security.md) | Assertions, bootstrap, runtime roles, related-owner policies, atomicity and budgets |
-| [Database model and implemented ERD](docs/technical/database-model.md) | All 28 tables, relationships/keys, representation and migration lifecycle |
+| [Database model and implemented ERD](docs/technical/database-model.md) | Current tables, relationships/keys, representation and migration lifecycle; diagram baseline limitations |
 | [RPC contracts and clients](docs/technical/rpc-contracts.md) | Public/private procedures, MCP tools, type-only libraries and generation workflow |
 | [Persistence read pattern](docs/technical/persistence-reads.md) | Purpose-shaped joins/aggregates, cardinality, snapshots and data-access review rules |
 | [Provider-neutral identity](docs/technical/identity.md) | External provider/issuer/subject mapping, internal principals and current provider-selection limits |

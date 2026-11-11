@@ -12,6 +12,7 @@ describe("Account resource view", () => {
       "accounts.list": () => [
         {
           id: "checking",
+          trackingStatus: null,
           alias: "Cuenta corriente",
           type: "checking",
           currency: "CLP",
@@ -20,6 +21,7 @@ describe("Account resource view", () => {
         },
         {
           id: "card",
+          trackingStatus: null,
           alias: "Tarjeta",
           type: "credit_card",
           currency: "CLP",
@@ -28,6 +30,7 @@ describe("Account resource view", () => {
         },
         {
           id: "unknown",
+          trackingStatus: null,
           alias: "Nueva cuenta",
           type: "checking",
           currency: "CLP",

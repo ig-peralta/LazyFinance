@@ -311,6 +311,17 @@ forwards cancellation. Unopened panels issue no status calls, and settings entry
 does not fan out requests for every connection/account. The returned owned account
 IDs provide movement links, while values remain in the separate stored-balance page.
 
+The panel's scoped `BankAccountSelector` reads stored selection separately and
+performs discovery only after an explicit action. A versioned account-ID set and
+automatic-enrollment intent are confirmed together; only a confirmed save can
+continue into the existing first-import/refresh command. A pause or current
+waiting period does not invent an import result. Missing/unsupported selected
+accounts remain removable and history is retained. The shared route carries only
+a fixed onboarding return context, never an alternative financial flow.
+Selection commands suppress duplicates and latch uncertain responses to a
+post-response read version; a prior in-flight read cannot unlock another write.
+Scope, connection and component changes cancel obsolete reads/commands.
+
 The panel offers explicit `importInitial` before a confirmed success and `refresh`
 afterward. Both use the immutable local first-link day through today; the client
 cannot supply an earlier date. Before authorization and in the selected panel,
@@ -333,6 +344,17 @@ An uncertain write response latches reconciliation to the read version at failur
 another command requires an explicit successful later status read. A read completed
 while that mutation was still pending cannot unlock the next attempt. The backend
 continues to enforce lease/backoff/version checks against concurrent clients.
+An open panel observes at most twelve readonly statuses: five-second intervals
+for active work, thirty-second intervals for enabled/enrolled unpaused automation.
+There is no provider read or mutation in that observation. Resource failure or
+teardown stops its timer; owner/connection changes create a new bounded lifetime.
+The explicit status button remains usable after observation ends.
+
+Account aliases use a separate scoped drawer command. Input/owner changes clear
+the local draft and pending outcome; only confirmed save emits success. An
+uncertain response disables another write and asks the parent to close/reload
+stored accounts. This changes neither bank identity nor provider facts and adds
+no browser financial cache.
 
 Closing destroys the panel's read/command lifetime and explains that the server may
 still be processing. Reopening starts with a fresh readonly status, not a replay.
@@ -450,6 +472,6 @@ scope in protected query params, forward abort signals, avoid protected hydratio
 IDs, invalidate only actual dependencies, and test out-of-order completions. Do
 not restore the removed catch-all API service, RxJS compatibility facade or fake
 HTTP errors. Delivered management workflows are indexed in the UI README;
-voice features and bank-forced/scheduled refresh remain unavailable,
+voice features and bank-forced refresh remain unavailable,
 not missing client aliases or simulated success paths. Real-provider browser
 verification is separate evidence from mocked UI resource/command tests.
