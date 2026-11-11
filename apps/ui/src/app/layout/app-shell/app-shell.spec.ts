@@ -282,38 +282,40 @@ describe("AppShell", () => {
     }
   });
 
-  it("keeps the sidebar toggle before the page location and out of the right-side actions", async () => {
+  it("keeps one named chevron toggle attached to the sidebar, not in the toolbar or mobile menu", async () => {
     const { harness, root } = await setup();
-    const toggle = root.querySelector<HTMLButtonElement>(
-      ".desktop-navigation-toggle",
-    );
+    const toggle = root.querySelector<HTMLButtonElement>(".sidebar-toggle");
     expect(toggle).not.toBeNull();
-    expect(root.querySelector(".topbar-location")?.firstElementChild).toBe(
+    expect(root.querySelector("#workspace-sidebar")?.firstElementChild).toBe(
       toggle,
     );
-    expect(
-      root.querySelector(".topbar-right .desktop-navigation-toggle"),
-    ).toBeNull();
+    expect(root.querySelectorAll(".sidebar-toggle")).toHaveLength(1);
+    expect(root.querySelector(".workspace-topbar .sidebar-toggle")).toBeNull();
+    expect(root.querySelector("#mobile-menu .sidebar-toggle")).toBeNull();
+    expect(toggle?.querySelector("app-icon")?.getAttribute("name")).toBe(
+      "chevron",
+    );
     expect(toggle?.getAttribute("aria-controls")).toBe("workspace-sidebar");
     expect(root.querySelector("#workspace-sidebar")).not.toBeNull();
     expect(toggle?.title).toBe("Contraer navegación");
-    expect(toggle?.getAttribute("aria-pressed")).toBe("false");
+    expect(toggle?.getAttribute("aria-label")).toBe("Contraer navegación");
+    expect(toggle?.getAttribute("aria-expanded")).toBe("true");
     toggle?.click();
     harness.detectChanges();
     expect(toggle?.title).toBe("Expandir navegación");
-    expect(toggle?.getAttribute("aria-pressed")).toBe("true");
+    expect(toggle?.getAttribute("aria-label")).toBe("Expandir navegación");
+    expect(toggle?.getAttribute("aria-expanded")).toBe("false");
     toggle?.click();
     harness.detectChanges();
     expect(toggle?.title).toBe("Contraer navegación");
-    expect(toggle?.getAttribute("aria-pressed")).toBe("false");
+    expect(toggle?.getAttribute("aria-label")).toBe("Contraer navegación");
+    expect(toggle?.getAttribute("aria-expanded")).toBe("true");
   });
 
   it("keeps compact navigation explicit, named and independent of the mobile modal at every text size", async () => {
     const { harness, root } = await setup();
     const preferences = TestBed.inject(WorkspacePreferences);
-    root
-      .querySelector<HTMLButtonElement>('[aria-label="Navegación compacta"]')
-      ?.click();
+    root.querySelector<HTMLButtonElement>(".sidebar-toggle")?.click();
     harness.detectChanges();
     expect(
       root
