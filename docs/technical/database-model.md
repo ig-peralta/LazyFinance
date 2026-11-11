@@ -216,6 +216,12 @@ development histories or older grant constraints. A reset of an existing databas
 requires explicit authorization for that exact target, and is separate from normal
 migration/runtime startup. Do not edit migrations to upgrade a retained/live database.
 
+Migration 031 adds nullable `identity.mcp_grant.redirect_uri` for the exact callback
+approved at consent. Existing grants keep all facts and history; null means the
+callback was not recorded, not that the client has no callback. No scope, RLS,
+runtime update privilege, grant lifetime or OAuth authority changes. Destructive
+rollback is refused to preserve this history.
+
 Seeding is explicit owner-only demo tooling, never startup or migration work.
 Stable fixture IDs allow repeatable updates and preserve existing transaction
 tag decisions; it also rewrites declared demo fixtures and recomputes demo

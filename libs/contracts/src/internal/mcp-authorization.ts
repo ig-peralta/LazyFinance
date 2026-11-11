@@ -57,6 +57,7 @@ export const BindMcpGrantSchema = z.strictObject({
   interactionId: z.string().min(1).max(256),
   clientId: z.string().min(1).max(2048),
   clientName: z.string().min(1).max(200),
+  redirectUri: z.url().max(2048).nullable().optional(),
   resource: z.url().max(2048),
   scopes: z.array(McpPermissionSchema).min(1).max(7),
 });

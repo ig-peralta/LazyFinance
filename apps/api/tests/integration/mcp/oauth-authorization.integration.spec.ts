@@ -54,6 +54,7 @@ describe.skipIf(!integration)(
         expect(accounts).toHaveLength(1);
         const grants = await f.api.client().mcpAccess.grants.query();
         expect(grants).toHaveLength(1);
+        expect(grants[0].redirectUri).toBe("http://127.0.0.1:43379/callback");
         expect(
           await f.api.client(f.otherToken).mcpAccess.grants.query(),
         ).toEqual([]);
