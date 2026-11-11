@@ -14,6 +14,7 @@ const grant: RpcOutput<"mcpAccess.grants">[number] = {
   id: "grant-fixture",
   clientId: "https://client.example/client.json",
   clientName: "Cliente externo",
+  redirectUri: "https://client.example/callback",
   resource: "https://api.example/mcp",
   scopes: ["finance:read"],
   createdAt: "2026-11-08T15:00:00.000Z",
@@ -67,6 +68,9 @@ describe("owned external-client access management", () => {
     const f = setup();
     await render(f.fixture);
     expect(f.root.textContent).toContain("Cliente externo");
+    expect(f.root.textContent).toContain(grant.redirectUri);
+    expect(f.root.textContent).toContain("finance:read");
+    expect(f.root.textContent).toContain("Identidad no verificada");
     expect(f.callsTo("mcpAccess.revoke")).toHaveLength(0);
     button(f.root, "Revocar acceso").click();
     await render(f.fixture);
@@ -80,6 +84,59 @@ describe("owned external-client access management", () => {
     expect(f.callsTo("mcpAccess.revoke")[0].input).toEqual({ id: grant.id });
     expect(f.root.textContent).toContain("Acceso revocado el");
     expect(f.callsTo("banking.disconnect")).toHaveLength(0);
+  });
+
+  it("distinguishes expired, revoked, empty and multiple connections without merging their identities", async () => {
+    const f = setup({
+      "mcpAccess.grants": () => [
+        { ...grant, expiresAt: "2020-01-01T00:00:00.000Z" },
+        {
+          ...grant,
+          id: "other-grant",
+          clientId: "other-client",
+          clientName: "Mismo nombre",
+          redirectUri: null,
+          revokedAt: "2026-11-08T18:00:00.000Z",
+        },
+      ],
+    });
+    await render(f.fixture);
+    expect(f.root.textContent).toContain("Vencido");
+    expect(f.root.textContent).toContain("Revocado");
+    expect(f.root.textContent).toContain(
+      "No registrado para este acceso anterior",
+    );
+    expect(f.root.querySelectorAll("mcp-client-identity")).toHaveLength(2);
+    expect(
+      [...f.root.querySelectorAll("button")].filter(
+        (b) => b.textContent?.trim() === "Revocar acceso",
+      ),
+    ).toHaveLength(1);
+    f.handlers["mcpAccess.grants"] = () => [];
+    button(f.root, "Consultar accesos").click();
+    await render(f.fixture);
+    expect(f.root.textContent).toContain("No hay permisos guardados");
+  });
+
+  it("keeps revoke locked after a failed reconciliation and unlocks only after a successful explicit later read", async () => {
+    const f = setup({ "mcpAccess.revoke": () => rpcFailure() });
+    await render(f.fixture);
+    button(f.root, "Revocar acceso").click();
+    await render(f.fixture);
+    button(f.root, "Confirmar revocación").click();
+    await render(f.fixture);
+    f.handlers["mcpAccess.grants"] = () => rpcFailure();
+    button(f.root, "Consultar accesos").click();
+    await render(f.fixture);
+    expect(f.root.textContent).toContain("Consulta los accesos antes");
+    f.handlers["mcpAccess.grants"] = () => [
+      { ...grant, revokedAt: "2026-11-08T18:00:00.000Z" },
+    ];
+    button(f.root, "Consultar accesos").click();
+    await render(f.fixture);
+    expect(f.root.textContent).not.toContain("Consulta los accesos antes");
+    expect(f.root.textContent).toContain("Acceso revocado el");
+    expect(f.callsTo("mcpAccess.revoke")).toHaveLength(1);
   });
 
   it("does not describe a failed read or uncertain revoke as an empty/revoked grant", async () => {

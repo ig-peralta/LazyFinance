@@ -81,6 +81,12 @@ approval/denial. `/aplicaciones-conectadas` lists owned grants and requires expl
 revoke confirmation. Neither page exposes OAuth tokens to the UI or modifies bank
 connections/financial facts. Reads/commands are scope-cancelled, obsolete results
 cannot navigate or expire a newer login, and uncertain decisions are not replayed.
+Both screens retain exact client IDs/callbacks beside declared names, actual
+permissions and expiry/status. A curated bundled PNG is decorative only; arbitrary
+OAuth logo URLs are never loaded, and unknown/failed artwork uses a fixed fallback
+without implying verification. Legacy grants disclose an unrecorded callback.
+Failed revocation remains locked until a successful explicit later read, not merely
+a retry click. Scoped styles inherit text/theme tokens without changing the shell.
 See [OAuth browser/site configuration and compatibility](../../docs/technical/mcp-authorization.md).
 
 `/asistente` provides financial questions, explicit suggestions, streamed replies,

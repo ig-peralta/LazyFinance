@@ -82,6 +82,63 @@ records, Firebase methods or another client's grant. App logout is not implicit
 external-client revocation. Already-running requests need not be cancelled, but
 new requests after confirmed revocation must fail.
 
+## Connected-app identity and local artwork (LAZ-71, LAZ-80, LAZ-83)
+
+Consent and connected applications share a compact identity block: declared name,
+unverified-identity notice, exact client ID and callback, followed by actual scopes
+and expiry/status. Stored grants retain the callback approved at consent through
+additive migration 031; earlier grants explicitly say it was not recorded. No
+callback is inferred from a friendly name. Optional writes remain unchecked, tied
+to the accepted account and interaction, and do not expand OAuth authority.
+Expired requests cannot be submitted; expired grants remain revocable. Revocation
+confirms the selected connection and preserves banks, finance and other grants.
+A failed/uncertain revoke remains locked through failed reads until an explicit
+successful later read reconciles it; no mutation is automatically replayed.
+
+**Logo source contract:** OAuth `logo_uri`, client HTML/SVG and arbitrary remote
+image URLs are never rendered, proxied or fetched for branding. Only the exact
+`https://opencode.ai/oauth/opencode/client.json` ID with its published loopback
+callback profile maps to the checked-in `/opencode-logo.png`. Names, lookalike
+domains, unrelated callbacks and arbitrary DCR IDs cannot select that artwork.
+This is a curated presentation mapping, not proof of the requesting installation,
+verified identity, endorsement or live-client compatibility.
+
+The sole supported asset is a local raster PNG, 512×512 pixels and 7,194 bytes,
+obtained from `https://opencode.ai/web-app-manifest-512x512.png` with a 64 KiB / 10 s
+download bound, without redirects. SHA-256:
+`63495f813cb7ea507cb6eb2cd1ee9d673e456a6af3eeb4138bc920d24ec9f15f`.
+Registry changes require source review, exact identity/callback mapping and bounded
+bundled raster artwork; there is no runtime metadata-origin allowlist or remote
+fetch escape hatch. Therefore no private-address branding fetch, tracking request,
+remote format parser or supplied SVG/HTML executes. The original artwork identifies
+OpenCode; it does not imply an affiliation with LazyFinance.
+
+A fixed 48 CSS-pixel decorative slot always contains an `App` fallback. Local
+artwork overlays it only after loading and is abandoned after two seconds or an
+error. Missing, rejected, slow and failed images never block controls or readiness,
+shift layout, or replace the adjacent readable identity/security facts. The image
+has empty alternative text because the adjacent name provides its text equivalent.
+Every identity still displays the unverified notice, including curated artwork.
+
+On 10–11 November 2026 the full mocked-RPC UI suite and real signed-RPC API suite ran
+against the isolated branch and a newly created disposable PostgreSQL 18 container.
+The persistence suite checks callback capture, null legacy callbacks, ownership,
+monotonic revocation and an additive migration probe preserving all retained facts.
+Production static output also passed a Chromium mocked-RPC check at widths
+320/390/768/1440 with 125% text, keyboard confirmation/Escape/focus return, optional
+scope selection, malicious name text, no external branding requests and lost-response
+reconciliation. Both tested pages had zero automated axe WCAG A/AA violations.
+These are not a full accessibility audit, live Firebase/provider test or a new
+named-client compatibility claim. No existing service, environment, grant or user
+database was used or modified.
+
+Branch validation: 440 UI tests, 493 API tests (5 conditional skips), 69 persistence
+unit tests and 37 PostgreSQL tests passed. Workspace build/typecheck, RPC generation
+and drift, architecture, format and lint checks passed. Lint retains 27 warnings
+and 10 infos; build retains existing initial/assistant-style budget and CommonJS
+warnings. Generated routers are byte-unchanged because they reference the updated
+contract schemas. The dedicated test container and ephemeral listeners were removed.
+
 ## Optional financial write delegation
 
 `finance:read` remains required. No existing grant is upgraded automatically.
