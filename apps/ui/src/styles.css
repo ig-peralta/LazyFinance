@@ -852,49 +852,6 @@ body {
   padding: 28px 16px 18px;
   z-index: 30;
 }
-.sidebar-toggle {
-  position: absolute;
-  top: 24px;
-  left: 100%;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  width: 32px;
-  height: 44px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-}
-.sidebar-toggle-handle {
-  display: grid;
-  place-items: center;
-  width: 24px;
-  height: 32px;
-  border: 1px solid var(--line);
-  border-radius: 0 16px 16px 0;
-  background: var(--paper);
-  transition:
-    background-color 150ms,
-    color 150ms;
-}
-.sidebar-toggle app-icon {
-  width: 14px;
-  height: 14px;
-  transform: rotate(90deg);
-  transition: transform 150ms;
-}
-.sidebar-toggle[aria-expanded="false"] app-icon {
-  transform: rotate(-90deg);
-}
-.sidebar-toggle:is(:hover, :focus-visible) .sidebar-toggle-handle {
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-.workspace .sidebar-toggle:focus-visible {
-  outline: none;
-}
 .workspace-sidebar nav,
 .mobile-drawer nav {
   display: flex;
@@ -1046,6 +1003,31 @@ body {
   gap: 12px;
   font-size: var(--text-control);
   color: var(--muted);
+}
+.desktop-navigation-toggle {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    background-color 150ms,
+    color 150ms;
+}
+.desktop-navigation-toggle:hover {
+  background: var(--raised);
+  color: var(--ink);
+}
+.workspace .desktop-navigation-toggle:focus-visible {
+  outline: none;
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 .topbar-location strong {
   color: var(--ink);
@@ -2389,8 +2371,7 @@ body:has(.editor-drawer[open]) {
   .workspace .workspace-links a {
     transition: none;
   }
-  .sidebar-toggle-handle,
-  .sidebar-toggle app-icon {
+  .desktop-navigation-toggle {
     transition: none;
   }
   html {
@@ -2407,7 +2388,7 @@ body:has(.editor-drawer[open]) {
     padding: 24px;
   }
   .workspace-topbar {
-    padding: 12px 24px 12px 32px;
+    padding: 12px 24px;
   }
   .dashboard-analysis {
     grid-template-columns: 1fr;
@@ -2435,6 +2416,9 @@ body:has(.editor-drawer[open]) {
   }
   .menu-toggle {
     display: inline-flex;
+  }
+  .desktop-navigation-toggle {
+    display: none;
   }
   .skip-link {
     left: 10px;

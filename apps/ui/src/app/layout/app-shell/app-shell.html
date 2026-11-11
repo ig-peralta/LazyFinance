@@ -16,7 +16,6 @@
   </ng-template>
 
   <aside id="workspace-sidebar" class="workspace-sidebar" [attr.inert]="assistantWorkspace.opened() && assistantWorkspace.modal() ? '' : null">
-    <button class="sidebar-toggle" type="button" aria-controls="workspace-sidebar" [attr.aria-expanded]="!preferences.value().compact" [attr.aria-label]="preferences.value().compact ? 'Expandir navegación' : 'Contraer navegación'" [title]="preferences.value().compact ? 'Expandir navegación' : 'Contraer navegación'" (click)="preferences.update({ compact: !preferences.value().compact })"><span class="sidebar-toggle-handle"><app-icon name="chevron" /></span></button>
     <nav aria-label="Navegación principal"><ng-container *ngTemplateOutlet="navigation" /></nav>
   </aside>
   <dialog #menuDialog id="mobile-menu" class="mobile-drawer" aria-label="Menú principal" (cancel)="closeMenu()" (close)="menuOpen.set(false)">
@@ -26,7 +25,7 @@
 
   <div class="workspace-body" [attr.inert]="assistantWorkspace.opened() && assistantWorkspace.modal() ? '' : null">
     <header class="workspace-topbar">
-      <div class="topbar-location"><button type="button" class="icon-button menu-toggle" aria-controls="mobile-menu" [attr.aria-expanded]="menuOpen()" (click)="toggleMenu()"><app-icon name="menu" /><span class="sr-only">{{ menuOpen() ? 'Cerrar menú' : 'Abrir menú' }}</span></button><span>{{ location().area.label }} <span class="breadcrumb-divider">/</span> <strong>{{ location().destination.label }}</strong></span></div>
+      <div class="topbar-location"><button class="desktop-navigation-toggle" type="button" aria-controls="workspace-sidebar" [attr.aria-expanded]="!preferences.value().compact" [attr.aria-label]="preferences.value().compact ? 'Expandir navegación' : 'Contraer navegación'" [title]="preferences.value().compact ? 'Expandir navegación' : 'Contraer navegación'" (click)="preferences.update({ compact: !preferences.value().compact })"><app-icon name="panel" /></button><button type="button" class="icon-button menu-toggle" aria-controls="mobile-menu" [attr.aria-expanded]="menuOpen()" (click)="toggleMenu()"><app-icon name="menu" /><span class="sr-only">{{ menuOpen() ? 'Cerrar menú' : 'Abrir menú' }}</span></button><span>{{ location().area.label }} <span class="breadcrumb-divider">/</span> <strong>{{ location().destination.label }}</strong></span></div>
       <div class="topbar-right">
         <workspace-appearance />
         <button #assistantLauncher id="workspace-assistant-launcher" type="button" class="button soft assistant-access" aria-label="Abrir asistente · ?" aria-keyshortcuts="?" aria-haspopup="dialog" aria-controls="financial-assistant-panel" [attr.aria-expanded]="assistantWorkspace.opened()" (click)="assistantWorkspace.open()"><app-icon name="spark" /><span>Asistente</span><kbd aria-hidden="true">?</kbd></button>
