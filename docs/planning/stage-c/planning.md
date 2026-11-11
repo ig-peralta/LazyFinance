@@ -11,6 +11,9 @@
 - **Target:** 2026-11-20, still tentative. No capacity estimate, individual due
   dates, owners or estimates were supplied. Initial priorities are revisable.
 - **State:** selected plan, not delivered work or a stage/release approval.
+- **Scope addition:** 2026-11-11 product direction adds required deployment,
+  performance testing, a mock banking provider and substantial seed improvement
+  ([details below](#required-scope-additions--2026-11-11)).
 
 ## Goal and expected demonstration
 
@@ -19,6 +22,8 @@ setup, connect a bank, choose accounts and see automatic updates without visitin
 settings repeatedly; name accounts and classify movements; recognize external
 grants; adapt the workspace; and use a readable, persistent assistant by text or
 live voice without weakening financial meaning, privacy or explicit approval.
+The stage also requires a working deployment, measured performance evidence and
+representative synthetic banking/data support.
 
 The [validation plan](validation-plan.md) defines observable demonstrations.
 [Linear acceptance](#issue-structure-and-selection) owns the individual work;
@@ -55,6 +60,37 @@ Uber and MercadoLibre are examples to assess, not promised integrations or proof
 of available APIs. “Live voice” means an interactive streaming session with
 interruption and text fallback, not merely uploading an audio recording.
 
+## Required scope additions — 2026-11-11
+
+Follow-up product direction adds four **mandatory** deliverables. These extend
+the original C01–C18 brief; they are not optional candidates or delivered work.
+
+| Issue | General direction |
+| --- | --- |
+| LAZ-106 | Complete and verify a working Stage C deployment; document access, operation and limitations |
+| LAZ-108 | Execute performance tests and record measured results, findings and limitations |
+| LAZ-107 | Create a mock banking provider for representative connection, account-selection and synchronization journeys without real bank access |
+| LAZ-105 | Substantially enrich the synthetic financial seed with varied, coherent history and useful everyday/edge-case scenarios |
+
+All four are children of LAZ-76 and explicitly block the LAZ-99 stage review.
+They were created as required Todo issues with initial High priority, no Optional
+label and no assignee, estimate, due date or cycle. Selected Stage C scope is now
+**38 records: 33 required (5 parents/28 children) and 5 optional**. The project
+inventory contains 103 records; the original dated snapshots remain unchanged.
+
+These are directions and acceptance outcomes, not implementation designs.
+**Choose the deployment approach and performance-testing approach only when their
+respective issues start.** Neither a deployment platform/topology nor performance
+tools, workloads, environment or acceptance criteria are selected here. Mock design
+and seed generation, volume and loading details also remain open. Recording a
+plan, skipped check or carryover risk does not satisfy these required outcomes.
+
+The mock provider is development/demo/validation support, separate from LAZ-103's
+optional agent-assisted banking-action simulation. It does not promote that
+candidate or authorize real money movement. LAZ-8's existing seed and LAZ-13's
+local packaging remain completed predecessor work, not reopened issues. The
+tentative November 20 target is unchanged.
+
 ## Issue structure and selection
 
 The fresh inventory contained 65 completed Stage A/B issues and no Stage C work.
@@ -70,13 +106,14 @@ text chat, grounding and evidence. Those records remain Done.
 | LAZ-74 | LAZ-89, LAZ-86, LAZ-90, LAZ-88, LAZ-87, LAZ-97, LAZ-85 | Synchronization policy, account selection, automation, guided setup and aliases |
 | LAZ-72 | LAZ-93, LAZ-91, LAZ-92, LAZ-96, LAZ-95, LAZ-94 | Persistent assistant, reading/evidence, presentation/privacy and live voice |
 | LAZ-71 | LAZ-80, LAZ-83 | Grant experience and safe application identity/logos |
-| LAZ-76 | LAZ-98, LAZ-100, LAZ-99 | Controlled experience checks, external integration evidence and actual gate review |
+| LAZ-76 | LAZ-98, LAZ-100, LAZ-106, LAZ-108, LAZ-107, LAZ-105, LAZ-99 | Experience/external checks, deployment, performance testing, mock/seed support and actual gate review |
 | LAZ-73, Optional | LAZ-101, LAZ-103, LAZ-102, LAZ-104 | Quotes, simulation, alerts and WhatsApp |
 
-At publication there are **34 new records: 29 required (5 parents/24 children)
-and 5 optional (1 parent/4 candidates)**. Required issues are Todo; optional issues
-are Backlog with the team label **Optional**. The label does not change their
-milestone. All 34 explicitly belong to P-LAZ-1 and Stage C, with no separate cycle.
+At the original publication there were **34 new records: 29 required
+(5 parents/24 children) and 5 optional (1 parent/4 candidates)**. Required issues were Todo;
+optional issues were Backlog with the team label **Optional**. The label does not
+change their milestone. All original issues and November 11 additions explicitly
+belong to P-LAZ-1 and Stage C, with no separate cycle.
 
 Core friction, banking, assistant/voice and validation initially have High
 priority. Preferences, aliases, connected applications and the highly desirable
@@ -105,8 +142,10 @@ unfinished candidate as required or as shipped.
 - **Connected apps:** grant presentation and logos are coordinated but do not add
   permissions or require a new MCP command surface.
 - **Verification:** LAZ-98 depends on the four required feature workstreams;
-  LAZ-100 records external integration checks. LAZ-99 depends on both and records
-  the actual gate. No optional candidate blocks those issues automatically.
+  LAZ-100 records external integration checks. LAZ-99 depends on both and all four
+  required November 11 additions: LAZ-106, LAZ-108, LAZ-107 and LAZ-105. Their
+  acceptance evidence is required before closing the stage; no optional candidate
+  blocks those issues automatically.
 
 These are deliverable dependencies, not a claim that implementation is underway.
 Use coherent reviews and explicitly recorded live-validation sessions, as the
@@ -129,6 +168,10 @@ recommends.
 | Live voice | Select transport/provider, supported browsers, measurable response/stop bounds, explicit microphone lifecycle, retention and cost limits before implementation. Spoken agreement is never saved-action approval | LAZ-95, LAZ-94 |
 | Preferences | Persist only non-sensitive settings; retain contrast, focus, accessible icon labels and usable maximum text size | LAZ-82, LAZ-84, LAZ-79 |
 | Logos | Validate branding with format/origin/size/privacy controls and a fallback. Untrusted images do not verify a client or replace callback/permission facts | LAZ-83, LAZ-80 |
+| Deployment | Required working deployment and verification; choose scope and approach when the issue starts, not in this plan | LAZ-106 |
+| Performance testing | Required executed tests and measured evidence; choose scope, approach and acceptance criteria when the issue starts | LAZ-108 |
+| Mock banking provider | Required synthetic banking journeys through the existing provider-neutral boundary; design remains open and real banking access is not implied | LAZ-107 |
+| Richer seed | Required substantial improvement in representative, coherent synthetic financial scenarios; generation, volume and loading details remain open | LAZ-105 |
 | Optional quotations | Select feasible search/API access and terms; show source/time/currency/missing costs without exporting financial history or purchasing | LAZ-101 |
 | Optional critical alerts | Define eligibility and thresholds; deliberate no-tag, incomplete history and savings allocations cannot be relabelled as financial failure | LAZ-102 |
 | Optional external channels/actions | Simulation is isolated and labelled; WhatsApp needs explicit identity binding, consent, revocation and a bounded capability set | LAZ-103, LAZ-104 |
@@ -143,10 +186,11 @@ current implementation. Update those guides with implementation, not ahead of it
 ## Exclusions and Stage B carryovers
 
 The brief does **not** select broader MCP management, advanced
-forecasts/anomalies, additional banking adapters, shared/family ownership or
-pre-link historical backfill. Keep the Stage B MCP follow-up visible but deferred
+forecasts/anomalies, additional real banking integrations beyond Fintoc,
+shared/family ownership or pre-link historical backfill. Keep the Stage B MCP follow-up visible but deferred
 until its exact operations and permissions are selected. Existing bounded direct
-MCP execution is not missing functionality.
+MCP execution is not missing functionality. The required mock provider is synthetic
+support, not an additional real banking integration.
 
 Real money movement is not selected. The optional demo cannot connect real bank
 write credentials, change real balances or quietly enable a production executor.
@@ -155,10 +199,12 @@ Optional quotes do not imply shopping/payment authority or unrestricted browsing
 The [Stage B carryovers](../stage-b/closure.md#accepted-limitations-and-carryovers)
 retain their status: live model quality, two-user Firebase acceptance, the current
 tracking cutoff against the provider, required external-client writes, dependency
-advisories, performance/capacity, release images/operations and privacy/retention/
-cost. LAZ-100 plans targeted external evidence; LAZ-99 must record the disposition
-of unresolved risks. No new audit, provider benchmark or release certification was
-performed to write this plan.
+advisories, capacity and operational limits and privacy/retention/cost. Deployment
+and performance testing are now explicit required deliverables in LAZ-106 and
+LAZ-108, not merely risks for disposition. LAZ-100 plans targeted external
+evidence; LAZ-99 must record unresolved risks without substituting risk notes for
+required delivery. No deployment, performance run, new audit, provider benchmark
+or release certification was performed to write this plan.
 
 ## Review and change record
 
@@ -166,7 +212,12 @@ This scope record is not closure. On 2026-11-10 the LAZ-89 implementation review
 selected the [banking synchronization design](banking-sync-policy.md), including
 the explicit requirement for isolated boundaries and future service extraction.
 That decision is not delivered automation, plan verification or a live test.
-The original dated backlog snapshots remain unchanged.
+
+On 2026-11-11, follow-up product direction added
+the four required issues above. The Linear milestone, scope document, LAZ-76 and
+LAZ-99 now include them; each new issue blocks LAZ-99. This is a scope decision,
+not an implementation or validation result. Deployment and performance-testing
+choices remain deferred to issue work. The original dated snapshots remain unchanged.
 
 At review, record additions, promotions, deferrals and their reasons; the exact
 build and checks; unresolved risks; the actual gate outcome; and retrospective

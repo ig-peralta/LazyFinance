@@ -4,7 +4,9 @@
 [scope record](planning.md) traces all feedback; LAZ-98 owns controlled experience
 verification, LAZ-100 owns separately authorized external integration evidence and
 LAZ-99 owns the actual gate record. The [stage DoD](definition-of-done.md) remains
-unchecked.
+unchecked. The [November 11 scope addition](planning.md#required-scope-additions--2026-11-11)
+also requires deployment, performance testing, a mock banking provider and a
+substantially richer seed; all four block LAZ-99.
 
 ## Evidence levels and safe setup
 
@@ -42,6 +44,20 @@ run them or contact live banking/model services.
 | V10 — Recognizable delegated access | Inspect consent and connected grants with valid/missing/rejected logos. Identity/callback, capabilities, expiry and revoke remain legible; a logo confers no trust. Deny/revoke and verify subsequent access fails | LAZ-80, LAZ-83; malicious metadata fixtures, RPC and named-client session |
 | V11 — Live voice | Explicitly allow/start/mute/end microphone; speak, interrupt and inspect transcript/evidence; reject permission, switch device, fail network and return to text. Logout/owner replacement stops capture and ignores late events | LAZ-95, LAZ-94; controlled audio and separately authorized live browser matrix |
 | V12 — Financial authority | Across text/voice/navigation, an answer or spoken agreement cannot execute a proposal. Only exact saved-version approval can change finance; stale/expired proposals reject and ambiguous results reconcile. Existing MCP writes retain separate scopes/request IDs/fingerprints | LAZ-98, LAZ-100; shared-action regressions, real RPC and client checks |
+| V13 — Working deployment | Complete deployment and verify the agreed core workflows on an identified build; record access, operating context and limitations | LAZ-106; actual deployment and verification evidence |
+| V14 — Measured performance | Execute the agreed performance tests; record measured results, findings, limitations and necessary follow-up against the criteria selected during issue work | LAZ-108; executed performance-test evidence |
+| V15 — Mock banking journeys | Exercise representative connection, account-selection, synchronization and recovery journeys without real bank access; synthetic behavior retains ownership and financial meaning | LAZ-107; documented mock-provider scenarios and results |
+| V16 — Rich synthetic history | Demonstrate varied, coherent financial scenarios across the agreed workflows using the substantially improved, repeatable synthetic seed | LAZ-105; scenario coverage and demonstration results |
+
+V13 and V14 specify required outcomes, **not how deployment or performance testing
+will be done**. Choose deployment scope/approach and performance scope/approach/
+acceptance criteria when LAZ-106 and LAZ-108 start. No platform, topology, tool,
+workload or test environment is selected here. The existing evidence tiers above
+cover journey checks; they do not choose a performance-test method. Mock design
+and seed generation/volume/loading details likewise remain open until issue work.
+None of these four required outcomes can be satisfied by a plan, skipped check or
+carryover-risk note. Mock evidence does not replace live-bank acceptance or promote
+the optional banking-action simulation.
 
 Run responsive checks at the established 360 px mobile and 1280 px desktop target,
 with relevant narrow/short intermediate layouts, largest supported text size and
@@ -86,8 +102,9 @@ For each executed check record:
   evidence location.
 - Result: passed, failed, skipped or blocked; defect links and remaining limits.
 
-At the gate, LAZ-99 also records dependency-security findings, performance/capacity,
-exact images/topology/transport, secrets and backup/recovery, rate/cost controls
-and retention/deletion limitations. Existing functional tests do not certify those
-areas. Stage completion and the [product release review](../product-definition-of-done.md)
+At the gate, LAZ-99 requires the four additions' delivery evidence, including the
+actual deployment and measured performance results. It also records remaining
+dependency-security, capacity, operational, rate/cost and retention/deletion
+limitations; functional tests and risk dispositions do not substitute for the
+required deployment/performance work. Stage completion and the [product release review](../product-definition-of-done.md)
 are separate decisions; do not pre-fill a closure or retrospective as successful.

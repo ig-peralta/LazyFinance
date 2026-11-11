@@ -7,7 +7,7 @@ evidence and accepted exceptions. It does not certify every target below;
 live-provider/model, performance and operational gaps retain their release
 implications.
 
-Prioritize **NFR-01 through NFR-05** before exposing real-user or provider data. **NFR-06 through NFR-08** define a practical quality bar for the usable product; revisit their exact thresholds if the chosen agent runtime or deployment environment changes. Live voice is selected for Stage C and inherits these rules; additional banking providers remain unselected.
+Prioritize **NFR-01 through NFR-05** before exposing real-user or provider data. **NFR-06 through NFR-08** define a practical quality bar for the usable product; revisit their exact thresholds if the chosen agent runtime or deployment environment changes. Live voice is selected for Stage C and inherits these rules; a synthetic mock banking provider is required, while additional real banking integrations remain unselected.
 
 ## NFR-01 — User isolation and access control
 
@@ -43,7 +43,18 @@ Prioritize **NFR-01 through NFR-05** before exposing real-user or provider data.
 
 **Goal:** Common financial reads remain responsive on a representative CLP demo dataset without requiring production-scale infrastructure for the capstone.
 
-**Acceptance target:** With a warmed local stack, at least 100 requests per route and up to 10 concurrent authenticated requests, p95 server/loopback response time for account balances, recent movements, monthly spending and spending-budget progress is **below 500 ms per route**. The UI shows visible progress within **one second** when an operation waits on a network/model response. Record assistant response/timeout targets separately for the configured runtime/model; this read target does not include model inference or bank synchronization.
+**Quality target:** Common financial reads (account balances, recent movements,
+monthly spending and spending-budget progress) should remain responsive; the
+existing reference target is p95 **below 500 ms per route**. The UI shows visible
+progress within **one second** when an operation waits on a network/model response.
+Assistant response/timeout targets are separate; the financial-read target does
+not include model inference or bank synchronization.
+
+**Required Stage C acceptance:** LAZ-108 must execute performance tests and record
+measured results, findings and limitations. Select scope, approach, workload,
+environment and final acceptance criteria when that issue starts, reviewing the
+reference target's applicability then. This requirement does not select a test
+recipe in advance.
 
 The selected assistant runtime has [explicit generation, tool and stream bounds](../technical/financial-assistant.md#streaming-cancellation-and-limits), including a 60-second SDK total and 65-second HTTP signal. These are configured safety limits, not measured answer-latency results. The route-latency/load target above remains unverified at the Stage B gate.
 
@@ -80,6 +91,11 @@ new experience:
   matrix in LAZ-95; do not reuse the financial-read p95 target as an audio SLA.
   Verify readable themes and text sizes, compact navigation, focus/shortcut use,
   collapsed references and non-disruptive streaming scroll at supported sizes.
+- **NFR-06/08:** deployment (LAZ-106) and executed performance testing (LAZ-108)
+  are required, not optional carryover dispositions. Choose their approaches when
+  issue work starts. A usable mock banking provider (LAZ-107) and substantially
+  richer, coherent synthetic seed (LAZ-105) must support representative workflows
+  without real bank access or unintended changes to real-user data.
 
 No quality target is marked passed by this planning update. Stage B's live,
 dependency-security, performance and operational exceptions remain visible until

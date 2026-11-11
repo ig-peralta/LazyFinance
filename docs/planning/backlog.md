@@ -2,7 +2,7 @@
 
 The team **tracks issues in Linear** during development. The [planning index](README.md)
 organizes repository material by stage; it does not replace the tracker. Reviewers
-do not need access to that workspace: the [Stage C planning snapshot](snapshots/backlog-2026-11-10-stage-c-planning.md)
+do not need access to that workspace: the [original Stage C planning snapshot](snapshots/backlog-2026-11-10-stage-c-planning.md)
 reproduces all 99 project issues with their titles, stage, parent, status, priority,
 assignee, due dates and completion timestamps. Its UTC extraction on November 10
 records the November 9 local scope decision. The
@@ -17,6 +17,11 @@ snapshot and in Git history. The [November 9 closure inventory](snapshots/backlo
 records 19 Stage A and 46 Stage B issues Done, with no Stage C issues at that
 extraction; it remains unchanged. The later planning snapshot adds 34 Stage C
 records: 29 required Todo and 5 Optional Backlog. The
+[November 11 addition](stage-c/planning.md#required-scope-additions--2026-11-11)
+adds four required children for deployment, performance testing, mock banking and
+substantial seed improvement. Stage C now selects **38 records: 33 required and
+5 optional**; the project contains 103 records. The dated snapshots retain their
+original counts and states. The
 [Stage B closure](stage-b/closure.md) separately records GO to Stage C planning,
 the reviewed baseline and accepted limitations. The earlier checkpoint retains
 its November 2 issue states.
@@ -27,7 +32,7 @@ its November 2 issue states.
 | --- | --- | --- |
 | [A — financial core](stage-a/README.md) | 19 issues, all Done | [Closure](stage-a/closure.md), [documentary retrospective](stage-a/retrospective.md) and [gate criteria](stage-a/definition-of-done.md) |
 | [B — parallel product tracks](stage-b/README.md) | 46 issues across six workstreams, all Done | [Workstream map](stage-b/README.md#workstreams-from-linear), [closure](stage-b/closure.md), [retrospective](stage-b/retrospective.md) and [gate assessment](stage-b/definition-of-done.md) |
-| [C — expanded experience](stage-c/README.md) | 34 new records: 29 required (5 parents/24 children), 5 optional (1 parent/4 candidates) | [Selected scope](stage-c/planning.md), [validation plan](stage-c/validation-plan.md) and [gate criteria](stage-c/definition-of-done.md); broader MCP management remains an unselected follow-up |
+| [C — expanded experience](stage-c/README.md) | 38 selected records after November 11: 33 required (5 parents/28 children), 5 optional (1 parent/4 candidates) | [Selected scope](stage-c/planning.md), [validation plan](stage-c/validation-plan.md) and [gate criteria](stage-c/definition-of-done.md); broader MCP management remains an unselected follow-up |
 
 The [all-issue snapshot](snapshots/backlog-2026-11-10-stage-c-planning.md) contains every parent,
 child and recorded field at extraction. Stage folders reference that inventory
@@ -35,8 +40,16 @@ instead of copying mutable issue lists into separate backlog files.
 
 Stage C optional records stay visibly labelled **Optional** in the same milestone;
 they do not block the required gate unless explicitly promoted. Initial priorities
-are relative ordering only. Owners, estimates and individual due dates remain
-unset; the November 20 milestone target is tentative, not a capacity commitment.
+are relative ordering only. Owners, estimates and individual due dates were unset
+at initial selection; Linear owns their live values. The November 20 milestone
+target is tentative, not a capacity commitment.
+
+LAZ-106 (deployment), LAZ-108 (performance testing), LAZ-107 (mock banking provider)
+and LAZ-105 (richer seed) are mandatory children of LAZ-76 and each blocks LAZ-99.
+They were added as Todo/High without owners, estimates, due dates or cycles.
+Deployment and performance-testing approaches are selected when their issues
+start. A plan, skipped check or carryover-risk note is not completion evidence.
+The optional banking-action demo remains separate and optional.
 
 **One milestone equals one sprint; the milestone's assigned issues are its Sprint Backlog.** Sprint durations differ by stage. See the [methodology](project-method.md), [stage definitions of done](README.md#stage-gates), and [product Definition of Done](product-definition-of-done.md) for the broader exit criteria.
 

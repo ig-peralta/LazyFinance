@@ -124,6 +124,24 @@ implementation until their associated changes ship.
   safe client logos with fallbacks. Keep actual identity/callback, permissions,
   status and explicit revocation clear; branding does not verify a client or
   expand access.
+- **Deployment:** complete a working deployment and verify agreed Stage C
+  workflows on a known build, with documented access, operation and limitations
+  (LAZ-106). Choose the deployment approach when the issue starts.
+- **Performance testing:** execute agreed performance tests and record measured
+  results, findings and limitations (LAZ-108). Choose scope, approach and acceptance
+  criteria when the issue starts; this requirement does not prescribe a test method.
+- **Mock banking provider:** exercise representative connection, account-selection,
+  synchronization and recovery journeys with clearly synthetic data and no real
+  bank access, preserving ownership and financial semantics (LAZ-107).
+- **Substantially richer seed:** provide varied, coherent synthetic financial
+  history and everyday/edge-case scenarios for meaningful development,
+  demonstrations and validation, with repeatable documented loading (LAZ-105).
+
+The last four requirements were [added on November 11](../planning/stage-c/planning.md#required-scope-additions--2026-11-11).
+All are mandatory gate blockers, not optional extensions or risks satisfied by a
+deferral. Mock-provider design and seed generation, volume and loading details
+remain open until issue work. The mock provider is separate from the optional
+banking-action demo below; neither authorizes real money movement.
 
 **Optional, not stage-gate blockers:** external quote exploration (highly
 desirable), an isolated synthetic banking-action demo, in-app classification/
@@ -138,7 +156,7 @@ delivery, deferral or explicit promotion for each candidate.
 
 - **Stage A — financial-core gate:** use representative CLP demo data to demonstrate coherent account, movement, transfer, budget, savings-target and income scenarios across the available user-scoped interfaces. Record unresolved nonblocking assumptions before starting a provider adapter. The [Stage A closure record](../planning/stage-a/closure.md) documents its completed, deliberately bounded data-model gate; it is not a claim that banking, external-client authorization or the agent are finished.
 - **Stage B — parallel product tracks:** [closed on 2026-11-09](../planning/stage-b/closure.md) against `main` at `1cda504`, with all 46 issues Done and GO to Stage C planning. The final scope includes private persistence/typed RPC, private CSR/static hosting, additional access methods and bounded actions beyond the original read-only plan. Live-validation and operational exceptions are explicitly accepted for continued development, not release.
-- **Stage C — selected experience:** the [planning record](../planning/stage-c/planning.md), [validation plan](../planning/stage-c/validation-plan.md) and [stage DoD](../planning/stage-c/definition-of-done.md) define required/optional work under the existing milestone. The new snapshot contains 34 Stage C records; November 20 remains tentative. Broader MCP management, advanced analysis, additional banking adapters, historical backfill and shared ownership are not selected.
+- **Stage C — selected experience:** the [planning record](../planning/stage-c/planning.md), [validation plan](../planning/stage-c/validation-plan.md) and [stage DoD](../planning/stage-c/definition-of-done.md) define required/optional work under the existing milestone. The original snapshot contains 34 Stage C records; the November 11 addition brings selected scope to 38 (33 required/5 optional). November 20 remains tentative. Broader MCP management, advanced analysis, additional real banking integrations, historical backfill and shared ownership are not selected.
 
 The agreed scope does not include real money movement from an agent; the optional
 demo is simulation only. Bounded application-record changes are explicitly defined

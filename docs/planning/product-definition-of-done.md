@@ -15,8 +15,12 @@ LazyFinance is Done for its agreed release scope only when the team can demonstr
 Stage C now [selects live voice and everyday-experience improvements](stage-c/planning.md),
 including automatic selected-account banking, the persistent assistant and
 accessible personalization. These must meet their own issue/stage checks before
-being described as delivered. Quotes, a synthetic banking-action demo, alerts and
-WhatsApp remain optional unless explicitly promoted. Broader MCP management,
-advanced forecasts/anomalies, additional bank adapters, historical backfill and
-shared ownership are not selected; real money movement is not authorized. Stage
+being described as delivered. The [November 11 addition](stage-c/planning.md#required-scope-additions--2026-11-11)
+also requires completed deployment, executed performance testing, a mock banking
+provider and a substantially richer synthetic seed. All four block the stage gate;
+deployment and performance-test approaches are chosen when their issues start.
+Quotes, a synthetic banking-action demo, alerts and WhatsApp remain optional unless
+explicitly promoted. Broader MCP management, advanced forecasts/anomalies,
+additional real banking integrations, historical backfill and shared ownership
+are not selected; real money movement is not authorized. Stage
 selection does not replace the release review or waive its unresolved risks.

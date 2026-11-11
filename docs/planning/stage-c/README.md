@@ -4,7 +4,10 @@
 retained; implementation evidence does not by itself close the stage/release gate.
 Make everyday financial management clear and low-friction: guided bank setup,
 chosen accounts kept up to date automatically, easier classification, a persistent
-readable assistant and live voice.
+readable assistant and live voice. **The November 11 scope addition also requires
+deployment, performance testing, a mock banking provider and substantial seed
+improvement.** Deployment and performance-test approaches are decided when those
+issues start, not by this plan.
 
 Stage B's [closure](../stage-b/closure.md) and
 [retrospective](../stage-b/retrospective.md) supply the foundation and accepted
@@ -15,7 +18,9 @@ uses repository baseline `13f4b17`. The original
 ## Selected scope
 
 The [planning snapshot](../snapshots/backlog-2026-11-10-stage-c-planning.md)
-records **34 new issues** in the existing Stage C milestone:
+records the **original 34 issues** in the existing Stage C milestone. The
+[November 11 addition](planning.md#required-scope-additions--2026-11-11) adds four
+required children; the selected workstreams now contain:
 
 | Workstream | Parent | Children | Selection |
 | --- | --- | --- | --- |
@@ -23,18 +28,21 @@ records **34 new issues** in the existing Stage C milestone:
 | Bank setup, account selection, aliases and automatic synchronization | LAZ-74 | 7 | Required |
 | Persistent, readable assistant and live voice | LAZ-72 | 6 | Required |
 | Recognizable connected applications | LAZ-71 | 2 | Required |
-| Validation and stage review | LAZ-76 | 3 | Required |
+| Validation, deployment, performance and mock/seed support | LAZ-76 | 7 | Required |
 | External quotes, synthetic banking-action demo, alerts and WhatsApp | LAZ-73 | 4 | Optional |
 
-There are **29 required records** (5 parents and 24 children), initially Todo,
-and **5 Optional records** (1 parent and 4 candidates), initially Backlog.
+There are now **33 required records** (5 parents and 28 children) and **5 Optional
+records** (1 parent and 4 candidates): **38 Stage C records** in total.
+LAZ-106 (deployment), LAZ-108 (performance testing), LAZ-107 (mock banking provider)
+and LAZ-105 (richer seed) were added as required Todo issues and each blocks LAZ-99.
+The original snapshot preserves initial states; Linear owns current delivery status.
 Optional membership does not make a candidate a completion blocker. Record an
 explicit promotion, delivery or deferral decision at review.
 
 One stage milestone remains one sprint; no Linear cycle is added. The existing
-**2026-11-20 target remains tentative**. Capacity, owners, estimates and individual
-due dates have not been agreed; priorities are initial relative ordering, not a
-delivery forecast. Linear owns their live values.
+**2026-11-20 target remains tentative**. At initial publication, capacity, owners,
+estimates and individual due dates had not been agreed; priorities are relative
+ordering, not a delivery forecast. Linear owns their live values.
 
 ## Planning documents
 
@@ -62,8 +70,13 @@ review using the [shared template](../stage-sprint-record-template.md).
 Broader MCP management was identified in the Stage B review but is **not selected
 by this scope brief**. Existing bounded assistant/MCP actions already work within
 their documented permission boundaries. Additional commands need a separate
-operation/permission decision. Advanced analysis, additional banking adapters,
+operation/permission decision. Advanced analysis, additional real banking integrations,
 shared ownership and historical backfill also remain unselected.
+
+The required mock banking provider is synthetic development/demo/validation
+support, not a real banking integration or the optional agent banking-action demo.
+The four November 11 additions need actual delivery evidence; recording a plan,
+skipped check or carryover risk does not satisfy the stage gate.
 
 The optional banking-action demo is isolated simulation, not permission to move
 real money. Automatic bank updates must respect provider capabilities and must
