@@ -282,6 +282,32 @@ describe("AppShell", () => {
     }
   });
 
+  it("keeps the sidebar toggle before the page location and out of the right-side actions", async () => {
+    const { harness, root } = await setup();
+    const toggle = root.querySelector<HTMLButtonElement>(
+      ".desktop-navigation-toggle",
+    );
+    expect(toggle).not.toBeNull();
+    expect(root.querySelector(".topbar-location")?.firstElementChild).toBe(
+      toggle,
+    );
+    expect(
+      root.querySelector(".topbar-right .desktop-navigation-toggle"),
+    ).toBeNull();
+    expect(toggle?.getAttribute("aria-controls")).toBe("workspace-sidebar");
+    expect(root.querySelector("#workspace-sidebar")).not.toBeNull();
+    expect(toggle?.title).toBe("Contraer navegación");
+    expect(toggle?.getAttribute("aria-pressed")).toBe("false");
+    toggle?.click();
+    harness.detectChanges();
+    expect(toggle?.title).toBe("Expandir navegación");
+    expect(toggle?.getAttribute("aria-pressed")).toBe("true");
+    toggle?.click();
+    harness.detectChanges();
+    expect(toggle?.title).toBe("Contraer navegación");
+    expect(toggle?.getAttribute("aria-pressed")).toBe("false");
+  });
+
   it("keeps compact navigation explicit, named and independent of the mobile modal at every text size", async () => {
     const { harness, root } = await setup();
     const preferences = TestBed.inject(WorkspacePreferences);
