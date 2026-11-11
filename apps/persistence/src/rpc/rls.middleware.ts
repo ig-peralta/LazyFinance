@@ -8,7 +8,12 @@ import { RUNTIME_DB } from "../database/tokens";
 import type { PersistenceRequestContext } from "./persistence.context";
 
 type ProcedureMeta = {
-  context: "user" | "identity-bootstrap" | "mcp-authorization";
+  context:
+    | "user"
+    | "identity-bootstrap"
+    | "mcp-authorization"
+    | "banking-scheduler"
+    | "banking-transport";
   snapshot?: boolean;
 };
 
@@ -28,9 +33,13 @@ export class RlsMiddleware implements TRPCMiddleware<ProcedureMeta> {
   ) {
     if (
       !options.meta ||
-      !["user", "identity-bootstrap", "mcp-authorization"].includes(
-        options.meta.context,
-      ) ||
+      ![
+        "user",
+        "identity-bootstrap",
+        "mcp-authorization",
+        "banking-scheduler",
+        "banking-transport",
+      ].includes(options.meta.context) ||
       options.ctx.identity.kind !== options.meta.context ||
       (options.meta.context === "identity-bootstrap" &&
         options.path !== "identity.resolve") ||
@@ -42,6 +51,14 @@ export class RlsMiddleware implements TRPCMiddleware<ProcedureMeta> {
           "mcpArtifacts.destroy",
           "mcpArtifacts.identity",
           "mcpArtifacts.revoke",
+        ].includes(options.path)) ||
+      (options.meta.context === "banking-scheduler" &&
+        options.path !== "providerScheduler.claim") ||
+      (options.meta.context === "banking-transport" &&
+        ![
+          "providerRequests.acquire",
+          "providerRequests.release",
+          "providerRequests.defer",
         ].includes(options.path))
     ) {
       throw new TRPCError({

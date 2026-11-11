@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { BankingSyncIncompleteSchema } from "../banking";
 import {
+  ProviderScheduleCompletionSchema,
+  ProviderTrackingSchema,
+} from "./provider-automation";
+import {
   MatchingRuleSchema,
   PreparedTagDecisionSchema,
   TransactionRecordSchema,
@@ -68,7 +72,13 @@ export const ProviderSyncStateSchema = z.object({
   unresolvedConflictCount: z.number().int().nonnegative(),
   lastFailureAt: instant.nullable(),
   lastFailureReason: z
-    .enum(["retryable", "expired", "revoked", "invalid_data"])
+    .enum([
+      "retryable",
+      "expired",
+      "revoked",
+      "invalid_data",
+      "account_unavailable",
+    ])
     .nullable(),
   retryAfter: instant.nullable(),
   leaseExpiresAt: instant.nullable(),
@@ -76,6 +86,7 @@ export const ProviderSyncStateSchema = z.object({
 
 export const ProviderSyncBeginSchema = ProviderSyncStateSchema.extend({
   acquired: z.boolean(),
+  tracking: ProviderTrackingSchema.optional(),
 });
 
 export const ProviderSyncStatusFactsSchema = z.object({
@@ -87,10 +98,12 @@ export const ProviderSyncStatusFactsSchema = z.object({
   }),
   state: ProviderSyncStateSchema.nullable(),
   providerSuspensionCount: z.number().int().nonnegative(),
+  tracking: ProviderTrackingSchema.optional(),
   accounts: z
     .array(
       z.object({
         id: z.uuid(),
+        selected: z.boolean(),
         type: z.enum(["checking", "savings", "credit_card"]),
         hasReportedBalance: z.boolean(),
         lastSyncedAt: instant.nullable(),
@@ -106,6 +119,8 @@ export const BeginProviderSyncSchema = z.strictObject({
   connectionId: z.uuid(),
   provider: z.string().min(1).max(64),
   expectedCredentialVersion: z.number().int().nonnegative().optional(),
+  expectedSelectionVersion: z.number().int().nonnegative().optional(),
+  claimId: z.uuid().optional(),
 });
 
 export const ProviderSyncScopeSchema = z
@@ -149,6 +164,7 @@ export const ProviderSyncFactsSchema = z.object({
   removals: z.array(ProviderRemovalRecordSchema).max(100000),
   rules: z.array(MatchingRuleSchema).max(10000),
   fingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+  tracking: ProviderTrackingSchema.optional(),
 });
 
 export const PreparedProviderAccountSchema = z.strictObject({
@@ -228,6 +244,7 @@ export const CommitProviderSyncSchema = z
     expectedFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
     observedAt: instant,
     checkpoint: externalId.nullable(),
+    scheduling: ProviderScheduleCompletionSchema.optional(),
     accounts: z.array(PreparedProviderAccountSchema).max(50000),
     movements: z.array(PreparedProviderMovementSchema).max(50000),
     removals: z.array(PreparedProviderRemovalSchema).max(50000),
@@ -280,9 +297,16 @@ export const RecordProviderFailureSchema = z
   .strictObject({
     connectionId: z.uuid(),
     revision: z.number().int().nonnegative(),
-    reason: z.enum(["retryable", "expired", "revoked", "invalid_data"]),
+    reason: z.enum([
+      "retryable",
+      "expired",
+      "revoked",
+      "invalid_data",
+      "account_unavailable",
+    ]),
     observedAt: instant,
     retryAfter: instant.nullable(),
+    scheduling: ProviderScheduleCompletionSchema.optional(),
   })
   .refine((value) => value.reason === "retryable" || value.retryAfter === null);
 

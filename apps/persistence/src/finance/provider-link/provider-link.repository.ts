@@ -12,6 +12,7 @@ import { type Kysely, sql } from "kysely";
 import { RLS_DB } from "../../database/tokens";
 import { wireValue } from "../../serialization";
 import type { FinanceTables } from "../finance.tables";
+import { ProviderScheduleRepository } from "../provider-scheduling/provider-schedule.repository";
 
 function conflict(
   message = "Connection changed; reconcile before retrying",
@@ -23,7 +24,10 @@ function conflict(
 // mutations with the common per-user write lock; no provider I/O occurs here.
 @Injectable()
 export class ProviderLinkRepository {
-  constructor(@Inject(RLS_DB) private readonly db: Kysely<FinanceTables>) {}
+  constructor(
+    @Inject(RLS_DB) private readonly db: Kysely<FinanceTables>,
+    private readonly schedules: ProviderScheduleRepository,
+  ) {}
 
   private projection() {
     return this.db
@@ -345,6 +349,7 @@ export class ProviderLinkRepository {
   }
 
   private async invalidateSync(id: string) {
+    await this.schedules.refreshConnection(id);
     await this.db
       .updateTable("finance.provider_sync_state")
       .set({ revision: sql<number>`revision + 1`, leaseExpiresAt: null })

@@ -37,6 +37,7 @@ describe("Dashboard MCP tools", () => {
     getActiveForUser: vi.fn(async (userId: string) => [
       {
         id: "00000000-0000-4000-8000-000000000011",
+        trackingStatus: null,
         alias: userId,
         type: "checking",
         currency: "CLP",

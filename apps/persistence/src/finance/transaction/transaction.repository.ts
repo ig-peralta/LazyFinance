@@ -206,8 +206,12 @@ export class TransactionRepository {
 
   private aggregateQuery(period: PeriodInput) {
     const hasReceipt = sql<boolean>`r.transaction_id IS NOT NULL AND ca.reserved_credit_amount::numeric = 0`;
+    // RLS remains authoritative. The redundant trusted-owner predicate lets the
+    // planner estimate the small owned set before expanding recovery/RLS subplans
+    // instead of compiling thousands of unnecessary JIT functions.
     return this.db
       .selectFrom("finance.transaction as m")
+      .innerJoin("finance.account as oa", "oa.id", "m.accountId")
       .leftJoin("finance.income_receipt as r", "r.transactionId", "m.id")
       .leftJoinLateral(
         purchaseRecovery(period.adjustmentsAsOf).as("pa"),
@@ -248,6 +252,7 @@ export class TransactionRepository {
           "unclassifiedCreditCount",
         ),
       ])
+      .where("oa.userId", "=", sql<string>`(select identity.current_user_id())`)
       .where(movementPeriod(period))
       .where("m.removedAt", "is", null)
       .groupBy(["m.type", "m.isInternalMovement", "m.reviewStatus"])

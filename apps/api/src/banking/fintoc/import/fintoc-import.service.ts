@@ -1,4 +1,5 @@
 import type { BankingImportResult } from "@lazyfinance/contracts";
+import type { ProviderScheduleClaim } from "@lazyfinance/contracts/internal";
 import { Injectable } from "@nestjs/common";
 import { TRPCError } from "@trpc/server";
 import { PersistenceClient } from "../../../persistence/persistence.client";
@@ -21,6 +22,7 @@ export class FintocImportService {
   async importSnapshot(
     userId: string,
     connectionId: string,
+    options: { claim?: ProviderScheduleClaim; signal?: AbortSignal } = {},
   ): Promise<BankingImportResult> {
     const owned = await this.persistence
       .user(userId)
@@ -31,6 +33,30 @@ export class FintocImportService {
         code: "SERVICE_UNAVAILABLE",
         message: "Banking is not configured for this connection's mode",
       });
+    if (
+      options.claim &&
+      (!config.automaticSyncEnabled ||
+        options.claim.userId !== userId ||
+        options.claim.connectionId !== connectionId ||
+        options.claim.credentialVersion !== owned.version)
+    )
+      return { status: "superseded" };
+    const tracking = await this.persistence
+      .user(userId)
+      .providerSelection.get.query({ id: connectionId });
+    if (
+      !tracking.selection.confirmedAt ||
+      !tracking.selection.accountIds.length
+    )
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "Selecciona las cuentas que deseas seguir antes de importar",
+      });
+    if (
+      options.claim &&
+      options.claim.selectionVersion !== tracking.selection.version
+    )
+      return { status: "superseded" };
     if (
       owned.connection.disconnectedAt ||
       owned.connection.status !== "active" ||
@@ -51,12 +77,18 @@ export class FintocImportService {
       owned,
       token,
       fintocTrackingWindow(new Date(owned.connection.createdAt), new Date()),
+      tracking.selection.accountIds,
     );
     const outcome = await this.ingestion.syncForUser(
       userId,
       connectionId,
       connector,
       owned.version,
+      {
+        selectionVersion: tracking.selection.version,
+        claimId: options.claim?.id,
+        signal: options.signal,
+      },
     );
     if (
       outcome.status === "failed" ||

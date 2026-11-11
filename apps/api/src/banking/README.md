@@ -9,6 +9,74 @@ See the [database model](../../../../docs/technical/database-model.md),
 [private RPC/RLS](../../../../docs/technical/persistence-security.md) and
 [RPC inventories](../../../../docs/technical/rpc-contracts.md).
 
+**Selected-account synchronization (LAZ-74):** the
+[LAZ-89 synchronization policy](../../../../docs/planning/stage-c/banking-sync-policy.md)
+records the decision and delivered boundaries: explicit discovery/versioned
+selection, optional automatic enrollment and scheduled available-data imports.
+Automation defaults off; no bank-forced refresh is added. Verification of the
+current regressions and live entitlement/cost remains a separate gate.
+
+## Selection, automation and portable composition
+
+Authorization imports nothing. `banking.discoverAccounts` explicitly reads a
+bounded inventory and persists only stable IDs, product/currency, last-four number
+suffix and support/availability reasons. Raw balances are discarded; unselected
+and newly discovered accounts never create financial facts or movement requests.
+`banking.accountSelection` is provider-free. `banking.selectAccounts` confirms one
+owned set plus `automaticEnrolled`, using expected selection/discovery versions
+and the discovery's credential version. Empty selection pauses imports. Existing
+connections also require confirmation before their next import.
+
+Selection changes supersede old runs. Begin and commit bind credential/selection
+versions, revision and claim; commit independently rejects accounts, movements,
+removals and suspensions outside the selected set. Missing/unsupported selected
+accounts fail the whole snapshot as `account_unavailable`, rather than silently
+shrinking it. Deselecting retains balances, movements, aliases and decisions.
+`account.active` remains independent of selection; stored account reads expose
+`tracked`, `paused` or `disconnected` alongside last-known facts. Reselecting
+catches up from the original first-link Santiago day, within existing run limits.
+
+`BankingSyncModule` composes `FintocImportService`, discovery and the existing
+`BankingIngestionModule`, without public routers, auth, timers or listeners.
+`FintocModule` owns shared transport/credentials/durable admission.
+`BankingSchedulingModule` separately supplies a one-run runner and timer; the API
+hosts it, or the same headless composition runs after a build with
+`pnpm --filter api worker:banking`. No `AppModule`, Firebase, MCP, assistant,
+public HTTP listener or database pool is bootstrapped by that command. Manual and
+scheduled work reuse the same connector, preparation and atomic commit—not a
+second ingestion pipeline. Future extraction must move this cohesive owner and
+replace composition/transport, not import another app's source or duplicate logic.
+Review separate signing authority, secrets and network trust before deployment as
+a distinct service; the current trusted API signer can assert ordinary users.
+
+Set `BANKING_AUTOMATIC_SYNC_ENABLED=true` only with valid matching-mode Fintoc
+configuration and explicit operational approval. It defaults `false` in API and
+Compose. The timer wakes immediately, then 60 seconds after each invocation settles;
+each invocation claims at most one due connection. Database claims support multiple
+replicas/hosts with one globally reserved background run, due-time ordering and
+`FOR UPDATE SKIP LOCKED`; correctness does not rely on a singleton JS process.
+Success schedules one hour plus 0–5 minutes jitter, not missed-hour replay jobs.
+Daily quota deferral advances due time and releases the claim; other abandoned
+claims remain bounded by their five-minute expiry. Manual and automatic starts
+share leases and 30 starts per connection per rolling 24 hours.
+
+All Fintoc calls share durable two-starts/second and two-in-flight admission;
+sync/discovery reads additionally share 1,000 requests per mode per rolling hour.
+Lifecycle requests do not consume that read quota. Request permits expire after
+25 seconds; waiting consumes the request/run deadlines. Valid provider
+`Retry-After` is persisted per mode, and discovery/read backoff is persisted per
+connection, so restart or a different entry point cannot evade waiting periods.
+Retryable runs back off 5/15/60/360 minutes plus up to one minute jitter, never
+earlier than provider waiting time; five consecutive failures pause automatic
+work. Access, invalid data and unavailable selected accounts also pause it.
+A successful explicit recovery resets the streak; no ambiguous mutation is replayed.
+Disabling stops new automatic claims/begins, not committed work or upstream billing.
+
+Access, selection/enrollment, worker activity, last success and bank-source
+freshness remain distinct. Successful import does not advance an old source time.
+Live plan/update cadence, billing/cost, real bank freshness and the manual/browser
+acceptance gate remain unverified by this implementation description.
+
 `connector/banking-connector.ts` is the backend-only shape implemented by provider adapters. The validated data shapes live alongside it in `connector/normalized-banking.schema.ts`; they are not HTTP or cross-application contracts. An ingestion service verifies the user and connection before calling `fetchPage`, then validates each returned `ConnectorResult` before persistence. The adapter obtains provider credentials server-side. Linking a connection is a separate provider capability and need not share a provider-specific callback shape with synchronization.
 
 ## Financial meanings
@@ -89,11 +157,13 @@ accounts and movements from that connection's first-link Santiago day through
 today, without pre-link backfill. Same-day earlier movements may appear because
 booking precision is a calendar day, not a trustworthy transaction timestamp.
 Refresh replays the tracked period under the existing resource limits, not an
-incremental cursor, bank-forced refresh or scheduler. Balances remain independently
+incremental cursor or bank-forced refresh. The optional scheduler invokes this same
+selected-account path. Balances remain independently
 reported; zero tracked movements do not require an invented opening transaction.
-Begin honors persisted provider `retryAfter`; no automatic mutation retry/job is
-created. An expired unfinished lease is reported as `interrupted` and may be
-explicitly retried under a new revision. Linking/access checks and status reads
+Begin honors persisted provider/read `retryAfter` and durable attempt budgets.
+An expired unfinished lease is reported as `interrupted`; eligible new manual or
+scheduled work can acquire a new revision without replaying an uncertain mutation.
+Linking/access checks and status reads
 never start financial imports.
 The first import binds the owned decrypted credential's version to `begin`; a
 relink between secret lookup and begin returns `superseded` before provider I/O.

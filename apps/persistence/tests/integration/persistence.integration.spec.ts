@@ -44,6 +44,9 @@ import {
   withRequestContext,
 } from "../../src/database/rls";
 import { RLS_DB } from "../../src/database/tokens";
+import { ProviderConnectionRepository } from "../../src/finance/provider-connection/provider-connection.repository";
+import { ProviderScheduleRepository } from "../../src/finance/provider-scheduling/provider-schedule.repository";
+import { ProviderSelectionRepository } from "../../src/finance/provider-selection/provider-selection.repository";
 import { McpAuthorizationRepository } from "../../src/identity/mcp-authorization/mcp-authorization.repository";
 import type { McpAuthorizationTables } from "../../src/identity/mcp-authorization/mcp-authorization.tables";
 import type { PersistenceRequestContext } from "../../src/rpc/persistence.context";
@@ -143,6 +146,68 @@ describe.skipIf(!ownerUrl)(
         ],
       });
     const hash = (id: string) => createHash("sha256").update(id).digest("hex");
+    const bankingFixture = async () => {
+      const userId = randomUUID(),
+        connectionId = randomUUID();
+      await sql`INSERT INTO identity."user"(id,email,name) VALUES (${userId},${`${userId}@example.test`},'Independent banking owner')`.execute(
+        owner,
+      );
+      await sql`INSERT INTO finance.provider_connection(id,user_id,provider_id,mode,external_id,holder_type,institution_id,institution_name,encrypted_credential)
+        SELECT ${connectionId},${userId},id,'test',${`link_${randomUUID()}`},'individual','cl_test','Test bank','fixture-ciphertext'
+        FROM finance.provider WHERE identifier='fintoc'`.execute(owner);
+      const user = purposeClient(ctx(userId));
+      const discovered = await user.providerSelection.discover.mutate({
+        connectionId,
+        expectedCredentialVersion: 0,
+        accounts: [
+          {
+            externalId: "acc_owned",
+            name: "Cuenta corriente",
+            currency: "CLP",
+            numberSuffix: "1234",
+            unavailableReason: null,
+          },
+        ],
+      });
+      const selection = await user.providerSelection.select.mutate({
+        id: connectionId,
+        expectedVersion: 0,
+        discoveryVersion: discovered.discoveryVersion,
+        accountIds: ["acc_owned"],
+        automaticEnrolled: true,
+      });
+      return {
+        userId,
+        connectionId,
+        user,
+        selection,
+        begin: {
+          connectionId,
+          provider: "fintoc",
+          expectedCredentialVersion: 0,
+          expectedSelectionVersion: selection.version,
+        },
+      };
+    };
+    const pauseBanking = async (connectionIds: string[]) => {
+      if (!connectionIds.length) return;
+      await sql`UPDATE finance.provider_sync_schedule SET eligible=false,next_attempt_at=NULL,
+        claim_id=NULL,claim_expires_at=NULL,run_revision=NULL WHERE connection_id IN (${sql.join(connectionIds)})`.execute(
+        owner,
+      );
+      await sql`UPDATE finance.provider_sync_state SET lease_expires_at=NULL WHERE provider_connection_id IN (${sql.join(connectionIds)})`.execute(
+        owner,
+      );
+    };
+    const gate = () => {
+      let resolve!: () => void;
+      let reject!: (reason: unknown) => void;
+      const promise = new Promise<void>((yes, no) => {
+        resolve = yes;
+        reject = no;
+      });
+      return { promise, resolve, reject };
+    };
     const artifactKey = ({ model, key }: SaveMcpArtifact) => ({ model, key });
     const oauthArtifact = (
       overrides: Partial<SaveMcpArtifact> = {},
@@ -311,7 +376,7 @@ describe.skipIf(!ownerUrl)(
           .filter((name) => !name.startsWith("failure."))
           .sort(),
       ).toEqual(expected.sort());
-      expect(expected).toHaveLength(94);
+      expect(expected).toHaveLength(103);
 
       for (const name of expected)
         expect(procedures[name]._def.meta).toMatchObject({
@@ -320,11 +385,15 @@ describe.skipIf(!ownerUrl)(
               ? "identity-bootstrap"
               : name.startsWith("mcpArtifacts.")
                 ? "mcp-authorization"
-                : "user",
+                : name.startsWith("providerScheduler.")
+                  ? "banking-scheduler"
+                  : name.startsWith("providerRequests.")
+                    ? "banking-transport"
+                    : "user",
         });
     });
 
-    it("migrates idempotently and enables/forces RLS on all 27 sensitive tables", async () => {
+    it("migrates idempotently and enables/forces RLS on all 31 sensitive tables", async () => {
       expect(await migrate(owner, migrationProvider())).toEqual([]);
       const { rows } = await sql<{
         relrowsecurity: boolean;
@@ -333,10 +402,682 @@ describe.skipIf(!ownerUrl)(
       from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname in ('identity','finance','assistant') and c.relkind='r' and c.relname != 'provider'`.execute(
         owner,
       );
-      expect(rows).toHaveLength(27);
+      expect(rows).toHaveLength(31);
       expect(
         rows.every((row) => row.relrowsecurity && row.relforcerowsecurity),
       ).toBe(true);
+    });
+
+    it("isolates scheduler and transport purposes from user finance and each other", async () => {
+      const scheduler = purposeClient({
+        kind: "banking-scheduler",
+        requestId: randomUUID(),
+      });
+      const transport = purposeClient({
+        kind: "banking-transport",
+        requestId: randomUUID(),
+      });
+      const user = purposeClient(ctx(a));
+      for (const work of [
+        () => scheduler.accounts.listActive.query(),
+        () => scheduler.providerLinks.connection.query({ id: connectionA }),
+        () => scheduler.providerSelection.get.query({ id: connectionA }),
+        () =>
+          scheduler.providerRequests.acquire.mutate({
+            id: randomUUID(),
+            mode: "test",
+            purpose: "sync",
+          }),
+        () => transport.providerScheduler.claim.mutate({ mode: "test" }),
+        () => transport.accounts.listActive.query(),
+        () => user.providerScheduler.claim.mutate({ mode: "test" }),
+        () =>
+          user.providerRequests.acquire.mutate({
+            id: randomUUID(),
+            mode: "test",
+            purpose: "sync",
+          }),
+      ])
+        await expect(work()).rejects.toMatchObject({
+          data: { code: "FORBIDDEN" },
+        });
+      for (const kind of ["banking-scheduler", "banking-transport"] as const) {
+        await withRequestContext(
+          runtime,
+          { kind, requestId: randomUUID() },
+          async (tx) => {
+            const result = await sql<{
+              count: number;
+            }>`select count(*)::int as count from finance.account`.execute(tx);
+            expect(result.rows[0].count).toBe(0);
+          },
+        );
+      }
+    });
+
+    it("shares durable provider admission across callers and reserves lifecycle capacity separately from read quota", async () => {
+      const transport = purposeClient({
+        kind: "banking-transport",
+        requestId: randomUUID(),
+      });
+      const ids: string[] = [];
+      try {
+        const first = randomUUID(),
+          second = randomUUID();
+        ids.push(first, second);
+        const permits = await Promise.all(
+          [first, second].map((id) =>
+            transport.providerRequests.acquire.mutate({
+              id,
+              mode: "test",
+              purpose: "sync",
+            }),
+          ),
+        );
+        expect(permits.every((permit) => permit.acquired)).toBe(true);
+        expect(
+          await transport.providerRequests.acquire.mutate({
+            id: randomUUID(),
+            mode: "test",
+            purpose: "sync",
+          }),
+        ).toMatchObject({ acquired: false });
+        await Promise.all(
+          ids.map((id) => transport.providerRequests.release.mutate({ id })),
+        );
+        const seeded = await sql<{
+          id: string;
+        }>`INSERT INTO finance.provider_request_admission(id,mode,purpose,started_at,expires_at,finished_at)
+          SELECT gen_random_uuid(),'test','sync',now()-interval '2 minutes',now()-interval '100 seconds',now()-interval '110 seconds' FROM generate_series(1,1000) RETURNING id`.execute(
+          owner,
+        );
+        ids.push(...seeded.rows.map((row) => row.id));
+        const limited = await transport.providerRequests.acquire.mutate({
+          id: randomUUID(),
+          mode: "test",
+          purpose: "sync",
+        });
+        expect(limited).toMatchObject({ acquired: false });
+        if (!limited.acquired)
+          expect(Date.parse(limited.retryAt)).toBeGreaterThan(
+            Date.now() + 50 * 60_000,
+          );
+        // Release does not erase quota history, and foreground lifecycle calls
+        // are subject to shared rate/concurrency but not the read-volume cap.
+        await sql`UPDATE finance.provider_request_admission SET started_at=now()-interval '2 minutes',expires_at=now()-interval '100 seconds' WHERE id IN (${sql.join([first, second])})`.execute(
+          owner,
+        );
+        const lifecycle = randomUUID();
+        ids.push(lifecycle);
+        expect(
+          await transport.providerRequests.acquire.mutate({
+            id: lifecycle,
+            mode: "test",
+            purpose: "lifecycle",
+          }),
+        ).toMatchObject({ acquired: true });
+      } finally {
+        if (ids.length)
+          await sql`DELETE FROM finance.provider_request_admission WHERE id IN (${sql.join(ids)})`.execute(
+            owner,
+          );
+      }
+    });
+
+    it("claims only enrolled server-owned work and rejects late selection-bound runs", async () => {
+      const connectionId = randomUUID();
+      const syncUserId = randomUUID();
+      await sql`INSERT INTO identity."user"(id,email,name) VALUES (${syncUserId},${`${syncUserId}@example.test`},'Banking test owner')`.execute(
+        owner,
+      );
+      await sql`INSERT INTO finance.provider_connection(id,user_id,provider_id,mode,external_id,holder_type,institution_id,institution_name,encrypted_credential)
+        SELECT ${connectionId},${syncUserId},id,'test',${`link_${randomUUID()}`},'individual','cl_test','Test bank','fixture-ciphertext'
+        FROM finance.provider WHERE identifier='fintoc'`.execute(owner);
+      const user = purposeClient(ctx(syncUserId));
+      const scheduler = purposeClient({
+        kind: "banking-scheduler",
+        requestId: randomUUID(),
+      });
+      const discovered = await user.providerSelection.discover.mutate({
+        connectionId,
+        expectedCredentialVersion: 0,
+        accounts: [
+          {
+            externalId: "acc_owned",
+            name: "Cuenta corriente",
+            currency: "CLP",
+            numberSuffix: "1234",
+            unavailableReason: null,
+          },
+        ],
+      });
+      const selected = await user.providerSelection.select.mutate({
+        id: connectionId,
+        expectedVersion: 0,
+        discoveryVersion: discovered.discoveryVersion,
+        accountIds: ["acc_owned"],
+        automaticEnrolled: true,
+      });
+      const claim = await scheduler.providerScheduler.claim.mutate({
+        mode: "test",
+      });
+      expect(claim).toMatchObject({
+        connectionId,
+        userId: syncUserId,
+        selectionVersion: selected.version,
+      });
+      expect(
+        await scheduler.providerScheduler.claim.mutate({ mode: "test" }),
+      ).toBeNull();
+      if (!claim) throw new Error("Missing work claim");
+      const run = await user.providerSync.begin.mutate({
+        connectionId,
+        provider: "fintoc",
+        expectedCredentialVersion: 0,
+        expectedSelectionVersion: selected.version,
+        claimId: claim.id,
+      });
+      expect(run.acquired).toBe(true);
+      await expect(
+        withRequestContext(
+          runtime,
+          { kind: "banking-scheduler", requestId: randomUUID() },
+          async (tx) => {
+            await sql`UPDATE finance.provider_sync_schedule SET eligible=false WHERE connection_id=${connectionId}`.execute(
+              tx,
+            );
+          },
+        ),
+      ).rejects.toMatchObject({ code: "42501" });
+      await user.providerSelection.select.mutate({
+        id: connectionId,
+        expectedVersion: selected.version,
+        discoveryVersion: selected.discoveryVersion,
+        accountIds: [],
+        automaticEnrolled: true,
+      });
+      await expect(
+        user.providerSync.facts.query({
+          connectionId,
+          revision: run.revision,
+          keys: [],
+        }),
+      ).rejects.toMatchObject({ data: { code: "CONFLICT" } });
+      expect(
+        await scheduler.providerScheduler.claim.mutate({ mode: "test" }),
+      ).toBeNull();
+      expect(
+        await user.providerSync.failure.mutate({
+          connectionId,
+          revision: run.revision,
+          reason: "invalid_data",
+          observedAt: new Date().toISOString(),
+          retryAfter: null,
+          scheduling: { nextAttemptAt: null, expectedFailureCount: 0 },
+        }),
+      ).toEqual({ status: "superseded" });
+    });
+
+    it("defers the oldest exhausted daily budget and immediately admits healthy due work", async () => {
+      const connections: string[] = [];
+      try {
+        const exhausted = await bankingFixture();
+        connections.push(exhausted.connectionId);
+        const healthy = await bankingFixture();
+        connections.push(healthy.connectionId);
+        const oldest = new Date(Date.now() - 23 * 60 * 60_000);
+        // Deliberately unsorted: the earliest rolling-window attempt determines eligibility.
+        const attempts = [
+          new Date(oldest.getTime() + 60_000),
+          oldest,
+          ...Array.from(
+            { length: 28 },
+            (_, i) => new Date(oldest.getTime() + (i + 2) * 60_000),
+          ),
+        ];
+        await sql`UPDATE finance.provider_sync_schedule SET attempts=${attempts},next_attempt_at=now()-interval '2 hours'
+          WHERE connection_id=${exhausted.connectionId}`.execute(owner);
+        await sql`UPDATE finance.provider_sync_schedule SET next_attempt_at=now()-interval '1 hour'
+          WHERE connection_id=${healthy.connectionId}`.execute(owner);
+        await sql`INSERT INTO finance.provider_sync_state(provider_connection_id,revision) VALUES (${exhausted.connectionId},7)`.execute(
+          owner,
+        );
+        const scheduler = purposeClient({
+          kind: "banking-scheduler",
+          requestId: randomUUID(),
+        });
+        const claim = await scheduler.providerScheduler.claim.mutate({
+          mode: "test",
+        });
+        expect(claim).toMatchObject({ connectionId: exhausted.connectionId });
+        if (!claim) throw new Error("Missing exhausted claim");
+        const before = (
+          await sql`SELECT * FROM finance.provider_sync_state WHERE provider_connection_id=${exhausted.connectionId}`.execute(
+            owner,
+          )
+        ).rows;
+        const retryAt = new Date(oldest.getTime() + 24 * 60 * 60_000);
+        expect(
+          await exhausted.user.providerSync.begin.mutate({
+            ...exhausted.begin,
+            claimId: claim.id,
+          }),
+        ).toMatchObject({
+          acquired: false,
+          revision: 7,
+          retryAfter: retryAt.toISOString(),
+        });
+        const schedule = (
+          await sql<{
+            nextAttemptAt: Date;
+            claimId: string | null;
+            claimExpiresAt: Date | null;
+            runRevision: number | null;
+            attempts: Date[];
+          }>`SELECT next_attempt_at AS "nextAttemptAt",claim_id AS "claimId",claim_expires_at AS "claimExpiresAt",run_revision AS "runRevision",attempts FROM finance.provider_sync_schedule WHERE connection_id=${exhausted.connectionId}`.execute(
+            owner,
+          )
+        ).rows[0];
+        expect(schedule).toMatchObject({
+          nextAttemptAt: retryAt,
+          claimId: null,
+          claimExpiresAt: null,
+          runRevision: null,
+          attempts,
+        });
+        expect(
+          (
+            await sql`SELECT * FROM finance.provider_sync_state WHERE provider_connection_id=${exhausted.connectionId}`.execute(
+              owner,
+            )
+          ).rows,
+        ).toEqual(before);
+        const next = await scheduler.providerScheduler.claim.mutate({
+          mode: "test",
+        });
+        expect(next).toMatchObject({ connectionId: healthy.connectionId });
+        if (!next) throw new Error("Missing healthy claim");
+        expect(
+          await healthy.user.providerSync.begin.mutate({
+            ...healthy.begin,
+            claimId: next.id,
+          }),
+        ).toMatchObject({ acquired: true });
+      } finally {
+        await pauseBanking(connections);
+      }
+    });
+
+    it.each([
+      "manual begin",
+      "deselection",
+    ] as const)("skips an owner-locked due row during %s without overwriting its transition", async (transition) => {
+      const connections: string[] = [];
+      const held = gate(),
+        release = gate();
+      let holding: Promise<unknown> | undefined;
+      try {
+        const locked = await bankingFixture();
+        connections.push(locked.connectionId);
+        const healthy = await bankingFixture();
+        connections.push(healthy.connectionId);
+        await sql`UPDATE finance.provider_sync_schedule SET next_attempt_at=now()-interval '2 hours' WHERE connection_id=${locked.connectionId}`.execute(
+          owner,
+        );
+        await sql`UPDATE finance.provider_sync_schedule SET next_attempt_at=now()-interval '1 hour' WHERE connection_id=${healthy.connectionId}`.execute(
+          owner,
+        );
+        holding = withRequestContext(
+          runtime.withPlugin(new CamelCasePlugin()),
+          ctx(locked.userId),
+          async (tx) => {
+            await sql`select pg_advisory_xact_lock(hashtextextended(${`lazyfinance:user:${locked.userId}`},0))`.execute(
+              tx,
+            );
+            if (transition === "manual begin") {
+              expect(
+                await app.get(ProviderConnectionRepository).begin(locked.begin),
+              ).toMatchObject({ acquired: true });
+            } else {
+              await app.get(ProviderSelectionRepository).select({
+                id: locked.connectionId,
+                expectedVersion: locked.selection.version,
+                discoveryVersion: locked.selection.discoveryVersion,
+                accountIds: [],
+                automaticEnrolled: false,
+              });
+            }
+            // The old committed tuple is still due; only SKIP LOCKED can avoid claiming it.
+            held.resolve();
+            await release.promise;
+          },
+        );
+        void holding.catch(held.reject);
+        await held.promise;
+        const scheduler = purposeClient({
+          kind: "banking-scheduler",
+          requestId: randomUUID(),
+        });
+        expect(
+          await scheduler.providerScheduler.claim.mutate({ mode: "test" }),
+        ).toMatchObject({ connectionId: healthy.connectionId });
+        release.resolve();
+        await holding;
+        const row = (
+          await sql<{
+            claimId: string | null;
+            eligible: boolean;
+            runRevision: number | null;
+            nextAttemptAt: Date | null;
+          }>`SELECT claim_id AS "claimId",eligible,run_revision AS "runRevision",next_attempt_at AS "nextAttemptAt" FROM finance.provider_sync_schedule WHERE connection_id=${locked.connectionId}`.execute(
+            owner,
+          )
+        ).rows[0];
+        expect(row.claimId).toBeNull();
+        if (transition === "manual begin") {
+          expect(row).toMatchObject({ eligible: true, runRevision: 0 });
+          expect(row.nextAttemptAt!.getTime()).toBeGreaterThan(Date.now());
+          expect(
+            await locked.user.providerSync.facts.query({
+              connectionId: locked.connectionId,
+              revision: 0,
+              keys: [],
+            }),
+          ).toMatchObject({ state: { revision: 0 } });
+        } else {
+          expect(row).toMatchObject({
+            eligible: false,
+            runRevision: null,
+            nextAttemptAt: null,
+          });
+          expect(
+            await locked.user.providerSelection.get.query({
+              id: locked.connectionId,
+            }),
+          ).toMatchObject({
+            selection: { accountIds: [], automaticEnrolled: false },
+          });
+        }
+      } finally {
+        release.resolve();
+        await holding?.catch(() => {});
+        await pauseBanking(connections);
+      }
+    });
+
+    it("aligns claim and ingestion expiry and rejects old failures after claim replacement without changing state", async () => {
+      const connections: string[] = [];
+      try {
+        const f = await bankingFixture();
+        connections.push(f.connectionId);
+        const scheduler = purposeClient({
+          kind: "banking-scheduler",
+          requestId: randomUUID(),
+        });
+        const claim = await scheduler.providerScheduler.claim.mutate({
+          mode: "test",
+        });
+        if (!claim) throw new Error("Missing original claim");
+        expect(claim.connectionId).toBe(f.connectionId);
+        await sql`UPDATE finance.provider_sync_schedule SET claim_expires_at=now()+interval '1 minute' WHERE connection_id=${f.connectionId}`.execute(
+          owner,
+        );
+        const run = await f.user.providerSync.begin.mutate({
+          ...f.begin,
+          claimId: claim.id,
+        });
+        expect(run.acquired).toBe(true);
+        const aligned = (
+          await sql<{
+            claimExpiresAt: Date;
+          }>`SELECT claim_expires_at AS "claimExpiresAt" FROM finance.provider_sync_schedule WHERE connection_id=${f.connectionId}`.execute(
+            owner,
+          )
+        ).rows[0];
+        expect(aligned.claimExpiresAt.toISOString()).toBe(run.leaseExpiresAt);
+        // Model legacy/poisoned expiry independently of the still-live ingestion lease.
+        await sql`UPDATE finance.provider_sync_schedule SET claim_expires_at=now()-interval '1 second',next_attempt_at=now()-interval '1 second'
+          WHERE connection_id=${f.connectionId}`.execute(owner);
+        const replacement = await scheduler.providerScheduler.claim.mutate({
+          mode: "test",
+        });
+        expect(replacement).toMatchObject({ connectionId: f.connectionId });
+        if (!replacement) throw new Error("Missing replacement claim");
+        expect(replacement.id).not.toBe(claim.id);
+        const before =
+          await sql`SELECT row_to_json(s) AS schedule,row_to_json(r) AS state,row_to_json(c) AS connection
+          FROM finance.provider_sync_schedule s JOIN finance.provider_sync_state r ON r.provider_connection_id=s.connection_id
+          JOIN finance.provider_connection c ON c.id=s.connection_id WHERE s.connection_id=${f.connectionId}`.execute(
+            owner,
+          );
+        for (const reason of [
+          "retryable",
+          "revoked",
+          "invalid_data",
+        ] as const) {
+          const retryAfter =
+            reason === "retryable"
+              ? new Date(Date.now() + 60 * 60_000).toISOString()
+              : null;
+          expect(
+            await f.user.providerSync.failure.mutate({
+              connectionId: f.connectionId,
+              revision: run.revision,
+              reason,
+              observedAt: new Date().toISOString(),
+              retryAfter,
+              scheduling: {
+                expectedFailureCount: 0,
+                nextAttemptAt: retryAfter,
+              },
+            }),
+          ).toEqual({ status: "superseded" });
+        }
+        await expect(
+          withRequestContext(
+            runtime.withPlugin(new CamelCasePlugin()),
+            ctx(f.userId),
+            () =>
+              app.get(ProviderScheduleRepository).finish(
+                f.connectionId,
+                run.revision,
+                claim.id,
+                {
+                  expectedFailureCount: 0,
+                  nextAttemptAt: new Date(
+                    Date.now() + 60 * 60_000,
+                  ).toISOString(),
+                },
+                "retryable",
+              ),
+          ),
+        ).rejects.toMatchObject({ code: "CONFLICT" });
+        expect(
+          (
+            await sql`SELECT row_to_json(s) AS schedule,row_to_json(r) AS state,row_to_json(c) AS connection
+          FROM finance.provider_sync_schedule s JOIN finance.provider_sync_state r ON r.provider_connection_id=s.connection_id
+          JOIN finance.provider_connection c ON c.id=s.connection_id WHERE s.connection_id=${f.connectionId}`.execute(
+              owner,
+            )
+          ).rows,
+        ).toEqual(before.rows);
+        expect(
+          await scheduler.providerScheduler.claim.mutate({ mode: "test" }),
+        ).toBeNull();
+      } finally {
+        await pauseBanking(connections);
+      }
+    });
+
+    it("persists greatest mode-specific transport backoff across clients without purpose or lifecycle bypass", async () => {
+      const transport = () =>
+        purposeClient({ kind: "banking-transport", requestId: randomUUID() });
+      const first = new Date(Date.now() + 60 * 60_000).toISOString();
+      const later = new Date(Date.now() + 2 * 60 * 60_000).toISOString();
+      const earlier = new Date(Date.now() + 30 * 60_000).toISOString();
+      const admissions: string[] = [];
+      let created = false;
+      expect(
+        (
+          await sql`SELECT * FROM finance.provider_request_backoff`.execute(
+            owner,
+          )
+        ).rows,
+      ).toEqual([]);
+      try {
+        created = true;
+        await transport().providerRequests.defer.mutate({
+          mode: "test",
+          retryAfter: first,
+        });
+        await Promise.all(
+          [later, earlier].map((retryAfter) =>
+            transport().providerRequests.defer.mutate({
+              mode: "test",
+              retryAfter,
+            }),
+          ),
+        );
+        await transport().providerRequests.defer.mutate({
+          mode: "test",
+          retryAfter: earlier,
+        });
+        expect(
+          (
+            await sql<{
+              retryAfter: Date;
+            }>`SELECT retry_after AS "retryAfter" FROM finance.provider_request_backoff WHERE mode='test'`.execute(
+              owner,
+            )
+          ).rows[0].retryAfter.toISOString(),
+        ).toBe(later);
+        for (const purpose of ["sync", "lifecycle"] as const) {
+          const id = randomUUID();
+          admissions.push(id);
+          expect(
+            await transport().providerRequests.acquire.mutate({
+              id,
+              mode: "test",
+              purpose,
+            }),
+          ).toEqual({ acquired: false, retryAt: later });
+        }
+        expect(
+          (
+            await sql`SELECT id FROM finance.provider_request_admission WHERE id IN (${sql.join(admissions)})`.execute(
+              owner,
+            )
+          ).rows,
+        ).toEqual([]);
+        const live = randomUUID();
+        admissions.push(live);
+        expect(
+          await transport().providerRequests.acquire.mutate({
+            id: live,
+            mode: "live",
+            purpose: "sync",
+          }),
+        ).toMatchObject({ acquired: true });
+        await transport().providerRequests.release.mutate({ id: live });
+        // Release cannot clear the backoff or its durable record.
+        const afterRelease = randomUUID();
+        admissions.push(afterRelease);
+        expect(
+          await transport().providerRequests.acquire.mutate({
+            id: afterRelease,
+            mode: "test",
+            purpose: "sync",
+          }),
+        ).toEqual({ acquired: false, retryAt: later });
+        for (const identity of [
+          ctx(a),
+          { kind: "banking-scheduler" as const, requestId: randomUUID() },
+          oauthContext(),
+        ]) {
+          // User/scheduler/OAuth purposes must neither read operational waiting state nor shorten it.
+          await expect(
+            purposeClient(identity).providerRequests.defer.mutate({
+              mode: "test",
+              retryAfter: earlier,
+            }),
+          ).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
+          await withRequestContext(runtime, identity, async (tx) => {
+            expect(
+              (
+                await sql`SELECT * FROM finance.provider_request_backoff`.execute(
+                  tx,
+                )
+              ).rows,
+            ).toEqual([]);
+            expect(
+              (
+                await sql`UPDATE finance.provider_request_backoff SET retry_after=now() WHERE mode='test' RETURNING mode`.execute(
+                  tx,
+                )
+              ).rows,
+            ).toEqual([]);
+          });
+          await expect(
+            withRequestContext(runtime, identity, (tx) =>
+              sql`INSERT INTO finance.provider_request_backoff(mode,retry_after) VALUES ('live',now())`.execute(
+                tx,
+              ),
+            ),
+          ).rejects.toMatchObject({ code: "42501" });
+        }
+        await expect(
+          withRequestContext(
+            runtime,
+            { kind: "banking-transport", requestId: randomUUID() },
+            (tx) =>
+              sql`DELETE FROM finance.provider_request_backoff WHERE mode='test'`.execute(
+                tx,
+              ),
+          ),
+        ).rejects.toMatchObject({ code: "42501" });
+        await expect(
+          withRequestContext(
+            runtime,
+            { kind: "banking-transport", requestId: randomUUID() },
+            (tx) =>
+              sql`UPDATE finance.provider_request_backoff SET mode='live' WHERE mode='test'`.execute(
+                tx,
+              ),
+          ),
+        ).rejects.toMatchObject({ code: "42501" });
+        const afterDeniedWrites = randomUUID();
+        admissions.push(afterDeniedWrites);
+        expect(
+          await transport().providerRequests.acquire.mutate({
+            id: afterDeniedWrites,
+            mode: "test",
+            purpose: "lifecycle",
+          }),
+        ).toEqual({ acquired: false, retryAt: later });
+        // Expiry restores admission without deleting history or a time-based sleep.
+        await sql`UPDATE finance.provider_request_backoff SET retry_after=now()-interval '1 second' WHERE mode='test'`.execute(
+          owner,
+        );
+        const resumed = randomUUID();
+        admissions.push(resumed);
+        expect(
+          await transport().providerRequests.acquire.mutate({
+            id: resumed,
+            mode: "test",
+            purpose: "sync",
+          }),
+        ).toMatchObject({ acquired: true });
+        await transport().providerRequests.release.mutate({ id: resumed });
+      } finally {
+        if (created)
+          await sql`DELETE FROM finance.provider_request_backoff WHERE mode='test'`.execute(
+            owner,
+          );
+        if (admissions.length)
+          await sql`DELETE FROM finance.provider_request_admission WHERE id IN (${sql.join(admissions)})`.execute(
+            owner,
+          );
+      }
     });
 
     it("admits OAuth state only for the dedicated purpose, with no financial or identity-bootstrap authority", async () => {

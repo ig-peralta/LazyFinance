@@ -62,9 +62,10 @@ describe("optional account-persisted onboarding", () => {
     fixture.detectChanges();
     const root: HTMLElement = fixture.nativeElement;
     expect(root.textContent).toContain("3 de 4 con registros");
-    expect(root.textContent).toContain("Importación pendiente");
+    expect(root.textContent).not.toContain("Importación pendiente");
     expect(
-      root.querySelector('a[href="/conexiones-bancarias"]')?.textContent,
+      root.querySelector('a[href="/conexiones-bancarias?from=onboarding"]')
+        ?.textContent,
     ).toContain("Conectar banco");
     expect(root.textContent).toContain("Mi cuenta → Conexiones bancarias");
     expect(root.textContent).toContain(
@@ -87,7 +88,9 @@ describe("optional account-persisted onboarding", () => {
       "sin volver a activar los recordatorios",
     );
     expect(
-      revisit.nativeElement.querySelector('a[href="/conexiones-bancarias"]'),
+      revisit.nativeElement.querySelector(
+        'a[href="/conexiones-bancarias?from=onboarding"]',
+      ),
     ).not.toBeNull();
     mock.credentials.accept({ ...principal, userId: "bob" }, "bob");
     await revisit.whenStable();

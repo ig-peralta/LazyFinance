@@ -7,7 +7,12 @@ import type {
 } from "../../../src/banking/fintoc/client/fintoc-snapshot.schema";
 import * as trackingWindow from "../../../src/banking/fintoc/import/fintoc-tracking-window";
 import { fixture, startApi } from "../persistence";
-import { fintocEnvironment, fintocIntent, fintocLink } from "./fintoc";
+import {
+  fintocAdmission,
+  fintocEnvironment,
+  fintocIntent,
+  fintocLink,
+} from "./fintoc";
 import {
   fintocAccount,
   fintocHistoryWindow,
@@ -16,7 +21,10 @@ import {
 
 /** Real RPC, a mocked provider and previously linked connections. Fix only the
  * policy's observation clock, never Date/JWT clocks shared with persistence. */
-export async function fintocAppFixture(linkedAt = "2026-11-01T15:00:00.000Z") {
+export async function fintocAppFixture(
+  linkedAt = "2026-11-01T15:00:00.000Z",
+  withSelection = true,
+) {
   const f = await fixture();
   const realWindow = trackingWindow.fintocTrackingWindow;
   const window = vi
@@ -118,7 +126,12 @@ export async function fintocAppFixture(linkedAt = "2026-11-01T15:00:00.000Z") {
       return new Response(null, { status: 204 });
     if (url.pathname.startsWith("/v1/links/")) {
       const response = state.linkFailureStatus
-        ? new Response(null, { status: state.linkFailureStatus })
+        ? new Response(null, {
+            status: state.linkFailureStatus,
+            headers: state.retryAfter
+              ? { "Retry-After": state.retryAfter }
+              : {},
+          })
         : Response.json({ ...state.link, link_token: null });
       await onLink();
       return response;
@@ -151,7 +164,11 @@ export async function fintocAppFixture(linkedAt = "2026-11-01T15:00:00.000Z") {
       headers: { "X-Total-Count": String(items.length) },
     });
   });
-  const api = await startApi(f, false, fetch);
+  // Workflow suites isolate provider transport admission. Its real shared SQL
+  // quotas and purpose permissions have separate PostgreSQL coverage.
+  const api = await startApi(f, false, fetch, 0, undefined, {
+    fintocAdmission: fintocAdmission(),
+  });
   const first = api.client(),
     other = api.client(f.otherToken);
   const connect = async (connectionId?: string) => {
@@ -172,6 +189,18 @@ export async function fintocAppFixture(linkedAt = "2026-11-01T15:00:00.000Z") {
   });
   await f.db.update("provider_connection", saved.id, { createdAt: linkedAt });
   const connected = { ...saved, createdAt: linkedAt };
+  if (withSelection) {
+    const discovered = await first.banking.discoverAccounts.mutate({
+      id: connected.id,
+    });
+    await first.banking.selectAccounts.mutate({
+      id: connected.id,
+      expectedVersion: discovered.version,
+      discoveryVersion: discovered.discoveryVersion,
+      accountIds: ["acc_checking", "acc_savings", "acc_card"],
+      automaticEnrolled: false,
+    });
+  }
   fetch.mockClear();
   return {
     ...f,

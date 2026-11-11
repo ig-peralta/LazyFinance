@@ -1,4 +1,4 @@
-import { AccountSummarySchema } from "@lazyfinance/contracts";
+import { AccountListItemSchema } from "@lazyfinance/contracts";
 import { Ctx } from "@nestjs/microservices";
 import { McpContext, McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
@@ -12,9 +12,9 @@ export class AccountsMcpController {
   @Tool({
     name: "consultar_saldos_cuentas",
     description:
-      "Consulta los saldos reportados de las cuentas activas del usuario en CLP. Incluye el tipo de cuenta para distinguir deuda de tarjeta de dinero disponible; un saldo null significa que aún no hay un saldo confirmado. La fecha de última sincronización puede ser desconocida; no asumas que el saldo está al día. No calcula cuánto queda para gastar.",
+      "Consulta los saldos guardados de las cuentas del usuario en CLP y su seguimiento activo, en pausa o sin acceso. Incluye el tipo para distinguir deuda de tarjeta de dinero disponible; null significa saldo desconocido. Los saldos en pausa son últimos valores conocidos. La fecha de origen puede ser desconocida; no asumas datos actuales. No calcula cuánto queda para gastar.",
     annotations: { title: "Consultar saldos de cuentas", ...readOnlyTool },
-    outputSchema: z.object({ accounts: z.array(AccountSummarySchema) }),
+    outputSchema: z.object({ accounts: z.array(AccountListItemSchema) }),
   })
   async getAccounts(@Ctx() ctx: McpContext) {
     return { accounts: await this.accounts.getActiveForUser(mcpUserId(ctx)) };
