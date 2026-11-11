@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  fintocAdmission,
   fintocEnvironment,
   fintocLink,
   storedLink,
@@ -16,17 +17,18 @@ import {
 import { FintocClient } from "../client/fintoc-client";
 import { FintocSnapshotConnector } from "./fintoc-snapshot.connector";
 
-function setup(responses: Response[]) {
+function setup(responses: Response[], selectedAccountIds = ["acc_checking"]) {
   const fetch = vi.fn<typeof globalThis.fetch>(async () => {
     const response = responses.shift();
     if (!response) throw new Error("Unexpected upstream request");
     return response;
   });
   const connector = new FintocSnapshotConnector(
-    new FintocClient(fintocEnvironment(), fetch),
+    new FintocClient(fintocEnvironment(), fetch, fintocAdmission()),
     storedLink,
     "link_fixture_token_private",
     fintocHistoryWindow,
+    selectedAccountIds,
   );
   const input = {
     connectionId: storedLink.connection.id,
@@ -57,34 +59,42 @@ const link = () => Response.json({ ...fintocLink, link_token: null });
 
 describe("operation-owned Fintoc snapshot pages", () => {
   it("imports source balances and partial booked history while excluding pending/processing records and emitting explicit reversals", async () => {
-    const f = setup([
-      link(),
-      Response.json([
-        fintocAccount,
-        { ...fintocAccount, id: "acc_card", type: "credit_card" },
-        { ...fintocAccount, id: "acc_usd", currency: "USD" },
-        { ...fintocAccount, id: "acc_line", type: "line_of_credit" },
-      ]),
-      Response.json([
-        fintocMovement,
-        {
-          ...fintocMovement,
-          id: "mov_credit",
-          amount: 100_000,
-          type: "transfer",
-          sender_account: { holder_id: "12345678-5" },
-        },
-        { ...fintocMovement, id: "mov_pending", type: "check", pending: true },
-        { ...fintocMovement, id: "mov_processing", status: "processing" },
-        { ...fintocMovement, id: "mov_reversed", status: "reversed" },
-        {
-          ...fintocMovement,
-          id: "mov_manual_reversal",
-          status: "manually_reversed",
-        },
-      ]),
-      Response.json([fintocMovement]), // Same ID in another account is valid.
-    ]);
+    const f = setup(
+      [
+        link(),
+        Response.json([
+          fintocAccount,
+          { ...fintocAccount, id: "acc_card", type: "credit_card" },
+          { ...fintocAccount, id: "acc_usd", currency: "USD" },
+          { ...fintocAccount, id: "acc_line", type: "line_of_credit" },
+        ]),
+        Response.json([
+          fintocMovement,
+          {
+            ...fintocMovement,
+            id: "mov_credit",
+            amount: 100_000,
+            type: "transfer",
+            sender_account: { holder_id: "12345678-5" },
+          },
+          {
+            ...fintocMovement,
+            id: "mov_pending",
+            type: "check",
+            pending: true,
+          },
+          { ...fintocMovement, id: "mov_processing", status: "processing" },
+          { ...fintocMovement, id: "mov_reversed", status: "reversed" },
+          {
+            ...fintocMovement,
+            id: "mov_manual_reversal",
+            status: "manually_reversed",
+          },
+        ]),
+        Response.json([fintocMovement]), // Same ID in another account is valid.
+      ],
+      ["acc_checking", "acc_card"],
+    );
     const result = await f.drain();
     expect(result.failure).toBeUndefined();
     expect(result.pages).toHaveLength(4);
@@ -110,10 +120,7 @@ describe("operation-owned Fintoc snapshot pages", () => {
       ignoredProcessingMovements: 1,
       uncertainMovements: 3,
       unknownCardBalances: ["acc_card"],
-      skippedAccounts: [
-        { externalId: "acc_usd", reason: "unsupported_currency" },
-        { externalId: "acc_line", reason: "unsupported_type" },
-      ],
+      skippedAccounts: [],
     });
     for (const [address, options] of f.fetch.mock.calls) {
       expect(new URL(String(address)).origin).toBe("https://api.fintoc.com");
@@ -335,8 +342,8 @@ describe("operation-owned Fintoc snapshot pages", () => {
   });
 
   it("does not share credentials, cursors or inventory between runs and rejects foreign input before I/O", async () => {
-    const a = setup([link(), Response.json([])]),
-      b = setup([link(), Response.json([])]);
+    const a = setup([link(), Response.json([])], []),
+      b = setup([link(), Response.json([])], []);
     expect((await a.drain()).failure).toBeUndefined();
     expect((await b.drain()).failure).toBeUndefined();
     expect(a.connector.report).not.toBe(b.connector.report);

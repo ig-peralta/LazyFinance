@@ -1,0 +1,39 @@
+<section aria-label="Cuentas elegidas para seguimiento">
+  <h5>Elige qué cuentas seguir</h5>
+  <p class="record-meta">Autorizar el banco no selecciona sus cuentas. Solo guardaremos saldos y movimientos de las que confirmes aquí; las cuentas nuevas no se agregarán solas.</p>
+  @if (selection.isLoading()) { <p role="status">Consultando la selección guardada…</p> }
+  @if (selection.error()) { <p class="notice danger" role="alert">No pudimos consultar tu selección. No asumimos que esté vacía.</p> }
+  @if (snapshot(); as value) {
+    @if (!value.discoveryVersion) { <p class="notice">Consulta las cuentas disponibles para continuar. Esta consulta no importa saldos ni movimientos.</p> }
+    @if (value.discoveryVersion && !value.accounts.length) { <p class="notice">El banco no devolvió cuentas disponibles. Puedes consultar de nuevo o volver más tarde.</p> }
+    @if (value.accounts.length || missingIds().length) {
+      <fieldset [disabled]="!canWrite()">
+        <legend>Cuentas disponibles en esta conexión</legend>
+        @for (account of value.accounts; track account.externalId) {
+          <label class="record-row">
+            <input type="checkbox" [checked]="selectedIds().includes(account.externalId)" [disabled]="!!account.unavailableReason && !selectedIds().includes(account.externalId)"
+              (change)="toggle(account.externalId, $any($event.target).checked)" />
+            <span>{{ account.name }} · {{ account.currency }} @if (account.numberSuffix) { · termina en {{ account.numberSuffix }} }
+              @if (account.unavailableReason) { <small> · {{ account.unavailableReason === 'removed_from_link' ? 'No disponible en el banco' : 'Producto o moneda no compatible' }}</small> }
+            </span>
+          </label>
+        }
+        @for (id of missingIds(); track id) {
+          <label class="record-row"><input type="checkbox" [checked]="selectedIds().includes(id)" [disabled]="!selectedIds().includes(id)" (change)="toggle(id, false)" /><span>Cuenta seleccionada que ya no aparece en el banco · referencia {{ id }}. Desmárcala para pausar su seguimiento sin borrar su historial.</span></label>
+        }
+        <label class="record-row"><input type="checkbox" [checked]="automatic()" (change)="setAutomatic($any($event.target).checked)" /> Permitir futuras importaciones automáticas de estas cuentas</label>
+      </fieldset>
+    }
+    @if (automatic() && !automaticEnabled()) { <p class="notice warning">Las actualizaciones automáticas están deshabilitadas en este servidor. Guardaremos tu elección, pero no se mostrarán como activas.</p> }
+    @if (readDeferred()) { <p class="notice warning">Hay un período de espera guardado hasta {{ value.readRetryAfter }}. Consulta la selección guardada después de esa hora antes de volver a consultar el banco.</p> }
+    <details><summary>Qué ocurre al cambiar la selección</summary><p>Al quitar una cuenta conservamos su historial, sus nombres y tus decisiones. Al agregarla de nuevo consultamos desde el día original de vinculación, incluido el intervalo en pausa. La selección limita lo que guardamos en LazyFinance, no la información que Fintoc obtiene dentro de tu autorización ni su facturación. Para eliminar el acceso, usa Desconectar.</p></details>
+    <div class="button-row">
+      <button class="button" type="button" [disabled]="!canWrite() || readDeferred()" (click)="discover()">Consultar cuentas disponibles</button>
+      @if (value.discoveryVersion) { <button class="button primary" type="button" [disabled]="!canWrite()" (click)="save()">{{ selectedIds().length ? 'Confirmar e importar selección' : 'Confirmar pausa sin borrar historial' }}</button> }
+    </div>
+  }
+  @if (command.pending()) { <p class="notice" role="status">Confirmando el resultado en el servidor…</p> }
+  @if (command.error()) { <p class="notice danger" role="alert">{{ command.error() }}</p> }
+  @if (needsReconciliation()) { <p class="notice warning">Consulta la selección guardada antes de intentar otro cambio. No repetimos solicitudes inciertas.</p> }
+  <button class="text-link" type="button" [disabled]="selection.isLoading() || command.pending()" (click)="reload()">Consultar selección guardada</button>
+</section>

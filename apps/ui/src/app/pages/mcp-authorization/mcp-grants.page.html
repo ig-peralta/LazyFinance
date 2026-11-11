@@ -30,22 +30,28 @@
   <ul class="record-list" aria-label="Permisos de aplicaciones externas">
     @for (grant of grants.value(); track grant.id) {
       <li class="panel" style="overflow-wrap:anywhere">
-        <h2 class="record-title">{{ grant.clientName }}</h2>
-        <p class="record-meta">{{ grant.clientId }}</p>
+        <mcp-client-identity [clientId]="grant.clientId" [name]="grant.clientName" [redirectUri]="grant.redirectUri ?? null" />
+        <p class="badge neutral">{{ status(grant) }}</p>
         <p class="badge neutral">{{ writes(grant).length ? 'Lectura y cambios autorizados' : 'Solo lectura' }}</p>
-        @if (writes(grant).length) { <ul class="record-meta">@for (permission of writes(grant); track permission) { <li>{{ permission }}</li> }</ul> }
+        <h3 class="record-title">Permisos concedidos</h3>
+        <ul class="record-meta" style="padding-inline-start:1.25rem">
+          @for (permission of grant.scopes; track permission) {
+            <li>{{ permissionLabel(permission) }} · <code>{{ permission }}</code></li>
+          }
+        </ul>
         <p class="record-meta">Autorizado: {{ time(grant.createdAt) }} · vence: {{ time(grant.expiresAt) }}.</p>
         @if (grant.revokedAt) {
           <p class="notice">Acceso revocado el {{ time(grant.revokedAt) }}.</p>
         } @else {
-          <p class="field-hint">La fecha de vencimiento y el servidor determinan si el permiso sigue vigente.</p>
-          <button class="button small" type="button" [disabled]="command.pending() || !!command.error()"
+          @if (status(grant) === 'Vencido') { <p class="field-hint">Este permiso venció y no autoriza nuevas consultas. Puedes revocarlo también para cerrar esta conexión.</p> }
+          <button class="button small" type="button" [disabled]="command.pending() || !!command.error() || grants.isLoading()"
             [attr.aria-label]="'Revocar acceso de ' + grant.clientName" (click)="select(grant, $event)">Revocar acceso</button>
         }
         @if (selected() === grant.id) {
-          <div class="notice warning" role="alert">
+          <div class="notice warning" role="group" [attr.aria-label]="'Confirmar revocación de ' + grant.clientName" (keydown.escape)="cancel(); $event.stopPropagation()">
             <strong>¿Revocar el acceso de {{ grant.clientName }}?</strong>
             <p>Esta conexión tendrá que solicitar una nueva autorización para consultar tus datos.</p>
+            <p>Solo se revoca este acceso: <strong>{{ grant.clientId }}</strong>. No se borran datos ni se desconectan bancos.</p>
             <div class="button-row">
               <button class="button small" type="button" [disabled]="command.pending() || !!command.error()" (click)="revoke(grant.id)">
                 {{ command.pending() ? 'Esperando confirmación…' : 'Confirmar revocación' }}

@@ -3,6 +3,7 @@ export * from "./assistant";
 export * from "./assistant/voice";
 export * from "./auth";
 export * from "./banking";
+export * from "./banking-selection";
 export * from "./financial-actions";
 export * from "./income";
 export * from "./mcp-authorization";

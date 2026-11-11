@@ -16,6 +16,7 @@ const grantFields = [
   "id",
   "clientId",
   "clientName",
+  "redirectUri",
   "resource",
   "scopes",
   "createdAt",
@@ -205,7 +206,11 @@ export class McpAuthorizationRepository {
     const { key: _key, ...fields } = input;
     const row = await this.db
       .insertInto("identity.mcp_grant")
-      .values({ ...fields, userId: sql<string>`identity.current_user_id()` })
+      .values({
+        ...fields,
+        redirectUri: fields.redirectUri ?? null,
+        userId: sql<string>`identity.current_user_id()`,
+      })
       .returning(grantFields)
       .executeTakeFirstOrThrow();
     return McpGrantSchema.parse(wireValue(row));

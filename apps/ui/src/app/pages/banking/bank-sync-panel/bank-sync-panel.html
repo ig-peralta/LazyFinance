@@ -7,6 +7,10 @@
     <button class="icon-button" type="button" [attr.aria-label]="'Cerrar sincronización de ' + connection().institution.name" (click)="closed.emit()"><app-icon name="close" /></button>
   </div>
   <p class="record-meta">Importar o actualizar consulta los datos que Fintoc ya tiene disponibles. No obliga al banco a generar información nueva. Los saldos se consultan por separado en Cuentas.</p>
+  @if (!connection().disconnectedAt && connection().status === 'active') {
+    <bank-account-selector [connectionId]="connection().id" [enabled]="enabled()" [locked]="locked() || command.pending()"
+      [automaticEnabled]="automaticEnabled()" (confirmed)="selectionConfirmed($event)" (pendingChange)="selectorPending.set($event)" />
+  }
   <div class="notice">
     <strong>Seguimiento desde el {{ trackingDay() }} · día de vinculación en Santiago.</strong>
     <p>Traemos los saldos reportados y los movimientos fechados desde ese día, sin buscar transacciones de días anteriores. Actualizar o revincular no cambia esta fecha.</p>
@@ -37,7 +41,7 @@
       @case ('needs_review') { <p class="notice warning" role="status">Importación completada con {{ result.conflictCount }} conflictos pendientes. Las decisiones guardadas se conservan; los movimientos no elegibles no se suman a los resultados.</p> }
       @case ('failed') { <p class="notice danger" role="alert">No se completó la sincronización. {{ failure(result.reason) }} Los datos de la última importación correcta se conservan.</p> }
       @case ('in_progress') { <p class="notice" role="status">Esta solicitud encontró otra sincronización en curso. No se inició otro intento. El estado consultado muestra su situación más reciente.</p> }
-      @case ('retry_later') { <p class="notice warning" role="status">Fintoc solicitó esperar hasta {{ time(result.retryAfter) }} · Santiago. No se inició otro intento.</p> }
+      @case ('retry_later') { <p class="notice warning" role="status">La siguiente consulta está permitida desde {{ time(result.retryAfter) }} · Santiago, según la espera o el límite guardado. No se inició otro intento.</p> }
       @case ('superseded') { <p class="notice warning" role="status">La conexión o el intento cambió. Este resultado no confirma una importación. Consulta el estado actual antes de continuar.</p> }
     }
   }
@@ -61,8 +65,12 @@
   @if (snapshot(); as state) {
     <div class="sync-summary" aria-live="polite">
       <h5>{{ title() }}</h5>
+      <p>{{ state.automation.selectedAccounts }} cuentas seleccionadas · {{ state.automation.enrolled && automaticEnabled() && !state.automation.pauseReason ? 'Actualizaciones automáticas habilitadas' : 'Actualizaciones automáticas en pausa o no habilitadas' }}.</p>
+      @if (state.automation.pauseReason) { <p class="notice warning">{{ pause(state.automation.pauseReason!) }}</p> }
+      @if (state.automation.nextAttemptAt && state.automation.enrolled && automaticEnabled()) { <p>Próxima importación elegible: {{ time(state.automation.nextAttemptAt!) }} · Santiago. No es una garantía de actualización del banco.</p> }
       <p class="record-meta">Estado consultado: {{ time(state.asOf) }} · Santiago.</p>
-      @if (state.activity === 'in_progress') { <p class="notice">Hay un intento activo hasta {{ state.leaseExpiresAt ? time(state.leaseExpiresAt) : 'que termine su vigencia' }}. No se confirmó una nueva importación. Vuelve a consultar su estado.</p> }
+      @if (state.activity === 'in_progress') { <p class="notice">Hay un intento activo hasta {{ state.leaseExpiresAt ? time(state.leaseExpiresAt) : 'que termine su vigencia' }}. No se confirmó una nueva importación. Observamos solo el estado guardado, sin iniciar otro intento.</p> }
+      @if (observationEnded()) { <p class="field-hint">Terminó la observación automática de esta vista. Usa Consultar estado para leer el resultado actual; no se repetirán importaciones.</p> }
       @if (state.activity === 'interrupted') { <p class="notice warning">El intento no confirmó su término antes de vencer. Los datos anteriores se conservan; puedes iniciar otro intento si el acceso lo permite.</p> }
       @if (state.lifecycle !== 'active' || state.disconnectedAt) {
         <p class="notice warning">{{ state.disconnectedAt ? 'Conexión desconectada. La sincronización está deshabilitada y el historial guardado se conserva.' : state.lifecycle === 'expired' ? 'El acceso venció. Usa Revincular con el mismo banco y titular.' : 'El acceso fue revocado. Usa Revincular para recuperar esta conexión.' }}</p>

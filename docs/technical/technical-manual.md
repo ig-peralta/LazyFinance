@@ -42,7 +42,8 @@ using a database owner when setup fails.
 | --- | --- |
 | Owner CLI/init/seed | `POSTGRES_MIGRATION_URL`; `PERSISTENCE_DATABASE_USER` / `PERSISTENCE_DATABASE_PASSWORD` only for provisioning |
 | Persistence | `POSTGRES_RUNTIME_URL`, `PERSISTENCE_RPC_PUBLIC_KEY`, matching key ID; `HOST` / `PORT` default to `127.0.0.1` / `3001` |
-| API | `PERSISTENCE_RPC_URL`, `PERSISTENCE_RPC_PRIVATE_KEY`, matching key ID; auth/CORS settings; `PORT` default `3000` |
+| API | `PERSISTENCE_RPC_URL`, `PERSISTENCE_RPC_PRIVATE_KEY`, matching key ID; auth/CORS settings; `PORT` default `3000`; optional banking timer |
+| Headless banking host | Same signed private-RPC and matching-mode Fintoc configuration; `BANKING_AUTOMATIC_SYNC_ENABLED`; no HTTP listener or database URL |
 | UI static host | Nginx on `4000`; no Node rendering environment, database or service-signing credentials |
 | Browser build | `apps/ui/src/environments/environment*.ts`: public API URL and public Firebase Web identifiers, never Admin/signing keys |
 
@@ -53,11 +54,19 @@ connection metadata or logs. Apply migration 025 before enabling the lifecycle
 RPC; keep the encryption key separately backed up. The API's explicit
 `banking.importInitial` and `banking.refresh` commands import available snapshots;
 `banking.syncStatus` reports durable attempt recovery and bank-source age. Apply
-migration 026 before running this backend; it does not reset data or start jobs.
-Forced/scheduled bank refresh remains separate work. **Mi cuenta → Conexiones bancarias**
+migrations 026 and 030 before running the current banking backend; they do not
+reset data. Migration 030 adds selection/scheduling/admission/backoff records and
+run-version/claim fields, leaving existing connections unconfirmed/unenrolled.
+Bank-forced refresh remains out of scope. **Mi cuenta → Conexiones bancarias**
 (`/conexiones-bancarias`) supports authorization, access checks, relink and disconnect
 without implicitly importing financial data. Its **Datos y sincronización** panel
-offers explicit initial import, repeat snapshot refresh and readonly status checks.
+offers explicit account discovery/selection, initial import, repeat snapshot import
+and readonly status checks. Discovery discards balances and raw account numbers,
+retaining only bounded supported-product choices and last-four number suffixes.
+Confirm a nonempty owned versioned selection before importing; unselected/new
+accounts never import. Empty selection pauses local ingestion, not provider access
+or billing. Deselecting preserves financial history and aliases; `account.active`
+is independent. Account state reports tracked/paused/disconnected last-known facts.
 Movement requests start at that connection's first-link Santiago day, not the
 preceding 90 days. Relink preserves the date; a new connection after terminal
 disconnect starts a new period. Earlier same-day movements may appear because the
@@ -67,6 +76,78 @@ An uncertain response requires checking status before another attempt; closing t
 panel does not undo server work. `/cuentas` retains stored balances and links to
 those settings. See the [Fintoc linking guide](../../apps/api/src/banking/linking/README.md)
 and [first-import mapping/limits](../../apps/api/src/banking/fintoc/README.md).
+
+### Optional automatic available-data imports
+
+`BANKING_AUTOMATIC_SYNC_ENABLED=false` is the API/root Compose default. Enable only
+after reviewing the organization's Movements entitlement, actual source-update
+cadence, institution limits and acceptable Link/volume cost. This switch enables
+local reads of data already available at Fintoc; it neither forces bank refresh
+nor changes upstream collection/billing. Matching-mode Fintoc configuration and
+explicit per-connection selection/enrollment remain required.
+
+The API composes the timer. For a headless host, build dependencies/API and run
+the same scheduling module with the intended process environment:
+
+```sh
+pnpm exec turbo build --filter=api...
+pnpm --filter api worker:banking
+```
+
+Supply `PERSISTENCE_RPC_URL`, private signing key/matching key ID, the three stable
+Fintoc settings and `BANKING_AUTOMATIC_SYNC_ENABLED=true`; never owner/runtime DB
+credentials. It opens no HTTP listener or pool and does not initialize `AppModule`,
+Firebase, MCP or assistant. The common environment schema still validates configured
+values. Root Compose passes the switch to the API; it does not create a separately
+reviewed worker service. App-local dotenv and root Compose environments remain
+independent. Do not edit or rotate live keys merely to try the worker.
+
+Prefer one intended hosting topology operationally, but duplicate API/headless
+replicas are safe through durable database claims, not process-local exclusion.
+Each host wakes immediately, then 60 seconds after a bounded invocation settles;
+each invocation claims at most one due connection. One background run is reserved
+globally, with due ordering and `FOR UPDATE SKIP LOCKED`. Claim and ingestion lease
+are five minutes and must match on completion. Daily-quota deferral releases its
+claim and advances due time; other early deferrals/abandoned claims remain bounded
+by expiry. Missed intervals coalesce, not replay as a backlog. Success schedules
+one hour plus 0–5 minutes jitter independently of bank-source age.
+
+Operational limits are code-owned defaults, not adjustable environment quotas:
+two starts/second and two in-flight Fintoc requests globally, 1,000 sync/discovery
+reads per mode per rolling hour, and 30 acquired starts per connection per rolling
+24 hours across manual/automatic work. Lifecycle calls share rate/concurrency but
+not the read quota. Request permits last 25 seconds; admission consumes the
+20-second request/60-second fetch deadlines. Provider per-mode `Retry-After` and
+connection discovery/read waits are durable across restarts. Discovery failure
+uses provider retry time or five minutes when absent. Read/attempt quota exhaustion
+does not call Fintoc; selection/relink/restart do not reset attempt history.
+
+Retryable run failures schedule 5/15/60/360-minute backoff plus up to one minute
+jitter, never earlier than a provider wait. Five consecutive failures pause
+automation; invalid data, unavailable selected accounts and expired/revoked access
+also pause it. Investigate configuration/entitlement/data or restore owned access,
+then use a successful explicit recovery to clear failure state. A selection toggle
+is not a way to clear investigation pauses. Lost responses require stored-status
+reconciliation, never mutation replay. Disable the switch on all intended hosts
+and restart/redeploy those processes to stop new automatic claims/begins; drain
+or shut down bounded existing runs. Environment values are loaded per process,
+not hot-reloaded when a dotenv file changes.
+Disablement does not undo committed data, erase enrollment or stop Fintoc billing.
+
+Keep access, selection/enrollment, worker activity, last successful import and
+source balance time separate when diagnosing “not updating.” Freshness is unknown
+without a known value/reliable source date, stale at 24 hours, and is not made
+fresh by another successful import. Current regression runs, manual/browser
+acceptance, live entitlement/cost/billing and real source freshness are not
+verified by this documentation change.
+
+`BankingSyncModule` is reusable without the timer/public routers; manual and worker
+entry points share the same ingestion, preparation and atomic persistence path.
+Future service extraction must move that cohesive implementation/tests and replace
+composition/transport rather than duplicate logic or import another app's source.
+Before a distinct deployment, review separate signing authority, credential
+distribution and private networking. Current purpose-restricted claims/transport
+contexts do not remove the API signer's trusted user-assertion authority.
 
 App-local dotenv files are independent of root Compose `.env`. See
 [`apps/api/.env.example`](../../apps/api/.env.example),
@@ -87,13 +168,23 @@ and the deliberately refused destructive migration rollback are covered in the
 [MCP operations guide](mcp-authorization.md#configuration-and-operations).
 
 First-party chat defaults to `ASSISTANT_PROVIDER=disabled`. After explicitly
-choosing the target database and applying migrations through 029, configure only the API
+choosing the target database and applying all migrations, configure only the API
 with a supported provider and explicit model/key, or a trusted compatible endpoint.
 `demo` is labelled offline development mode and is rejected in production.
 No banking/OAuth keys are reused or exposed to the UI. Proxies must permit
 incremental NDJSON at `POST /assistant/turns`; provider cost/retention controls and
 live-model quality need separate validation. See the
 [assistant setup, limits and evaluation guide](financial-assistant.md).
+
+Live voice separately defaults to `ASSISTANT_VOICE_ENABLED=false`. Direct API and
+Compose examples pass that switch plus an explicit `ASSISTANT_VOICE_MODEL` and
+dedicated server-only `ASSISTANT_VOICE_API_KEY`. Enable only on a **single API
+replica**, with a separately authorized provider project/spend limit and browser
+microphone/live evaluation. Admission and unresolved hangup recovery are in memory;
+restart/crash resets them. A five-minute local session timer is not a guaranteed
+remote lifetime or currency-denominated budget. Keep text available when voice
+fails and investigate unconfirmed shutdown warnings through the provider project.
+See the [voice transport, privacy and operational limits](assistant-live-voice.md).
 
 Migration 029 adds financial proposals/receipts; migration 027 directly defines
 the final MCP scope constraint for this clean development baseline. Apply all

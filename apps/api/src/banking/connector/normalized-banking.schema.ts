@@ -260,7 +260,13 @@ export const ConnectorPageSchema = z
 export const ConnectorFailureSchema = z
   .object({
     kind: z.literal("failure"),
-    reason: z.enum(["retryable", "expired", "revoked", "invalid_data"]),
+    reason: z.enum([
+      "retryable",
+      "expired",
+      "revoked",
+      "invalid_data",
+      "account_unavailable",
+    ]),
     observedAt: InstantSchema,
     retryAfter: InstantSchema.nullable(),
   })

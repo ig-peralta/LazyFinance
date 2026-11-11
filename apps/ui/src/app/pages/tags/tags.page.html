@@ -1,11 +1,12 @@
 <header class="page-header">
-  <div><p class="eyebrow">CADA COSA EN SU LUGAR</p><h1>Etiquetas<span class="accent-text">.</span></h1><p class="page-description">Dale contexto a tus movimientos. Una etiqueta por compra, una manera más clara de mirar tus hábitos.</p></div>
+  <div><p class="eyebrow">MI DINERO</p><h1>Etiquetas<span class="accent-text">.</span></h1><p class="page-description">Organiza tu catálogo. Asigna una etiqueta desde cada movimiento.</p></div>
   <button class="button primary" type="button" [disabled]="command.pending()" (click)="fresh()"><app-icon name="plus" /> Nueva etiqueta</button>
 </header>
 @if (command.error()) { <p class="notice danger" role="alert">{{ command.error() }}</p> }
+@if (needsCheck()) { <p class="notice warning">No repitas el archivo sin comprobar su resultado. <button type="button" [disabled]="command.pending()" (click)="checkCatalog()">Comprobar catálogo</button></p> }
 @if (message() || command.success()) { <p class="notice" role="status">{{ message() || command.success() }}</p> }
 @if (archiving(); as tag) {
-  <div class="notice warning" role="alert"><strong>¿Archivar «{{ tag.name }}»?</strong><p>No podrá seleccionarse de nuevo. Sus movimientos, presupuestos y metas conservarán el historial; el nombre seguirá reservado.</p><div class="button-row" style="margin-top:12px"><button class="button small danger" type="button" [disabled]="command.pending()" (click)="archive()">Sí, archivar etiqueta</button><button class="button small" type="button" [disabled]="command.pending()" (click)="archiving.set(null)">Cancelar</button></div></div>
+  <div class="notice warning" role="alert"><strong>¿Archivar «{{ tag.name }}»?</strong><p>No podrá seleccionarse de nuevo. Sus movimientos, presupuestos y metas conservarán el historial; el nombre seguirá reservado.</p><div class="button-row" style="margin-top:12px"><button class="button small danger" type="button" [disabled]="command.pending() || needsCheck()" (click)="archive()">Sí, archivar etiqueta</button><button class="button small" type="button" [disabled]="command.pending()" (click)="archiving.set(null)">Cancelar</button></div></div>
 }
 <div class="stack">
   <section class="panel">
@@ -19,7 +20,7 @@
         @for (tag of items(); track tag.id) {
           <li class="record-row">
             <div class="record-identity"><span class="record-icon"><app-icon name="tag" /></span><div><h3 class="record-title">{{ tag.name }}</h3><p class="record-meta"><span class="tag-swatch" [style.backgroundColor]="tag.color || '#b5c1aa'" aria-hidden="true"></span>{{ tag.color ? 'Color personalizado' : 'Color predeterminado' }}</p></div></div>
-            <div class="button-row"><button class="button small" type="button" [attr.aria-label]="'Editar ' + tag.name" [disabled]="command.pending()" (click)="edit(tag)">Editar</button><button class="icon-button" type="button" [attr.aria-label]="'Archivar ' + tag.name" [disabled]="command.pending()" (click)="archiving.set(tag)"><app-icon name="close" /></button></div>
+            <div class="button-row"><button class="button small" type="button" [attr.aria-label]="'Editar ' + tag.name" [disabled]="command.pending()" (click)="edit(tag)">Editar</button><button class="button small" type="button" [attr.aria-label]="'Archivar ' + tag.name" [disabled]="command.pending()" (click)="archiving.set(tag)">Archivar</button></div>
           </li>
         }
       </ul>

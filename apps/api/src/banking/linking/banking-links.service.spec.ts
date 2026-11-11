@@ -2,6 +2,7 @@ import type { ProviderLinkSecret } from "@lazyfinance/contracts/internal";
 import { describe, expect, it, vi } from "vitest";
 import {
   bankingConnection,
+  fintocAdmission,
   fintocEnvironment,
   fintocIntent,
   fintocLink,
@@ -85,7 +86,7 @@ function setup(providerEnvironment = fintocEnvironment()) {
   );
   const service = new BankingLinksService(
     persistence as unknown as PersistenceClient,
-    new FintocClient(providerEnvironment, fetch),
+    new FintocClient(providerEnvironment, fetch, fintocAdmission()),
     vault,
   );
   return { service, rpc, fetch, vault, persistence, secret };

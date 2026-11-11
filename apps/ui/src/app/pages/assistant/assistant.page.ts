@@ -452,6 +452,10 @@ export class AssistantPage {
   }
 
   protected stop() {
+    // Conversation creation is a separate, possibly committed command. Stop its
+    // continuation even before a streamed turn/controller exists.
+    if (this.sending() && !this.live()?.pending)
+      this.revision.update((value) => value + 1);
     this.live()?.controller.abort();
   }
 
@@ -531,6 +535,13 @@ export class AssistantPage {
       )
         return;
     }
+    if (
+      this.revision() !== revision ||
+      !this.configuration.hasValue() ||
+      !this.configuration.value().enabled ||
+      (!this.configuration.value().demonstration && !this.processingAccepted())
+    )
+      return;
     const execution: LiveTurn = {
       scope,
       conversationId: id,

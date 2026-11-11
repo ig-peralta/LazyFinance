@@ -147,6 +147,7 @@ export class McpAuthorizationService implements OnModuleInit {
       client,
       scopes: requested,
       resource,
+      redirectUri,
     } = await this.interaction(id, req, res);
     if (
       approvedWrites.some(
@@ -202,6 +203,7 @@ export class McpAuthorizationService implements OnModuleInit {
       id: grantId,
       key: oauthStateHash(grantId),
       interactionId: id,
+      redirectUri,
       clientId: client.clientId,
       clientName: (
         client.clientName || "Aplicación sin nombre verificado"

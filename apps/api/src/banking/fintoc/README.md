@@ -1,14 +1,17 @@
 # Fintoc snapshot import and refresh (LAZ-51/LAZ-48)
 
 `banking.importInitial({ id: connectionId })` is an authenticated, explicit API
-command. It imports reported account snapshots and movements **from the connection's
+command requiring confirmed nonempty account selection. It imports only selected
+account snapshots and movements **from the connection's
 first-link day in Santiago through today**. It does not backfill earlier days or
 force a bank refresh. Reported balances do not depend on importing past transactions.
 Authorization completion and `checkConnection` never import implicitly.
 `banking.refresh` replays the same bounded snapshot with durable recovery/status
 reporting. The web connection settings expose these commands explicitly (LAZ-62),
 separately from authorization/access checks and the stored-balance page.
-No payment or money-moving endpoint is used.
+Optional automatic execution invokes this same path, off by default via
+`BANKING_AUTOMATIC_SYNC_ENABLED=false`. It imports already available data roughly
+hourly, not bank-forced refreshes. No payment or money-moving endpoint is used.
 
 ## Directory ownership
 
@@ -16,11 +19,36 @@ No payment or money-moving endpoint is used.
 | --- | --- |
 | `client/` | HTTP transport, pagination and raw Fintoc response schemas |
 | `credentials/` | Owner-bound Link Token encryption/decryption |
+| `discovery/` | Explicit bounded account choices; discard balances/raw numbers before persistence |
 | `import/` | Owned snapshot import/reimport orchestration and first-link tracking policy |
 | `snapshot/` | Operation-owned connector and neutral account/movement mapping |
 
 Unit tests stay beside their implementation. Shared provider fixtures and
 public/private RPC integration suites remain under `apps/api/tests/`.
+
+## Explicit discovery and selected accounts
+
+After authorization, call `banking.discoverAccounts({ id })` explicitly. It checks
+owned active access/mode, reads Link plus account inventory within 60 seconds and
+persists at most 1,000 choices: stable ID, product label, currency, last-four number
+suffix and unsupported/removed reason. Provider balances are parsed transiently
+but discarded. No financial account or movement is imported by discovery. Reads
+of `banking.accountSelection` and synchronization status never contact Fintoc.
+
+`banking.selectAccounts` atomically confirms account IDs and automatic enrollment
+against selection/discovery/credential versions. It does not itself fetch finance;
+the manual first-import command or eligible scheduler invokes the shared engine.
+Unselected and new accounts are never imported or queried for movements. A missing,
+removed or unsupported selected account fails the intended snapshot as
+`account_unavailable`, preserving all last-good data rather than committing a subset.
+Legacy connections start unconfirmed; no previous imported row implies consent.
+
+Deselecting or selecting nothing preserves history, aliases and user decisions;
+`account.active` is not changed. Stored account reads distinguish tracked/paused/
+disconnected facts. Same-identity relink retains intent and the original tracking
+day while invalidating obsolete credentials/runs; selecting again catches up the
+first-link-to-today window, including the deselected interval. Disconnect remains
+separate and terminal. Selection does not deactivate Fintoc collection or billing.
 
 ## Tracking starts at first link
 
@@ -60,13 +88,15 @@ policy does not claim a successful maximum-size or multi-year load benchmark.
 `FintocImportService` reads the owned private credential projection, verifies the
 configured mode and active/local connection, then decrypts server-side. It creates
 one `FintocSnapshotConnector` per operation and passes the captured credential
-version to `BankingIngestionService`. Private `providerSync.begin` checks that
-version under the user write lock **before** attempt metadata or provider I/O.
+and selection versions to `BankingIngestionService`. Private `providerSync.begin`
+checks both versions, nonempty consent and any background claim under the user
+write lock **before** attempt metadata or provider I/O. Commit rechecks versions,
+claim/lease/revision and rejects unselected facts, removals and suspensions.
 Relink in the secret-read/begin gap returns `superseded`; later lifecycle changes
 invalidate the sync revision. Foreign IDs never reach Fintoc.
 
 The adapter verifies Link identity/mode/holder and access, paginates accounts, then
-each supported account's movements. Every normalized page makes at most one
+only selected supported accounts' movements. Every normalized page makes at most one
 upstream request. Requests use the fixed `https://api.fintoc.com` origin,
 `Fintoc-Version: 2026-02-01`, `per_page=300`, integer `page` and
 `confirmed_only=false`. Returned pagination URLs are inspected but **never
@@ -86,6 +116,16 @@ redirects/cache and no automatic retries. An inventory is limited to 1,000 accou
 inventory pages count toward the 100-page limit. Oversized/incomplete runs never
 split a financial commit. No incremental checkpoint is invented (`null`).
 Fintoc requests receive the shared 60-second whole-fetch cancellation signal too.
+
+All transport entry points share database-backed admission: two starts per rolling
+second, two in-flight requests, and 1,000 sync/discovery reads per mode per rolling
+hour. Lifecycle calls share rate/concurrency but not the read-volume quota. A
+25-second permit bounds reserved capacity on response/release loss; admission waits
+consume the 20-second request deadline. No permit means no provider request.
+Valid future `Retry-After` is persisted per provider mode, without shortening it;
+owned discovery failure also stores a connection read wait (provider time, or five
+minutes when absent). Begin and discovery honor durable read waits across restarts.
+There is no in-memory-only limiter or alternate manual path around these controls.
 
 ## Financial mappings
 
@@ -142,7 +182,9 @@ balances, movements, success time and checkpoint. Known stale preparation may be
 recomputed; ambiguous provider/persistence mutations are never automatically
 replayed. API-key failures/outages are not evidence of user revocation.
 
-This is not a webhook consumer, scheduler or incremental-cursor implementation.
+This connector is not a webhook consumer or incremental-cursor implementation.
+The separate scheduler invokes the same import service; it does not add mapping
+or financial-write logic here.
 It does not request Fintoc refresh intents, prove complete bank history, automatically
 pair transfers, establish card debt or reactivate permanent tombstones. Only explicit
 reversed records cause removals; absent records and webhook-only deletion events
@@ -173,8 +215,9 @@ check cannot reactivate a connection based on a stale result.
 If a process or private response is lost, the bounded lease eventually becomes
 `interrupted`. A new explicit attempt can claim a new revision; late results or
 failures from the old run cannot overwrite it. Status reads are readonly and never
-resume work. No background worker, automatic mutation replay or scheduled retry is
-created; callers reconcile uncertain results through status before retrying.
+resume work. The optional worker can start a new eligible run after expiry/backoff,
+but never replays an unconfirmed begin/commit/failure mutation. Callers reconcile
+uncertain results through stored status before another explicit attempt.
 
 An explicitly pending/processing movement that was previously booked retains its
 amount/date, tags, user internal/external choice, receipt and expense allocations.
@@ -201,8 +244,47 @@ that server configuration or the provider is available.
 The [web connection settings](../../../../ui/README.md) consume these statuses
 rather than treating access checks, successful network calls or an old balance as
 proof of fresh financial data. A single selected panel reads status without
-provider I/O. Import/refresh requires an explicit action; uncertain responses
-require a new readonly status check before another attempt.
+provider I/O. Manual import/refresh requires an explicit action; enrolled background
+work is separate. Uncertain manual responses require a new readonly status check
+before another attempt.
+
+## Automatic host and operations (LAZ-90)
+
+Apply additive migration `202611100030-provider-automation` before using discovery,
+selection or scheduling; it preserves existing accounts/history and leaves legacy
+selection unconfirmed and automation unenrolled. It adds operational selection,
+schedule, admission and per-mode backoff records plus run-version/claim fields.
+It refuses destructive downgrade. Never reset user data to enable this feature.
+
+`BankingSyncModule` has no timer/public-router dependency; `BankingSchedulingModule`
+owns the runner and timer. The API composes that module; after building, the same
+headless host is `pnpm --filter api worker:banking`. Set matching Fintoc keys,
+encryption key, signed private-RPC URL/key and `BANKING_AUTOMATIC_SYNC_ENABLED=true`
+in its process environment. It opens no HTTP listener or database pool and imports
+no `AppModule`, Firebase, MCP or assistant. This is a portability boundary, not a
+separately hardened deployment: review distinct signing authority and credential/
+network distribution before future extraction. Do not copy broad API signing
+authority into an independently trusted worker without that review.
+
+The timer invokes one bounded claim immediately and then waits 60 seconds after
+settlement. Multiple API/headless replicas share durable claims; one background
+run is reserved globally, with due-time ordering and row-lock `SKIP LOCKED`.
+Daily budget exhaustion moves the due time and releases the claim so other work
+can proceed. Other abandoned claims expire within five minutes; a claim must
+match the live ingestion revision/lease before committing or completing schedule.
+Manual and background work share a 30-start rolling-24-hour connection budget;
+coalesced/readonly calls do not consume starts. Relink/selection/restart do not
+reset this budget. Success schedules one hour plus 0–5 minutes jitter. Retryable
+failure waits 5/15/60/360 minutes plus 0–1 minute jitter, respecting later provider
+waits; five consecutive failures pause automation. Invalid data, account
+unavailability and access failures pause it without blind retries. Explicit
+successful recovery clears failure state; pause is not erased by checkbox toggles.
+
+Operational disablement retains consent/history and stops new automatic claims/
+begins. Drain or shut down bounded existing work; disablement is not rollback,
+provider deactivation or a stop-billing action. No new live entitlement, plan/cost,
+billing, bank freshness or manual/browser acceptance verification is claimed.
+See the [policy and acceptance gates](../../../../../docs/planning/stage-c/banking-sync-policy.md).
 
 ## Verification and references
 

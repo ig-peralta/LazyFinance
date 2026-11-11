@@ -1,4 +1,4 @@
-import { NgTemplateOutlet } from "@angular/common";
+import { DOCUMENT, NgTemplateOutlet } from "@angular/common";
 import {
   Component,
   computed,
@@ -24,15 +24,27 @@ import { AssistantWorkspace } from "../../features/assistant/assistant-workspace
 import { OnboardingData } from "../../features/onboarding/onboarding.data";
 import { AssistantPage } from "../../pages/assistant/assistant.page";
 import { Icon } from "../../shared/ui/icon";
+import { bindAssistantShortcut } from "./assistant-shortcut";
+import { WorkspaceAppearance } from "./workspace-appearance";
 import { workspaceLocation, workspaceNavigation } from "./workspace-navigation";
+import { WorkspacePreferences } from "./workspace-preferences";
 
 @Component({
   selector: "app-shell",
-  imports: [RouterLink, RouterOutlet, NgTemplateOutlet, Icon, AssistantPage],
+  imports: [
+    RouterLink,
+    RouterOutlet,
+    NgTemplateOutlet,
+    Icon,
+    WorkspaceAppearance,
+    AssistantPage,
+  ],
   templateUrl: "./app-shell.html",
 })
 export class AppShell {
+  protected readonly preferences = inject(WorkspacePreferences);
   protected readonly assistantWorkspace = inject(AssistantWorkspace);
+  private readonly document = inject(DOCUMENT);
   protected readonly session = inject(SessionService);
   private readonly router = inject(Router);
   private readonly credentials = inject(AuthCredentials);
@@ -71,6 +83,14 @@ export class AppShell {
   protected readonly logoutError = signal<string | null>(null);
 
   constructor() {
+    effect((onCleanup) => {
+      if (!this.credentials.current()) return;
+      onCleanup(
+        bindAssistantShortcut(this.document, () =>
+          this.assistantWorkspace.open(),
+        ),
+      );
+    });
     effect(() => {
       this.url();
       this.assistantWorkspace.opened();

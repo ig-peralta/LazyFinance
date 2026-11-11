@@ -4,7 +4,7 @@
     <h1>Conexiones bancarias<span class="accent-text">.</span></h1>
     <p class="page-description">Conecta tus bancos y administra sus permisos de acceso. Esta configuración siempre está disponible en Mi cuenta, aunque hayas saltado la guía inicial.</p>
   </div>
-  <a class="button" routerLink="/cuentas"><app-icon name="wallet" /> Ver cuentas y saldos</a>
+  <div class="button-row">@if (fromOnboarding()) { <a class="button" routerLink="/comenzar">Volver a primeros pasos</a> }<a class="button" routerLink="/cuentas"><app-icon name="wallet" /> Ver cuentas y saldos</a></div>
 </header>
 
 <section class="panel" aria-labelledby="banking-title">
@@ -115,7 +115,7 @@
             }
           </div>
           @if (selectedSync() === bank.id) {
-            <bank-sync-panel [connection]="bank" [enabled]="compatible(bank)" [locked]="command.pending() || !!activeFlow() || !!confirming()"
+            <bank-sync-panel [connection]="bank" [enabled]="compatible(bank)" [automaticEnabled]="!!configuration()?.automaticSyncEnabled" [locked]="command.pending() || !!activeFlow() || !!confirming()"
               (stateRead)="data.adoptStatus($event)" (pendingChange)="syncPending(bank, $event)" (closed)="closeSync(bank)" />
           }
           @if (confirming()?.id === bank.id) {

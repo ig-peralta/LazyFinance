@@ -222,12 +222,37 @@ describe.skipIf(!integration)(
           alias: "Keep this alias",
           balance: "25.00",
         });
+        const discovery = await f.persistence
+          .user(f.userId)
+          .providerSelection.discover.mutate({
+            connectionId: connected.id,
+            expectedCredentialVersion: 0,
+            accounts: [
+              {
+                externalId: "acc_owned",
+                name: "Cuenta corriente",
+                currency: "CLP",
+                numberSuffix: null,
+                unavailableReason: null,
+              },
+            ],
+          });
+        const selected = await f.persistence
+          .user(f.userId)
+          .providerSelection.select.mutate({
+            id: connected.id,
+            expectedVersion: discovery.version,
+            discoveryVersion: discovery.discoveryVersion,
+            accountIds: ["acc_owned"],
+            automaticEnrolled: false,
+          });
         const sync = await f.persistence
           .user(f.userId)
           .providerSync.begin.mutate({
             connectionId: connected.id,
             provider: "fintoc",
             expectedCredentialVersion: 0,
+            expectedSelectionVersion: selected.version,
           });
         f.state.link.status = "login_required";
         expect(

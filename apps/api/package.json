@@ -8,6 +8,7 @@
   "scripts": {
     "build": "nest build",
     "dev": "nest start --watch",
+    "worker:banking": "node dist/banking-worker.js",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

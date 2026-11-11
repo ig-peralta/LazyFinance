@@ -175,7 +175,11 @@ Requested financial write scopes start unchecked and remain bound to the accepte
 owner/interaction. Only selected capabilities are submitted; connected-app settings
 show actual grants. MCP writes do not use the first-party chat approval cards.
 Connected-app settings use page-owned RPC resources and a scoped revoke command
-with confirmation and keyboard focus return. Neither page stores external access/
+with confirmation and keyboard focus return. A failed revoke keeps writes locked
+until a successful explicit later grant read; a failed reconciliation cannot
+unlock another attempt. Local-only decorative client artwork has a two-second
+fallback deadline and never gates page readiness. Exact client IDs/callbacks and
+unverified identity remain readable even without an image. Neither page stores external access/
 refresh tokens or serializes protected data into hydration. Server-side persisted
 single-use decisions and grant ownership remain authoritative; see
 [MCP authorization](mcp-authorization.md).
@@ -329,6 +333,17 @@ forwards cancellation. Unopened panels issue no status calls, and settings entry
 does not fan out requests for every connection/account. The returned owned account
 IDs provide movement links, while values remain in the separate stored-balance page.
 
+The panel's scoped `BankAccountSelector` reads stored selection separately and
+performs discovery only after an explicit action. A versioned account-ID set and
+automatic-enrollment intent are confirmed together; only a confirmed save can
+continue into the existing first-import/refresh command. A pause or current
+waiting period does not invent an import result. Missing/unsupported selected
+accounts remain removable and history is retained. The shared route carries only
+a fixed onboarding return context, never an alternative financial flow.
+Selection commands suppress duplicates and latch uncertain responses to a
+post-response read version; a prior in-flight read cannot unlock another write.
+Scope, connection and component changes cancel obsolete reads/commands.
+
 The panel offers explicit `importInitial` before a confirmed success and `refresh`
 afterward. Both use the immutable local first-link day through today; the client
 cannot supply an earlier date. Before authorization and in the selected panel,
@@ -351,6 +366,17 @@ An uncertain write response latches reconciliation to the read version at failur
 another command requires an explicit successful later status read. A read completed
 while that mutation was still pending cannot unlock the next attempt. The backend
 continues to enforce lease/backoff/version checks against concurrent clients.
+An open panel observes at most twelve readonly statuses: five-second intervals
+for active work, thirty-second intervals for enabled/enrolled unpaused automation.
+There is no provider read or mutation in that observation. Resource failure or
+teardown stops its timer; owner/connection changes create a new bounded lifetime.
+The explicit status button remains usable after observation ends.
+
+Account aliases use a separate scoped drawer command. Input/owner changes clear
+the local draft and pending outcome; only confirmed save emits success. An
+uncertain response disables another write and asks the parent to close/reload
+stored accounts. This changes neither bank identity nor provider facts and adds
+no browser financial cache.
 
 Closing destroys the panel's read/command lifetime and explains that the server may
 still be processing. Reopening starts with a fresh readonly status, not a replay.
@@ -439,6 +465,20 @@ changes as well as link clicks. Tag pickers drop their drafts/overlay on scope o
 movement changes, cancel deferred positioning and return action focus to the
 trigger. Do not copy PrimeNG exit-snapshot workarounds into these native lifetimes.
 
+Workspace presentation preferences are an explicit exception to the no-private-data
+storage rule: one allowlisted localStorage object holds only system/light/dark,
+standard/large/largest text and the compact-navigation boolean. Invalid values are
+discarded and blocked storage keeps an in-memory preference with feedback. Never
+extend that object with identities, financial records, conversations or drafts.
+
+Catalog editors retain rejected drafts. An ambiguous tag write blocks another
+attempt until an explicit catalog read; movement corrections require closing and
+reloading detail. Dashboard tag decisions expose an explicit detail reconciliation
+read, publish the observed selection to page-local state and invalidate dependent
+summaries without replaying a mutation. A created catalog tag and a failed movement
+assignment are not claimed as one atomic UI operation. Provider classification,
+manual no-tag and reset-to-unreviewed remain separate decisions.
+
 ## Tests and extension rules
 
 UI tests inject `RPC_FETCH` and exercise real vanilla clients/resources with
@@ -468,6 +508,7 @@ scope in protected query params, forward abort signals, avoid protected hydratio
 IDs, invalidate only actual dependencies, and test out-of-order completions. Do
 not restore the removed catch-all API service, RxJS compatibility facade or fake
 HTTP errors. Delivered management workflows are indexed in the UI README;
-voice features and bank-forced/scheduled refresh remain unavailable,
-not missing client aliases or simulated success paths. Real-provider browser
+bank-forced refresh remains unavailable. Live voice is implemented but disabled
+by default, with explicit microphone/processing controls and separate live gates,
+not a simulated success path. Real-provider browser
 verification is separate evidence from mocked UI resource/command tests.

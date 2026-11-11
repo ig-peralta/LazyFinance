@@ -117,6 +117,13 @@ snapshot; continuation remains a separate live read.
    exact. Do not coerce amounts to JavaScript numbers or globally change pg parsers.
 6. Continue using `RLS_DB` and ordinary ownership policies on every joined table.
    Requested IDs are selection criteria, not authorization or an owner override.
+   Complex transaction aggregates also join the account and explicitly filter its
+   owner with `(select identity.current_user_id())`. This trusted-scope predicate
+   helps the planner estimate the owned subset before expanding recovery/RLS
+   subplans; it neither accepts a caller-selected owner nor replaces table RLS.
+   An accumulated multi-owner fixture exposed excessive JIT compilation without
+   that estimate. Do not fix such OLTP plans by raising workflow deadlines or
+   globally disabling database security/planning features.
 7. Bound input windows, parents, children, aggregate groups and serialized bytes.
    Where a query uses a row cap, fetch one past the contract maximum and reject
    overflow instead of returning an incomplete financial result. A bounded sum

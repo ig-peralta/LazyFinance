@@ -169,6 +169,40 @@ describe("first-party chat page lifetimes and confirmed history", () => {
     vi.restoreAllMocks();
   });
 
+  it("does not disclose a question after acknowledgement is withdrawn during deferred text conversation creation, even if reaccepted", async () => {
+    const created = deferred<AssistantConversation>();
+    const f = setup(
+      {
+        "assistant.configuration": () => ({
+          ...configuration,
+          provider: "openai",
+          model: "synthetic",
+          demonstration: false,
+        }),
+        "assistant.createConversation": () => created.promise,
+      },
+      null,
+    );
+    await render(f.fixture);
+    const consent = f.root.querySelector<HTMLInputElement>(
+      ".processing-consent input",
+    );
+    if (!consent) throw new Error("Missing processing acknowledgement");
+    consent.click();
+    compose(f, "Una pregunta que no debe enviarse");
+    button(f.root, "Enviar pregunta").click();
+    await vi.waitFor(() =>
+      expect(f.callsTo("assistant.createConversation")).toHaveLength(1),
+    );
+    consent.click();
+    consent.click();
+    created.resolve(chat);
+    await render(f.fixture);
+    expect(f.stream).not.toHaveBeenCalled();
+    expect(f.microphone).not.toHaveBeenCalled();
+    expect(f.callsTo("assistant.createConversation")).toHaveLength(1);
+  });
+
   it.each([
     "cancel",
     "acknowledgement",

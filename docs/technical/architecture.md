@@ -41,8 +41,9 @@ code cannot import private schemas, signing code, Nest or database implementatio
 | PostgreSQL | Exact stored facts, constraints/keys, related-owner RLS and transaction atomicity | Firebase verification, product authorization for external MCP clients |
 
 Public/private tRPC are separate surfaces, not two routes to the same router.
-The public generated library contains 78 procedures; the private library contains
-94, including bootstrap-only `identity.resolve` and purpose-restricted OAuth state.
+The generated inventories include bootstrap-only `identity.resolve`,
+purpose-restricted OAuth state and separate banking claim/transport admission
+procedures. The [RPC reference](rpc-contracts.md) owns current procedure counts.
 `/mcp` exposes fourteen financial/supporting reads and two action tools (preview
 and direct execution) through domain services, not direct persistence queries.
 Ordinary HTTP covers API `GET /`, persistence `GET /health`, MCP transport and
@@ -169,9 +170,13 @@ of current financial data. The API's explicit [first snapshot import](../../apps
 and repeatable snapshot refresh map available Fintoc facts through shared atomic
 ingestion. Durable leases/backoff, interrupted-run recovery and readonly source
 freshness reporting are consumed by one selected web synchronization panel.
-Initial import and later snapshot refresh are explicit commands, separate from
-readonly status and authorization. Neither successful access nor a fetch forces
-the bank to update.
+Authorization imports nothing. Explicit account discovery retains only bounded
+selection metadata and discards balances; versioned selection/enrollment is
+separate from financial account storage. New/unselected accounts never import.
+Initial import and later manual refresh use the same selected-account path as
+optional background execution, separate from readonly status and authorization.
+Neither successful access nor a fetch forces the bank to update. Deselecting
+preserves last-good facts, aliases and history; `account.active` is independent.
 The local connection's immutable first-link date anchors forward movement tracking;
 reported balances are not reconstructed from pre-link transactions. Dates are
 Santiago accounting days, with the same-day precision limitation disclosed in the
@@ -192,6 +197,47 @@ never run inside SQL transactions.
 Generation is bounded, cancellable and lease/nonce protected. It defaults disabled;
 live model quality remains a separate verification gate. External
 client compatibility evidence is recorded in the [OAuth matrix](mcp-authorization.md#compatibility-and-verification-matrix), not inferred from documentation alone.
+
+## Isolated banking synchronization and scheduling
+
+`BankingSyncModule` composes provider discovery/import and the existing ingestion
+module, without public controllers, auth, timers or listeners. `FintocModule`
+owns credentials and one shared durable transport-admission boundary.
+`BankingLinksModule` adapts verified manual commands; `BankingSchedulingModule`
+separately provides the bounded runner and timer. Both invoke the same
+`FintocImportService` → connector → `BankingIngestionService` → signed private
+begin/facts/commit path, with the same financial preparation and tagging policy.
+There is no background-specific ingestion algorithm or worker database pool.
+
+The API hosts the timer; after building, `pnpm --filter api worker:banking` hosts
+that module headlessly without `AppModule`, HTTP, Firebase, MCP or assistant.
+`BANKING_AUTOMATIC_SYNC_ENABLED` defaults false; valid matching-mode provider
+configuration and explicit account enrollment are also required. Success schedules
+an available-data import one hour plus 0–5 minutes jitter later. The timer wakes
+immediately and then 60 seconds after settlement. Durable claims allow multiple
+replicas/hosts with one globally reserved background run; row-lock `SKIP LOCKED`
+and due-time ordering avoid waiting on a user-held schedule row. Attempt-quota
+deferral releases the claim and advances due time. Leases bound abandoned work.
+
+The `banking-scheduler` signed purpose can only claim operational due records;
+`banking-transport` only admits/releases requests and persists per-mode backoff.
+Neither can read financial/credential/identity data or edit enrollment. The runner
+uses the claimed server owner in ordinary signed user-scoped synchronization;
+begin/commit/failure match live credential/selection versions, claim and run lease.
+Global request admission, per-mode read quotas, rolling daily connection starts,
+retry/backoff and automatic failure pauses are durable across restarts/replicas.
+Provider work stays outside SQL transactions. See the [policy](../planning/stage-c/banking-sync-policy.md)
+for exact limits and acceptance gates.
+
+Portability is an implementation requirement, not a claim of independently safe
+deployment: future extraction must move the cohesive engine/tests and replace
+composition/transport, without importing another app's source or duplicating
+normalization/financial logic. Review a separate signing authority, credential
+distribution and private networking first; the present trusted API signer can
+assert users. Enrollment, access, worker activity, last successful import and
+source freshness remain distinct. Live entitlement/cost/billing, real bank
+freshness, manual/browser acceptance and the current regression run are not
+verified by this architectural description.
 
 ## Operations
 

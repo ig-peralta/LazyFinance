@@ -48,14 +48,15 @@ export class OnboardingPage {
     {
       title: "Conoce tus cuentas",
       description:
-        "Conecta tu banco desde Mi cuenta → Conexiones bancarias. La importación de saldos y movimientos todavía está pendiente.",
+        "Autoriza tu banco, elige las cuentas que quieres seguir y confirma su primera importación. Mi cuenta → Conexiones bancarias conserva el mismo recorrido para después.",
       path: "/conexiones-bancarias",
+      queryParams: { from: "onboarding" },
       icon: "bank" as const,
       action: "Conectar banco",
       loading: this.accounts.isLoading(),
       error: !!this.accounts.error(),
       done: this.accounts.hasValue() && this.accounts.value().length > 0,
-      blocked: true,
+      blocked: false,
     },
     {
       title: "Dale forma a tus ingresos",

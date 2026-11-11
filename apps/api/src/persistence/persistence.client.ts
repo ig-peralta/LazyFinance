@@ -54,6 +54,20 @@ export class PersistenceClient implements OnModuleInit {
     });
   }
 
+  bankingScheduler() {
+    return this.client({
+      kind: "banking-scheduler",
+      requestId: currentRequestId() ?? randomUUID(),
+    });
+  }
+
+  bankingTransport() {
+    return this.client({
+      kind: "banking-transport",
+      requestId: currentRequestId() ?? randomUUID(),
+    });
+  }
+
   private bootstrap(
     identity: VerifiedExternalIdentity,
     mode: "existing" | "provision",
