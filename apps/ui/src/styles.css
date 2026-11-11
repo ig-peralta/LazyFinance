@@ -855,7 +855,7 @@ body {
 .sidebar-toggle {
   position: absolute;
   top: 24px;
-  left: calc(100% - 10px);
+  left: 100%;
   z-index: 1;
   display: flex;
   align-items: center;
@@ -2407,7 +2407,7 @@ body:has(.editor-drawer[open]) {
     padding: 24px;
   }
   .workspace-topbar {
-    padding: 12px 24px;
+    padding: 12px 24px 12px 32px;
   }
   .dashboard-analysis {
     grid-template-columns: 1fr;
