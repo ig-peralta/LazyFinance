@@ -40,6 +40,7 @@ delivery forecast. Linear owns their live values.
 | Document | Responsibility |
 | --- | --- |
 | [Scope and planning record](planning.md) | All 18 feedback items, required/optional selection, dependencies, decisions and exclusions |
+| [Selected-account synchronization policy](banking-sync-policy.md) | LAZ-89 design: provider constraints, selection/consent, isolated portable execution, background authority and recovery; runtime implementation remains pending |
 | [Validation plan](validation-plan.md) | Observable journeys, appropriate evidence and unresolved live checks |
 | [Stage Definition of Done](definition-of-done.md) | Required completion and gate checks, all still open |
 | [Dated issue snapshot](../snapshots/backlog-2026-11-10-stage-c-planning.md) | Complete project inventory after selection; not a live board |

@@ -9,6 +9,13 @@ See the [database model](../../../../docs/technical/database-model.md),
 [private RPC/RLS](../../../../docs/technical/persistence-security.md) and
 [RPC inventories](../../../../docs/technical/rpc-contracts.md).
 
+**Planned Stage C behavior:** the
+[LAZ-89 synchronization policy](../../../../docs/planning/stage-c/banking-sync-policy.md)
+defines explicit selected-account enrollment, scheduled available-snapshot
+imports and isolated trigger/engine/provider/persistence boundaries for future
+service extraction. Selection and automation remain pending LAZ-86/LAZ-90;
+the implementation below still uses explicit imports without account selection.
+
 `connector/banking-connector.ts` is the backend-only shape implemented by provider adapters. The validated data shapes live alongside it in `connector/normalized-banking.schema.ts`; they are not HTTP or cross-application contracts. An ingestion service verifies the user and connection before calling `fetchPage`, then validates each returned `ConnectorResult` before persistence. The adapter obtains provider credentials server-side. Linking a connection is a separate provider capability and need not share a provider-specific callback shape with synchronization.
 
 ## Financial meanings

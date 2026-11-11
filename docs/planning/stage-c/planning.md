@@ -95,7 +95,9 @@ unfinished candidate as required or as shipped.
   selection. LAZ-90 reuses that selection for background work. LAZ-88 unifies
   selection/first sync and enrollment; LAZ-97 reuses that flow in onboarding.
   LAZ-87 presents automatic status/recovery. Alias management can proceed
-  independently against the existing owned account boundary.
+  independently against the existing owned account boundary. The
+  [LAZ-89 policy](banking-sync-policy.md) records the selected design and its
+  isolated, portable synchronization boundary; implementation is not claimed.
 - **Assistant:** LAZ-93 is the persistent host for LAZ-79's shortcut and LAZ-91's
   scroll lifecycle. LAZ-94 depends on that host, LAZ-95's voice contract and
   LAZ-96's processing-disclosure/presentation change. References and visual work
@@ -111,12 +113,13 @@ Use coherent reviews and explicitly recorded live-validation sessions, as the
 [Stage B retrospective](../stage-b/retrospective.md#improvements-for-stage-c)
 recommends.
 
-## Product and technical decisions to settle
+## Product and technical decisions
 
 | Decision | Required boundary now | Decision owner issue |
 | --- | --- | --- |
-| Automatic updates | Choose provider-supported cadence/events, cost/rate bounds and an operational disable path. Automation works without an open browser; a new fetch is not necessarily a new bank balance | LAZ-89, LAZ-90 |
-| Background authority | Use narrow server-owned eligibility and authenticated internal commands; no owner runtime credentials, arbitrary client-selected user or general RLS bypass | LAZ-89, LAZ-90 |
+| Automatic updates | [Selected policy](banking-sync-policy.md): hourly available-snapshot imports with jitter, bounded durable recovery/budgets and operational disable; no scheduled Refresh Intents. Live plan/cost remains to be confirmed | LAZ-89, LAZ-90 |
+| Synchronization isolation | Separate trigger, sync application boundary, provider adapter and scoped persistence. Keep a headless composition path and explicit contracts so future service extraction does not duplicate ingestion | LAZ-89, LAZ-90 |
+| Background authority | Restricted operational scheduling claims yield server-owned work; financial execution keeps ordinary user RLS and version checks. No owner runtime credentials, arbitrary client-selected user or general financial RLS bypass | LAZ-89, LAZ-90 |
 | Account enrollment | Authorization alone does not select every account. Confirm selection before first import/automatic enrollment; new accounts stay unselected | LAZ-86, LAZ-88 |
 | Selection changes | Version the selection and recheck it with credentials/lifecycle at commit. Stop future ingestion on deselection; retain labelled history, aliases and decisions | LAZ-89, LAZ-86 |
 | Simpler setup | Confirm the chosen accounts and updates in one guided flow; preserve optional skip/resume, cancellation and honest progress | LAZ-88, LAZ-97 |
@@ -159,8 +162,13 @@ performed to write this plan.
 
 ## Review and change record
 
-This is the initial scope baseline, not closure. At review record additions,
-promotions, deferrals and their reasons; the exact build and checks; unresolved
-risks; the actual gate outcome; and retrospective provenance. Do not invent a
-meeting, acceptance result or owner. Apply the separate
+This scope record is not closure. On 2026-11-10 the LAZ-89 implementation review
+selected the [banking synchronization design](banking-sync-policy.md), including
+the explicit requirement for isolated boundaries and future service extraction.
+That decision is not delivered automation, plan verification or a live test.
+The original dated backlog snapshots remain unchanged.
+
+At review, record additions, promotions, deferrals and their reasons; the exact
+build and checks; unresolved risks; the actual gate outcome; and retrospective
+provenance. Do not invent a meeting, acceptance result or owner. Apply the separate
 [product DoD](../product-definition-of-done.md) before any release decision.
