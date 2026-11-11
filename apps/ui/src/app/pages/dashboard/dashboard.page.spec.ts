@@ -94,7 +94,7 @@ describe("DashboardPage data ownership", () => {
     ).toEqual(["$123.456,78", "$1.500.000,01", "$1.700.000,02"]);
     expect(cards[1].textContent).toContain("No es tu saldo");
     expect(
-      cards[1].querySelector('a[href="/ingresos"]')?.textContent,
+      cards[1].querySelector('a[href^="/ingresos?"]')?.textContent,
     ).toContain("Revisar ingresos recibidos");
     expect(cards[2].textContent).toContain("no es dinero disponible");
     expect(cards[2].textContent).toContain("$200.000 en estimaciones");
@@ -103,7 +103,17 @@ describe("DashboardPage data ownership", () => {
       [...root.querySelectorAll(".dashboard-shortcuts a")].map((a) =>
         a.getAttribute("href"),
       ),
-    ).toEqual(["/movimientos", "/ingresos", "/presupuestos-y-metas", "/metas"]);
+    ).toEqual([
+      "/movimientos",
+      expect.stringMatching(/^\/ingresos\?month=/),
+      expect.stringMatching(/^\/presupuestos-y-metas\?month=/),
+      "/metas",
+    ]);
+    expect(
+      [...(root.querySelector(".dashboard-sections")?.children ?? [])]
+        .slice(0, 2)
+        .map((element) => element.tagName),
+    ).toEqual(["DASHBOARD-ACCOUNT", "DASHBOARD-ACTIVITY"]);
     expect(root.querySelector(".dashboard-analysis")?.children[0].tagName).toBe(
       "DASHBOARD-SUMMARY",
     );

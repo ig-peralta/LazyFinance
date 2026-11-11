@@ -25,7 +25,11 @@
   <div class="workspace-body" [attr.inert]="assistantWorkspace.opened() && assistantWorkspace.modal() ? '' : null">
     <header class="workspace-topbar">
       <div class="topbar-location"><button type="button" class="icon-button menu-toggle" aria-controls="mobile-menu" [attr.aria-expanded]="menuOpen()" (click)="toggleMenu()"><app-icon name="menu" /><span class="sr-only">{{ menuOpen() ? 'Cerrar menú' : 'Abrir menú' }}</span></button><span>{{ location().area.label }} <span class="breadcrumb-divider">/</span> <strong>{{ location().destination.label }}</strong></span></div>
-      <div class="topbar-right"><workspace-appearance /><button class="icon-button desktop-navigation-toggle" type="button" [attr.aria-pressed]="preferences.value().compact" aria-label="Navegación compacta" title="Navegación compacta" (click)="preferences.update({ compact: !preferences.value().compact })"><app-icon name="menu" /></button><span class="currency-label"><span></span> CLP · Chile</span></div>
+      <div class="topbar-right">
+        <workspace-appearance />
+        <button #assistantLauncher id="workspace-assistant-launcher" type="button" class="button soft assistant-access" aria-label="Abrir asistente · ?" aria-keyshortcuts="?" aria-haspopup="dialog" aria-controls="financial-assistant-panel" [attr.aria-expanded]="assistantWorkspace.opened()" (click)="assistantWorkspace.open()"><app-icon name="spark" /><span>Asistente</span><kbd aria-hidden="true">?</kbd></button>
+        <button class="icon-button desktop-navigation-toggle" type="button" [attr.aria-pressed]="preferences.value().compact" aria-label="Navegación compacta" title="Navegación compacta" (click)="preferences.update({ compact: !preferences.value().compact })"><app-icon name="panel" /></button>
+      </div>
     </header>
     @if (destinations().length > 1) {
       <nav class="workspace-subnav" [attr.aria-label]="'Secciones de ' + location().area.label">
@@ -42,12 +46,10 @@
     <footer class="workspace-footer"><span>Hecho para mirar tus finanzas con calma.</span><span>LazyFinance <span aria-hidden="true">✳</span></span></footer>
   </div>
   @defer (when assistantWorkspace.opened()) {
-    <assistant-page />
-  } @placeholder {
-    <button type="button" class="button fixed bottom-4 right-4 z-30" aria-keyshortcuts="?" (click)="assistantWorkspace.open()">Abrir asistente · ?</button>
+    <assistant-page #assistantHost [returnFocus]="assistantLauncher" />
   } @loading {
-    <div class="notice fixed bottom-4 right-4 z-30"><p role="status">Preparando el asistente…</p><button type="button" class="button small" (click)="assistantWorkspace.minimize()">Cancelar apertura</button></div>
+    @if (assistantWorkspace.opened()) { <div class="notice assistant-load-status"><p role="status">Preparando el asistente…</p><button #assistantPendingCancel type="button" class="button small" (click)="assistantWorkspace.minimize()">Cancelar apertura</button></div> }
   } @error {
-    <div class="notice fixed bottom-4 right-4 z-30"><p role="alert">No pudimos abrir el asistente. <a href="/asistente">Recargar para volver a intentar</a></p><button type="button" class="button small" (click)="assistantWorkspace.minimize()">Cerrar aviso</button></div>
+    @if (assistantWorkspace.opened()) { <div class="notice assistant-load-status"><p role="alert">No pudimos abrir el asistente. <a class="text-link" href="/asistente">Recargar para volver a intentar</a></p><button #assistantPendingCancel type="button" class="button small" (click)="assistantWorkspace.minimize()">Cerrar aviso</button></div> }
   }
 </div>

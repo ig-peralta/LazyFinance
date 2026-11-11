@@ -279,6 +279,10 @@ describe("first-party chat page lifetimes and confirmed history", () => {
     opener.textContent = "Synthetic opener";
     container.append(opener);
     document.body.append(container);
+    const launcher = document.createElement("button");
+    launcher.textContent = "Abrir asistente · ?";
+    document.body.append(launcher);
+    f.fixture.componentRef.setInput("returnFocus", launcher);
     try {
       await render(f.fixture);
       f.workspace.minimize();
@@ -292,13 +296,11 @@ describe("first-party chat page lifetimes and confirmed history", () => {
       else if (container instanceof HTMLDialogElement) container.open = false;
       f.workspace.minimize();
       await render(f.fixture);
-      const launcher = f.root.querySelector<HTMLButtonElement>(
-        ".assistant-launcher",
-      );
-      expect(launcher?.hidden).toBe(false);
+      expect(launcher.hidden).toBe(false);
       expect(document.activeElement).toBe(launcher);
       expect(f.stream).not.toHaveBeenCalled();
     } finally {
+      launcher.remove();
       container.remove();
       f.root.remove();
     }

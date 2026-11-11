@@ -70,8 +70,8 @@ export class AssistantWorkspace {
       opener.focus();
       if (opener.ownerDocument.activeElement === opener) return;
     }
-    // The first deferred launcher is replaced when its host mounts. The host
-    // supplies its now-visible persistent launcher after hidden-state rendering.
+    // Route/deferred entry may remove the original invoker. The shell supplies
+    // its persistent header control after hidden/inert-state rendering.
     fallback?.focus();
   }
 

@@ -55,12 +55,12 @@ describe("single shell-owned assistant across real route navigation", () => {
     fixture.detectChanges();
     await fixture.whenStable();
     const workspace = TestBed.inject(AssistantWorkspace);
-    const placeholder = root.querySelector<HTMLButtonElement>(
+    const launcher = root.querySelector<HTMLButtonElement>(
       'button[aria-keyshortcuts="?"]',
     );
-    if (!placeholder) throw new Error("Missing deferred assistant launcher");
-    placeholder.focus();
-    placeholder.click();
+    if (!launcher) throw new Error("Missing shell assistant control");
+    launcher.focus();
+    launcher.click();
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -81,10 +81,11 @@ describe("single shell-owned assistant across real route navigation", () => {
     workspace.minimize();
     fixture.detectChanges();
     await fixture.whenStable();
-    const launcher = root.querySelector<HTMLButtonElement>(
-      ".assistant-launcher",
+    expect(launcher.isConnected).toBe(true);
+    expect(root.querySelectorAll('[aria-keyshortcuts="?"]')).toHaveLength(1);
+    expect(root.querySelector(".workspace-topbar")?.contains(launcher)).toBe(
+      true,
     );
-    expect(placeholder.isConnected).toBe(false);
     expect(document.activeElement).toBe(launcher);
     launcher?.focus();
     launcher?.click();

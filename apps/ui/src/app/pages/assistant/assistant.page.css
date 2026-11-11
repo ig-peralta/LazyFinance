@@ -1,15 +1,8 @@
 :host {
   display: contents;
 }
-.assistant[hidden],
-.assistant-launcher[hidden] {
+.assistant[hidden] {
   display: none;
-}
-.assistant-launcher {
-  position: fixed;
-  right: max(16px, env(safe-area-inset-right));
-  bottom: max(16px, env(safe-area-inset-bottom));
-  z-index: 30;
 }
 .assistant {
   position: fixed;
@@ -44,7 +37,7 @@
 .assistant-mark {
   color: var(--accent);
 }
-h1 {
+h2 {
   font-size: 1.1rem;
   margin: 0;
 }
@@ -70,7 +63,7 @@ h1 {
   font-size: 0.8rem;
 }
 .history-label {
-  font-size: 0.7rem;
+  font-size: var(--text-caption);
   color: var(--muted);
 }
 .history-label span {
@@ -106,7 +99,7 @@ h1 {
 }
 .chat-history nav small {
   display: block;
-  font-size: 0.65rem;
+  font-size: var(--text-caption);
   color: var(--muted);
 }
 .history-privacy {
@@ -119,6 +112,8 @@ h1 {
   flex-direction: column;
   background: var(--canvas);
   position: relative;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .chat-toolbar {
   display: flex;
@@ -127,12 +122,13 @@ h1 {
   gap: 8px;
   padding: 10px 16px;
   border-bottom: 1px solid var(--line);
-  font-size: 0.8rem;
+  font-size: var(--text-control);
+  flex-shrink: 0;
 }
 .chat-toolbar-sub {
   display: block;
   color: var(--muted);
-  font-size: 0.7rem;
+  font-size: var(--text-caption);
 }
 .delete-chat {
   font-size: 0.75rem;
@@ -190,7 +186,7 @@ h1 {
 .composer-controls > span {
   display: flex;
   gap: 6px;
-  font-size: 0.65rem;
+  font-size: var(--text-caption);
   color: var(--muted);
 }
 .send-button {
@@ -206,19 +202,22 @@ h1 {
   transform: rotate(-90deg);
 }
 .composer-help {
-  font-size: 0.65rem;
+  font-size: var(--text-caption);
   color: var(--muted);
   margin: 6px 0 0;
 }
 .processing-disclosure,
 .processing-consent,
 .voice-controls {
-  font-size: 0.75rem;
+  font-size: var(--text-small);
   padding: 6px 16px;
   line-height: 1.5;
 }
 .processing-disclosure {
   background: var(--raised);
+  flex-shrink: 0;
+  max-height: 28dvh;
+  overflow-y: auto;
 }
 .processing-consent,
 .voice-processing-consent {
@@ -231,6 +230,7 @@ h1 {
 }
 .voice-controls {
   border-top: 1px solid var(--line);
+  flex-shrink: 0;
 }
 .voice-controls p {
   margin: 4px 0;
@@ -239,7 +239,7 @@ h1 {
   margin-right: 6px;
 }
 .voice-start {
-  max-height: 45dvh;
+  max-height: 38dvh;
   overflow-y: auto;
 }
 .stream-error,
@@ -251,7 +251,7 @@ h1 {
 .demo-notice {
   color: var(--muted);
   padding: 4px 16px;
-  font-size: 0.7rem;
+  font-size: var(--text-caption);
 }
 .jump-bottom {
   align-self: end;
@@ -288,8 +288,8 @@ h1 {
   .assistant-mark {
     display: none;
   }
-  .assistant-heading h1 {
-    font-size: 0.9rem;
+  .assistant-heading h2 {
+    font-size: 1rem;
   }
   .chat-layout {
     grid-template-columns: minmax(0, 1fr);

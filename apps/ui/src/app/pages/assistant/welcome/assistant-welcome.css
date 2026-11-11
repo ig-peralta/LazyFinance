@@ -2,62 +2,45 @@
   display: block;
 }
 .chat-welcome {
-  max-width: 680px;
-  margin: 25px auto 32px;
-}
-.welcome-spark {
-  color: var(--accent);
-  width: 44px;
-  height: 44px;
-  border-radius: 15px;
-  background: var(--accent-soft);
-  border: 1px solid var(--accent-line);
-  display: grid;
-  place-items: center;
-  margin-bottom: 26px;
-}
-.welcome-spark app-icon {
-  width: 26px;
-  height: 26px;
+  max-width: 600px;
+  margin: 12px auto 20px;
 }
 .welcome-kicker {
-  font-size: 9px;
-  letter-spacing: 2px;
-  color: var(--muted);
+  font-size: var(--text-control);
+  color: var(--accent);
 }
 .chat-welcome h2 {
-  font-size: clamp(29px, 3.5vw, 44px);
-  line-height: 1.18;
-  letter-spacing: -1.6px;
-  font-weight: 500;
+  font-size: clamp(1.4rem, 2.5vw, 1.8rem);
+  line-height: 1.25;
+  letter-spacing: -0.035em;
+  font-weight: 600;
   color: var(--ink);
-  margin: 16px 0;
-}
-.chat-welcome h2 > span {
-  color: var(--accent);
+  margin: 8px 0 12px;
 }
 .chat-welcome > p {
   color: var(--muted);
-  font-size: 13px;
-  line-height: 1.9;
+  font-size: var(--text-control);
+  line-height: 1.6;
   max-width: 490px;
 }
 .suggestion-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-top: 30px;
+  gap: 10px;
+  margin-top: 20px;
 }
 .suggestion {
   position: relative;
   display: grid;
-  grid-template-columns: 24px minmax(0, 1fr);
-  gap: 9px 12px;
+  grid-template-columns: 20px minmax(0, 1fr) 14px;
+  align-items: center;
+  gap: 10px;
   text-align: left;
-  padding: 19px 18px 19px 16px;
+  padding: 14px;
+  min-height: 52px;
   background: var(--raised);
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 10px;
   color: var(--ink);
   cursor: pointer;
   transition:
@@ -74,21 +57,11 @@
   height: 18px;
 }
 .suggestion strong {
-  font-size: 12px;
+  font-size: var(--text-control);
   font-weight: 500;
   color: var(--ink);
 }
-.suggestion > span {
-  grid-column: 2;
-  font-size: 10px;
-  line-height: 1.7;
-  color: var(--muted);
-  padding-right: 12px;
-}
 .suggestion .suggestion-arrow {
-  position: absolute;
-  right: 12px;
-  bottom: 14px;
   width: 13px;
   height: 13px;
   color: var(--accent);
@@ -97,7 +70,7 @@
   display: flex;
   gap: 8px;
   align-items: center;
-  font-size: 10px;
+  font-size: var(--text-small);
   color: var(--muted);
   margin-top: 20px;
 }
@@ -112,21 +85,9 @@ button:focus-visible {
 button:disabled {
   cursor: not-allowed;
 }
-@media (max-width: 1200px) {
-  .chat-welcome h2 {
-    font-size: 35px;
-  }
-}
 @media (max-width: 540px) {
   .chat-welcome {
     margin: 10px auto 20px;
-  }
-  .chat-welcome h2 {
-    font-size: 30px;
-    letter-spacing: -1px;
-  }
-  .chat-welcome > p {
-    font-size: 12px;
   }
   .suggestion-grid {
     gap: 8px;
@@ -136,23 +97,12 @@ button:disabled {
     gap: 8px;
     padding: 15px 11px;
   }
-  .suggestion strong {
-    font-size: 10px;
-  }
-  .suggestion > span {
-    font-size: 9px;
-    grid-column: 1 / -1;
-  }
   .suggestion > app-icon {
     width: 15px;
     height: 15px;
   }
   .suggestion .suggestion-arrow {
     display: none;
-  }
-  .welcome-kicker {
-    font-size: 8px;
-    letter-spacing: 1.5px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

@@ -9,6 +9,7 @@
   background: var(--raised);
   min-width: 0;
   overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
 }
 .reference-heading {
   display: flex;
@@ -87,8 +88,10 @@
   letter-spacing: -0.5px;
   font-weight: 500;
   line-height: 1.4;
-  overflow-wrap: anywhere;
-  font-variant-numeric: tabular-nums;
+  overflow-wrap: normal;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow-x: auto;
 }
 .reference-metrics > div:first-child dd {
   color: var(--accent);
@@ -149,8 +152,9 @@
   max-width: 100%;
   margin-left: auto;
   line-height: 1.7;
-  overflow-wrap: anywhere;
-  font-variant-numeric: tabular-nums;
+  overflow-wrap: normal;
+  white-space: nowrap;
+  overflow-x: auto;
 }
 .reference-progress {
   margin-top: 10px;
@@ -202,7 +206,7 @@
   text-decoration: none;
   color: var(--accent);
   line-height: 1.8;
-  min-height: 30px;
+  min-height: 44px;
 }
 .reference-open:hover {
   color: var(--ink);

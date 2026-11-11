@@ -1,6 +1,10 @@
 import "@angular/compiler";
 import { Component, signal } from "@angular/core";
-import { TestBed } from "@angular/core/testing";
+import {
+  DeferBlockBehavior,
+  DeferBlockState,
+  TestBed,
+} from "@angular/core/testing";
 import { provideRouter, Router } from "@angular/router";
 import { RouterTestingHarness } from "@angular/router/testing";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -164,7 +168,11 @@ describe("AppShell", () => {
     harness.detectChanges();
     expect(
       root.querySelector('[aria-keyshortcuts="?"]')?.textContent,
-    ).toContain("Abrir asistente · ?");
+    ).toContain("Asistente");
+    expect(root.querySelectorAll('[aria-keyshortcuts="?"]')).toHaveLength(1);
+    expect(
+      root.querySelector(".workspace-topbar #workspace-assistant-launcher"),
+    ).not.toBeNull();
     press();
     expect(open).toHaveBeenCalledTimes(1);
     await harness.navigateByUrl("/cuentas");
@@ -222,6 +230,57 @@ describe("AppShell", () => {
       false,
     );
     expect(TestBed.inject(Router).url).toBe("/presupuestos-y-metas");
+  });
+
+  it.each([
+    [DeferBlockState.Loading, "Cancelar apertura"],
+    [DeferBlockState.Error, "Cerrar aviso"],
+  ] as const)("recovers keyboard focus when deferred assistant state %s is dismissed", async (state, label) => {
+    TestBed.configureTestingModule({
+      deferBlockBehavior: DeferBlockBehavior.Manual,
+    });
+    const { harness, root } = await setup();
+    const workspace = TestBed.inject(AssistantWorkspace);
+    TestBed.inject(AuthCredentials).accept(
+      {
+        userId: "deferred-owner",
+        name: "Synthetic",
+        email: "synthetic@example.test",
+      },
+      "synthetic",
+    );
+    await harness.fixture.whenStable();
+    const [block] = await harness.fixture.getDeferBlocks();
+    document.body.append(root);
+    try {
+      workspace.modal.set(true);
+      const trigger = root.querySelector<HTMLButtonElement>(
+        "#workspace-assistant-launcher",
+      );
+      trigger?.focus();
+      trigger?.click();
+      await block.render(state);
+      harness.detectChanges();
+      await harness.fixture.whenStable();
+      const cancel = [
+        ...root.querySelectorAll<HTMLButtonElement>("button"),
+      ].find((button) => button.textContent?.trim() === label);
+      expect(cancel).toBeDefined();
+      expect(document.activeElement).toBe(cancel);
+      expect(root.querySelector(".workspace-body")?.hasAttribute("inert")).toBe(
+        true,
+      );
+      cancel?.click();
+      harness.detectChanges();
+      await harness.fixture.whenStable();
+      expect(root.querySelector(".assistant-load-status")).toBeNull();
+      expect(root.querySelector(".workspace-body")?.hasAttribute("inert")).toBe(
+        false,
+      );
+      expect(document.activeElement).toBe(trigger);
+    } finally {
+      root.remove();
+    }
   });
 
   it("keeps compact navigation explicit, named and independent of the mobile modal at every text size", async () => {

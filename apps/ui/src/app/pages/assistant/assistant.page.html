@@ -1,14 +1,12 @@
-<button #launcher type="button" class="assistant-launcher button" [hidden]="workspace.opened()" aria-keyshortcuts="?" (click)="workspace.open()">Abrir asistente · ?</button>
-<section #panel tabindex="-1" class="assistant" role="dialog" [attr.aria-modal]="workspace.modal()" aria-labelledby="assistant-title" [hidden]="!workspace.opened()" (keydown)="containFocus($event)" (keydown.escape)="workspace.minimize(); $event.stopPropagation()">
+<section #panel id="financial-assistant-panel" tabindex="-1" class="assistant" role="dialog" [attr.aria-modal]="workspace.modal()" aria-labelledby="assistant-title" [hidden]="!workspace.opened()" (keydown)="containFocus($event)" (keydown.escape)="workspace.minimize(); $event.stopPropagation()">
   <header class="assistant-heading">
     <div class="assistant-brand">
       <span class="assistant-mark"><app-icon name="spark" /></span>
       <div>
-        <p class="eyebrow">TU ASISTENTE FINANCIERO</p>
-        <h1 id="assistant-title">Una conversación. Más claridad<span class="accent-text">.</span></h1>
+        <h2 id="assistant-title">Asistente financiero</h2>
       </div>
     </div>
-    <div class="button-row"><button type="button" class="button small" (click)="workspace.minimize()">Minimizar</button><button type="button" class="button small" (click)="close()">Cerrar panel</button></div>
+    <div class="button-row"><button type="button" class="button small" (click)="workspace.minimize()">Minimizar</button><button type="button" class="icon-button" aria-label="Cerrar panel" title="Cerrar panel y descartar el borrador" (click)="close()"><app-icon name="close" /></button></div>
   </header>
 
   <div class="chat-layout">
@@ -37,10 +35,7 @@
           </button>
         }
       </nav>
-      <div class="history-privacy">
-        <app-icon name="security" />
-        <p>Solo para tu cuenta.<br>Hasta 24 preguntas por conversación y 30 días de historial. Puedes eliminarlo cuando quieras; los cambios aprobados y sus recibos se conservan aparte.</p>
-      </div>
+      <details class="history-privacy"><summary>Sobre tu historial</summary><p>Solo para tu cuenta. Hasta 24 preguntas por conversación y 30 días de historial. Eliminar una conversación no elimina los cambios aprobados ni sus recibos.</p></details>
     </aside>
 
     <div class="chat-surface">
@@ -50,12 +45,12 @@
           <span class="chat-toolbar-sub">Contexto financiero, no suposiciones</span>
         </div>
         @if (id()) {
-          <button type="button" class="text-link delete-chat" [disabled]="busy()"
+          <button type="button" class="text-link delete-chat" [disabled]="busy()" [attr.aria-expanded]="confirmDelete()" aria-controls="assistant-delete-confirm"
             (click)="confirmDelete.set(!confirmDelete())">Eliminar conversación</button>
         }
       </div>
       @if (confirmDelete()) {
-        <div class="notice warning delete-confirm" role="alert">
+        <div id="assistant-delete-confirm" class="notice warning delete-confirm" role="alert">
           <p>¿Eliminar esta conversación y sus respuestas guardadas? No se eliminan cuentas ni movimientos.</p>
           <div class="button-row">
             <button type="button" class="button small" [disabled]="busy()" (click)="confirmDelete.set(false)">Cancelar</button>

@@ -104,7 +104,7 @@
   border-radius: 9px;
   font-size: 0.8125rem;
   cursor: pointer;
-  min-height: 38px;
+  min-height: 44px;
 }
 .action-card button.primary {
   background: var(--accent-soft);

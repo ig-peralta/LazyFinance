@@ -1,5 +1,6 @@
 import { DOCUMENT, NgTemplateOutlet } from "@angular/common";
 import {
+  afterRenderEffect,
   Component,
   computed,
   DestroyRef,
@@ -68,6 +69,13 @@ export class AppShell {
   private readonly dialog =
     viewChild<ElementRef<HTMLDialogElement>>("menuDialog");
   private readonly content = viewChild<ElementRef<HTMLElement>>("content");
+  // Query presence by name so the assistant class stays out of the eager bundle.
+  private readonly assistantHost = viewChild("assistantHost");
+  private readonly assistantLauncher =
+    viewChild<ElementRef<HTMLButtonElement>>("assistantLauncher");
+  private readonly assistantPendingCancel = viewChild<
+    ElementRef<HTMLButtonElement>
+  >("assistantPendingCancel");
   protected readonly person = computed(
     () => this.credentials.current()?.principal.name ?? "Tu espacio",
   );
@@ -83,6 +91,21 @@ export class AppShell {
   protected readonly logoutError = signal<string | null>(null);
 
   constructor() {
+    let assistantWasOpen = false;
+    afterRenderEffect(() => {
+      const opened = this.assistantWorkspace.opened();
+      // Before deferred code mounts, the shell owns loading/error focus too.
+      if (!this.assistantHost()) {
+        if (opened) this.assistantPendingCancel()?.nativeElement.focus();
+        else if (assistantWasOpen)
+          untracked(() =>
+            this.assistantWorkspace.restoreFocus(
+              this.assistantLauncher()?.nativeElement,
+            ),
+          );
+      }
+      assistantWasOpen = opened;
+    });
     effect((onCleanup) => {
       if (!this.credentials.current()) return;
       onCleanup(

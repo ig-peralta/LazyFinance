@@ -1,15 +1,14 @@
 <div class="chat-welcome">
-  <div class="welcome-spark"><app-icon name="spark" /></div>
-  <span class="welcome-kicker">MENOS RUIDO. MÁS PERSPECTIVA.</span>
-  <h2>Hola{{ name() ? ', ' + name() : '' }}.<br>Hablemos de tus finanzas<span>.</span></h2>
-  <p>Pregunta por tu dinero, entiende tus gastos y dale sentido a tus planes. Yo consulto los datos; tú decides el siguiente paso.</p>
+  <p class="welcome-kicker">Hola{{ name() ? ', ' + name() : '' }}</p>
+  <h2>¿Qué quieres entender hoy?</h2>
+  <p>Consulta tus gastos, ingresos o planes. Elige una idea para preparar tu pregunta, sin enviarla todavía.</p>
   <div class="suggestion-grid">
     @for (suggestion of suggestions; track suggestion.title) {
-      <button type="button" class="suggestion" [disabled]="busy()" (click)="choose.emit(suggestion.question)">
+      <button type="button" class="suggestion" [title]="suggestion.question" [attr.aria-label]="suggestion.title + ': ' + suggestion.question" [disabled]="busy()" (click)="choose.emit(suggestion.question)">
         <app-icon [name]="suggestion.icon" /><strong>{{ suggestion.title }}</strong>
-        <span>{{ suggestion.question }}</span><app-icon class="suggestion-arrow" name="arrow" />
+        <app-icon class="suggestion-arrow" name="arrow" />
       </button>
     }
   </div>
-  <p class="welcome-note"><app-icon name="info" /> No muevo dinero ni cambio tus datos.</p>
+  <p class="welcome-note"><app-icon name="info" /> No muevo dinero. Solo realizo cambios con tu aprobación explícita.</p>
 </div>

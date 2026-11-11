@@ -11,6 +11,9 @@ const paths = {
   bank: "M3 9h18L12 3 3 9z M5 10v8 M10 10v8 M14 10v8 M19 10v8 M3 21h18",
   security: "M12 3l8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3z M8 12l3 3 5-6",
   menu: "M4 6h16 M4 12h16 M4 18h16",
+  panel: "M3 4h18v16H3z M8 4v16 M5 8h.01 M5 12h.01 M5 16h.01",
+  appearance:
+    "M12 3v2 M12 19v2 M3 12h2 M19 12h2 M5.6 5.6 7 7 M17 17l1.4 1.4 M5.6 18.4 7 17 M17 7l1.4-1.4 M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0",
   close: "M6 6l12 12 M6 18 18 6",
   arrow: "M4 12h16 M14 6l6 6-6 6",
   plus: "M12 5v14 M5 12h14",

@@ -6,6 +6,7 @@ import {
   ElementRef,
   effect,
   inject,
+  input,
   resource,
   signal,
   untracked,
@@ -50,6 +51,7 @@ interface LiveTurn {
   providers: [AssistantVoiceClient],
 })
 export class AssistantPage {
+  readonly returnFocus = input<HTMLElement>();
   private voiceStartup: AbortController | undefined;
   protected readonly voice = inject(AssistantVoiceClient);
   protected readonly voiceDisclosure = signal(false);
@@ -63,8 +65,6 @@ export class AssistantPage {
   private readonly sending = signal<{ scope: RpcScope } | null>(null);
   private readonly composer =
     viewChild<ElementRef<HTMLTextAreaElement>>("composer");
-  private readonly launcher =
-    viewChild<ElementRef<HTMLButtonElement>>("launcher");
   private readonly bottom = viewChild<ElementRef<HTMLElement>>("bottom");
   private readonly messages = viewChild<ElementRef<HTMLElement>>("messages");
   private readonly panel = viewChild<ElementRef<HTMLElement>>("panel");
@@ -268,9 +268,7 @@ export class AssistantPage {
           else this.panel()?.nativeElement.focus();
         });
       else if (wasOpen)
-        untracked(() =>
-          this.workspace.restoreFocus(this.launcher()?.nativeElement),
-        );
+        untracked(() => this.workspace.restoreFocus(this.returnFocus()));
       wasOpen = this.workspace.opened();
     });
     afterRenderEffect(() => {
