@@ -70,6 +70,26 @@ describe("bounded local client artwork", () => {
     expect(root.textContent).toContain("No registrado");
   });
 
+  it("keeps compact identity facts available in a closed disclosure", () => {
+    const fixture = TestBed.createComponent(McpClientIdentity);
+    fixture.componentRef.setInput("clientId", id);
+    fixture.componentRef.setInput("name", "OpenCode");
+    fixture.componentRef.setInput("redirectUri", callback);
+    fixture.componentRef.setInput("compact", true);
+    fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement;
+    const details = root.querySelector("details");
+    expect(details?.open).toBe(false);
+    expect(details?.querySelector("summary")?.textContent).toBe(
+      "Detalles de la conexión",
+    );
+    expect(details?.textContent).toContain(id);
+    expect(details?.textContent).toContain(callback);
+    expect(root.querySelector(".summary")?.textContent).toContain(
+      "Identidad no verificada",
+    );
+  });
+
   it("keeps a fixed decorative fallback for slow, failed and missing logos and resets on client replacement", async () => {
     vi.useFakeTimers();
     const fixture = TestBed.createComponent(McpClientIdentity);

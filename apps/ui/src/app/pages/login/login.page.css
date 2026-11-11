@@ -1,0 +1,30 @@
+/* The connection variant inherits the device's workspace tokens, not marketing colors. */
+:host {
+  display: block;
+}
+.mcp-signin {
+  min-height: 0;
+  padding: clamp(20px, 4vw, 32px);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--paper);
+  color: var(--ink);
+}
+.mcp-signin-content {
+  max-width: 28rem;
+  margin-inline: auto;
+}
+.mcp-signin input:not([type="checkbox"]),
+.mcp-signin .verification-panel {
+  border-color: var(--line);
+  background: var(--raised);
+  color: var(--ink);
+}
+.mcp-signin .connection-note {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+.mcp-signin [role="alert"] {
+  color: var(--danger);
+}

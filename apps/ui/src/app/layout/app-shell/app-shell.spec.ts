@@ -82,7 +82,6 @@ describe("AppShell", () => {
               { path: "metas", component: ObjectivesStub },
               { path: "seguridad", component: SecurityStub },
               { path: "aplicaciones-conectadas", component: McpAccessStub },
-              { path: "autorizar-mcp", component: McpAccessStub },
               { path: "conexiones-bancarias", component: BankConnectionsStub },
               { path: "comenzar", component: SecurityStub },
             ],
@@ -369,11 +368,6 @@ describe("AppShell", () => {
       ["/movimientos/example", "Mi dinero", "Movimientos"],
       ["/conexiones-bancarias", "Mi cuenta", "Conexiones bancarias"],
       ["/aplicaciones-conectadas", "Mi cuenta", "Aplicaciones conectadas"],
-      [
-        "/autorizar-mcp?interaction=fixture",
-        "Mi cuenta",
-        "Aplicaciones conectadas",
-      ],
       ["/comenzar", "Mi cuenta", "Retomar configuración"],
     ]) {
       await harness.navigateByUrl(path);

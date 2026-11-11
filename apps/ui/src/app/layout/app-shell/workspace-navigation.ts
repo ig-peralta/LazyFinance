@@ -66,7 +66,6 @@ export const workspaceNavigation: readonly NavigationArea[] = [
       {
         path: "/aplicaciones-conectadas",
         label: "Aplicaciones conectadas",
-        nestedPath: "/autorizar-mcp",
       },
       { path: "/conexiones-bancarias", label: "Conexiones bancarias" },
       { path: "/comenzar", label: "Configuración inicial" },

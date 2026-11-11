@@ -67,7 +67,25 @@ An MCP access token is not a Firebase credential and cannot authorize public
 financial management RPC. Conversely, Firebase/development tokens are not external
 MCP grants.
 
-The first-party `/autorizar-mcp?interaction=…` interaction displays the authenticated account, client identity,
+The first-party `/autorizar-mcp?interaction=…` interaction is one focused connection
+page outside the app's financial workspace. Account sign-in, verification, account
+switching and permission review happen in place on that same URL. Its purpose is
+explicit: sign in to connect an external application, then separately review
+permissions. Signing in never approves a grant. The page reuses the same mock/
+Firebase authentication, password reset and email-verification behavior as ordinary
+login; it is not another account system and never uses the OAuth provider's example
+username/password pages. There is no companion MCP login route or compatibility
+redirect, and no general login/dashboard detour.
+
+Sign-in does not navigate away or follow a supplied `redirect`.
+Replacing the interaction destroys the old form and aborts its pending continuation.
+An already verified user skips login but still must decide. **Usar otra cuenta**
+closes the local account before showing sign-in on the same request; failed provider
+sign-out cannot silently resume consent. No dashboard, onboarding or financial
+resources are requested as part of login/consent. Client metadata is not trusted
+or disclosed as verified before the authenticated cookie-bound preview.
+
+The interaction displays the authenticated account, client identity,
 callback hostname, read capabilities and any requested optional write permissions.
 Write choices are unchecked by default. Client names from registration are
 claims, not an endorsement. Approval and denial are explicit and bound to the
@@ -84,9 +102,13 @@ new requests after confirmed revocation must fail.
 
 ## Connected-app identity and local artwork (LAZ-71, LAZ-80, LAZ-83)
 
-Consent and connected applications share a compact identity block: declared name,
-unverified-identity notice, exact client ID and callback, followed by actual scopes
-and expiry/status. Stored grants retain the callback approved at consent through
+Consent leads with the app, accepted account and readable permissions, with a short
+unverified-identity notice. Exact client ID, callback, raw requested scopes and
+request expiry remain available under a collapsed **Detalles de la conexión**.
+The default card fits short desktop screens; expanded details, narrow screens and
+enlarged text retain natural scrolling rather than clipped controls or smaller text.
+Connected-app settings share the identity block but keep full identity and grant
+facts visible. Stored grants retain the callback approved at consent through
 additive migration 031; earlier grants explicitly say it was not recorded. No
 callback is inferred from a friendly name. Optional writes remain unchecked, tied
 to the accepted account and interaction, and do not expand OAuth authority.
@@ -300,6 +322,17 @@ PKCE, refresh and the HTTPS callback `https://claude.ai/api/mcp/auth_callback`;
 other Claude products/API supplied-token mode must not be conflated with that
 interactive flow. Follow each product's current source linked below. No existing
 client configuration is changed by these instructions.
+
+For a local OpenCode test, keep UI and API on `localhost` and add the resource URL:
+
+```sh
+opencode mcp add lazyfinance --global --url http://localhost:3000/mcp
+opencode mcp list
+```
+
+Then use **`/mcps` → `lazyfinance` → Sign in**. Configuration alone grants no
+financial access; the server remains awaiting authentication until the user
+finishes the browser flow. Existing Linear or other MCP connections are separate.
 
 Example outcomes:
 

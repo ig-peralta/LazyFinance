@@ -3,6 +3,7 @@ import {
   computed,
   DestroyRef,
   inject,
+  output,
   resource,
   signal,
 } from "@angular/core";
@@ -16,12 +17,9 @@ import {
   AuthCredentials,
   type VerifiedCredentials,
 } from "../../core/auth/auth-credentials";
-import {
-  initialReadSettled,
-  reportWorkspaceReadiness,
-} from "../../core/rendering/workspace-preparation";
 import { createScopedCommand } from "../../core/rpc/scoped-command";
 import { McpClientIdentity } from "../../features/mcp-authorization/client-identity";
+import { mcpInteractionId } from "../../features/mcp-authorization/interaction-id";
 import {
   MCP_AUTH_NAVIGATE,
   OAuthInteractionClient,
@@ -31,8 +29,10 @@ import {
   selector: "mcp-consent-page",
   imports: [RouterLink, McpClientIdentity],
   templateUrl: "./mcp-consent.page.html",
+  styleUrl: "./mcp-consent.page.css",
 })
 export class McpConsentPage {
+  readonly switchAccount = output<void>();
   private readonly now = signal(Date.now());
   protected readonly expired = computed(() => {
     const request = this.consent();
@@ -50,7 +50,7 @@ export class McpConsentPage {
   private readonly query = toSignal(inject(ActivatedRoute).queryParamMap);
   protected readonly id = computed(() => {
     const value = this.query()?.get("interaction");
-    return value && /^[A-Za-z0-9_-]{1,256}$/.test(value) ? value : undefined;
+    return mcpInteractionId(value);
   });
   protected readonly command = createScopedCommand(() => this.id());
   private readonly writeSelection = signal<{
@@ -106,10 +106,6 @@ export class McpConsentPage {
       ? value.consent
       : undefined;
   });
-  protected readonly callbackHost = computed(() => {
-    const consent = this.consent();
-    return consent ? new URL(consent.redirectUri).host : "";
-  });
   protected readonly localCallback = computed(() =>
     this.consent()?.redirectUri.startsWith("http:"),
   );
@@ -126,9 +122,6 @@ export class McpConsentPage {
   constructor() {
     const clock = setInterval(() => this.now.set(Date.now()), 1000);
     inject(DestroyRef).onDestroy(() => clearInterval(clock));
-    reportWorkspaceReadiness(
-      () => !this.id() || initialReadSettled(this.preview),
-    );
   }
 
   protected async decide(approve: boolean) {

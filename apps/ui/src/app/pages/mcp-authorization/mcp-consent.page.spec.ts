@@ -106,7 +106,7 @@ describe("owned external-client consent and obsolete interaction results", () =>
     expect(f.root.textContent).toContain("127.0.0.1:43219");
     expect(f.root.textContent).toContain(principal.email);
     expect(f.root.textContent).toContain(
-      "La lectura no permite editar tus datos",
+      "Solo lectura: no permite cambios ni mover dinero",
     );
     expect(f.navigate).not.toHaveBeenCalled();
   });
@@ -170,7 +170,7 @@ describe("owned external-client consent and obsolete interaction results", () =>
     expect(boxes).toHaveLength(2);
     expect(boxes.every((box) => !box.checked)).toBe(true);
     expect(f.root.textContent).toContain(
-      "sin los botones de aprobación del chat",
+      "Sin confirmación adicional en LazyFinance",
     );
     boxes[0].click();
     await render(f.fixture);

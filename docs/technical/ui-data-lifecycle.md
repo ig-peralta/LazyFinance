@@ -169,8 +169,17 @@ rather than being shown as a misleading successful rule operation.
 
 External MCP consent uses the same accepted-credential and component lifetimes,
 but a fixed cookie-bound HTTP interaction rather than generic RPC. Its dedicated
-client includes API cookies only on that path, validates the interaction ID and
-issuer resume destination, and expires only the exact snapshot that received a
+standalone `/autorizar-mcp` route owns one connection page. It reuses `LoginPage`
+in an explicitly labelled, embedded connection context, then displays consent in
+place after verified account authentication settles. The parent keys the form to
+the validated interaction: replacement unmounts the form, clears passwords and
+aborts obsolete sign-in. The embedded form never follows a redirect or opens a
+second login route. Restored accounts skip sign-in, never permission approval.
+Account switching waits for logout and keeps the same URL and interaction. No
+workspace entrance animation, dashboard, onboarding or financial reads run in this
+flow. The interaction's dedicated client includes API cookies only on that path,
+validates the interaction ID and issuer resume destination, and expires only the
+exact snapshot that received a
 401. Approval/denial is explicit and an uncertain result is not resubmitted.
 Requested financial write scopes start unchecked and remain bound to the accepted
 owner/interaction. Only selected capabilities are submitted; connected-app settings

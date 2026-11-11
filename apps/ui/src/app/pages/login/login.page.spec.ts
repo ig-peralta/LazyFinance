@@ -275,6 +275,24 @@ describe("LoginPage", () => {
     });
   });
 
+  it.each([
+    "mock",
+    "firebase",
+  ] as const)("never redirects a restored %s account out of embedded MCP sign-in", async (provider) => {
+    const { fixture, navigate, loginMock, loginWithGoogle } = setup(
+      provider,
+      false,
+      true,
+      "/dashboard",
+    );
+    fixture.componentRef.setInput("mcpMode", true);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(navigate).not.toHaveBeenCalled();
+    expect(loginMock).not.toHaveBeenCalled();
+    expect(loginWithGoogle).not.toHaveBeenCalled();
+  });
+
   it("does not establish a session when mock login is rejected", async () => {
     const { fixture, loginMock, loginWithToken } = setup();
     await fixture.whenStable();

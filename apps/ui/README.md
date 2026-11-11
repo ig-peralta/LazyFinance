@@ -84,16 +84,27 @@ Source editing and irregular-payment planning are separate actions; expected
 payments expand under their source and open their own editor, never a nested
 modal. Filters, month selectors and sign-in forms stay in place.
 
-`/autorizar-mcp?interaction=…` is a private, cookie-bound OAuth consent page, not
-an external-client login form. It displays the accepted account, declared client,
-actual callback hostname, read permission and optional requested write capabilities
-(unchecked by default) before explicit
-approval/denial. `/aplicaciones-conectadas` lists owned grants and requires explicit
+`/autorizar-mcp?interaction=…` is the single cookie-bound OAuth connection page,
+outside the financial workspace shell. It hosts account sign-in, verification,
+account switching and permission review in place, without an intermediate login
+route or workspace detour. Shared account authentication uses explicit connection-
+purpose copy: sign-in is step one, not permission approval. It never follows a
+caller-supplied redirect. Changing the interaction destroys the old login form and
+aborts its continuation. Verified users skip sign-in, not consent; switching
+accounts preserves the request and resets optional permission choices. No dashboard,
+onboarding or financial reads start during this flow. The page displays the accepted
+account, declared client, actual callback hostname, read permission and optional
+requested write capabilities (unchecked by default) before explicit approval/denial.
+`/aplicaciones-conectadas` lists owned grants and requires explicit
 revoke confirmation. Neither page exposes OAuth tokens to the UI or modifies bank
 connections/financial facts. Reads/commands are scope-cancelled, obsolete results
 cannot navigate or expire a newer login, and uncertain decisions are not replayed.
-Both screens retain exact client IDs/callbacks beside declared names, actual
-permissions and expiry/status. A curated bundled PNG is decorative only; arbitrary
+The compact connection card leads with the app, account and readable permissions.
+Technical client IDs, callbacks, raw scopes and request expiry are available in
+collapsed **Detalles de la conexión**. The default desktop card fits short screens;
+expanded details and enlarged/narrow layouts can scroll naturally without clipping
+controls. Connected-app settings keep the complete identity and grant facts visible.
+A curated bundled PNG is decorative only; arbitrary
 OAuth logo URLs are never loaded, and unknown/failed artwork uses a fixed fallback
 without implying verification. Legacy grants disclose an unrecorded callback.
 Failed revocation remains locked until a successful explicit later read, not merely
