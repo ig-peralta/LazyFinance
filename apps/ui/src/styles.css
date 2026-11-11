@@ -876,8 +876,7 @@ body {
   background: var(--paper);
   transition:
     background-color 150ms,
-    color 150ms,
-    box-shadow 150ms;
+    color 150ms;
 }
 .sidebar-toggle app-icon {
   width: 14px;
@@ -894,9 +893,6 @@ body {
 }
 .workspace .sidebar-toggle:focus-visible {
   outline: none;
-}
-.sidebar-toggle:focus-visible .sidebar-toggle-handle {
-  box-shadow: inset 0 0 0 2px var(--accent);
 }
 .workspace-sidebar nav,
 .mobile-drawer nav {
