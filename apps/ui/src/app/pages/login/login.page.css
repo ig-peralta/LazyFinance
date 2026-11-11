@@ -1,7 +1,13 @@
-/* The connection variant inherits the device's workspace tokens, not marketing colors. */
 :host {
   display: block;
 }
+.login-surface input:focus-visible {
+  border-color: var(--p-primary-color);
+  outline: none;
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--p-primary-color) 18%, transparent);
+}
+/* The connection variant inherits device presentation instead of marketing colors. */
 .mcp-signin {
   min-height: 0;
   padding: clamp(20px, 4vw, 32px);
@@ -16,7 +22,7 @@
 }
 .mcp-signin input:not([type="checkbox"]),
 .mcp-signin .verification-panel {
-  border-color: var(--line);
+  border-color: var(--input-border, var(--line));
   background: var(--raised);
   color: var(--ink);
 }

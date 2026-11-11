@@ -49,6 +49,7 @@
 }
 .catalog-search input:focus-visible {
   outline: none;
+  box-shadow: none;
 }
 .catalog-search input::placeholder {
   color: var(--muted);

@@ -15,13 +15,13 @@
 @else {
   <section class="accounts-grid" aria-label="Cuentas y saldos guardados">
     @for (account of accounts.value(); track account.id) {
-      <article class="panel">
+      <article class="panel account-card">
         <div class="panel-heading"><span class="record-icon"><app-icon [name]="account.type === 'credit_card' ? 'wallet' : 'bank'" /></span><span class="badge neutral">{{ account.currency }}</span></div>
-        <h2 class="record-title">{{ account.alias || type(account.type) }}</h2>
-        <p class="record-meta">{{ type(account.type) }}</p>
+        <div><h2 class="record-title">{{ account.alias || type(account.type) }}</h2>
+        <p class="record-meta">{{ type(account.type) }}</p></div>
         @if (account.trackingStatus) { <p class="badge" [class.warning]="account.trackingStatus !== 'tracked'">{{ account.trackingStatus === 'tracked' ? 'Seleccionada para seguimiento' : account.trackingStatus === 'paused' ? 'Seguimiento en pausa' : 'Acceso no disponible' }}</p> }
-        <p class="metric-label">{{ label(account) }}</p><strong class="metric-value money">{{ balance(account) }}</strong>
-        <p class="record-meta">{{ account.lastSyncedAt ? 'Saldo al ' + time(account.lastSyncedAt) + ' · Santiago.' : 'Sin fecha de origen informada.' }}</p>
+        <div><p class="metric-label">{{ label(account) }}</p><strong class="metric-value money">{{ balance(account) }}</strong>
+        <p class="record-meta">{{ account.lastSyncedAt ? 'Saldo al ' + time(account.lastSyncedAt) + ' · Santiago.' : 'Sin fecha de origen informada.' }}</p></div>
         @if (old(account.lastSyncedAt)) { <p class="notice warning">Registro anterior a 24 horas. Esto describe su antigüedad, no el estado actual de la conexión.</p> }
         @if (account.trackingStatus === 'paused' || account.trackingStatus === 'disconnected') { <p class="notice">Conservamos el último saldo y tu historial, pero esta cuenta no está recibiendo importaciones.</p> }
         <div class="row-actions">

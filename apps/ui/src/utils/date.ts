@@ -9,6 +9,16 @@ export function formatDate(date: Date): string {
   return dateFormatter.format(date);
 }
 
+const dateTimeFormatter = new Intl.DateTimeFormat("es-CL", {
+  dateStyle: "medium",
+  timeStyle: "short",
+  timeZone: "America/Santiago",
+});
+
+export function formatDateTime(date: Date): string {
+  return dateTimeFormatter.format(date);
+}
+
 const calendarFormatter = new Intl.DateTimeFormat("en-CA", {
   timeZone: "America/Santiago",
   year: "numeric",

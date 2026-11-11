@@ -15,6 +15,7 @@ import {
   MonthSchema,
 } from "@lazyfinance/contracts";
 import { formatClp } from "../../../../utils/currency";
+import { formatDateTime } from "../../../../utils/date";
 import { RpcClient } from "../../../core/rpc/rpc-client";
 import { createScopedCommand } from "../../../core/rpc/scoped-command";
 
@@ -84,6 +85,7 @@ export class ReceiptEditor {
   protected readonly clearing = signal(false);
   protected sourceId = "";
   protected readonly money = formatClp;
+  protected readonly time = (value: string) => formatDateTime(new Date(value));
 
   constructor() {
     effect(() => {

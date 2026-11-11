@@ -14,8 +14,8 @@
   } @else {
   <div class="chat-layout">
     <aside class="chat-history" aria-label="Conversaciones guardadas">
-      @if (!historyOnly()) { <button type="button" class="button new-chat" [disabled]="busy()" (click)="newConversation()">
-        <app-icon name="plus" /> Nueva conversación
+      @if (!historyOnly()) { <button type="button" class="button new-chat" aria-label="Nueva conversación" title="Nueva conversación" [disabled]="busy()" (click)="newConversation()">
+        <app-icon name="plus" /> <span>Nuevo chat</span>
       </button> }
       <p class="history-label">TU HISTORIAL <span>{{ history().length }}/10</span></p>
       @if (conversations.isLoading()) {
@@ -30,9 +30,9 @@
       <nav aria-label="Elegir conversación">
         @for (chat of history(); track chat.id) {
           <button type="button" [disabled]="busy()" (click)="select(chat.id)"
-            [class.selected]="id() === chat.id" [attr.aria-pressed]="id() === chat.id">
+            [class.selected]="id() === chat.id" [attr.aria-pressed]="id() === chat.id" [title]="chat.title">
             <app-icon name="activity" />
-            <span>{{ chat.title }}
+            <span class="history-entry"><span class="history-title">{{ chat.title }}</span>
               <small>{{ chat.turnCount }} {{ chat.turnCount === 1 ? 'mensaje' : 'mensajes' }} · {{ time(chat.updatedAt) }}</small>
             </span>
           </button>
@@ -151,8 +151,7 @@
           }
         }
         @else if (voiceConfiguration.hasValue()) {
-          <p>La voz está deshabilitada en el servidor. Si acabas de configurarla o reiniciarlo, vuelve a comprobar su disponibilidad.</p>
-          <button type="button" class="text-link" (click)="voiceConfiguration.reload()">Volver a comprobar voz</button>
+          <div class="voice-availability"><p>La voz está deshabilitada en el servidor.</p><button type="button" class="icon-button" aria-label="Volver a comprobar voz" title="Volver a comprobar voz" (click)="voiceConfiguration.reload()"><app-icon name="refresh" /><span class="sr-only">Volver a comprobar voz</span></button></div>
         }
         @if (voice.error()) { <p role="alert">{{ voice.error() }}</p> }
         @if (voiceFallback()) { <p role="status">{{ voiceFallback() }}</p> }
@@ -182,7 +181,7 @@
             }
           </div>
         </div>
-        <p id="composer-help" class="composer-help">Enter para enviar · Shift + Enter para una nueva línea. La IA puede equivocarse: revisa las fuentes.</p>
+        <p id="composer-help" class="composer-help"><span class="composer-shortcuts">Enter para enviar · Shift + Enter para una nueva línea. </span>La IA puede equivocarse: revisa las fuentes.</p>
       </form>
       }
     </div>

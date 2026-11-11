@@ -1,0 +1,14 @@
+.account-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.account-card > :is(.panel-heading, .notice) {
+  margin: 0;
+}
+.account-card > .badge {
+  align-self: flex-start;
+}
+.account-card > .row-actions {
+  margin-top: auto;
+}

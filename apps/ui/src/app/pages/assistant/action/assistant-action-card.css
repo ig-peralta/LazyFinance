@@ -137,7 +137,7 @@
   width: 100%;
   margin-top: 5px;
   padding: 10px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--input-border, var(--line));
   border-radius: 8px;
   background: var(--canvas);
   color: var(--ink);
@@ -164,7 +164,8 @@
   margin: 14px 0;
   padding: 8px 12px;
 }
-.action-card :is(button, a, input, select, textarea):focus-visible {
+.action-card
+  :is(button, a, input[type="checkbox"], input[type="radio"]):focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
 }

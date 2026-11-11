@@ -15,6 +15,7 @@ import { createScopedCommand } from "../../../core/rpc/scoped-command";
 @Component({
   selector: "bank-account-selector",
   templateUrl: "./bank-account-selector.html",
+  styleUrl: "./bank-account-selector.css",
 })
 export class BankAccountSelector {
   readonly connectionId = input.required<string>();

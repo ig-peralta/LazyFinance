@@ -9,7 +9,7 @@ import {
 import { RouterLink } from "@angular/router";
 import type { ObjectiveSummary } from "@lazyfinance/contracts";
 import { formatClp, progressWidth } from "../../../utils/currency";
-import { formatDate } from "../../../utils/date";
+import { formatDate, formatDateTime } from "../../../utils/date";
 import { reportWorkspaceReadiness } from "../../core/rendering/workspace-preparation";
 import { RpcClient } from "../../core/rpc/rpc-client";
 import { Icon } from "../../shared/ui/icon";
@@ -93,6 +93,7 @@ export class SavingsMeasure {
   protected readonly money = formatClp;
   protected readonly width = progressWidth;
   protected readonly date = (value: string) => formatDate(new Date(value));
+  protected readonly time = (value: string) => formatDateTime(new Date(value));
 
   constructor() {
     reportWorkspaceReadiness(this.progress);

@@ -24,6 +24,7 @@ const timestamp = new Intl.DateTimeFormat("es-CL", {
   imports: [RouterLink, Icon, EditorDrawer, AccountAliasEditor],
   providers: [AccountsData],
   templateUrl: "./accounts.page.html",
+  styleUrl: "./accounts.page.css",
 })
 export class AccountsPage {
   protected readonly accounts = inject(AccountsData).accounts;

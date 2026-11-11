@@ -16,5 +16,26 @@ export const Emerald = definePreset(Aura, {
       900: "{emerald.900}",
       950: "{emerald.950}",
     },
+    colorScheme: {
+      light: {
+        primary: {
+          color: "#086b4a",
+          contrastColor: "#ffffff",
+          hoverColor: "#06583e",
+          activeColor: "#04452f",
+        },
+        text: {
+          mutedColor: "{surface.600}",
+        },
+      },
+      dark: {
+        primary: {
+          color: "#34d399",
+          contrastColor: "#052e22",
+          hoverColor: "{emerald.300}",
+          activeColor: "{emerald.200}",
+        },
+      },
+    },
   },
 });

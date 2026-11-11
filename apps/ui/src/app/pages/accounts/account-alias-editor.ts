@@ -19,7 +19,7 @@ import { createScopedCommand } from "../../core/rpc/scoped-command";
   selector: "account-alias-editor",
   imports: [FormsModule],
   template: `
-    <p class="record-meta">Este nombre es solo para ti. No cambia la identidad bancaria, el saldo ni los movimientos y se conserva al sincronizar.</p>
+    <p class="panel-subtitle">Este nombre es solo para ti. No cambia la identidad bancaria, el saldo ni los movimientos y se conserva al sincronizar.</p>
     <form (ngSubmit)="save(false)">
       <label class="field"><span>Nombre personal</span><input name="alias" [(ngModel)]="name" maxlength="80" autocomplete="off" [disabled]="command.pending() || uncertain()" aria-describedby="alias-help" /></label>
       <p id="alias-help" class="field-hint">De 1 a 80 caracteres. Para volver al nombre predeterminado, usa Quitar nombre personal.</p>
