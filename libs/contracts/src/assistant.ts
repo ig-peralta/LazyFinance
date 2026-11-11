@@ -59,7 +59,8 @@ export const AssistantTurnSchema = z.object({
   sources: z.array(AssistantSourceSchema).max(8),
   actions: z.array(FinancialActionSchema).max(4),
   createdAt: z.iso.datetime(),
-  // Native audio is the input. This optional transcription is only a readable record.
+  // Legacy voice records only. Input transcription is disabled; new native turns
+  // retain sources/actions without creating or waiting for a readable transcript.
   voice: z
     .object({
       question: z.string().min(1).max(ASSISTANT_MAX_INPUT),

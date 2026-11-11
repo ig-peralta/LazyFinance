@@ -1,5 +1,9 @@
 import { createHash, randomUUID } from "node:crypto";
-import type { AssistantVoiceEvent } from "@lazyfinance/contracts";
+import {
+  type AssistantVoiceEvent,
+  type AssistantVoiceProblemCode,
+  AssistantVoiceProblemSchema,
+} from "@lazyfinance/contracts";
 import {
   ForbiddenException,
   HttpException,
@@ -14,6 +18,7 @@ import { AssistantService } from "./assistant.service";
 import {
   AssistantVoiceRuntime,
   type RealtimeConversation,
+  VOICE_MAX_OUTPUT_TOKENS,
 } from "./assistant-voice-runtime";
 
 export const VOICE_FETCH = Symbol("VOICE_FETCH");
@@ -82,13 +87,25 @@ export class AssistantVoiceService implements OnModuleDestroy {
       else this.starts.delete(key);
     }
     const recent = this.starts.get(owner) ?? [];
+    if ([...this.sessions.values()].some((value) => value.owner === owner))
+      this.reject("session_active", 409);
     if (
       this.sessions.size >= 4 ||
-      (this.starts.size >= 10_000 && !this.starts.has(owner)) ||
-      [...this.sessions.values()].some((value) => value.owner === owner) ||
-      recent.length >= 3
+      (this.starts.size >= 10_000 && !this.starts.has(owner))
     )
-      throw new HttpException("Voice capacity reached", 429);
+      this.reject("capacity", 429, 30);
+    const maxStarts =
+      this.environment.get("ASSISTANT_VOICE_MAX_STARTS_PER_HOUR") ??
+      (this.environment.get("NODE_ENV") === "production" ? 3 : 12);
+    if (recent.length >= maxStarts)
+      this.reject(
+        "rate_limited",
+        429,
+        Math.min(
+          3600,
+          Math.max(1, Math.ceil((recent[0] + 3_600_000 - now) / 1000)),
+        ),
+      );
     const id = randomUUID();
     const lease: VoiceLease = {
       owner,
@@ -108,10 +125,11 @@ export class AssistantVoiceService implements OnModuleDestroy {
         instructions:
           "Espera la configuración del servidor. No respondas ni ejecutes acciones antes de recibirla.",
         tools: [],
-        max_output_tokens: 320,
+        max_output_tokens: VOICE_MAX_OUTPUT_TOKENS,
         audio: {
           input: {
-            transcription: { model: "gpt-4o-mini-transcribe", language: "es" },
+            // Input transcription is intentionally unwired to avoid a separate
+            // paid speech-to-text call. Native audio drives the conversation.
             turn_detection: {
               type: "semantic_vad",
               eagerness: "low",
@@ -132,6 +150,19 @@ export class AssistantVoiceService implements OnModuleDestroy {
     }
   }
 
+  private reject(
+    code: AssistantVoiceProblemCode,
+    status: number,
+    retryAfterSeconds?: number,
+  ): never {
+    const problem = AssistantVoiceProblemSchema.parse({
+      code,
+      retryAfterSeconds,
+    });
+    this.logger.warn(`Voice admission rejected: ${JSON.stringify(problem)}`);
+    throw new HttpException(problem, status);
+  }
+
   private async initialize(
     owner: string,
     id: string,
@@ -140,6 +171,7 @@ export class AssistantVoiceService implements OnModuleDestroy {
     signal: AbortSignal,
     now: number,
   ) {
+    let phase = "provider_call";
     try {
       // Complete an uncertain initialization even after browser disconnect so that
       // a returned call ID can be hung up, rather than orphaning paid processing.
@@ -180,6 +212,7 @@ export class AssistantVoiceService implements OnModuleDestroy {
         lease.stopRequested
       )
         throw new Error("Invalid or obsolete voice session");
+      phase = "sideband_configuration";
       lease.runtime = await this.runtime.connect(
         owner,
         lease.conversationId,
@@ -189,10 +222,15 @@ export class AssistantVoiceService implements OnModuleDestroy {
         throw new Error("Voice initialization cancelled");
       return { id, sdp, expiresAt: new Date(now + duration).toISOString() };
     } catch {
+      this.logger.warn(`Voice setup failed: phase=${phase}`);
       lease.initializing = false;
       await this.end(owner, id);
-      throw new ServiceUnavailableException(
-        "No pudimos iniciar la voz. Puedes continuar por texto.",
+      throw new HttpException(
+        {
+          code: "setup_failed",
+          message: "No pudimos iniciar la voz. Puedes continuar por texto.",
+        },
+        503,
       );
     }
   }

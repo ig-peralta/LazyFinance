@@ -189,6 +189,15 @@ See the [voice transport, privacy and operational limits](assistant-live-voice.m
 Changing it affects new calls only. The prompt requests neutral Spanish without
 regional slang; pronunciation is guidance, not a guaranteed provider preset.
 Evaluate clarity and naturalness by listening before choosing a deployment voice.
+Separate input speech-to-text is intentionally unwired to avoid its additional
+charge. Native audio still incurs provider cost; output metadata is transiently
+checked for grounding, not saved as speech text. There is no transcription replay
+or automatic retry. Existing stored transcripts are unchanged.
+`ASSISTANT_VOICE_MAX_STARTS_PER_HOUR` optionally overrides the owner/hour start
+ceiling (1–60): default 3 in production, 12 elsewhere. Capacity and hourly rejections
+return typed problems plus `Retry-After`; investigate the safe operational category
+instead of treating every failed start as a dropped connection. Do not log raw
+provider errors, SDP, credentials, financial data or spoken text.
 
 Migration 029 adds financial proposals/receipts; migration 027 directly defines
 the final MCP scope constraint for this clean development baseline. Apply all

@@ -227,14 +227,6 @@
   text-align: center;
   margin: 7px 0 0;
 }
-.voice-controls {
-  flex-shrink: 0;
-  max-height: 40dvh;
-  overflow: auto;
-  font-size: var(--text-small);
-  padding: 8px 20px;
-  line-height: 1.6;
-}
 .stream-error,
 .assistant-unavailable,
 .delete-confirm {

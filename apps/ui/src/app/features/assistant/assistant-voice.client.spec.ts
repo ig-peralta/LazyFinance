@@ -1,4 +1,8 @@
 import { TestBed } from "@angular/core/testing";
+import type {
+  AssistantEvent,
+  AssistantVoiceEvent,
+} from "@lazyfinance/contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { deferred } from "../../../testing/deferred";
 import { principal, setupRpc } from "../../../testing/rpc";
@@ -46,16 +50,32 @@ function setup() {
     muted: false,
     srcObject: null,
   };
+  let observations:
+    | {
+        controller: ReadableStreamDefaultController<Uint8Array>;
+        closed: boolean;
+      }
+    | undefined;
   const request = vi.fn<typeof fetch>(async (url, options) =>
     String(url).endsWith("/events")
       ? new Response(
           new ReadableStream<Uint8Array>({
             start(controller) {
+              const stream = { controller, closed: false };
+              observations = stream;
               options?.signal?.addEventListener(
                 "abort",
-                () => controller.close(),
+                () => {
+                  if (!stream.closed) {
+                    stream.closed = true;
+                    controller.close();
+                  }
+                },
                 { once: true },
               );
+            },
+            cancel() {
+              if (observations) observations.closed = true;
             },
           }),
           { headers: { "content-type": "application/x-ndjson" } },
@@ -77,13 +97,13 @@ function setup() {
   const voice = TestBed.inject(AssistantVoiceClient);
   const owner = f.credentials.current();
   if (!owner) throw new Error("Missing credentials");
-  const transcript = vi.fn(),
+  const receive = vi.fn<(event: AssistantEvent) => void>(),
     interrupt = vi.fn();
   const start = () =>
     voice.start(
       owner,
       "00000000-0000-4000-8000-000000000001",
-      transcript,
+      receive,
       interrupt,
     );
   const event = (value: unknown) =>
@@ -99,10 +119,23 @@ function setup() {
     channel,
     audio,
     request,
-    transcript,
+    receive,
     interrupt,
     start,
     event,
+    observe(event: AssistantVoiceEvent) {
+      if (!observations || observations.closed)
+        throw new Error("No observation stream");
+      observations.controller.enqueue(
+        new TextEncoder().encode(`${JSON.stringify(event)}\n`),
+      );
+    },
+    eof() {
+      if (!observations || observations.closed)
+        throw new Error("No observation stream");
+      observations.closed = true;
+      observations.controller.close();
+    },
   };
 }
 
@@ -113,7 +146,7 @@ describe("continuous live voice media and session lifetimes", () => {
     vi.useRealTimers();
   });
 
-  it("keeps delayed captions in speech order without submitting any transcription as a text turn", async () => {
+  it("ignores all input/output transcription events without retaining captions or submitting text", async () => {
     const f = setup();
     await f.start();
     f.channel.onopen?.();
@@ -124,58 +157,62 @@ describe("continuous live voice media and session lifetimes", () => {
       item_id: "b",
       transcript: "Segunda pregunta",
     });
-    expect(f.transcript).not.toHaveBeenCalled();
-    expect(f.voice.inputTranscripts().map((item) => item.text)).toEqual([
-      "Segunda pregunta",
-    ]);
+    f.event({
+      type: "conversation.item.input_audio_transcription.delta",
+      item_id: "a",
+      delta: "Parcial privado",
+    });
     f.event({
       type: "conversation.item.input_audio_transcription.completed",
       item_id: "a",
       transcript: "Primera pregunta",
     });
-    expect(f.transcript).not.toHaveBeenCalled();
-    expect(f.voice.inputTranscripts().map((item) => item.text)).toEqual([
-      "Primera pregunta",
-      "Segunda pregunta",
-    ]);
     f.event({
-      type: "conversation.item.input_audio_transcription.completed",
-      item_id: "a",
-      transcript: "Duplicada",
+      type: "conversation.item.input_audio_transcription.failed",
+      item_id: "b",
     });
-    expect(f.transcript).not.toHaveBeenCalled();
+    f.event({
+      type: "response.output_audio_transcript.delta",
+      response_id: "r1",
+      delta: "Respuesta privada",
+    });
+    f.observe({ type: "delta", text: "Texto hablado de un servidor anterior" });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(f.receive).not.toHaveBeenCalled();
+    expect(f.voice).not.toHaveProperty("inputTranscript");
+    expect(f.voice).not.toHaveProperty("inputTranscripts");
+    expect(f.voice).not.toHaveProperty("outputTranscript");
+    expect(f.voice.state()).toBe("listening");
+    expect(f.voice.problem()).toBeNull();
+    expect(f.request).toHaveBeenCalledTimes(2);
+    expect(
+      f.channel.send.mock.calls.every(([value]) => !value.includes("pregunta")),
+    ).toBe(true);
   });
 
-  it("retains completed questions for explicit reconciliation when delivery ends/interruption blocks the conversation", async () => {
+  it("waits for asynchronous session closure, exposes reconciliation once and never reconnects", async () => {
     const f = setup();
     await f.start();
     f.channel.onopen?.();
-    f.event({ type: "input_audio_buffer.speech_started", item_id: "a" });
-    f.event({ type: "input_audio_buffer.speech_started", item_id: "b" });
-    f.event({
-      type: "conversation.item.input_audio_transcription.completed",
-      item_id: "b",
-      transcript: "Segunda pendiente",
-    });
-    f.event({
-      type: "conversation.item.input_audio_transcription.completed",
-      item_id: "a",
-      transcript: "Primera interrumpida",
-    });
-    expect(f.transcript).not.toHaveBeenCalled();
-    f.voice.end();
-    expect(f.voice.inputTranscripts().map((item) => item.text)).toEqual([
-      "Primera interrumpida",
-      "Segunda pendiente",
-    ]);
-    f.credentials.clear();
-    // A detached run no longer owns an abort listener; component owner clearing
-    // invokes end(true), as does component destruction.
-    f.voice.end(true);
-    expect(f.voice.inputTranscripts()).toEqual([]);
+    const closing = deferred<Response>();
+    f.request.mockReturnValueOnce(closing.promise);
+    f.peer.connectionState = "failed";
+    f.peer.onconnectionstatechange?.();
+    expect(f.voice.state()).toBe("off");
+    expect(f.voice.problem()?.code).toBe("connection_lost");
+    expect(f.voice.stopping()).toBe(true);
+    expect(f.voice.closed()).toBe(0);
+    await f.start();
+    expect(f.media.microphone).toHaveBeenCalledOnce();
+    closing.resolve(new Response(null, { status: 200 }));
+    await vi.waitFor(() => expect(f.voice.closed()).toBe(1));
+    expect(f.voice.stopping()).toBe(false);
+    expect(f.request).toHaveBeenCalledTimes(3);
+    expect(f.receive).not.toHaveBeenCalled();
   });
 
-  it("invalidates pending transcription items on mute and bounds the collection", async () => {
+  it("invalidates the audio item on mute and bounds native speech items without any transcript collection", async () => {
     const f = setup();
     await f.start();
     f.channel.onopen?.();
@@ -193,7 +230,7 @@ describe("continuous live voice media and session lifetimes", () => {
       item_id: "b",
       transcript: "Obsoleta",
     });
-    expect(f.transcript).not.toHaveBeenCalled();
+    expect(f.receive).not.toHaveBeenCalled();
     for (let index = 2; index <= 24; index++)
       f.event({
         type: "input_audio_buffer.speech_started",
@@ -203,7 +240,7 @@ describe("continuous live voice media and session lifetimes", () => {
     expect(f.track.stop).toHaveBeenCalledOnce();
   });
 
-  it("does not capture until Start, streams a microphone track and handles completed transcripts once", async () => {
+  it("does not capture until Start and never treats spoken agreement as financial approval", async () => {
     const f = setup();
     expect(f.media.microphone).not.toHaveBeenCalled();
     await f.start();
@@ -224,12 +261,12 @@ describe("continuous live voice media and session lifetimes", () => {
       item_id: "i1",
       transcript: "Sí, aprueba",
     });
-    expect(f.transcript).not.toHaveBeenCalled();
+    expect(f.receive).not.toHaveBeenCalled();
     expect(f.request).toHaveBeenCalledTimes(2); // SDP and authenticated observations, never approval.
-    expect(f.voice.inputTranscript()).toBe("Sí, aprueba");
+    expect(f.voice.problem()).toBeNull();
   });
 
-  it("mutes tracks, cancels/clears output on barge-in and rejects obsolete audio transcript deltas", async () => {
+  it("mutes tracks, cancels/clears output on barge-in and ignores obsolete transcript deltas", async () => {
     const f = setup();
     await f.start();
     f.channel.onopen?.();
@@ -244,7 +281,7 @@ describe("continuous live voice media and session lifetimes", () => {
       response_id: "r1",
       delta: "Respuesta",
     });
-    expect(f.voice.outputTranscript()).toBe("Respuesta");
+    expect(f.audio.muted).toBe(false);
     f.event({ type: "input_audio_buffer.speech_started", item_id: "i1" });
     expect(f.audio.muted).toBe(true);
     expect(f.interrupt).toHaveBeenCalledOnce();
@@ -258,7 +295,7 @@ describe("continuous live voice media and session lifetimes", () => {
       response_id: "r1",
       delta: "Obsoleto",
     });
-    expect(f.voice.outputTranscript()).not.toContain("Obsoleto");
+    expect(f.audio.muted).toBe(true);
     f.voice.mute();
     expect(f.track.enabled).toBe(false);
     f.voice.mute();
@@ -268,7 +305,7 @@ describe("continuous live voice media and session lifetimes", () => {
       item_id: "i1",
       transcript: "Anterior al silencio",
     });
-    expect(f.transcript).not.toHaveBeenCalled();
+    expect(f.receive).not.toHaveBeenCalled();
   });
 
   it("starts muted and never opens playback for an unassociated or stale native response", async () => {
@@ -294,6 +331,119 @@ describe("continuous live voice media and session lifetimes", () => {
         ([value]) => JSON.parse(value).type === "response.create",
       ),
     ).toBe(false);
+  });
+
+  it("honors typed admission cooldowns without retrying or reopening the microphone automatically", async () => {
+    vi.useFakeTimers();
+    const f = setup();
+    f.request.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ code: "rate_limited", retryAfterSeconds: 60 }),
+        {
+          status: 429,
+          headers: { "content-type": "application/json", "Retry-After": "60" },
+        },
+      ),
+    );
+    await f.start();
+    expect(f.voice.problem()?.code).toBe("rate_limited");
+    expect(f.voice.retryAt()).toBe(Date.now() + 60_000);
+    expect(f.voice.state()).toBe("off");
+    expect(f.track.stop).toHaveBeenCalledOnce();
+    await f.start();
+    expect(f.media.microphone).toHaveBeenCalledOnce();
+    expect(f.request).toHaveBeenCalledOnce();
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(f.voice.retryAt()).toBeNull();
+    expect(f.media.microphone).toHaveBeenCalledOnce();
+    expect(f.request).toHaveBeenCalledOnce();
+    await f.start();
+    expect(f.media.microphone).toHaveBeenCalledTimes(2);
+    expect(f.voice.problem()).toBeNull();
+  });
+
+  it("uses a bounded Retry-After header when an older admission response lacks typed metadata", async () => {
+    const f = setup();
+    const now = Date.now();
+    f.request.mockResolvedValueOnce(
+      new Response("{}", { status: 429, headers: { "Retry-After": "30" } }),
+    );
+    await f.start();
+    expect(f.voice.problem()?.code).toBe("capacity");
+    expect(f.voice.retryAt()).toBeGreaterThanOrEqual(now + 30_000);
+    expect(f.voice.retryAt()).toBeLessThanOrEqual(Date.now() + 30_000);
+  });
+
+  it("shows an incomplete-answer warning without closing healthy native audio or replaying generation", async () => {
+    const f = setup();
+    await f.start();
+    f.channel.onopen?.();
+    f.event({ type: "input_audio_buffer.speech_started", item_id: "current" });
+    f.event({
+      type: "response.created",
+      response: { id: "r1", metadata: { voiceItem: "current" } },
+    });
+    f.event({
+      type: "response.done",
+      response: { id: "r1", status: "incomplete" },
+    });
+    f.observe({ type: "phase", state: "listening" });
+    f.observe({ type: "voice_warning", code: "output_limit" });
+    await vi.waitFor(() =>
+      expect(f.voice.problem()?.code).toBe("output_limit"),
+    );
+    expect(f.voice.problem()?.severity).toBe("warning");
+    expect(f.voice.state()).toBe("listening");
+    expect(f.track.stop).not.toHaveBeenCalled();
+    expect(f.request).toHaveBeenCalledTimes(2);
+    expect(f.receive).not.toHaveBeenCalled();
+    expect(
+      f.channel.send.mock.calls.some(
+        ([value]) => JSON.parse(value).type === "response.create",
+      ),
+    ).toBe(false);
+    f.event({
+      type: "input_audio_buffer.speech_started",
+      item_id: "next-explicit-question",
+    });
+    expect(f.voice.problem()).toBeNull();
+  });
+
+  it.each([
+    "typed",
+    "eof",
+  ])("shows %s observation failure once and reconciles closure instead of silently ending", async (kind) => {
+    const f = setup();
+    await f.start();
+    f.channel.onopen?.();
+    if (kind === "typed")
+      f.observe({ type: "voice_error", code: "provider_error" });
+    else f.eof();
+    await vi.waitFor(() => expect(f.voice.closed()).toBe(1));
+    expect(f.voice.problem()?.code).toBe(
+      kind === "typed" ? "provider_error" : "connection_lost",
+    );
+    expect(f.voice.state()).toBe("off");
+    expect(f.track.stop).toHaveBeenCalledOnce();
+    expect(f.media.microphone).toHaveBeenCalledOnce();
+    expect(f.request).toHaveBeenCalledTimes(3);
+  });
+
+  it.each([
+    { name: "NotAllowedError", code: "microphone_denied" },
+    { name: "NotFoundError", code: "microphone_unavailable" },
+  ])("distinguishes $code without exposing browser diagnostics", async ({
+    name,
+    code,
+  }) => {
+    const f = setup();
+    f.media.microphone.mockRejectedValueOnce(
+      new DOMException("Private device details", name),
+    );
+    await f.start();
+    expect(f.voice.problem()?.code).toBe(code);
+    expect(JSON.stringify(f.voice.problem())).not.toContain("Private device");
+    expect(f.request).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -326,7 +476,7 @@ describe("continuous live voice media and session lifetimes", () => {
         transcript: "Private late text",
       }),
     });
-    expect(f.transcript).not.toHaveBeenCalled();
+    expect(f.receive).not.toHaveBeenCalled();
     expect(f.voice.state()).toBe("off");
   });
 
@@ -350,7 +500,7 @@ describe("continuous live voice media and session lifetimes", () => {
     await f.voice.start(
       f.owner,
       "00000000-0000-4000-8000-000000000001",
-      f.transcript,
+      f.receive,
       f.interrupt,
       cancelled.signal,
     );
@@ -361,7 +511,7 @@ describe("continuous live voice media and session lifetimes", () => {
     const started = f.voice.start(
       f.owner,
       "00000000-0000-4000-8000-000000000001",
-      f.transcript,
+      f.receive,
       f.interrupt,
       startup.signal,
     );
@@ -391,14 +541,15 @@ describe("continuous live voice media and session lifetimes", () => {
     expect(f.voice.state()).toBe("off");
   });
 
-  it("offers sanitized text fallback on denied permission and ends idle capture without reconnect", async () => {
+  it("sanitizes unknown setup failures and ends idle capture without reconnect", async () => {
     const f = setup();
     f.media.microphone.mockRejectedValueOnce(
       new Error("Vendor/private diagnostics"),
     );
     await f.start();
-    expect(f.voice.error()).toContain("continuar por texto");
-    expect(f.voice.error()).not.toContain("Vendor");
+    expect(f.voice.problem()?.code).toBe("setup_failed");
+    expect(JSON.stringify(f.voice.problem())).not.toContain("Vendor");
+    await vi.waitFor(() => expect(f.voice.stopping()).toBe(false));
     vi.useFakeTimers();
     await f.start();
     f.channel.onopen?.();

@@ -3,6 +3,7 @@ import {
   AssistantVoiceEndSchema,
   AssistantVoiceEventSchema,
   AssistantVoiceOfferSchema,
+  AssistantVoiceProblemSchema,
   AssistantVoiceSessionSchema,
 } from "@lazyfinance/contracts";
 import {
@@ -10,6 +11,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpException,
   Post,
   Req,
   Res,
@@ -49,6 +51,15 @@ export class AssistantVoiceHttp {
           lifetime.signal,
         ),
       );
+    } catch (error) {
+      if (error instanceof HttpException) {
+        const problem = AssistantVoiceProblemSchema.safeParse(
+          error.getResponse(),
+        );
+        if (problem.success && problem.data.retryAfterSeconds)
+          res.set("Retry-After", String(problem.data.retryAfterSeconds));
+      }
+      throw error;
     } finally {
       res.off("close", close);
     }

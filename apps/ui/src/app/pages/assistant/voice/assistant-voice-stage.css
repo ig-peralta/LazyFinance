@@ -30,6 +30,50 @@ button:focus-visible {
   outline: none;
   background: var(--accent-soft);
 }
+.voice-problem {
+  width: min(460px, 100%);
+  padding: 28px;
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+  border: 1px solid color-mix(in srgb, var(--danger) 32%, var(--line));
+  border-radius: 16px;
+  background: var(--paper);
+}
+.voice-problem-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 10%, var(--paper));
+}
+.voice-problem.warning {
+  border-color: var(--line);
+}
+.voice-problem.warning .voice-problem-icon {
+  color: var(--ink);
+  background: var(--raised);
+}
+.voice-problem-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+@media (max-width: 480px) {
+  .voice-problem {
+    padding: 20px 16px;
+  }
+  .voice-problem-actions {
+    width: 100%;
+  }
+  .voice-problem-actions button {
+    flex: 1 0 auto;
+  }
+}
 .voice-wave {
   display: flex;
   height: 64px;

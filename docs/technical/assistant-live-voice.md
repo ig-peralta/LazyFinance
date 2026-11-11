@@ -19,22 +19,24 @@ Capability documentation reviewed 2026-11-11, **not live-provider evidence**:
 This replaces the previous transcription → ordinary text request → literal
 read-aloud adapter. Semantic VAD uses low eagerness and keeps `create_response:false` so the **server** acquires
 a history lease before requesting a response to the committed **audio item**.
-Transcription is not the model input or the generation trigger. Automatic
+Separate input transcription is intentionally disabled for cost: no
+`audio.input.transcription` configuration, ASR request or input-transcript handler.
+Native audio is the model input and generation trigger. Automatic
 interruption is enabled; local output mute/clear and server cancellation also
 invalidate the old response immediately.
 
 The API waits for sideband configuration acknowledgement before returning usable
-SDP. It seeds bounded saved history from that voice session only, installs the same financial reads,
-proposal preparation and action-status tools, and gives each turn short,
+SDP. It restores owned proposal state, but never replays saved speech. It installs
+the same financial reads, proposal preparation and action-status tools, and gives each turn short,
 speech-specific instructions. Financial tools execute only on the sideband using
 the verified owner, never browser-supplied tool results. `AssistantTurnTools`
 shares validation, result-size budgets, ownership and financial semantics with
 text. There is no approval/execution/cancellation tool for the model.
 
 `POST /assistant/voice/events` accepts only the opaque session ID. Its authenticated,
-no-store NDJSON stream carries validated sources, proposals, proposal revisions, answer text, turn
-completion and listening/querying/responding states. Browser data-channel events
-are used for local playback/interruption, not financial authority. A
+no-store NDJSON stream carries validated sources, proposals, proposal revisions, turn
+completion, typed problems and listening/querying/responding states, not spoken
+text. Browser data-channel events are used for local playback/interruption, not financial authority. A
 second observer is rejected; stream loss ends the session, with no reconnect or
 tool replay. Foreign IDs neither read nor terminate another owner's session.
 
@@ -42,19 +44,20 @@ tool replay. Foreign IDs neither read nor terminate another owner's session.
 
 The server claims/finishes the same 90-second lease policy as text, but only on
 conversations persisted with `mode: "voice"`. Text admission requires `text`.
-Native voice uses an immutable `Consulta por voz` lease question and optional
-`turn.voice.question` for its readable transcription. Voice-model context uses
-the readable question; the UI does not render it. Completion requires a transcript, a completed
-provider response and the shared evidence check. Missing transcriptions, failures or
-interruption never become a confirmed answer. No audio is stored.
+Native voice uses an immutable `Consulta por voz` lease question. New turns store
+empty `text`, sources, proposals and status, with no `voice` transcription metadata.
+Completion requires a completed provider response and the shared evidence check,
+never a speech-to-text result. Realtime's native output-text metadata is used only
+transiently for grounding; it is neither a separately requested ASR service nor
+streamed/persisted speech text. Unsupported claims, incomplete responses and
+interruption never confirm a proposal. No audio is stored.
 
-An interrupted turn can finish before its asynchronous input transcription arrives.
-`voice.transcriptionPending` marks that placeholder. The private
-`assistantConversations.recordVoiceQuestion` fills only that missing question,
-without changing the interrupted status, action authority or a newer turn's lease.
-It cannot overwrite an existing transcript. Late input received while the session
-is still open becomes voice-session context; unfinished assistant answers
-do not. Closing the transport cannot recover a transcript that never arrived.
+The active provider call retains native audio context. A resumed call receives
+owned action state, not transcripts or synthetic user messages. The user may need
+to restate other details after resuming. Existing transcripts remain unchanged.
+`voice.question`, `voice.transcriptionPending` and the private
+`assistantConversations.recordVoiceQuestion` procedure remain for legacy records
+only; the native runtime has no caller or delayed-transcript reconciliation path.
 
 Tools attach observations to that voice session. Query details open on request;
 native voice proposals reveal one visual review card at a time. Other saved requests
@@ -137,10 +140,10 @@ turn admission, tool execution and confirmed-action notifications. Withdrawal im
 blocks new admitted work after commit; it does not retract provider disclosures or
 guarantee cross-device termination of already-admitted audio.
 
-Visible subtitles and their toggle are removed pending redesign. Internal
-transcription remains in the database for voice-session context and turn confirmation; it never submits a
-text request. Partials stay in bounded memory. Completed readable exchanges
-use the existing fixed 30-day availability policy, with no voice-history browser.
+Visible subtitles and their toggle are removed. Input ASR and browser transcript
+collection are unwired; no new input or output speech text is retained. Saved
+source/proposal/status records and legacy transcripts use the existing fixed
+30-day availability policy, with no voice-history browser.
 Migration 033 backfills voice-only records without deleting or rewriting transcripts;
 mixed legacy text records hide voice turns on text reads. There are separate
 10-text/100-voice storage quotas. No audio, draft, SDP or transcript enters
@@ -153,8 +156,12 @@ project data controls before enabling.
 Default disabled. API-only `ASSISTANT_VOICE_ENABLED`, dedicated key/model and a
 configured non-demo text assistant are required. Initial deployment is **one API
 replica**: process-local admission allows one session per owner, four globally,
-three starts per owner/hour and five minutes per session, including mute. Both
-client and server have 60-second idle bounds. Setup has a 15-second browser deadline;
+and five minutes per session, including mute. Starts per owner/hour default to
+three in production and twelve elsewhere; API-only
+`ASSISTANT_VOICE_MAX_STARTS_PER_HOUR` can explicitly set a ceiling from 1 to 60.
+Failed provider setup still consumes a start; admission rejection does not contact
+the provider. Both client and server have 60-second idle bounds. Setup has a
+15-second browser deadline;
 sideband connection/configuration also has bounded deadlines. A native turn has a
 65-second deadline, at most eight read/status calls and four proposal operations.
 Only one new request can be prepared per turn; a pending completed request blocks
@@ -162,7 +169,10 @@ another new request until resolved. Source budgets match text: 24 KB each / 64 K
 per turn. Queued events, speech items, output
 length and observation-stream bytes are bounded. Excesses fail closed.
 
-Default provider output is 320 tokens per response, including tool continuations.
+Provider output has a 1,024-token ceiling per response, including tool
+continuations: native audio and function arguments share this allowance. This is
+not a target response length. There is no automatic retry of a truncated answer,
+reconnect or separate transcription charge requested by this integration.
 Shared instructions ask for short neutral Spanish without Chilean slang or a
 deliberate regional accent, not repeated inability
 disclaimers. `ASSISTANT_VOICE_NAME` selects `marin` (default) or `cedar`, the
@@ -172,6 +182,22 @@ tests; voice cannot change after audio has been emitted in a call.
 This is not a security/currency quota against modified browser commands. Use a dedicated project spend limit and
 alerts. Distributed durable admission and hangup recovery are required before
 multiple replicas.
+
+Admission distinguishes an existing session (`409 session_active`), temporary
+capacity (`429 capacity`) and an hourly limit (`429 rate_limited`). The latter
+responses include bounded `retryAfterSeconds` and `Retry-After`. The browser gates
+voice retries for that interval, never text composition/sending solely because of
+a voice cooldown. Setup, permission, connection and provider failures show one
+centered accessible problem card, not footer copy or a misleading session-finished
+heading. Retry always returns to explicit microphone start.
+
+The observation stream drains a queued terminal `voice_error` before closing.
+After asynchronous closure the browser refreshes saved state; unresolved pending
+turns still block another request. `voice_warning` with `output_limit` or
+`turn_unconfirmed` keeps a healthy call open, leaves the answer unconfirmed and
+never retries generation. Diagnostics contain fixed categories, allowlisted
+provider reasons, numeric usage and internal IDs, never raw provider errors,
+credentials, SDP, financial data or speech text.
 
 Initialization remains tracked until the provider supplies its call ID; stopped,
 draining or aborted late calls are hung up. Remote hangup is requested independently
@@ -189,9 +215,10 @@ or barge-in; remote cancellation under 500 ms; speech-end to first relevant audi
 under two seconds when no financial lookup is needed. Measure lookup response,
 spoken-number accuracy and interruption fidelity separately.
 
-Deterministic tests cover native-audio response triggering before transcription,
-owned tool execution, late evidence, interruption/correction, transcript completion,
-duplicate calls, approval isolation, HTTP ownership and media cleanup. Mocked browser
+Deterministic tests cover native-audio triggering/completion without ASR, ignored
+transcript events, no speech-text retention/history replay, owned tool execution,
+late evidence, interruption/correction, incomplete-answer recovery, duplicate calls,
+approval isolation, typed HTTP admission/cooldowns and media cleanup. Mocked browser
 checks do not capture a real microphone or invoke a live model. Current/previous
 Chrome/Edge, Android Chrome and Safari iOS/macOS remain the target live matrix;
 Firefox is best-effort pending device validation. Denied permissions, autoplay,
@@ -201,3 +228,21 @@ Live provider/model/browser fidelity, latency, project usage/cost and actual rem
 shutdown require **separate authorization**, synthetic owners and recorded evidence.
 Implementation does not authorize real financial disclosures, microphone capture
 or mutations and does not establish production readiness.
+
+## Controlled verification — 2026-11-11
+
+The transcription-unwiring and recovery update passed 654 UI tests, 452 API
+unit/HTTP tests and 69 persistence unit tests. The 153 database-dependent API cases
+were skipped without an isolated integration environment; no PostgreSQL integration
+suite or live model/device test was run. Workspace build/typecheck, formatting,
+RPC drift (85 public / 106 private procedures) and architecture checks passed.
+Existing initial-bundle/CommonJS/style-budget warnings and 27 lint warnings / 10
+informational diagnostics remain; budgets were not raised.
+
+Mocked browser checks covered permission denial, setup failure, capacity/hourly
+admission, connection loss and truncated replies in home/docked, light/dark and
+320px enlarged-text layouts, plus voice/text isolation and proposal review. All
+90 accessibility scans reported no WCAG A/AA violations, with no page errors or
+unhandled requests. These checks used synthetic media and transport responses,
+not a microphone, provider or financial mutation. Read-only runtime checks also
+confirmed that legacy voice records remain stored and excluded from text history.

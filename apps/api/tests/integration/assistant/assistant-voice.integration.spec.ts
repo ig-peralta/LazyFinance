@@ -1,4 +1,8 @@
-import { type INestApplication, UnauthorizedException } from "@nestjs/common";
+import {
+  HttpException,
+  type INestApplication,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
@@ -145,5 +149,25 @@ describe("first-party voice HTTP authentication and strict transport", () => {
       .send({ id: response.body.id })
       .expect(201);
     expect(end).toHaveBeenCalledWith("verified-owner", response.body.id);
+  });
+
+  it("returns a readable admission reason and Retry-After without exposing provider diagnostics", async () => {
+    start.mockRejectedValueOnce(
+      new HttpException({ code: "rate_limited", retryAfterSeconds: 42 }, 429),
+    );
+    const response = await request(app.getHttpServer())
+      .post("/assistant/voice/sessions")
+      .set("authorization", "Bearer accepted")
+      .send({
+        conversationId: "00000000-0000-4000-8000-000000000001",
+        sdp: "v=0\r\noffer",
+      })
+      .expect(429);
+    expect(response.headers["retry-after"]).toBe("42");
+    expect(response.body).toEqual({
+      code: "rate_limited",
+      retryAfterSeconds: 42,
+    });
+    expect(response.headers["cache-control"]).toBe("private, no-store");
   });
 });

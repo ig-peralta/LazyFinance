@@ -41,6 +41,12 @@ export const ENV_SCHEMA = z
     ASSISTANT_VOICE_API_KEY: z.string().trim().min(1).optional(),
     ASSISTANT_VOICE_MODEL: z.string().trim().min(1).max(200).optional(),
     ASSISTANT_VOICE_NAME: z.enum(["marin", "cedar"]).default("marin"),
+    ASSISTANT_VOICE_MAX_STARTS_PER_HOUR: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(60)
+      .optional(),
     MCP_OAUTH_ISSUER: corsOrigin.optional(),
     MCP_OAUTH_UI_ORIGIN: corsOrigin.optional(),
     MCP_OAUTH_STATE_KEY: z

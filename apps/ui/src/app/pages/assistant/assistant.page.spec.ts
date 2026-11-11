@@ -27,6 +27,7 @@ import {
   AssistantVoiceClient,
   VOICE_MEDIA,
 } from "../../features/assistant/assistant-voice.client";
+import { voiceProblem } from "../../features/assistant/assistant-voice-problem";
 import { AssistantWorkspace } from "../../features/assistant/assistant-workspace";
 import { AssistantPage } from "./assistant.page";
 
@@ -375,7 +376,7 @@ describe("first-party chat page lifetimes and confirmed history", () => {
     expect(button(f.root, "Guardar etiqueta").disabled).toBe(false);
     button(f.root, "Terminar voz").click();
     await render(f.fixture);
-    expect(f.root.textContent).toContain("Sesión de voz finalizada");
+    expect(f.root.textContent).toContain("Micrófono apagado");
     expect(button(f.root, "Guardar etiqueta").disabled).toBe(false);
     expect(f.root.querySelector(".result-question")?.textContent).not.toContain(
       "Prepara una etiqueta",
@@ -635,7 +636,9 @@ describe("first-party chat page lifetimes and confirmed history", () => {
     await render(f.fixture);
     voice.state.set("off");
     await render(f.fixture);
-    expect(f.root.textContent).toContain("La voz terminó");
+    expect(f.root.querySelector(".voice-problem")?.textContent).toContain(
+      "No se pudo confirmar la respuesta",
+    );
     expect(button(f.root, "Consultar estado").disabled).toBe(false);
     saved = [
       {
@@ -651,6 +654,168 @@ describe("first-party chat page lifetimes and confirmed history", () => {
     button(f.root, "Texto").click();
     await render(f.fixture);
     compose(f, "Una nueva pregunta explícita");
+    expect(button(f.root, "Enviar pregunta").disabled).toBe(false);
+    expect(f.stream).not.toHaveBeenCalled();
+  });
+
+  it("shows one centered admission error, removes ended-session boilerplate and leaves text usable during voice cooldown", async () => {
+    const f = setup(
+      { "assistant.configuration": () => externalConfiguration },
+      chat.id,
+      true,
+    );
+    const voice = f.fixture.debugElement.injector.get(AssistantVoiceClient);
+    const start = vi.spyOn(voice, "start").mockImplementation(async () => {
+      const retryAt = Date.now() + 60_000;
+      voice.retryAt.set(retryAt);
+      voice.problem.set(voiceProblem("rate_limited", retryAt));
+    });
+    await render(f.fixture);
+    compose(f, "Mi pregunta sigue disponible");
+    button(f.root, "Voz").click();
+    await render(f.fixture);
+    button(f.root, "Entiendo, iniciar micrófono").click();
+    await render(f.fixture);
+    expect(f.root.querySelectorAll(".voice-problem")).toHaveLength(1);
+    expect(f.root.querySelectorAll('.voice-stage [role="alert"]')).toHaveLength(
+      1,
+    );
+    expect(f.root.querySelector(".voice-problem")?.textContent).toContain(
+      "Espera antes de iniciar otra sesión",
+    );
+    expect(f.root.querySelector(".voice-controls")).toBeNull();
+    expect(f.root.querySelector(".stream-error")).toBeNull();
+    expect(f.root.textContent).not.toContain(
+      "Esta sesión no se añade al historial de texto",
+    );
+    expect(f.root.textContent).not.toContain("Puedes revisar tus solicitudes");
+    expect(f.root.textContent).not.toContain("Sesión finalizada");
+    expect(button(f.root, "Volver a intentar").disabled).toBe(true);
+    button(f.root, "Usar texto").click();
+    await render(f.fixture);
+    expect(f.root.querySelector("textarea")?.value).toBe(
+      "Mi pregunta sigue disponible",
+    );
+    expect(button(f.root, "Enviar pregunta").disabled).toBe(false);
+    expect(f.workspace.selection()).toBe(chat.id);
+    expect(start).toHaveBeenCalledOnce();
+    expect(f.stream).not.toHaveBeenCalled();
+  });
+
+  it("displays conversation setup failure in the voice stage rather than silently returning to the start disclosure", async () => {
+    const f = setup(
+      {
+        "assistant.configuration": () => externalConfiguration,
+        "assistant.createConversation": () => rpcFailure(),
+      },
+      chat.id,
+      true,
+    );
+    const start = vi
+      .spyOn(AssistantVoiceClient.prototype, "start")
+      .mockResolvedValue();
+    await render(f.fixture);
+    button(f.root, "Voz").click();
+    await render(f.fixture);
+    button(f.root, "Entiendo, iniciar micrófono").click();
+    await render(f.fixture);
+    expect(f.root.querySelector("assistant-voice-start")).toBeNull();
+    expect(f.root.querySelector(".voice-problem")?.textContent).toContain(
+      "No se pudo iniciar la voz",
+    );
+    expect(f.root.querySelector(".stream-error")).toBeNull();
+    expect(f.callsTo("assistant.createConversation")).toHaveLength(1);
+    expect(start).not.toHaveBeenCalled();
+    expect(f.microphone).not.toHaveBeenCalled();
+  });
+
+  it("keeps a nonfatal incomplete-answer warning in one card without restarting a healthy voice session", async () => {
+    const f = setup(
+      { "assistant.configuration": () => externalConfiguration },
+      chat.id,
+      true,
+    );
+    const voice = f.fixture.debugElement.injector.get(AssistantVoiceClient);
+    const start = vi.spyOn(voice, "start").mockImplementation(async () => {
+      voice.state.set("listening");
+    });
+    await render(f.fixture);
+    button(f.root, "Voz").click();
+    await render(f.fixture);
+    button(f.root, "Entiendo, iniciar micrófono").click();
+    await render(f.fixture);
+    voice.problem.set(voiceProblem("output_limit"));
+    await render(f.fixture);
+    expect(f.root.querySelectorAll(".voice-problem.warning")).toHaveLength(1);
+    expect(f.root.querySelector(".voice-problem")?.textContent).toContain(
+      "La respuesta se cortó",
+    );
+    expect(f.root.querySelector(".stream-error")).toBeNull();
+    expect(button(f.root, "Terminar voz").disabled).toBe(false);
+    button(f.root, "Seguir hablando").click();
+    await render(f.fixture);
+    expect(f.root.querySelector(".voice-problem")).toBeNull();
+    expect(voice.state()).toBe("listening");
+    expect(start).toHaveBeenCalledOnce();
+    expect(f.stream).not.toHaveBeenCalled();
+  });
+
+  it("reconciles saved voice state after asynchronous failure closure without leaving a stale pending error or replaying", async () => {
+    let saved: AssistantTurn[] = [];
+    const f = setup(
+      {
+        "assistant.configuration": () => externalConfiguration,
+        "assistant.voiceConversation": () => ({
+          ...voiceChat,
+          turns: saved,
+          turnCount: saved.length,
+        }),
+      },
+      chat.id,
+      true,
+    );
+    const voice = f.fixture.debugElement.injector.get(AssistantVoiceClient);
+    let receive: Parameters<AssistantVoiceClient["start"]>[2] | undefined;
+    vi.spyOn(voice, "start").mockImplementation(
+      async (_owner, _id, handler) => {
+        receive = handler;
+        voice.state.set("listening");
+      },
+    );
+    await render(f.fixture);
+    button(f.root, "Voz").click();
+    await render(f.fixture);
+    button(f.root, "Entiendo, iniciar micrófono").click();
+    await render(f.fixture);
+    const pending: AssistantTurn = {
+      ...assistantReply,
+      question: "Consulta por voz",
+      text: "",
+      status: "pending",
+      sources: [],
+      actions: [],
+    };
+    saved = [pending];
+    receive?.({ type: "turn", turn: pending });
+    await render(f.fixture);
+    voice.stopping.set(true);
+    voice.state.set("off");
+    voice.problem.set(voiceProblem("connection_lost"));
+    await render(f.fixture);
+    expect(button(f.root, "Consultar estado").disabled).toBe(true);
+    const reads = f.callsTo("assistant.voiceConversation").length;
+    saved = [{ ...pending, status: "interrupted" }];
+    voice.stopping.set(false);
+    voice.closed.update((value) => value + 1);
+    await render(f.fixture);
+    expect(f.callsTo("assistant.voiceConversation").length).toBeGreaterThan(
+      reads,
+    );
+    expect(button(f.root, "Volver a intentar").disabled).toBe(false);
+    expect(f.root.querySelectorAll(".voice-problem")).toHaveLength(1);
+    button(f.root, "Usar texto").click();
+    await render(f.fixture);
+    compose(f, "Una pregunta por texto");
     expect(button(f.root, "Enviar pregunta").disabled).toBe(false);
     expect(f.stream).not.toHaveBeenCalled();
   });
@@ -822,7 +987,7 @@ describe("first-party chat page lifetimes and confirmed history", () => {
     button(f.root, "Conversar por voz").click();
     await render(f.fixture);
     expect(f.root.querySelector(".voice-start")?.textContent).toContain(
-      "no aparecen en tu historial de texto",
+      "No generamos transcripciones ni guardamos el texto hablado",
     );
     expect(f.root.querySelector(".voice-processing-consent")).toBeNull();
     expect(button(f.root, "Entiendo, iniciar micrófono").disabled).toBe(false);

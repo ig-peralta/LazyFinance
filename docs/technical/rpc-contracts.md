@@ -7,17 +7,24 @@ guide describes their source of truth and change workflow, not a REST API. See
 Assistant text retains its strict NDJSON turn endpoint. Native voice additionally
 uses authenticated `POST /assistant/voice/events` with only `{ id }` (opaque owned
 session ID). The response is bounded NDJSON `AssistantVoiceEvent`: existing
-turn/source/action/status/delta/done/error events plus listening/querying/responding
-phases. It is an observation stream, not a browser tool-results endpoint. Voice
-turns may store optional `voice.question` as a readable transcription alongside the
-unchanged lease question. Existing text histories remain valid. Migration 033
+turn/source/action/status/done events plus listening/querying/responding phases,
+typed terminal `voice_error` and nonfatal `voice_warning` (`output_limit` or
+`turn_unconfirmed`). Native voice no longer publishes `delta` speech text. HTTP
+admission problems use `AssistantVoiceProblemSchema`; rate/capacity responses also
+carry bounded retry metadata and `Retry-After`. It is an observation stream, not
+a browser tool-results endpoint. New native turns save the unchanged
+`Consulta por voz` lease question, empty `text` and no `voice` metadata: input ASR
+is disabled and native output text is used transiently for grounding only.
+Existing text histories and legacy transcript records remain valid. Migration 033
 adds immutable conversation mode and backfills voice-only records; it changes no
 approval authority and does not rewrite/delete transcripts.
-`voice.transcriptionPending` optionally marks an interrupted input placeholder.
+Legacy `voice.transcriptionPending` optionally marks an interrupted input placeholder.
 Private `assistantConversations.recordVoiceQuestion({ conversationId, turnId,
 question })` may fill only that missing readable input under owner scope. It does
 not change answer status, actions, lease or an existing transcript. This adds one
-private procedure, not a public transcript-edit endpoint.
+private procedure, not a public transcript-edit endpoint. It is intentionally
+unwired from current native voice; no data migration/deletion or procedure removal
+is required to disable transcription.
 Deploy migration 033, the API, persistence and rebuilt shared contracts together.
 `CreateAssistantConversationSchema` accepts an optional `mode` defaulting to `text`.
 Private `get`/`create`/`begin` return required stored mode; `begin` checks its

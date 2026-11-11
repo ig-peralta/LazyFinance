@@ -245,6 +245,8 @@ export class AssistantRepository {
     turnId,
     question,
   }: RecordAssistantVoiceQuestion) {
+    // Legacy reconciliation only. Native voice no longer calls this procedure:
+    // separate input transcription is intentionally disabled for cost/privacy.
     const row = await this.owned(conversationId, true);
     const turn = row.turns.find((turn) => turn.id === turnId);
     if (

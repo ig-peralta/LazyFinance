@@ -1,7 +1,22 @@
 <section class="voice-stage" aria-label="Conversación en vivo">
+  @if (problem(); as issue) {
+    <div class="voice-problem" [class.warning]="issue.severity === 'warning'" role="alert" aria-labelledby="voice-problem-title">
+      <span class="voice-problem-icon" aria-hidden="true"><app-icon name="info" /></span>
+      <h3 id="voice-problem-title">{{ issue.title }}</h3>
+      <p>{{ issue.message }}</p>
+      <div class="voice-problem-actions">
+        @if (needsCheck() || issue.code === 'history_unavailable') { <button type="button" class="button primary" [disabled]="busy()" (click)="checked.emit()">Consultar estado</button> }
+        @else if (voice.state() !== 'off') { <button type="button" class="button primary" [disabled]="busy()" (click)="voice.clearProblem()">Seguir hablando</button> }
+        @else { <button type="button" class="button primary" [disabled]="!ready()" (click)="resume.emit()">Volver a intentar</button> }
+        <button type="button" class="button soft" (click)="text.emit()">Usar texto</button>
+      </div>
+    </div>
+  } @else {
   <div class="voice-wave" [class.paused]="voice.state() === 'off' || voice.state() === 'muted' || voice.state() === 'connecting'" aria-hidden="true">@for (bar of [1,2,3,4,5,6,7,8,9]; track bar) { <i></i> }</div>
   <h3 role="status">{{ label() }}</h3>
-  <p>{{ voice.state() === 'off' ? 'Puedes revisar tus solicitudes o reanudar la voz. Esta sesión no se añade al historial de texto.' : 'Habla con naturalidad. Puedes interrumpirme.' }}</p>
+  @if (voice.state() !== 'off') { <p>Habla con naturalidad. Puedes interrumpirme.</p> }
+  @if (voice.state() === 'off' && !checking()) { <button type="button" class="button" [disabled]="!ready()" (click)="resume.emit()">Reanudar voz</button> }
+  }
   @if (turn(); as current) { @if (current.sources.length) { <button type="button" class="text-link" (click)="showResult.emit(current.id)">Ver consultas · {{ current.sources.length }} ↗</button> } }
   @if (voice.playbackBlocked()) { <button type="button" class="button small" (click)="voice.play()">Reproducir audio</button> }
 </section>

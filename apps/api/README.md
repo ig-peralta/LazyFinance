@@ -7,7 +7,9 @@ NDJSON at `POST /assistant/turns`; text configuration/consent/history use tRPC. 
 uses authenticated HTTP for WebRTC setup/termination and a server-observation NDJSON
 stream at `POST /assistant/voice/events`. A server-side Realtime WebSocket runs
 native audio turns and the same bounded financial tools/history leases as text;
-transcriptions are internal records, not visible subtitles or ordinary text requests. Both modes refresh
+separate input ASR is intentionally unwired, and new turns retain source/action/status
+records without speech text. Native output metadata is transient grounding input,
+not persisted text or subtitles. Both modes refresh
 ledger-backed proposal outcomes, including edited approvals. Business REST controllers
 have been retired. Angular otherwise uses vanilla tRPC clients apart from the
 cookie-bound OAuth interaction.
@@ -57,6 +59,8 @@ ignored `apps/api/.env`, and configure:
 | `ASSISTANT_MODEL`, `ASSISTANT_API_KEY`, `ASSISTANT_BASE_URL` | Explicit model/provider credentials; compatible endpoint URL only. See the provider-neutral assistant guide. |
 | `ASSISTANT_VOICE_ENABLED` | Default `false`; opt-in live voice requires configured non-demo text generation and single-API-replica operation. |
 | `ASSISTANT_VOICE_MODEL`, `ASSISTANT_VOICE_API_KEY` | Explicit Realtime audio model and dedicated server-only provider key/project spend controls; independent of text-provider credentials. |
+| `ASSISTANT_VOICE_NAME` | New-call timbre: `marin` (default) or `cedar`. |
+| `ASSISTANT_VOICE_MAX_STARTS_PER_HOUR` | Optional 1–60 owner/hour ceiling; default 3 in production, 12 elsewhere. |
 
 The API needs the private RPC URL/signing key, not database configuration.
 App-local dotenv files are not the root Compose `.env`.
@@ -125,9 +129,12 @@ consent neither sends a question nor starts microphone capture.
 Voice uses `GET /assistant/voice/configuration`, `POST /assistant/voice/sessions`
 and `POST /assistant/voice/end`, under the existing bearer/origin assistant boundary.
 The API exchanges the SDP offer and owns opaque owner-bound termination; provider
-keys/ephemeral credentials are never returned to the browser. The normal UI submits
-completed transcripts through the same saved, grounded text pipeline and requests
-audio for confirmed replies. It cannot approve financial changes by speech.
+keys/ephemeral credentials are never returned to the browser. Native audio drives
+turns directly; input transcription and transcript replay are disabled for cost.
+Completion does not wait for ASR or save speech text. Existing transcript records
+and the legacy private reconciliation procedure are retained without new callers.
+Typed admission errors include retry timing; incomplete answers warn without
+automatic generation retries. It cannot approve financial changes by speech.
 
 Voice admission/hangup recovery are memory-only and currently require **one API
 replica** plus dedicated provider spend controls. Modified own clients can request

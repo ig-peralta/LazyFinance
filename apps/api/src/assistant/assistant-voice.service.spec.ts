@@ -10,7 +10,11 @@ import {
   type RealtimeConversation,
 } from "./assistant-voice-runtime";
 
-async function setup(enabled = true, voiceName: "marin" | "cedar" = "marin") {
+async function setup(
+  enabled = true,
+  voiceName: "marin" | "cedar" = "marin",
+  limits: { maxStarts?: number; production?: boolean } = { maxStarts: 3 },
+) {
   const listen = vi.fn<RealtimeConversation["listen"]>(async () => {});
   const stop = vi.fn<RealtimeConversation["close"]>(async () => {});
   const get = vi.fn(async (_input: { id: string }) => ({ mode: "voice" }));
@@ -48,6 +52,8 @@ async function setup(enabled = true, voiceName: "marin" | "cedar" = "marin") {
           ASSISTANT_VOICE_MODEL: "configured-voice-model",
           ASSISTANT_VOICE_API_KEY: "server-only-key",
           ASSISTANT_VOICE_NAME: voiceName,
+          ASSISTANT_VOICE_MAX_STARTS_PER_HOUR: limits.maxStarts,
+          NODE_ENV: limits.production ? "production" : "test",
         }),
       },
       { provide: VOICE_FETCH, useValue: request },
@@ -306,9 +312,10 @@ describe("voice admission, provider privacy and owner-bound termination", () => 
     expect(body).toBeInstanceOf(FormData);
     if (!(body instanceof FormData)) throw new Error("Missing SDP form");
     expect(body.get("sdp")).toBe(input.sdp);
-    expect(JSON.parse(String(body.get("session")))).toMatchObject({
+    const configuration = JSON.parse(String(body.get("session")));
+    expect(configuration).toMatchObject({
       tools: [],
-      max_output_tokens: 320,
+      max_output_tokens: 1024,
       audio: {
         input: {
           turn_detection: {
@@ -321,6 +328,8 @@ describe("voice admission, provider privacy and owner-bound termination", () => 
         output: { voice: "marin" },
       },
     });
+    expect(configuration.audio.input).not.toHaveProperty("transcription");
+    expect(JSON.stringify(configuration)).not.toContain("transcribe");
     expect(JSON.stringify(session)).not.toContain("server-only-key");
     expect(JSON.stringify(session)).not.toContain("rtc_test");
     await f.voice.end("foreign", session.id);
@@ -337,7 +346,10 @@ describe("voice admission, provider privacy and owner-bound termination", () => 
     const first = await f.voice.start("owner", origin, input, signal());
     await expect(
       f.voice.start("owner", origin, input, signal()),
-    ).rejects.toThrow("Voice capacity");
+    ).rejects.toMatchObject({
+      status: 409,
+      response: { code: "session_active" },
+    });
     await f.voice.end("owner", first.id);
     for (let i = 0; i < 2; i++) {
       const next = await f.voice.start("owner", origin, input, signal());
@@ -345,11 +357,72 @@ describe("voice admission, provider privacy and owner-bound termination", () => 
     }
     await expect(
       f.voice.start("owner", origin, input, signal()),
-    ).rejects.toThrow("Voice capacity");
+    ).rejects.toMatchObject({
+      status: 429,
+      response: { code: "rate_limited", retryAfterSeconds: expect.any(Number) },
+    });
     expect(
       f.request.mock.calls.filter((call) => call[1]?.body instanceof FormData),
     ).toHaveLength(3);
     await f.close();
+  });
+
+  it.each([
+    { production: false, count: 12 },
+    { production: true, count: 3 },
+  ])("uses a bounded default of $count starts without making development unusable", async ({
+    production,
+    count,
+  }) => {
+    const f = await setup(true, "marin", { production });
+    try {
+      for (let index = 0; index < count; index++) {
+        const session = await f.voice.start("owner", origin, input, signal());
+        await f.voice.end("owner", session.id);
+      }
+      await expect(
+        f.voice.start("owner", origin, input, signal()),
+      ).rejects.toMatchObject({
+        status: 429,
+        response: {
+          code: "rate_limited",
+          retryAfterSeconds: expect.any(Number),
+        },
+      });
+      expect(
+        f.request.mock.calls.filter(
+          ([, options]) => options?.body instanceof FormData,
+        ),
+      ).toHaveLength(count);
+    } finally {
+      await f.close();
+    }
+  });
+
+  it("validates an explicit hourly limit and reports a temporary global capacity problem separately", async () => {
+    for (const value of [0, 61, 1.5])
+      expect(
+        ENV_SCHEMA.safeParse({ ASSISTANT_VOICE_MAX_STARTS_PER_HOUR: value })
+          .success,
+      ).toBe(false);
+    const f = await setup();
+    try {
+      for (const owner of ["a", "b", "c", "d"])
+        await f.voice.start(owner, origin, input, signal());
+      await expect(
+        f.voice.start("e", origin, input, signal()),
+      ).rejects.toMatchObject({
+        status: 429,
+        response: { code: "capacity", retryAfterSeconds: 30 },
+      });
+      expect(
+        f.request.mock.calls.filter(
+          ([, options]) => options?.body instanceof FormData,
+        ),
+      ).toHaveLength(4);
+    } finally {
+      await f.close();
+    }
   });
 
   it("hangs up after the duration bound and sanitizes provider failures", async () => {

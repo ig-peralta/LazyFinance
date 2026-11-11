@@ -60,8 +60,12 @@ text assistant. The [voice contract](assistant-live-voice.md) records provider/A
 evidence, privacy, stop/response/browser targets, single-replica/cost bounds and
 unverified live gates. Native audio turns use a server-side Realtime control
 connection and the same bounded financial tools and lease policy as text, not
-transcription → text request → read-aloud. Internal transcriptions remain in the database;
-the native audio item drives generation. A dedicated stage shows listening,
+transcription → text request → read-aloud. Separate input transcription is unwired
+for cost; new voice turns retain sources, proposals and status, not spoken text.
+Native output-text metadata is transiently checked for grounding, never streamed
+or persisted. Existing transcript records are not deleted. The active native call
+keeps audio context; resumed calls restore owned action state, not speech history.
+A dedicated stage shows listening,
 querying and responding, **Silenciar** and **Terminar voz**. Subtitles are
 removed pending redesign. A large central entry promotes voice in empty chats
 without bypassing the explicit start disclosure.
@@ -81,6 +85,12 @@ or execution capability. Server-run tools are not a server-enforced restriction
 on a modified browser's provider rendering commands; see
 the voice contract's explicit rendering and shutdown/recovery limitations.
 No live provider call is part of deterministic validation.
+Voice failures appear once in a centered accessible problem card with explicit
+retry, state-check or text controls. Hourly admission defaults to 3 starts in
+production and 12 elsewhere (API override: 1–60); cooldowns gate voice starts only.
+Incomplete answers stay unconfirmed without replaying generation or closing a
+healthy call. Saved state is refreshed after asynchronous closure. See the voice
+contract for typed errors, diagnostics and the 1,024-token response ceiling.
 
 ## Provider-neutral configuration
 
@@ -597,6 +607,9 @@ Formatting/lint and architecture checks passed with the previously disclosed
 warnings. No live model or bank request was made.
 
 ### Persistent assistant and controlled voice validation — 2026-11-11
+
+This records an earlier adapter. The current voice contract above supersedes its
+transcript collection and read-aloud behavior; the evidence/counts below are historical.
 
 The following records the assistant branch before the other Stage C features were
 integrated. The [combined delivery record](../planning/stage-c/experience-delivery.md)

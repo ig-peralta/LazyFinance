@@ -31,6 +31,7 @@ import { latestAssistantAction } from "../../features/assistant/assistant-action
 import { AssistantConsentData } from "../../features/assistant/assistant-consent.data";
 import { AssistantStreamClient } from "../../features/assistant/assistant-stream.client";
 import { AssistantVoiceClient } from "../../features/assistant/assistant-voice.client";
+import { voiceProblem } from "../../features/assistant/assistant-voice-problem";
 import { AssistantWorkspace } from "../../features/assistant/assistant-workspace";
 import { Icon } from "../../shared/ui/icon";
 import { AssistantCanvas } from "./canvas/assistant-canvas";
@@ -85,9 +86,11 @@ export class AssistantPage {
     id: string;
   } | null>(null);
   protected readonly voiceStopping = signal(false);
+  protected readonly voiceClosing = computed(
+    () => this.voiceStopping() || this.voice.stopping(),
+  );
   private readonly voiceStarting = signal(false);
   private voiceStopEpoch = 0;
-  protected readonly voiceFallback = signal("");
   private readonly rpc = inject(RpcClient);
   private readonly credentials = inject(AuthCredentials);
   private readonly stream = inject(AssistantStreamClient);
@@ -283,7 +286,7 @@ export class AssistantPage {
     () =>
       this.command.pending() ||
       this.voiceStarting() ||
-      this.voiceStopping() ||
+      this.voiceClosing() ||
       (this.liveState()?.scope === this.rpc.authenticatedScope() &&
         !!this.liveState()?.pending) ||
       this.sending()?.scope === this.rpc.authenticatedScope(),
@@ -303,6 +306,23 @@ export class AssistantPage {
   protected readonly voiceAwaitingConfirmation = computed(() =>
     this.voiceTurns().some((turn) => turn.status === "pending"),
   );
+  protected readonly voiceProblem = computed(() => {
+    if (this.voice.problem()) return this.voice.problem();
+    if (this.voiceConversation.error())
+      return voiceProblem("history_unavailable");
+    if (this.voiceMode() && this.command.error())
+      return voiceProblem("setup_failed");
+    if (
+      !this.voiceClosing() &&
+      !this.live()?.pending &&
+      this.voiceAwaitingConfirmation()
+    )
+      return voiceProblem("turn_unconfirmed");
+    const live = this.live();
+    return live?.nativeVoice && live.error
+      ? voiceProblem("turn_unconfirmed")
+      : null;
+  });
   protected readonly awaitingConfirmation = computed(
     () =>
       !this.live()?.pending &&
@@ -332,6 +352,7 @@ export class AssistantPage {
       !!this.credentials.current() &&
       this.voice.supported &&
       this.voice.state() === "off" &&
+      !this.voice.retryAt() &&
       !this.busy() &&
       !this.historyOnly() &&
       this.processingAccepted() &&
@@ -349,6 +370,12 @@ export class AssistantPage {
 
   constructor() {
     effect(() => {
+      if (this.voice.closed())
+        untracked(() => {
+          if (this.voiceId()) this.voiceConversation.reload();
+        });
+    });
+    effect(() => {
       const state = this.voice.state(),
         live = this.liveState();
       if (state === "off" && live?.nativeVoice && live.pending) {
@@ -356,8 +383,7 @@ export class AssistantPage {
         this.liveState.set({
           ...live,
           pending: false,
-          error:
-            "La voz terminó. Consulta las solicitudes de esta sesión para confirmar su estado; no se reenviará la pregunta.",
+          error: "No se confirmó la última respuesta de voz.",
         });
         untracked(() => this.voiceConversation.reload());
       }
@@ -412,7 +438,6 @@ export class AssistantPage {
         this.consentReview.set(false);
         this.historyOnly.set(false);
         this.voiceDisclosure.set(false);
-        this.voiceFallback.set("");
       }
       previous = scope;
       previousId = id;
@@ -590,7 +615,7 @@ export class AssistantPage {
           saved &&
           saved.status !== "pending"
         )
-          this.liveState.set({ ...live, turn: saved });
+          this.liveState.set({ ...live, turn: saved, error: null });
       });
     });
   }
@@ -836,9 +861,15 @@ export class AssistantPage {
         );
         id = this.voiceId();
       }
-      if (!id || !current()) return;
+      if (!current()) return;
+      if (!id) {
+        this.voiceDisclosure.set(false);
+        return;
+      }
       this.voiceDisclosure.set(false);
-      this.voiceFallback.set("");
+      this.liveState.update((live) =>
+        live?.nativeVoice ? { ...live, error: null } : live,
+      );
       await this.voice.start(
         owner,
         id,
@@ -886,11 +917,6 @@ export class AssistantPage {
       });
     const live = this.live();
     if (!live) return;
-    if (event.type === "delta")
-      this.liveState.set({
-        ...live,
-        turn: { ...live.turn, text: live.turn.text + event.text },
-      });
     if (event.type === "source") {
       this.liveState.set({
         ...live,
@@ -937,11 +963,11 @@ export class AssistantPage {
       this.liveState.set({ ...live, pending: false, error: event.message });
   }
 
-  protected endVoice(clearTranscripts = false) {
+  protected endVoice(clearState = false) {
     const active = this.voice.state() !== "off",
       scope = this.rpc.authenticatedScope(),
       id = this.voiceId();
-    const ended = this.voice.end(clearTranscripts);
+    const ended = this.voice.end(clearState);
     this.voiceStartup?.abort();
     this.voiceStartup = undefined;
     this.voiceStarting.set(false);
@@ -964,7 +990,7 @@ export class AssistantPage {
           this.voiceConversation.reload();
       });
     }
-    if (clearTranscripts) {
+    if (clearState) {
       this.voiceMode.set(false);
       this.voiceSelection.set(null);
       this.retainedVoiceHistory.set(null);
@@ -988,7 +1014,6 @@ export class AssistantPage {
     this.draft.set("");
     this.confirmDelete.set(false);
     this.voiceDisclosure.set(false);
-    this.voiceFallback.set("");
     this.workspace.selection.set(undefined);
     this.workspace.minimize();
   }
@@ -1063,6 +1088,8 @@ export class AssistantPage {
 
   protected refresh() {
     if (!this.busy()) {
+      this.voice.clearProblem();
+      this.command.clear();
       this.liveState.set(null);
       this.conversation.reload();
       this.voiceConversation.reload();

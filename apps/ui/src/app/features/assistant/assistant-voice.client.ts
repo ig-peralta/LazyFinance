@@ -9,6 +9,7 @@ import {
   type AssistantEvent,
   AssistantVoiceConfigurationSchema,
   AssistantVoiceEventSchema,
+  AssistantVoiceProblemSchema,
   AssistantVoiceSessionSchema,
 } from "@lazyfinance/contracts";
 import { z } from "zod";
@@ -18,6 +19,11 @@ import {
 } from "../../core/auth/auth-credentials";
 import { RPC_FETCH } from "../../core/rpc/rpc-client";
 import { API_URL } from "../../tokens/api-url";
+import {
+  type VoiceProblem,
+  type VoiceProblemCode,
+  voiceProblem,
+} from "./assistant-voice-problem";
 
 export const VOICE_MEDIA = new InjectionToken("VOICE_MEDIA", {
   providedIn: "root",
@@ -36,8 +42,6 @@ export const VOICE_MEDIA = new InjectionToken("VOICE_MEDIA", {
 const eventSchema = z.object({
   type: z.string(),
   item_id: z.string().optional(),
-  transcript: z.string().max(16_000).optional(),
-  delta: z.string().max(16_000).optional(),
   response_id: z.string().optional(),
   error: z.object({ code: z.string().optional() }).optional(),
   response: z
@@ -48,17 +52,23 @@ const eventSchema = z.object({
     })
     .optional(),
 });
-const captionEvents = new Set([
+// Input transcription/caption collection is intentionally unwired. The native
+// media channel is used only for audio activity, playback gating and controls.
+const mediaEvents = new Set([
   "error",
   "input_audio_buffer.speech_started",
   "input_audio_buffer.speech_stopped",
-  "conversation.item.input_audio_transcription.delta",
-  "conversation.item.input_audio_transcription.completed",
-  "conversation.item.input_audio_transcription.failed",
   "response.created",
   "response.done",
-  "response.output_audio_transcript.delta",
 ]);
+class VoiceRequestError extends Error {
+  constructor(
+    readonly code: VoiceProblemCode,
+    readonly retryAfterSeconds?: number,
+  ) {
+    super(code);
+  }
+}
 interface VoiceRun {
   owner: VerifiedCredentials;
   controller: AbortController;
@@ -71,13 +81,12 @@ interface VoiceRun {
   idle?: ReturnType<typeof setTimeout>;
   seen: Set<string>;
   inputId?: string;
-  inputs: Map<string, { order: number; partial: string; text?: string }>;
   outputId?: string;
   responding?: boolean;
   turnId?: string;
 }
 
-/** Native conversational audio. Captions never submit a text turn or execute a tool. */
+/** Native conversational audio without a separate transcription service or captions. */
 @Injectable()
 export class AssistantVoiceClient {
   private readonly credentials = inject(AuthCredentials);
@@ -89,12 +98,12 @@ export class AssistantVoiceClient {
   readonly state = signal<
     "off" | "connecting" | "listening" | "querying" | "responding" | "muted"
   >("off");
-  readonly error = signal("");
-  readonly inputTranscript = signal("");
-  readonly inputTranscripts = signal<
-    { id: string; order: number; text: string }[]
-  >([]);
-  readonly outputTranscript = signal("");
+  readonly problem = signal<VoiceProblem | null>(null);
+  readonly retryAt = signal<number | null>(null);
+  readonly stopping = signal(false);
+  readonly closed = signal(0);
+  private closeEpoch = 0;
+  private retryTimer?: ReturnType<typeof setTimeout>;
   readonly playbackBlocked = signal(false);
   readonly supported = this.media.supported();
 
@@ -122,8 +131,46 @@ export class AssistantVoiceClient {
       },
     });
     if (response.status === 401) this.credentials.expire(owner);
-    if (!response.ok) throw new Error("Voice unavailable");
+    if (!response.ok) {
+      const parsed = AssistantVoiceProblemSchema.safeParse(
+        await response.json().catch(() => null),
+      );
+      const header = Number(response.headers.get("Retry-After"));
+      const retry = parsed.success ? parsed.data.retryAfterSeconds : undefined;
+      throw new VoiceRequestError(
+        parsed.success
+          ? parsed.data.code
+          : response.status === 429
+            ? "capacity"
+            : response.status === 503
+              ? "unavailable"
+              : "setup_failed",
+        retry ??
+          (Number.isInteger(header) && header > 0 && header <= 3600
+            ? header
+            : undefined),
+      );
+    }
     return response;
+  }
+
+  private showProblem(code: VoiceProblemCode, retryAfterSeconds?: number) {
+    const retryAt = retryAfterSeconds
+      ? Date.now() + retryAfterSeconds * 1000
+      : undefined;
+    this.problem.set(voiceProblem(code, retryAt));
+    if (retryAt) {
+      clearTimeout(this.retryTimer);
+      this.retryAt.set(retryAt);
+      this.retryTimer = setTimeout(
+        () => this.retryAt.set(null),
+        Math.max(1, retryAt - Date.now()),
+      );
+    }
+  }
+
+  clearProblem() {
+    this.problem.set(null);
   }
 
   async start(
@@ -135,16 +182,15 @@ export class AssistantVoiceClient {
   ) {
     if (
       this.run ||
+      this.stopping() ||
       !this.supported ||
       owner.signal.aborted ||
       startupSignal?.aborted ||
+      (this.retryAt() ?? 0) > Date.now() ||
       document.hidden
     )
       return;
-    this.error.set("");
-    this.inputTranscript.set("");
-    this.inputTranscripts.set([]);
-    this.outputTranscript.set("");
+    this.problem.set(null);
     this.playbackBlocked.set(false);
     this.state.set("connecting");
     let run: VoiceRun;
@@ -157,13 +203,10 @@ export class AssistantVoiceClient {
         peer: this.media.peer(),
         audio,
         seen: new Set(),
-        inputs: new Map(),
       };
     } catch {
       this.state.set("off");
-      this.error.set(
-        "No pudimos preparar el audio. Puedes continuar por texto.",
-      );
+      this.showProblem("setup_failed");
       return;
     }
     this.run = run;
@@ -173,12 +216,13 @@ export class AssistantVoiceClient {
       !startupSignal?.aborted &&
       !document.hidden &&
       !owner.signal.aborted;
-    const fail = () => {
+    const fail = (
+      code: VoiceProblemCode = "connection_lost",
+      retryAfterSeconds?: number,
+    ) => {
       if (!current()) return;
       this.end();
-      this.error.set(
-        "La voz se interrumpió. Puedes continuar por texto; no se reenviará nada automáticamente.",
-      );
+      this.showProblem(code, retryAfterSeconds);
     };
     owner.signal.addEventListener("abort", () => this.end(true), {
       once: true,
@@ -195,16 +239,20 @@ export class AssistantVoiceClient {
       },
       { signal: run.controller.signal },
     );
-    navigator.mediaDevices?.addEventListener("devicechange", fail, {
-      signal: run.controller.signal,
-    });
+    navigator.mediaDevices?.addEventListener(
+      "devicechange",
+      () => fail("microphone_unavailable"),
+      {
+        signal: run.controller.signal,
+      },
+    );
     const activity = () => {
       clearTimeout(run.idle);
       run.idle = setTimeout(() => {
         if (current()) this.end();
       }, 60_000);
     };
-    run.timeout = setTimeout(fail, 15_000);
+    run.timeout = setTimeout(() => fail("setup_failed"), 15_000);
     try {
       const microphone = await this.media.microphone();
       if (!current()) {
@@ -213,7 +261,7 @@ export class AssistantVoiceClient {
       }
       run.microphone = microphone;
       for (const track of microphone.getAudioTracks()) {
-        track.addEventListener("ended", fail, {
+        track.addEventListener("ended", () => fail("microphone_unavailable"), {
           signal: run.controller.signal,
         });
         run.peer.addTrack(track, microphone);
@@ -235,8 +283,8 @@ export class AssistantVoiceClient {
       };
       const channel = run.peer.createDataChannel("oai-events");
       run.channel = channel;
-      channel.onclose = fail;
-      channel.onerror = fail;
+      channel.onclose = () => fail();
+      channel.onerror = () => fail();
       channel.onopen = () => {
         if (!current()) return;
         clearTimeout(run.timeout);
@@ -252,7 +300,7 @@ export class AssistantVoiceClient {
         try {
           const value: unknown = JSON.parse(data);
           if (
-            !captionEvents.has(z.object({ type: z.string() }).parse(value).type)
+            !mediaEvents.has(z.object({ type: z.string() }).parse(value).type)
           )
             return;
           const event = eventSchema.parse(value);
@@ -261,87 +309,27 @@ export class AssistantVoiceClient {
             event.error?.code === "response_cancel_not_active"
           )
             return;
-          if (
-            event.type === "error" ||
-            event.type === "conversation.item.input_audio_transcription.failed"
-          ) {
-            fail();
+          if (event.type === "error") {
+            fail("provider_error");
             return;
           }
           if (this.state() === "muted") return;
           if (event.type === "input_audio_buffer.speech_started") {
+            this.problem.set(null);
             if (!event.item_id || run.seen.has(event.item_id)) return;
             if (run.seen.size >= 24) {
               fail();
               return;
             }
             run.seen.add(event.item_id);
-            run.inputs.set(event.item_id, {
-              order: run.seen.size,
-              partial: "",
-            });
             activity();
             this.interrupt();
             interrupt();
-            this.inputTranscript.set("");
-            this.outputTranscript.set("");
             this.state.set("listening");
             run.inputId = event.item_id;
           }
           if (event.type === "input_audio_buffer.speech_stopped")
             this.state.set("querying");
-          if (
-            event.type ===
-              "conversation.item.input_audio_transcription.delta" &&
-            event.item_id &&
-            run.inputs.has(event.item_id) &&
-            event.delta
-          ) {
-            const item = run.inputs.get(event.item_id);
-            if (item) {
-              item.partial = (item.partial + event.delta).slice(0, 2000);
-              if (event.item_id === run.inputId)
-                this.inputTranscript.set(item.partial);
-            }
-          }
-          if (
-            event.type ===
-              "conversation.item.input_audio_transcription.completed" &&
-            event.transcript &&
-            event.item_id &&
-            run.inputs.has(event.item_id)
-          ) {
-            if (event.transcript.length > 2000) {
-              fail();
-              return;
-            }
-            const item = run.inputs.get(event.item_id);
-            if (!item || item.text !== undefined) return;
-            item.text = event.transcript;
-            activity();
-            // Record every completed item immediately, including later items
-            // waiting for an earlier asynchronous transcription to settle.
-            this.inputTranscripts.update((items) =>
-              [
-                ...items,
-                {
-                  id: event.item_id ?? "",
-                  order: item.order,
-                  text: event.transcript ?? "",
-                },
-              ].sort((a, b) => a.order - b.order),
-            );
-            const ready: string[] = [];
-            for (const [id, pending] of run.inputs) {
-              if (pending.text === undefined) break;
-              ready.push(pending.text);
-              run.inputs.delete(id);
-            }
-            for (const text of ready) {
-              if (!current()) break;
-              this.inputTranscript.set(text);
-            }
-          }
           if (
             event.type === "response.created" &&
             event.response &&
@@ -359,22 +347,14 @@ export class AssistantVoiceClient {
           ) {
             run.responding = false;
             if (
-              !["completed", "cancelled"].includes(event.response?.status ?? "")
+              !["completed", "cancelled", "incomplete", "failed"].includes(
+                event.response?.status ?? "",
+              )
             ) {
               fail();
               return;
             }
           }
-          if (
-            event.type === "response.output_audio_transcript.delta" &&
-            run.outputId &&
-            event.delta &&
-            event.response_id === run.outputId &&
-            run.outputId
-          )
-            this.outputTranscript.update((text) =>
-              (text + event.delta).slice(0, 16_000),
-            );
         } catch {
           fail();
         }
@@ -398,10 +378,28 @@ export class AssistantVoiceClient {
         .then(() => {
           if (current()) fail();
         })
-        .catch(fail);
+        .catch((error: unknown) => {
+          if (error instanceof VoiceRequestError)
+            fail(error.code, error.retryAfterSeconds);
+          else fail();
+        });
       await run.peer.setRemoteDescription({ type: "answer", sdp: session.sdp });
-    } catch {
-      fail();
+    } catch (error) {
+      const name =
+        error instanceof Error || error instanceof DOMException
+          ? error.name
+          : "";
+      if (error instanceof VoiceRequestError)
+        fail(error.code, error.retryAfterSeconds);
+      else if (["NotAllowedError", "PermissionDeniedError"].includes(name))
+        fail("microphone_denied");
+      else if (
+        ["NotFoundError", "NotReadableError", "OverconstrainedError"].includes(
+          name,
+        )
+      )
+        fail("microphone_unavailable");
+      else fail(run.session ? "connection_lost" : "setup_failed");
     }
   }
 
@@ -444,6 +442,14 @@ export class AssistantVoiceClient {
           )
             return;
           const event = AssistantVoiceEventSchema.parse(JSON.parse(line));
+          // Speech text is intentionally unwired, including older server deltas.
+          if (event.type === "delta") continue;
+          if (event.type === "voice_warning") {
+            this.showProblem(event.code);
+            continue;
+          }
+          if (event.type === "voice_error")
+            throw new VoiceRequestError(event.code, event.retryAfterSeconds);
           if (event.type === "phase") {
             if (this.state() !== "muted") this.state.set(event.state);
             continue;
@@ -464,8 +470,9 @@ export class AssistantVoiceClient {
               event.action.origin !== "assistant")
           )
             throw new Error("Foreign voice correction");
+          if (event.type === "error")
+            throw new VoiceRequestError("turn_unconfirmed");
           receive(event);
-          if (event.type === "error") throw new Error("Unconfirmed voice turn");
         }
         if (buffer.length > 500_000) throw new Error("Voice event limit");
       }
@@ -497,7 +504,6 @@ export class AssistantVoiceClient {
     if (!this.run || this.state() === "connecting") return;
     const muted = this.state() !== "muted";
     this.run.inputId = undefined;
-    this.run.inputs.clear();
     for (const track of this.run.microphone?.getTracks() ?? [])
       track.enabled = !muted;
     this.interrupt();
@@ -520,16 +526,15 @@ export class AssistantVoiceClient {
       });
   }
 
-  end(clearTranscripts = false) {
+  end(clearState = false) {
     const run = this.run;
     this.run = undefined;
     this.state.set("off");
     this.playbackBlocked.set(false);
-    if (clearTranscripts) {
-      this.error.set("");
-      this.inputTranscript.set("");
-      this.inputTranscripts.set([]);
-      this.outputTranscript.set("");
+    if (clearState) {
+      this.problem.set(null);
+      clearTimeout(this.retryTimer);
+      this.retryAt.set(null);
     }
     if (!run) return Promise.resolve();
     run.controller.abort();
@@ -541,7 +546,12 @@ export class AssistantVoiceClient {
     run.audio.srcObject = null;
     run.channel?.close();
     run.peer.close();
-    return this.release(run);
+    const epoch = ++this.closeEpoch;
+    this.stopping.set(true);
+    return this.release(run).finally(() => {
+      if (epoch === this.closeEpoch) this.stopping.set(false);
+      this.closed.update((value) => value + 1);
+    });
   }
 
   private async release(run: VoiceRun) {

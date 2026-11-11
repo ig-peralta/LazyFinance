@@ -330,12 +330,13 @@ late permission/events cannot revive capture or adopt another owner's transcript
 Native voice turns use an independent persisted conversation ID, separate
 authenticated observation stream, server-executed tools and the same lease policy
 and approvals. Text/voice have separate accepted-scope resources and retained turn
-buffers; text history lists never request voice sessions. Transcription never invokes
+buffers; text history lists never request voice sessions. Native audio never invokes
 the text stream, and completed text answers never trigger literal read-aloud.
-The optional `turn.voice.question` stores the readable input alongside the
-immutable lease question; only that voice session uses it for follow-ups. Visible subtitles
-are removed; internal partial transcripts remain in bounded memory. A delayed
-transcript can fill an interrupted question without confirming its answer.
+Separate input ASR, transcript handlers, browser caption signals and saved speech
+replay are intentionally unwired for cost/privacy. New voice turns have an
+immutable lease question, empty answer text and saved sources/actions/status only.
+Native output metadata is checked transiently server-side for grounding, not
+streamed to the browser. Legacy `turn.voice` records remain readable but unchanged.
 The **Texto / Voz** controls switch independent views. Returning to text stops capture,
 closes voice details and preserves the original text selection/draft, without
 inserting voice messages or their proposals. Ending capture retains proposal/query
@@ -343,6 +344,14 @@ review in the voice view without exposing transcripts. Returning to that view do
 not capture; resumption requires explicit microphone start again. Ending an in-flight
 turn reconciles the owned voice read rather than replaying it. Pending voice review
 blocks replacing that voice session; text history remains independent.
+One centered accessible problem card distinguishes admission, permission, setup,
+connection and incomplete-answer failures. No duplicate footer alert or ended-session
+boilerplate is shown. Retry requires explicit capture confirmation; rate/capacity
+cooldowns gate voice starts, not text sends. A nonfatal warning leaves a healthy
+call usable without replay. Local capture ends immediately, while a separate
+closing signal waits for server termination; closure refreshes saved voice state
+again after that asynchronous work, so an early pending read cannot leave text
+blocked after finalization. Unresolved pending records still require reconciliation.
 See the [voice privacy/lifetime contract](assistant-live-voice.md).
 After saved processing acceptance, voice has no repeated consent checkbox. Only
 the separate explicit microphone-start control can initiate capture. Availability

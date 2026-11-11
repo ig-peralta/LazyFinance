@@ -166,9 +166,14 @@ Optional live WebRTC voice is disabled by default and requires separate start/pr
 confirmation. After saved processing acceptance, **Conversar por voz** opens its
 disclosure without a repeated checkbox. Only **Entiendo, iniciar micrófono** can
 request capture; accepting account consent, opening or canceling requests none.
-New conversations promote voice with a larger central entry. Visible subtitles
-are removed for now; server transcription supports the separate voice session's
-context and completion, not visible text history.
+New conversations promote voice with a larger central entry. Visible subtitles,
+input ASR and browser transcript collection are unwired. New voice turns retain
+sources/proposals/status, not spoken text; no completion waits for transcription.
+Existing transcript records are not deleted or replayed into resumed calls.
+One centered accessible problem card replaces duplicate footer errors and ended-session
+boilerplate. Admission cooldowns disable voice retries without disabling text sends;
+incomplete answers warn without closing a healthy call or automatically retrying.
+Capture stops immediately and saved state refreshes after asynchronous closure.
 Loading, failed and disabled availability are shown under assistant options, with
 **Volver a comprobar voz** for an explicit read after configuration changes.
 Minimize/navigation/hidden tabs end capture. See the

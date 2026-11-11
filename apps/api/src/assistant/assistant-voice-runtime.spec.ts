@@ -7,6 +7,7 @@ import type {
 } from "@lazyfinance/contracts";
 import { FinancialActionRequestSchema } from "@lazyfinance/contracts";
 import { type StoredAssistantConversationSchema } from "@lazyfinance/contracts/internal";
+import { Logger } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { describe, expect, it, vi } from "vitest";
 import WebSocket from "ws";
@@ -16,7 +17,6 @@ import type { AsyncStub, RpcStubs } from "../../tests/fixtures/rpc-stubs";
 import { ActionsService } from "../actions/actions.service";
 import { EnvironmentService } from "../environment/environment.service";
 import { AssistantService } from "./assistant.service";
-import { assistantHistory } from "./assistant-policy";
 import { AssistantVoiceRuntime, VOICE_SOCKET } from "./assistant-voice-runtime";
 import { FinancialReads } from "./financial-reads";
 
@@ -38,10 +38,10 @@ class Socket extends EventEmitter {
   }
 }
 
-async function setup() {
+async function setup(history: AssistantTurn[] = [], attachObserver = true) {
   const socket = new Socket();
   const conversationId = randomUUID();
-  const saved: AssistantTurn[] = [];
+  const saved: AssistantTurn[] = [...history];
   const conversation = (): z.infer<
     typeof StoredAssistantConversationSchema
   > => ({
@@ -141,9 +141,14 @@ async function setup() {
   const run = await connecting;
   const controller = new AbortController();
   const events: AssistantVoiceEvent[] = [];
-  const listening = run.listen(controller.signal, async (event) => {
-    events.push(event);
-  });
+  let listening: Promise<void> | undefined;
+  const listen = () => {
+    listening = run.listen(controller.signal, async (event) => {
+      events.push(event);
+    });
+    return listening;
+  };
+  if (attachObserver) listen();
   const responses = () =>
     socket.sent.filter((event) => event.type === "response.create");
   const begin = async (item = "audio-1") => {
@@ -156,16 +161,8 @@ async function setup() {
       response: { id: item, metadata: { voiceItem: item } },
     });
   };
-  const finish = async (
-    item = "audio-1",
-    transcript = "Muéstrame mis cuentas",
-  ) => {
+  const finish = async (item = "audio-1") => {
     const count = store.finish.mutate.mock.calls.length;
-    socket.event({
-      type: "conversation.item.input_audio_transcription.completed",
-      item_id: item,
-      transcript,
-    });
     socket.event({
       type: "response.output_audio_transcript.delta",
       response_id: item,
@@ -224,6 +221,7 @@ async function setup() {
     },
     begin,
     finish,
+    listen,
     close: async () => {
       controller.abort();
       await run.close();
@@ -234,6 +232,104 @@ async function setup() {
 }
 
 describe("server-owned native audio conversation", () => {
+  it("keeps the session usable after a token-limited answer without replaying a call or confirming the partial reply", async () => {
+    const warn = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => {});
+    const f = await setup();
+    try {
+      await f.begin();
+      expect(f.responses()[0]).toMatchObject({
+        response: { max_output_tokens: 1024 },
+      });
+      f.socket.event({
+        type: "conversation.item.input_audio_transcription.completed",
+        item_id: "audio-1",
+        transcript: "Pregunta privada que no debe registrarse en logs",
+      });
+      f.socket.event({
+        type: "response.output_audio_transcript.delta",
+        response_id: "audio-1",
+        delta: "Respuesta privada incompleta",
+      });
+      f.socket.event({
+        type: "response.done",
+        response: {
+          id: "audio-1",
+          status: "incomplete",
+          status_details: { reason: "max_output_tokens" },
+          usage: { output_tokens: 1024 },
+          output: [{ type: "message" }],
+        },
+      });
+      await vi.waitFor(() =>
+        expect(f.events).toContainEqual({
+          type: "voice_warning",
+          code: "output_limit",
+        }),
+      );
+      expect(f.saved[0].status).toBe("failed");
+      expect(f.socket.readyState).toBe(WebSocket.OPEN);
+      expect(f.responses()).toHaveLength(1);
+      expect(f.prepare).not.toHaveBeenCalled();
+      expect(f.events.some((event) => event.type === "voice_error")).toBe(
+        false,
+      );
+      const diagnostics = JSON.stringify(warn.mock.calls);
+      expect(diagnostics).toContain("max_output_tokens");
+      expect(diagnostics).not.toContain("Pregunta privada");
+      expect(diagnostics).not.toContain("Respuesta privada");
+      await f.begin("next-explicit-audio");
+      expect(f.responses()).toHaveLength(2);
+    } finally {
+      await f.close();
+      warn.mockRestore();
+    }
+  });
+
+  it("delivers a sanitized terminal problem before closing the observation stream", async () => {
+    const warn = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => {});
+    const f = await setup();
+    try {
+      await f.begin();
+      f.socket.event({
+        type: "error",
+        error: { code: "secret-provider-financial-diagnostics" },
+      });
+      await vi.waitFor(() =>
+        expect(f.events).toContainEqual({
+          type: "voice_error",
+          code: "provider_error",
+        }),
+      );
+      expect(
+        warn.mock.calls.map(([message]) => JSON.parse(String(message))),
+      ).toContainEqual(expect.objectContaining({ reason: "unknown" }));
+      expect(JSON.stringify(warn.mock.calls)).not.toContain("secret-provider");
+      await vi.waitFor(() => expect(f.saved[0].status).toBe("interrupted"));
+    } finally {
+      await f.close();
+      warn.mockRestore();
+    }
+  });
+
+  it("drains a terminal problem queued before the browser attaches its observation stream", async () => {
+    const f = await setup([], false);
+    try {
+      await f.begin();
+      f.socket.event({ type: "error", error: { code: "server_error" } });
+      await vi.waitFor(() => expect(f.saved[0].status).toBe("interrupted"));
+      await f.listen();
+      expect(f.events).toContainEqual({
+        type: "voice_error",
+        code: "provider_error",
+      });
+    } finally {
+      await f.close();
+    }
+  });
   it("prepares the budget and its colored new tag as one request and refuses a competing request", async () => {
     const f = await setup();
     f.prepare.mockImplementation(
@@ -348,10 +444,7 @@ describe("server-owned native audio conversation", () => {
         action: revised.request,
       });
       expect(f.prepare).not.toHaveBeenCalled();
-      await f.finish(
-        "audio-1",
-        "Mejor que sea de ochenta mil, conserva el rojo",
-      );
+      await f.finish();
       expect(f.events).toContainEqual({
         type: "action_updated",
         action: revised,
@@ -404,37 +497,38 @@ describe("server-owned native audio conversation", () => {
     expect(f.unobserve).toHaveBeenCalledOnce();
   });
 
-  it("keeps delayed user details from an interrupted turn without promoting its answer or losing the next turn", async () => {
+  it("ignores delayed or failed input transcription after interruption without saving speech or losing the next turn", async () => {
     const f = await setup();
     try {
       await f.begin();
       await f.begin("correction");
-      expect(f.saved[0].voice?.transcriptionPending).toBe(true);
+      expect(f.saved[0]).toMatchObject({
+        question: "Consulta por voz",
+        text: "",
+        status: "interrupted",
+      });
+      expect(f.saved[0]).not.toHaveProperty("voice");
       f.socket.event({
         type: "conversation.item.input_audio_transcription.completed",
         item_id: "audio-1",
         transcript: "Mensual de cien mil desde diciembre",
       });
-      await vi.waitFor(() =>
-        expect(f.store.recordVoiceQuestion.mutate).toHaveBeenCalledOnce(),
-      );
+      f.socket.event({
+        type: "conversation.item.input_audio_transcription.failed",
+        item_id: "correction",
+      });
+      await f.finish("correction");
+      expect(f.store.recordVoiceQuestion.mutate).not.toHaveBeenCalled();
       expect(f.saved[0].status).toBe("interrupted");
-      expect(f.saved[0].voice).toEqual({
-        question: "Mensual de cien mil desde diciembre",
-      });
-      expect(assistantHistory(f.saved)).toContainEqual({
-        role: "user",
-        content: "Mensual de cien mil desde diciembre",
-      });
-      expect(f.saved[1].status).toBe("pending");
-      await f.finish("correction", "Con una etiqueta nueva roja");
       expect(f.saved[1].status).toBe("complete");
+      expect(f.saved.every((turn) => !turn.voice && !turn.text)).toBe(true);
+      expect(JSON.stringify(f.events)).not.toContain("Mensual de cien mil");
     } finally {
       await f.close();
     }
   });
 
-  it("responds to committed AUDIO before transcription, runs owned tools and saves the shared readable turn", async () => {
+  it("responds to committed AUDIO, runs owned tools and saves only sources/actions/status without any transcription", async () => {
     const f = await setup();
     try {
       await f.begin();
@@ -458,9 +552,16 @@ describe("server-owned native audio conversation", () => {
       await f.finish();
       expect(f.saved[0]).toMatchObject({
         status: "complete",
-        voice: { question: "Muéstrame mis cuentas" },
+        question: "Consulta por voz",
+        text: "",
         sources: [{ tool: "consultar_saldos_cuentas" }],
       });
+      expect(f.saved[0]).not.toHaveProperty("voice");
+      expect(f.store.recordVoiceQuestion.mutate).not.toHaveBeenCalled();
+      expect(f.events.some((event) => event.type === "delta")).toBe(false);
+      expect(JSON.stringify(f.events)).not.toContain(
+        "Puedes revisar tus cuentas",
+      );
       expect(f.events.some((event) => event.type === "source")).toBe(true);
       const config = JSON.stringify(
         f.socket.sent.find((event) => event.type === "session.update"),
@@ -514,7 +615,7 @@ describe("server-owned native audio conversation", () => {
     }
   });
 
-  it("does not save a completed spoken response as confirmed until its readable question arrives", async () => {
+  it("confirms a grounded completed response immediately without waiting for speech-to-text", async () => {
     const f = await setup();
     try {
       await f.begin();
@@ -531,15 +632,85 @@ describe("server-owned native audio conversation", () => {
           output: [{ type: "message" }],
         },
       });
-      await new Promise<void>((resolve) => setImmediate(resolve));
-      expect(f.store.finish.mutate).not.toHaveBeenCalled();
+      await vi.waitFor(() => expect(f.saved[0].status).toBe("complete"));
+      expect(f.saved[0]).not.toHaveProperty("voice");
+      expect(f.saved[0].text).toBe("");
       f.socket.event({
         type: "conversation.item.input_audio_transcription.completed",
         item_id: "audio-1",
         transcript: "Mis gastos",
       });
-      await vi.waitFor(() => expect(f.saved[0].status).toBe("complete"));
-      expect(f.saved[0].voice?.question).toBe("Mis gastos");
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      expect(f.store.finish.mutate).toHaveBeenCalledOnce();
+      expect(f.store.recordVoiceQuestion.mutate).not.toHaveBeenCalled();
+      expect(f.saved[0]).not.toHaveProperty("voice");
+      expect(JSON.stringify(f.events)).not.toContain("Mis gastos");
+    } finally {
+      await f.close();
+    }
+  });
+
+  it("does not replay stored legacy speech into a new provider call but preserves the original records", async () => {
+    const legacy: AssistantTurn = {
+      id: randomUUID(),
+      question: "Consulta por voz",
+      text: "Respuesta histórica privada",
+      status: "complete",
+      voice: { question: "Pregunta histórica privada" },
+      sources: [],
+      actions: [],
+      createdAt: "2026-11-11T00:00:00.000Z",
+    };
+    const f = await setup([legacy]);
+    try {
+      expect(
+        f.socket.sent.some(
+          (event) => event.type === "conversation.item.create",
+        ),
+      ).toBe(false);
+      expect(JSON.stringify(f.socket.sent)).not.toContain("histórica privada");
+      expect(f.saved[0]).toEqual(legacy);
+      await f.begin();
+      expect(JSON.stringify(f.responses())).not.toContain("histórica privada");
+      await f.finish();
+      expect(f.saved[0]).toEqual(legacy);
+    } finally {
+      await f.close();
+    }
+  });
+
+  it("uses native output metadata transiently to reject unsupported claims without retaining the spoken text", async () => {
+    const f = await setup();
+    try {
+      await f.begin();
+      f.socket.event({
+        type: "response.output_audio_transcript.delta",
+        response_id: "audio-1",
+        delta: "Tienes 50000 pesos disponibles.",
+      });
+      f.socket.event({
+        type: "response.done",
+        response: {
+          id: "audio-1",
+          status: "completed",
+          output: [{ type: "message" }],
+        },
+      });
+      await vi.waitFor(() =>
+        expect(f.events).toContainEqual({
+          type: "voice_warning",
+          code: "turn_unconfirmed",
+        }),
+      );
+      expect(f.saved[0]).toMatchObject({
+        status: "failed",
+        text: "",
+        actions: [],
+      });
+      expect(f.saved[0]).not.toHaveProperty("voice");
+      expect(JSON.stringify(f.events)).not.toContain("50000");
+      expect(f.responses()).toHaveLength(1);
+      expect(f.socket.readyState).toBe(WebSocket.OPEN);
     } finally {
       await f.close();
     }
