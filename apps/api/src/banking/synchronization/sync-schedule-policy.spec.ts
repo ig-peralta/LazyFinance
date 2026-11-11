@@ -23,7 +23,7 @@ describe("portable synchronization scheduling policy", () => {
   ])("bounds failure %i backoff to %i minutes", (count, minutes) => {
     expect(
       Date.parse(
-        syncScheduleCompletion(count, now, 0, "retryable").nextAttemptAt!,
+        syncScheduleCompletion(count, now, 0, "retryable").nextAttemptAt ?? "",
       ) - now.getTime(),
     ).toBe(minutes * 60_000);
   });

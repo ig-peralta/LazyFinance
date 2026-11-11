@@ -776,7 +776,7 @@ describe.skipIf(!ownerUrl)(
         expect(row.claimId).toBeNull();
         if (transition === "manual begin") {
           expect(row).toMatchObject({ eligible: true, runRevision: 0 });
-          expect(row.nextAttemptAt!.getTime()).toBeGreaterThan(Date.now());
+          expect(row.nextAttemptAt?.getTime() ?? 0).toBeGreaterThan(Date.now());
           expect(
             await locked.user.providerSync.facts.query({
               connectionId: locked.connectionId,
