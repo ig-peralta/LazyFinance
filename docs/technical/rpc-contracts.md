@@ -96,6 +96,15 @@ missing-field compatibility defaults for earlier development histories. The UI
 projects these results into separate financial cards, not inline citation codes or
 raw JSON panels; no model-authored URLs are trusted.
 
+Optional bearer-only voice HTTP endpoints use shared strict public schemas:
+`GET /assistant/voice/configuration` returns only availability;
+`POST /assistant/voice/sessions` accepts owned conversation ID and bounded SDP;
+`POST /assistant/voice/end` accepts only an opaque local session ID. Origin,
+conversation ownership and admission are checked server-side. SDP negotiation
+exposes no provider key, owner selector, financial tools or execution authority.
+These are not tRPC procedures: the combined public/private inventories remain
+82/103, and voice itself needs no migration. See the [voice contract and live-validation gates](assistant-live-voice.md).
+
 ## Private surface
 
 The [generated private router](../../libs/rpc-persistence/src/generated/server.ts)

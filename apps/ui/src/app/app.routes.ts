@@ -26,8 +26,8 @@ export const routes: Routes = [
           workspaceRoute("asistente", {
             heading: "Asistente financiero",
             load: () =>
-              import("./pages/assistant/assistant.page").then(
-                (m) => m.AssistantPage,
+              import("./pages/assistant/assistant-entry").then(
+                (m) => m.AssistantEntry,
               ),
           }),
           workspaceRoute("comenzar", {

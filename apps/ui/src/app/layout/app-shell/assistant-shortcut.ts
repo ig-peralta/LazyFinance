@@ -25,7 +25,7 @@ export function bindAssistantShortcut(
       return;
     if (
       document.querySelector(
-        'dialog[open], [aria-modal="true"], [role="dialog"], details.workspace-appearance[open]',
+        'dialog[open], [aria-modal="true"]:not([hidden]), [role="dialog"]:not([hidden]):not([aria-modal="false"]), details.workspace-appearance[open]',
       )
     )
       return;

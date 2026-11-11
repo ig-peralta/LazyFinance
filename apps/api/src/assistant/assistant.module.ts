@@ -18,6 +18,8 @@ import {
   ASSISTANT_RUNTIME,
   DemonstrationAssistantRuntime,
 } from "./assistant-runtime";
+import { AssistantVoiceHttp } from "./assistant-voice.http";
+import { AssistantVoiceService, VOICE_FETCH } from "./assistant-voice.service";
 import { FinancialReads } from "./financial-reads";
 
 @Module({
@@ -33,11 +35,16 @@ import { FinancialReads } from "./financial-reads";
     ObjectivesModule,
     FinancialEvidenceModule,
   ],
-  controllers: [AssistantHttp],
+  controllers: [AssistantHttp, AssistantVoiceHttp],
   providers: [
     FinancialReads,
     AssistantService,
     AssistantRpc,
+    AssistantVoiceService,
+    {
+      provide: VOICE_FETCH,
+      useValue: (...args: Parameters<typeof fetch>) => fetch(...args),
+    },
     {
       provide: ASSISTANT_RUNTIME,
       inject: [EnvironmentService, FinancialReads],

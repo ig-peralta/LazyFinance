@@ -27,7 +27,7 @@ describe.skipIf(!integration)("owned selected-account ingestion", () => {
       const selection = await f.first.banking.accountSelection.query({
         id: f.connected.id,
       });
-      expect(Date.parse(selection.readRetryAfter!)).toBeGreaterThan(
+      expect(Date.parse(selection.readRetryAfter ?? "")).toBeGreaterThan(
         Date.now() + 59 * 60_000,
       );
       f.fetch.mockClear();
@@ -52,7 +52,7 @@ describe.skipIf(!integration)("owned selected-account ingestion", () => {
       const deferred = await f.first.banking.accountSelection.query({
         id: f.connected.id,
       });
-      expect(Date.parse(deferred.readRetryAfter!)).toBeGreaterThan(
+      expect(Date.parse(deferred.readRetryAfter ?? "")).toBeGreaterThan(
         Date.now() + 119 * 60_000,
       );
       expect(deferred).toMatchObject({
@@ -137,7 +137,7 @@ describe.skipIf(!integration)("owned selected-account ingestion", () => {
         lastResult: "complete",
         automation: { enrolled: true, failureCount: 0, pauseReason: null },
       });
-      expect(Date.parse(status.automation.nextAttemptAt!)).toBeGreaterThan(
+      expect(Date.parse(status.automation.nextAttemptAt ?? "")).toBeGreaterThan(
         Date.now() + 59 * 60_000,
       );
       expect(status.freshness.state).not.toBe("fresh");

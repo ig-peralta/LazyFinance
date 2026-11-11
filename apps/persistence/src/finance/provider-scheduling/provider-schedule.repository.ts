@@ -161,6 +161,12 @@ export class ProviderScheduleRepository {
     leaseExpiresAt: Date,
     claimId?: string,
   ) {
+    // Serialize claim extension with global capacity observation. A row lock
+    // alone cannot hide an old expired MVCC tuple from another scheduler.
+    if (claimId)
+      await sql`select pg_advisory_xact_lock(hashtextextended('lazyfinance:banking-scheduler', 0))`.execute(
+        this.db,
+      );
     const row = await this.db
       .selectFrom("finance.provider_sync_schedule")
       .selectAll()

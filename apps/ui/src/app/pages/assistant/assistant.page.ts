@@ -8,10 +8,10 @@ import {
   inject,
   resource,
   signal,
+  untracked,
   viewChild,
 } from "@angular/core";
-import { toSignal } from "@angular/core/rxjs-interop";
-import { ActivatedRoute, Router, RouterLink } from "@angular/router";
+import { Router } from "@angular/router";
 import {
   ASSISTANT_MAX_INPUT,
   type AssistantConversation,
@@ -22,13 +22,12 @@ import {
   AuthCredentials,
   type VerifiedCredentials,
 } from "../../core/auth/auth-credentials";
-import {
-  initialReadSettled,
-  reportWorkspaceReadiness,
-} from "../../core/rendering/workspace-preparation";
 import { RpcClient, type RpcScope } from "../../core/rpc/rpc-client";
 import { createScopedCommand } from "../../core/rpc/scoped-command";
+import { assistantReplyText } from "../../features/assistant/assistant-reply-text";
 import { AssistantStreamClient } from "../../features/assistant/assistant-stream.client";
+import { AssistantVoiceClient } from "../../features/assistant/assistant-voice.client";
+import { AssistantWorkspace } from "../../features/assistant/assistant-workspace";
 import { Icon } from "../../shared/ui/icon";
 import { AssistantReply } from "./reply/assistant-reply";
 import { AssistantWelcome } from "./welcome/assistant-welcome";
@@ -45,25 +44,33 @@ interface LiveTurn {
 
 @Component({
   selector: "assistant-page",
-  imports: [RouterLink, Icon, AssistantReply, AssistantWelcome],
+  imports: [Icon, AssistantReply, AssistantWelcome],
   templateUrl: "./assistant.page.html",
   styleUrl: "./assistant.page.css",
+  providers: [AssistantVoiceClient],
 })
 export class AssistantPage {
+  private voiceStartup: AbortController | undefined;
+  protected readonly voice = inject(AssistantVoiceClient);
+  protected readonly voiceDisclosure = signal(false);
+  protected readonly voiceFallback = signal("");
   private readonly rpc = inject(RpcClient);
   private readonly credentials = inject(AuthCredentials);
   private readonly stream = inject(AssistantStreamClient);
-  private readonly router = inject(Router);
-  private readonly route = inject(ActivatedRoute);
-  private readonly query = toSignal(this.route.queryParamMap);
+  protected readonly workspace = inject(AssistantWorkspace);
   private readonly lifetime = new AbortController();
   private readonly liveState = signal<LiveTurn | null>(null);
   private readonly sending = signal<{ scope: RpcScope } | null>(null);
   private readonly composer =
     viewChild<ElementRef<HTMLTextAreaElement>>("composer");
+  private readonly launcher =
+    viewChild<ElementRef<HTMLButtonElement>>("launcher");
   private readonly bottom = viewChild<ElementRef<HTMLElement>>("bottom");
+  private readonly messages = viewChild<ElementRef<HTMLElement>>("messages");
+  private readonly panel = viewChild<ElementRef<HTMLElement>>("panel");
   protected readonly follow = signal(true);
   protected readonly draft = signal("");
+  protected readonly processingAccepted = signal(false);
   protected readonly confirmDelete = signal(false);
   protected readonly maxInput = ASSISTANT_MAX_INPUT;
   protected readonly time = (value: string) =>
@@ -76,7 +83,7 @@ export class AssistantPage {
     () => this.credentials.current()?.principal.name?.split(" ")[0] || "",
   );
   protected readonly id = computed(() => {
-    const id = this.query()?.get("conversacion");
+    const id = this.workspace.selection();
     return id &&
       /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
         id,
@@ -85,15 +92,25 @@ export class AssistantPage {
       : undefined;
   });
   protected readonly invalidId = computed(
-    () => !!this.query()?.has("conversacion") && !this.id(),
+    () => !!this.workspace.selection() && !this.id(),
   );
-  protected readonly command = createScopedCommand(() => this.id());
+  private readonly revision = signal(0);
+  private readonly commandOwner = computed(() => ({
+    id: this.id(),
+    revision: this.revision(),
+  }));
+  protected readonly command = createScopedCommand(() => this.commandOwner());
   protected readonly configuration = resource({
     params: () => this.rpc.authenticatedScope(),
     loader: ({ params: scope, abortSignal }) =>
       scope.client.assistant.configuration.query(undefined, {
         signal: abortSignal,
       }),
+  });
+  protected readonly voiceConfiguration = resource({
+    params: () => this.credentials.current(),
+    loader: ({ params: owner, abortSignal }) =>
+      this.voice.configuration(owner, abortSignal),
   });
   protected readonly conversations = resource({
     params: () =>
@@ -156,6 +173,7 @@ export class AssistantPage {
       !this.invalidId() &&
       this.configuration.hasValue() &&
       this.configuration.value().enabled &&
+      (this.configuration.value().demonstration || this.processingAccepted()) &&
       !this.conversation.isLoading() &&
       !this.conversation.error() &&
       !this.turns().some((turn) => turn.status === "pending") &&
@@ -166,9 +184,22 @@ export class AssistantPage {
 
   constructor() {
     inject(DestroyRef).onDestroy(() => {
+      this.endVoice(true);
       this.lifetime.abort();
       this.liveState()?.controller.abort();
+      this.workspace.onMinimize = undefined;
     });
+    this.workspace.onMinimize = () => this.endVoice();
+    // Navigation may preserve text generation, but never hidden microphone capture.
+    const navigation = inject(Router).events.subscribe(() => this.endVoice());
+    const visibility = () => {
+      if (document.hidden) this.endVoice();
+    };
+    document.addEventListener("visibilitychange", visibility);
+    inject(DestroyRef).onDestroy(() =>
+      document.removeEventListener("visibilitychange", visibility),
+    );
+    inject(DestroyRef).onDestroy(() => navigation.unsubscribe());
     let previous: RpcScope | undefined;
     let previousId: string | undefined;
     effect(() => {
@@ -176,8 +207,14 @@ export class AssistantPage {
         id = this.id(),
         live = this.liveState();
       if (scope !== previous || id !== previousId) {
+        if (scope !== previous || previousId !== undefined) this.endVoice(true);
         this.draft.set("");
         this.confirmDelete.set(false);
+      }
+      if (scope !== previous) {
+        this.processingAccepted.set(false);
+        this.voiceDisclosure.set(false);
+        this.voiceFallback.set("");
       }
       previous = scope;
       previousId = id;
@@ -186,10 +223,47 @@ export class AssistantPage {
         this.liveState.set(null);
       }
     });
+    let anchored: string | undefined;
     afterRenderEffect(() => {
-      const turns = this.turns();
-      if (turns.length && this.follow())
-        this.bottom()?.nativeElement.scrollIntoView?.({ block: "end" });
+      const live = this.live();
+      if (
+        !this.workspace.opened() ||
+        !live?.turn.text ||
+        anchored === live.turn.id
+      )
+        return;
+      anchored = live.turn.id;
+      // Anchor once, never follow token/source/action updates or resize.
+      if (this.follow()) {
+        this.messages()
+          ?.nativeElement.querySelector(
+            `[data-turn="${live.turn.id}"] .assistant-message`,
+          )
+          ?.scrollIntoView?.({ block: "start", behavior: "instant" });
+        this.follow.set(false);
+      }
+    });
+    let wasOpen = false;
+    afterRenderEffect(() => {
+      this.workspace.focusRequest();
+      this.configuration.hasValue();
+      if (this.workspace.opened())
+        untracked(() => {
+          const composer = this.composer()?.nativeElement;
+          if (composer && !composer.disabled) composer.focus();
+          else this.panel()?.nativeElement.focus();
+        });
+      else if (wasOpen)
+        untracked(() =>
+          this.workspace.restoreFocus(this.launcher()?.nativeElement),
+        );
+      wasOpen = this.workspace.opened();
+    });
+    afterRenderEffect(() => {
+      if (this.workspace.opened() && this.workspace.modal()) {
+        const panel = this.panel()?.nativeElement;
+        if (panel && !panel.contains(document.activeElement)) panel.focus();
+      }
     });
     effect(() => {
       const live = this.live();
@@ -207,13 +281,6 @@ export class AssistantPage {
       )
         this.liveState.set({ ...live, turn: saved });
     });
-    reportWorkspaceReadiness(
-      () =>
-        initialReadSettled(this.configuration) &&
-        (!this.configuration.hasValue() ||
-          (initialReadSettled(this.conversations) &&
-            (!this.id() || initialReadSettled(this.conversation)))),
-    );
   }
 
   protected newConversation() {
@@ -221,11 +288,118 @@ export class AssistantPage {
       this.liveState.set(null);
       this.confirmDelete.set(false);
       this.draft.set("");
-      void this.router.navigate([], {
-        relativeTo: this.route,
-        queryParams: {},
-      });
+      this.workspace.selection.set(undefined);
     }
+  }
+
+  protected select(id: string) {
+    if (!this.busy()) this.workspace.selection.set(id);
+  }
+
+  protected acceptProcessing(event: Event) {
+    if (event.target instanceof HTMLInputElement) {
+      this.processingAccepted.set(event.target.checked);
+      if (!event.target.checked) {
+        this.endVoice();
+        this.stop();
+      }
+    }
+  }
+
+  protected async startVoice() {
+    const owner = this.credentials.current();
+    if (
+      !owner ||
+      this.busy() ||
+      this.invalidId() ||
+      !this.processingAccepted() ||
+      !this.voiceConfiguration.hasValue() ||
+      !this.voiceConfiguration.value().enabled
+    )
+      return;
+    this.endVoice();
+    // This generation begins before history creation, not just before getUserMedia.
+    const startup = new AbortController();
+    this.voiceStartup = startup;
+    let selection = this.workspace.selection();
+    const current = () =>
+      this.voiceStartup === startup &&
+      !startup.signal.aborted &&
+      !this.lifetime.signal.aborted &&
+      !owner.signal.aborted &&
+      this.credentials.current() === owner &&
+      this.processingAccepted() &&
+      !document.hidden &&
+      this.workspace.opened() &&
+      this.workspace.selection() === selection;
+    owner.signal.addEventListener("abort", () => this.endVoice(true), {
+      once: true,
+      signal: startup.signal,
+    });
+    if (!current()) {
+      this.endVoice();
+      return;
+    }
+    this.voiceDisclosure.set(true);
+    let id = this.id();
+    if (!id) {
+      await this.command.run(
+        (scope, signal) =>
+          scope.client.assistant.createConversation.mutate(undefined, {
+            signal: AbortSignal.any([signal, startup.signal]),
+          }),
+        (chat) => {
+          if (!current()) return;
+          selection = chat.id;
+          this.workspace.selection.set(chat.id);
+        },
+        "Conversación creada.",
+      );
+      id = this.id();
+    }
+    if (!id || !current()) return;
+    this.voiceDisclosure.set(false);
+    this.voiceFallback.set("");
+    await this.voice.start(
+      owner,
+      id,
+      (text) => {
+        if (!current()) return;
+        this.draft.set(text);
+        // An interrupted/unconfirmed previous turn is reconciled explicitly, never replayed.
+        if (this.canSend()) void this.send();
+        else {
+          this.endVoice();
+          this.voiceFallback.set(
+            "Tu transcripción quedó en el borrador. Revisa el estado de la conversación y envíala por texto cuando esté lista.",
+          );
+        }
+      },
+      () => this.stop(),
+      startup.signal,
+    );
+    if (!current() && this.voiceStartup === startup) this.endVoice();
+  }
+
+  protected endVoice(clearTranscripts = false) {
+    this.voiceStartup?.abort();
+    this.voiceStartup = undefined;
+    this.voiceDisclosure.set(false);
+    this.voice.end(clearTranscripts);
+  }
+
+  protected close() {
+    this.revision.update((value) => value + 1);
+    this.stop();
+    this.endVoice(true);
+    this.sending.set(null);
+    this.liveState.set(null);
+    this.draft.set("");
+    this.confirmDelete.set(false);
+    this.voiceDisclosure.set(false);
+    this.voiceFallback.set("");
+    this.workspace.selection.set(undefined);
+    this.workspace.minimize();
   }
 
   protected suggest(question: string) {
@@ -249,6 +423,26 @@ export class AssistantPage {
     }
   }
 
+  protected containFocus(event: KeyboardEvent) {
+    if (event.key !== "Tab" || !this.workspace.modal()) return;
+    const panel = this.panel()?.nativeElement;
+    const elements = [
+      ...(panel?.querySelectorAll<HTMLElement>(
+        "button:not([disabled]),a[href],input:not([disabled]),textarea:not([disabled]),select:not([disabled]),summary,[tabindex='0']",
+      ) ?? []),
+    ].filter((element) => element.getClientRects().length > 0);
+    const target = event.shiftKey ? elements.at(-1) : elements[0];
+    const boundary = event.shiftKey ? elements[0] : elements.at(-1);
+    if (
+      !elements.length ||
+      document.activeElement === boundary ||
+      document.activeElement === panel
+    ) {
+      event.preventDefault();
+      (target ?? panel)?.focus();
+    }
+  }
+
   protected scroll(event: Event) {
     const element = event.target;
     if (element instanceof HTMLElement)
@@ -263,6 +457,10 @@ export class AssistantPage {
   }
 
   protected stop() {
+    // Conversation creation is a separate, possibly committed command. Stop its
+    // continuation even before a streamed turn/controller exists.
+    if (this.sending() && !this.live()?.pending)
+      this.revision.update((value) => value + 1);
     this.live()?.controller.abort();
   }
 
@@ -294,6 +492,7 @@ export class AssistantPage {
     const owner = this.credentials.current(),
       scope = this.rpc.authenticatedScope();
     if (!owner || !scope || !this.canSend()) return;
+    this.voice.interrupt();
     const text = this.draft().trim();
     const operation = { scope };
     this.sending.set(operation);
@@ -309,6 +508,7 @@ export class AssistantPage {
     scope: RpcScope,
     text: string,
   ) {
+    const revision = this.revision();
     let id = this.id();
     if (!id) {
       let created: AssistantConversation | undefined;
@@ -326,22 +526,27 @@ export class AssistantPage {
         !confirmed ||
         !created ||
         owner.signal.aborted ||
+        this.revision() !== revision ||
         this.lifetime.signal.aborted
       )
         return;
       id = created.id;
-      const navigated = await this.router.navigate([], {
-        relativeTo: this.route,
-        queryParams: { conversacion: id },
-      });
+      this.workspace.selection.set(id);
       if (
-        !navigated ||
         this.id() !== id ||
         this.credentials.current() !== owner ||
+        this.revision() !== revision ||
         this.lifetime.signal.aborted
       )
         return;
     }
+    if (
+      this.revision() !== revision ||
+      !this.configuration.hasValue() ||
+      !this.configuration.value().enabled ||
+      (!this.configuration.value().demonstration && !this.processingAccepted())
+    )
+      return;
     const execution: LiveTurn = {
       scope,
       conversationId: id,
@@ -365,6 +570,7 @@ export class AssistantPage {
     const current = () =>
       this.rpc.authenticatedScope() === scope &&
       this.id() === id &&
+      this.revision() === revision &&
       !this.lifetime.signal.aborted &&
       this.liveState()?.controller === execution.controller;
     const update = (change: Partial<LiveTurn>) => {
@@ -382,6 +588,8 @@ export class AssistantPage {
           if (!current()) return;
           const live = this.liveState();
           if (!live) return;
+          if (event.type === "done" && event.turn.status === "complete")
+            this.voice.speak(assistantReplyText(event.turn.text));
           if (event.type === "turn" || event.type === "done")
             update({
               turn: event.turn,
@@ -420,23 +628,28 @@ export class AssistantPage {
               },
             });
           if (event.type === "status") update({ status: event.text });
-          if (event.type === "error") update({ error: event.message });
+          if (event.type === "error") {
+            this.endVoice();
+            update({
+              error:
+                "No pudimos completar una respuesta confirmada. Consulta el historial antes de volver a enviar.",
+            });
+          }
         },
       );
-    } catch (error) {
+    } catch {
+      if (current()) this.endVoice();
       update({
         error: execution.controller.signal.aborted
           ? "Generación detenida. Consulta el estado para confirmar lo que alcanzó a guardarse."
-          : error instanceof Error
-            ? error.message
-            : "No pudimos confirmar la respuesta. Revisa el historial.",
+          : "No pudimos confirmar la respuesta. Revisa el historial antes de volver a enviar.",
       });
     } finally {
       update({ pending: false });
       if (current()) {
         this.conversation.reload();
         this.conversations.reload();
-        this.composer()?.nativeElement.focus();
+        if (this.workspace.opened()) this.composer()?.nativeElement.focus();
       }
     }
   }
@@ -451,10 +664,7 @@ export class AssistantPage {
         this.confirmDelete.set(false);
         this.liveState.set(null);
         this.conversations.reload();
-        void this.router.navigate([], {
-          relativeTo: this.route,
-          queryParams: {},
-        });
+        this.workspace.selection.set(undefined);
       },
       "Conversación eliminada.",
     );

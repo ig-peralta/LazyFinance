@@ -68,4 +68,28 @@ describe("assistant shortcut binding", () => {
     expect(open).not.toHaveBeenCalled();
     unbind();
   });
+
+  it("can restore a hidden persistent assistant or focus its non-modal panel without overriding real modals", () => {
+    const open = vi.fn();
+    const unbind = bindAssistantShortcut(document, open);
+    for (const markup of [
+      '<section role="dialog" aria-modal="true" hidden></section>',
+      '<section role="dialog" aria-modal="false"></section>',
+      "<dialog></dialog>",
+    ]) {
+      document.body.innerHTML = markup;
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "?" }));
+    }
+    expect(open).toHaveBeenCalledTimes(3);
+    for (const markup of [
+      '<section role="dialog" aria-modal="true"></section>',
+      '<section role="dialog"></section>',
+      '<details class="workspace-appearance" open></details>',
+    ]) {
+      document.body.innerHTML = markup;
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "?" }));
+    }
+    expect(open).toHaveBeenCalledTimes(3);
+    unbind();
+  });
 });

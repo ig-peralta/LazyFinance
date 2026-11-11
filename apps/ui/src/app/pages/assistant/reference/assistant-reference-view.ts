@@ -128,7 +128,14 @@ const sections: Record<
   },
 };
 
-const accountsSchema = z.object({ accounts: z.array(AccountSummarySchema) });
+// Saved evidence may predate account tracking metadata; never strip a supplied status.
+const accountsSchema = z.object({
+  accounts: z.array(
+    AccountSummarySchema.extend({
+      trackingStatus: z.enum(["tracked", "paused", "disconnected"]).nullish(),
+    }),
+  ),
+});
 const movementsSchema = z.object({
   transactions: z.array(RecentTransactionSchema),
 });
@@ -202,7 +209,7 @@ export function assistantReferenceView(
           formatClp(account.balance ?? "") === "—"
             ? "—"
             : formatAccountBalance(account),
-        detail: `${accountTypeLabel(account.type)} · ${formatClp(account.balance ?? "") === "—" ? "Saldo no disponible" : accountBalanceLabel(account)} · ${accountFreshnessLabel(account)}`,
+        detail: `${accountTypeLabel(account.type)} · ${formatClp(account.balance ?? "") === "—" ? "Saldo no disponible" : accountBalanceLabel(account)} · ${accountFreshnessLabel(account)}${account.trackingStatus === "paused" ? " · Seguimiento pausado: último saldo conocido" : account.trackingStatus === "disconnected" ? " · Conexión desconectada: último saldo conocido" : account.trackingStatus === "tracked" ? " · Cuenta en seguimiento" : ""}`,
       }));
       view.empty = view.rows.length
         ? null

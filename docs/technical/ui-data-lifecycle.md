@@ -235,6 +235,19 @@ that optional financial steps or bank import are complete.
 
 ## Financial assistant lifetime
 
+The shell mounts `AssistantPage` once on first open, outside the route outlet.
+`AssistantWorkspace.open()/minimize()/toggle()` restores/focuses that same instance
+without sending or reloading a turn. `/asistente` is an entry/deep-link component,
+not a second chat host. Minimize keeps the text draft/selection/generation in memory;
+Close panel clears them and stops generation without deleting server history.
+Full reload discards private browser state and reads saved history through the API.
+Owner/credential changes clear private state; no chat cache/storage is introduced.
+The desktop non-modal dialog leaves financial navigation available. Narrow screens
+use a full-screen modal dialog state with inert background and Tab containment;
+both support Escape, focus return and safe areas. First-answer anchoring occurs
+once; later streamed updates, history and native reference expansion preserve the
+reading position. An explicit jump control is separate from automatic anchoring.
+
 `AssistantPage` owns configuration/history/detail resources and a credential-,
 selection- and component-bound streamed turn. Creation, deletion and duplicate-send
 suppression retain their operation owner across route updates. The NDJSON client
@@ -243,11 +256,16 @@ snapshot on 401, validates matching turn IDs/questions and requires a persisted
 non-pending `done`. Fragmented UTF-8 is supported; malformed, excessive, foreign or
 out-of-order events fail closed. No browser history or owner is sent to the model.
 
-Stop, logout, credential replacement, chat navigation and destruction abort old
+Stop, logout, credential replacement, conversation replacement and destruction abort old
 work and suppress late callbacks. Stop/disconnection never implies rollback;
 failed/missing confirmation is reconciled through an explicit history read, not
 generation replay. Pending saved turns block another question. User/answer/source
 data and drafts are not stored in cookies, browser storage or transfer state.
+Ordinary authenticated route navigation retains text work, but ends live microphone
+capture. Voice also ends on minimize, hidden tab, device loss and session changes;
+late permission/events cannot revive capture or adopt another owner's transcript.
+Completed voice questions use the same turn stream and approvals; partial/audio
+transcripts remain in memory. See the [voice privacy/lifetime contract](assistant-live-voice.md).
 References are separate financial cards projected from validated stored results,
 not raw JSON or model-authored markup. They retain uncertainty/cutoff disclosures,
 show at most four rows with a preview notice, and use service totals rather than
@@ -490,6 +508,7 @@ scope in protected query params, forward abort signals, avoid protected hydratio
 IDs, invalidate only actual dependencies, and test out-of-order completions. Do
 not restore the removed catch-all API service, RxJS compatibility facade or fake
 HTTP errors. Delivered management workflows are indexed in the UI README;
-voice features and bank-forced refresh remain unavailable,
-not missing client aliases or simulated success paths. Real-provider browser
+bank-forced refresh remains unavailable. Live voice is implemented but disabled
+by default, with explicit microphone/processing controls and separate live gates,
+not a simulated success path. Real-provider browser
 verification is separate evidence from mocked UI resource/command tests.

@@ -13,12 +13,12 @@
         <assistant-action-card [action]="action" [confirmedTurn]="turn().status === 'complete'" [busy]="busy()" (changed)="actionChanged.emit($event)" />
       }
       @if (turn().sources.length) {
-        <section class="reply-sources" aria-label="Referencias de la respuesta">
-          <div class="sources-heading"><h2 class="sources-label">Referencias</h2><span>{{ turn().sources.length }} {{ turn().sources.length === 1 ? 'consulta' : 'consultas' }}</span></div>
+        <details class="reply-sources">
+          <summary class="sources-heading">Referencias financieras · {{ turn().sources.length }} {{ turn().sources.length === 1 ? 'consulta' : 'consultas' }}</summary>
           <div class="reference-grid">
             @for (source of turn().sources; track source.id) { <assistant-reference [source]="source" /> }
           </div>
-        </section>
+        </details>
       }
       @if (turn().text && turn().status !== 'pending') {
         <div class="reply-actions"><button type="button" (click)="copy()">{{ copied() ? 'Copiado' : 'Copiar respuesta' }}</button>

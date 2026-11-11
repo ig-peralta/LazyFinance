@@ -168,13 +168,23 @@ and the deliberately refused destructive migration rollback are covered in the
 [MCP operations guide](mcp-authorization.md#configuration-and-operations).
 
 First-party chat defaults to `ASSISTANT_PROVIDER=disabled`. After explicitly
-choosing the target database and applying migrations through 029, configure only the API
+choosing the target database and applying all migrations, configure only the API
 with a supported provider and explicit model/key, or a trusted compatible endpoint.
 `demo` is labelled offline development mode and is rejected in production.
 No banking/OAuth keys are reused or exposed to the UI. Proxies must permit
 incremental NDJSON at `POST /assistant/turns`; provider cost/retention controls and
 live-model quality need separate validation. See the
 [assistant setup, limits and evaluation guide](financial-assistant.md).
+
+Live voice separately defaults to `ASSISTANT_VOICE_ENABLED=false`. Direct API and
+Compose examples pass that switch plus an explicit `ASSISTANT_VOICE_MODEL` and
+dedicated server-only `ASSISTANT_VOICE_API_KEY`. Enable only on a **single API
+replica**, with a separately authorized provider project/spend limit and browser
+microphone/live evaluation. Admission and unresolved hangup recovery are in memory;
+restart/crash resets them. A five-minute local session timer is not a guaranteed
+remote lifetime or currency-denominated budget. Keep text available when voice
+fails and investigate unconfirmed shutdown warnings through the provider project.
+See the [voice transport, privacy and operational limits](assistant-live-voice.md).
 
 Migration 029 adds financial proposals/receipts; migration 027 directly defines
 the final MCP scope constraint for this clean development baseline. Apply all

@@ -1,11 +1,43 @@
 # First-party financial assistant
 
-`/asistente` is the authenticated text-chat experience. It reads the same financial
+The shell owns one persistent, minimizable assistant; `/asistente` opens it and
+`?conversacion=<UUID>` explicitly selects saved history. It reads the same financial
 services as the dashboard and MCP. It can prepare budget/savings-goal creation,
 tag management and individual movement-tag decisions. Preparing changes no
 financial data: the user must approve the saved proposal with its card's button.
 The model cannot approve or execute. Neither interface moves money, connects banks,
 confirms income, changes banking facts or creates automatic classification rules.
+
+The first open loads the assistant once; authenticated navigation/minimization
+retains that same instance, selected conversation, draft and text generation.
+Reload restores no private browser state: history is read through authenticated
+services, and only an explicit deep link selects a saved conversation. Close panel
+stops generation, ends voice and clears the in-memory selection/draft; it does not
+delete saved history. Delete requires its separate confirmation and never undoes
+financial changes. Logout, credential replacement and owner changes clear private
+state and invalidate late results.
+
+Replies anchor at the beginning of the new answer once, not on each token/source/
+action update. Deliberate scrolling and restored history are not auto-followed;
+the explicit jump control reveals the latest content. Native reference disclosures
+start collapsed and retain expansion for that answer. Action approvals remain
+outside these optional references and visible for review. All surfaces use the
+workspace theme tokens. Model/provider names appear only in the separate processing
+disclosure before the first send; session acknowledgement is required. Errors and
+normal assistant identity use product-level language.
+
+Optional **live bidirectional WebRTC voice** is implemented but disabled by default.
+It needs separate API-only `ASSISTANT_VOICE_ENABLED=true`,
+`ASSISTANT_VOICE_MODEL` and `ASSISTANT_VOICE_API_KEY`, plus a configured non-demo
+text assistant. The [voice contract](assistant-live-voice.md) records provider/API
+evidence, privacy, stop/response/browser targets, single-replica/cost bounds and
+unverified live gates. Explicit start, mute/end, barge-in, in-memory input/audio
+transcripts and text fallback use the same grounded saved-turn pipeline. Minimize,
+navigation and hidden tabs end capture, not text history. Audio has no approval
+or execution capability. The normal client's grounded read-aloud behavior is not
+a server-enforced restriction on a modified browser's provider data channel; see
+the voice contract's explicit rendering and shutdown/recovery limitations.
+No live provider call is part of deterministic validation.
 
 ## Provider-neutral configuration
 
@@ -184,8 +216,8 @@ without confirmation offers an explicit history read, never an automatic resend.
 Responses are private/no-store, with buffering disabled where supported. Proxies
 must allow incremental flushing; neither HTTP disconnect nor Stop proves rollback.
 
-The page owns accepted-credential, selection and component lifetimes. Logout,
-token/owner replacement, conversation navigation or destruction abort obsolete
+The persistent shell-owned panel owns accepted-credential, selection and component lifetimes. Logout,
+token/owner replacement, conversation replacement or destruction abort obsolete
 work; late events cannot update another conversation/session. Obsolete 401s cannot
 expire newer credentials. Stop aborts generation and reconciles saved history.
 Pending/ambiguous states block a new question until reconciled. Duplicate sends
@@ -415,3 +447,80 @@ color persistence, tag-list navigation and responsive action/reference layouts.
 The tested WCAG A/AA scans reported no violations, with no page or cleanup errors.
 Formatting/lint and architecture checks passed with the previously disclosed
 warnings. No live model or bank request was made.
+
+### Persistent assistant and controlled voice validation — 2026-11-11
+
+The following records the assistant branch before the other Stage C features were
+integrated. The [combined delivery record](../planning/stage-c/experience-delivery.md)
+owns final integrated test counts, browser evidence and RPC inventories.
+
+The shell now retains one deferred-loaded assistant instance across authenticated
+navigation. Controlled UI coverage checks real route navigation without remount/
+refetch/resend, in-flight minimize/reopen, focus return, narrow-screen inertness,
+owner clearing, close-during-create races, one-time reply anchoring, stable native
+reference expansion and separate pre-processing acknowledgement. Account references
+retain supplied paused/disconnected tracking metadata as last-known facts.
+
+The WebRTC adapter is covered with controlled media/transport objects: duplex
+track negotiation, explicit microphone start/mute/end, barge-in cancellation and
+buffer clearing, transcript deduplication/late-event rejection, denied permissions,
+late permission cleanup, device/network/hidden-tab teardown, playback recovery and
+idle timeout. API tests check origin/owned-history admission, concurrency/start/
+duration bounds, server-only keys, no automatic provider responses or financial
+tools, owner-bound hangup, late initialization cleanup and sanitized failures.
+Actual HTTP guard tests reject anonymous and forged owner/configuration requests.
+Spoken agreement reaches only the ordinary question path, never financial approval.
+
+Validation: 451 UI tests, 339 API unit tests and 2 isolated voice HTTP integration
+tests passed. Workspace build/typecheck, formatting/lint, architecture and RPC drift
+checks passed. The branch adds no migrations or RPC procedures (78 public / 94
+private); the voice bridge uses separately authenticated HTTP schemas. Existing
+27 lint warnings/10 informational diagnostics and initial-bundle/CommonJS/style
+budget warnings remain; budgets were not raised. The assistant is deferred once
+to avoid pulling its renderer/contracts into the initial bundle.
+
+No real database, Firebase, provider key, microphone/device, paid model session or
+real-browser accessibility/layout check was used for this update. The browser
+matrix, audio/text fidelity, remote hangup and measured response/stop latency/cost
+remain **unverified live gates**, not implied by mocked media or passing builds.
+Voice stays disabled by default, single-replica only, and needs separate live/cost
+authorization plus dedicated project spend controls before enabling. No customer
+financial context was disclosed, and no environment file or development database was changed.
+
+### Independent-review race fixes — 2026-11-11
+
+The voice startup lifetime now begins before awaiting conversation creation.
+Controlled regressions cover Cancel, acknowledgement withdrawal, navigation,
+minimize/reopen, hidden tabs, owner removal and destruction during that deferred
+write, plus an accepted-start control. None of the cancelled paths requests a
+microphone. The same signal also invalidates permission/transport setup in the
+media client; a late permission result is stopped without adopting its tracks.
+
+Provider shutdown now enters a draining state, rejects new starts, retains in-flight
+initialization leases and terminates late remote call IDs. Drain waiting is bounded
+to 20 seconds with at most three five-second hangup attempts per session/generation.
+Unconfirmed remote IDs are retained in memory with an operator warning rather than
+silently erased. Tests cover initialization/shutdown races, failed hangup and later
+recovery, and a provider response arriving after the drain deadline. Redirects are
+rejected and SDP decoding cancels the stream beyond 64,000 bytes.
+
+Asynchronous voice transcripts use bounded pending items and speech-start ordering.
+Out-of-order completions are retained immediately in a memory-only review list;
+blocked/interrupted delivery offers explicit draft preparation after checking
+history, not silent dropping or replay. Mute/end invalidate pending delivery and
+late events. Owner/conversation changes and Close clear retained transcripts.
+
+The voice contract now explicitly distinguishes normal-client grounded read-aloud
+behavior from server authority: a modified own browser can control its provider
+data channel and request ungrounded audio/override output settings. It receives no
+first-party financial execution authority. Prompt interpolation is not a fidelity
+guarantee; the saved written reply and independently validated exact approval remain
+authoritative. Memory-only admission/recovery is not a crash-durable or hard-cost
+budget. Shutdown failures/process exit may still require provider lifetime/project
+spend controls; no stronger provider-side rendering permission is claimed.
+
+After these fixes, 463 full UI tests, 343 API unit tests and both isolated voice
+HTTP tests passed. Workspace build/typecheck, formatting/lint, architecture and
+RPC drift checks passed with the previously disclosed warnings. No live provider,
+browser microphone, real database or new browser/device/latency/cost validation
+was authorized or performed. Voice remains disabled by default.

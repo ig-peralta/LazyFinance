@@ -1,5 +1,6 @@
 export * from "./accounts";
 export * from "./assistant";
+export * from "./assistant/voice";
 export * from "./auth";
 export * from "./banking";
 export * from "./banking-selection";

@@ -1,4 +1,4 @@
-import { NgTemplateOutlet } from "@angular/common";
+import { DOCUMENT, NgTemplateOutlet } from "@angular/common";
 import {
   Component,
   computed,
@@ -20,8 +20,11 @@ import {
 import { filter, map } from "rxjs";
 import { AuthCredentials } from "../../core/auth/auth-credentials";
 import { SessionService } from "../../core/auth/session.service";
+import { AssistantWorkspace } from "../../features/assistant/assistant-workspace";
 import { OnboardingData } from "../../features/onboarding/onboarding.data";
+import { AssistantPage } from "../../pages/assistant/assistant.page";
 import { Icon } from "../../shared/ui/icon";
+import { bindAssistantShortcut } from "./assistant-shortcut";
 import { WorkspaceAppearance } from "./workspace-appearance";
 import { workspaceLocation, workspaceNavigation } from "./workspace-navigation";
 import { WorkspacePreferences } from "./workspace-preferences";
@@ -34,11 +37,14 @@ import { WorkspacePreferences } from "./workspace-preferences";
     NgTemplateOutlet,
     Icon,
     WorkspaceAppearance,
+    AssistantPage,
   ],
   templateUrl: "./app-shell.html",
 })
 export class AppShell {
   protected readonly preferences = inject(WorkspacePreferences);
+  protected readonly assistantWorkspace = inject(AssistantWorkspace);
+  private readonly document = inject(DOCUMENT);
   protected readonly session = inject(SessionService);
   private readonly router = inject(Router);
   private readonly credentials = inject(AuthCredentials);
@@ -77,8 +83,17 @@ export class AppShell {
   protected readonly logoutError = signal<string | null>(null);
 
   constructor() {
+    effect((onCleanup) => {
+      if (!this.credentials.current()) return;
+      onCleanup(
+        bindAssistantShortcut(this.document, () =>
+          this.assistantWorkspace.open(),
+        ),
+      );
+    });
     effect(() => {
       this.url();
+      this.assistantWorkspace.opened();
       // Programmatic navigation/back/forward must dismiss the native modal too.
       untracked(() => this.closeMenu());
     });

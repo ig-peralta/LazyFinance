@@ -8,21 +8,21 @@
 .user-message {
   margin-left: auto;
   max-width: 85%;
-  background: #20382b;
-  border: 1px solid #426e512b;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
   border-radius: 17px 17px 4px 17px;
   padding: 16px 20px;
-  color: #dce9e0;
+  color: var(--ink);
 }
 .message-author {
-  font-size: 8px;
+  font-size: 0.65rem;
   letter-spacing: 1.7px;
-  color: #9ac7ad;
+  color: var(--muted);
 }
 .user-message p {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  font-size: 13px;
+  font-size: 0.875rem;
   line-height: 1.8;
   margin: 7px 0 0;
 }
@@ -38,9 +38,9 @@
   flex-shrink: 0;
   width: 30px;
   height: 30px;
-  background: #6ee7b70d;
-  border: 1px solid #6ee7b71a;
-  color: #8be5b5;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  color: var(--accent);
   border-radius: 10px;
 }
 .reply-avatar app-icon {
@@ -59,43 +59,44 @@
   margin: 5px 0 14px;
 }
 .reply-heading strong {
-  font-size: 12px;
-  color: #d6e8dc;
+  font-size: 0.8125rem;
+  color: var(--ink);
 }
 .reply-heading > span {
-  font-size: 9px;
-  color: #829b8b;
+  font-size: 0.75rem;
+  color: var(--muted);
 }
 .reply-incomplete {
-  color: #e5bc76;
-  border: 1px solid #e5bc7633;
+  color: var(--ink);
+  border: 1px solid var(--line);
   border-radius: 5px;
   padding: 3px 6px;
 }
 .reply-markdown {
-  color: #bdcec2;
-  font-size: 13px;
+  color: var(--ink);
+  font-size: 0.875rem;
   line-height: 1.9;
   overflow-wrap: anywhere;
 }
 .incomplete-note {
-  font-size: 11px;
-  color: #e5bc76;
+  font-size: 0.8125rem;
+  color: var(--ink);
   line-height: 1.8;
 }
 .reply-sources {
   margin-top: 24px;
 }
 .sources-label {
-  font-size: 10px;
+  font-size: 0.75rem;
   letter-spacing: 1.2px;
-  color: #8ba797;
+  color: var(--muted);
   font-weight: 500;
   text-transform: uppercase;
   margin: 0;
 }
 .sources-heading {
-  display: flex;
+  font-size: 0.8125rem;
+  display: list-item;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -103,7 +104,7 @@
 }
 .sources-heading > span {
   font-size: 9px;
-  color: #9db2a5;
+  color: var(--muted);
 }
 .reference-grid {
   display: grid;
@@ -121,13 +122,13 @@
 .reply-actions button {
   background: none;
   border: 0;
-  color: #91a99b;
+  color: var(--muted);
   font-size: 10px;
   padding: 4px 0;
   cursor: pointer;
 }
 .reply-actions button:hover {
-  color: #a7f3d0;
+  color: var(--accent);
 }
 .typing {
   display: flex;
@@ -138,7 +139,7 @@
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: #73c49a;
+  background: var(--accent);
   animation: pulse 1.4s infinite;
 }
 .typing i:nth-child(2) {
@@ -148,7 +149,7 @@
   animation-delay: 0.4s;
 }
 :is(button, a, summary, pre):focus-visible {
-  outline: 2px solid #a7f3d0;
+  outline: 2px solid var(--accent);
   outline-offset: 4px;
 }
 @keyframes pulse {
@@ -173,7 +174,7 @@
   }
   .reply-markdown,
   .user-message p {
-    font-size: 12px;
+    font-size: 0.875rem;
   }
   .user-message {
     max-width: 95%;

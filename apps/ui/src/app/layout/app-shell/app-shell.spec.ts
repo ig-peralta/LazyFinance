@@ -4,7 +4,9 @@ import { TestBed } from "@angular/core/testing";
 import { provideRouter, Router } from "@angular/router";
 import { RouterTestingHarness } from "@angular/router/testing";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { AuthCredentials } from "../../core/auth/auth-credentials";
 import { SessionService } from "../../core/auth/session.service";
+import { AssistantWorkspace } from "../../features/assistant/assistant-workspace";
 import { OnboardingData } from "../../features/onboarding/onboarding.data";
 import { AppShell } from "./app-shell";
 import { WorkspacePreferences } from "./workspace-preferences";
@@ -132,6 +134,60 @@ describe("AppShell", () => {
         a.getAttribute("href"),
       ),
     ).toEqual(["/movimientos", "/cuentas", "/etiquetas"]);
+  });
+
+  it("binds one discoverable shortcut to the existing assistant only for the accepted shell scope", async () => {
+    const { harness, root } = await setup();
+    const open = vi
+      .spyOn(TestBed.inject(AssistantWorkspace), "open")
+      .mockImplementation(() => {});
+    const credentials = TestBed.inject(AuthCredentials);
+    const press = () =>
+      document.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "?",
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    press();
+    expect(open).not.toHaveBeenCalled();
+    credentials.accept(
+      {
+        userId: "shortcut-owner",
+        name: "Synthetic",
+        email: "shortcut@example.test",
+      },
+      "synthetic",
+    );
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    expect(
+      root.querySelector('[aria-keyshortcuts="?"]')?.textContent,
+    ).toContain("Abrir asistente · ?");
+    press();
+    expect(open).toHaveBeenCalledTimes(1);
+    await harness.navigateByUrl("/cuentas");
+    press();
+    expect(open).toHaveBeenCalledTimes(2);
+    credentials.accept(
+      {
+        userId: "shortcut-owner",
+        name: "Synthetic",
+        email: "shortcut@example.test",
+      },
+      "refreshed",
+    );
+    await harness.fixture.whenStable();
+    press();
+    expect(open).toHaveBeenCalledTimes(3);
+    credentials.clear();
+    await harness.fixture.whenStable();
+    press();
+    expect(open).toHaveBeenCalledTimes(3);
+    harness.fixture.destroy();
+    press();
+    expect(open).toHaveBeenCalledTimes(3);
   });
 
   it("toggles the mobile menu and closes it after navigating", async () => {

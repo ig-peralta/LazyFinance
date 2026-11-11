@@ -16,6 +16,11 @@ import {
   setupRpc,
 } from "../../../testing/rpc";
 import { AssistantStreamClient } from "../../features/assistant/assistant-stream.client";
+import {
+  AssistantVoiceClient,
+  VOICE_MEDIA,
+} from "../../features/assistant/assistant-voice.client";
+import { AssistantWorkspace } from "../../features/assistant/assistant-workspace";
 import { AssistantPage } from "./assistant.page";
 
 const chat: AssistantConversation = {
@@ -47,7 +52,14 @@ function turn(input: AssistantSend): AssistantTurn {
   };
 }
 
-function setup(overrides: RpcHandlers = {}, selected: string | null = chat.id) {
+function setup(
+  overrides: RpcHandlers = {},
+  selected: string | null = chat.id,
+  voiceEnabled = false,
+) {
+  const microphone = vi.fn<() => Promise<MediaStream>>(async () => {
+    throw new Error("Unexpected microphone access");
+  });
   const query = new BehaviorSubject(
     convertToParamMap(selected ? { conversacion: selected } : {}),
   );
@@ -63,6 +75,19 @@ function setup(overrides: RpcHandlers = {}, selected: string | null = chat.id) {
     "browser",
     true,
     [
+      {
+        provide: VOICE_MEDIA,
+        useValue: {
+          supported: () => voiceEnabled,
+          microphone,
+          peer: () => {
+            throw new Error("Unexpected peer creation");
+          },
+          audio: () => {
+            throw new Error("Unexpected audio creation");
+          },
+        },
+      },
       {
         provide: ActivatedRoute,
         useValue: {
@@ -93,11 +118,22 @@ function setup(overrides: RpcHandlers = {}, selected: string | null = chat.id) {
       });
     });
   const fixture = TestBed.createComponent(AssistantPage);
+  vi.spyOn(AssistantVoiceClient.prototype, "configuration").mockResolvedValue({
+    enabled: voiceEnabled,
+  });
+  fixture.detectChanges();
+  const workspace = TestBed.inject(AssistantWorkspace);
+  query.subscribe((params) =>
+    workspace.selection.set(params.get("conversacion") ?? undefined),
+  );
+  workspace.open();
   return {
     ...mock,
     query,
     navigate,
     stream,
+    workspace,
+    microphone,
     fixture,
     root: fixture.nativeElement as HTMLElement,
   };
@@ -131,6 +167,154 @@ describe("first-party chat page lifetimes and confirmed history", () => {
   afterEach(() => {
     TestBed.resetTestingModule();
     vi.restoreAllMocks();
+  });
+
+  it.each([
+    "removed",
+    "hidden",
+    "inert",
+    "closed-dialog",
+  ])("returns focus to the visible launcher when the opener is %s", async (state) => {
+    const f = setup();
+    document.body.append(f.root);
+    const container = document.createElement(
+      state === "closed-dialog" ? "dialog" : "div",
+    );
+    if (container instanceof HTMLDialogElement) container.open = true;
+    const opener = document.createElement("button");
+    opener.textContent = "Synthetic opener";
+    container.append(opener);
+    document.body.append(container);
+    try {
+      await render(f.fixture);
+      f.workspace.minimize();
+      await render(f.fixture);
+      opener.focus();
+      f.workspace.open();
+      await render(f.fixture);
+      if (state === "removed") container.remove();
+      else if (state === "hidden") container.hidden = true;
+      else if (state === "inert") container.setAttribute("inert", "");
+      else if (container instanceof HTMLDialogElement) container.open = false;
+      f.workspace.minimize();
+      await render(f.fixture);
+      const launcher = f.root.querySelector<HTMLButtonElement>(
+        ".assistant-launcher",
+      );
+      expect(launcher?.hidden).toBe(false);
+      expect(document.activeElement).toBe(launcher);
+      expect(f.stream).not.toHaveBeenCalled();
+    } finally {
+      container.remove();
+      f.root.remove();
+    }
+  });
+
+  it("does not disclose a question after acknowledgement is withdrawn during deferred text conversation creation, even if reaccepted", async () => {
+    const created = deferred<AssistantConversation>();
+    const f = setup(
+      {
+        "assistant.configuration": () => ({
+          ...configuration,
+          provider: "openai",
+          model: "synthetic",
+          demonstration: false,
+        }),
+        "assistant.createConversation": () => created.promise,
+      },
+      null,
+    );
+    await render(f.fixture);
+    const consent = f.root.querySelector<HTMLInputElement>(
+      ".processing-consent input",
+    );
+    if (!consent) throw new Error("Missing processing acknowledgement");
+    consent.click();
+    compose(f, "Una pregunta que no debe enviarse");
+    button(f.root, "Enviar pregunta").click();
+    await vi.waitFor(() =>
+      expect(f.callsTo("assistant.createConversation")).toHaveLength(1),
+    );
+    consent.click();
+    consent.click();
+    created.resolve(chat);
+    await render(f.fixture);
+    expect(f.stream).not.toHaveBeenCalled();
+    expect(f.microphone).not.toHaveBeenCalled();
+    expect(f.callsTo("assistant.createConversation")).toHaveLength(1);
+  });
+
+  it.each([
+    "cancel",
+    "acknowledgement",
+    "navigation",
+    "minimize-reopen",
+    "hidden",
+    "owner",
+    "destroy",
+    "accepted",
+  ])("honors %s during deferred voice conversation creation", async (reason) => {
+    const created = deferred<AssistantConversation>();
+    const f = setup(
+      {
+        "assistant.configuration": () => ({
+          ...configuration,
+          demonstration: false,
+          provider: "openai",
+          model: "configured",
+        }),
+        "assistant.createConversation": () => created.promise,
+      },
+      null,
+      true,
+    );
+    const start = vi
+      .spyOn(AssistantVoiceClient.prototype, "start")
+      .mockResolvedValue();
+    await render(f.fixture);
+    const consent = f.root.querySelector<HTMLInputElement>(
+      ".processing-consent input",
+    );
+    if (!consent) throw new Error("Missing acknowledgement");
+    consent.checked = true;
+    consent.dispatchEvent(new Event("change"));
+    f.fixture.detectChanges();
+    button(f.root, "Conversar por voz").click();
+    f.fixture.detectChanges();
+    button(f.root, "Entiendo, iniciar micrófono").click();
+    await vi.waitFor(() =>
+      expect(f.callsTo("assistant.createConversation")).toHaveLength(1),
+    );
+    if (reason === "cancel") button(f.root, "Cancelar voz").click();
+    if (reason === "acknowledgement") {
+      consent.checked = false;
+      consent.dispatchEvent(new Event("change"));
+    }
+    if (reason === "minimize-reopen") {
+      f.workspace.minimize();
+      f.workspace.open();
+    }
+    if (reason === "navigation") {
+      const router = TestBed.inject(Router);
+      vi.mocked(router.navigateByUrl).mockRestore();
+      await router.navigateByUrl("/");
+    }
+    if (reason === "hidden") {
+      vi.spyOn(document, "hidden", "get").mockReturnValue(true);
+      document.dispatchEvent(new Event("visibilitychange"));
+    }
+    if (reason === "owner") f.credentials.clear();
+    if (reason === "destroy") f.fixture.destroy();
+    else f.fixture.detectChanges();
+    created.resolve(chat);
+    if (reason !== "destroy") await render(f.fixture);
+    else await Promise.resolve();
+    expect(start).toHaveBeenCalledTimes(reason === "accepted" ? 1 : 0);
+    expect(f.microphone).not.toHaveBeenCalled();
+    expect(f.stream).not.toHaveBeenCalled();
+    expect(f.workspace.selection()).toBe(
+      reason === "accepted" ? chat.id : undefined,
+    );
   });
 
   it("keeps suggestions explicit, supports Shift+Enter and prevents duplicate creation or sends across navigation", async () => {
@@ -299,7 +483,145 @@ describe("first-party chat page lifetimes and confirmed history", () => {
       id: chat.id,
     });
     expect(f.stream).not.toHaveBeenCalled();
-    expect(f.query.value.has("conversacion")).toBe(false);
+    expect(f.workspace.selection()).toBeUndefined();
+  });
+
+  it("retains draft, selection and existing generation across minimize/open without resend", async () => {
+    const f = setup();
+    await render(f.fixture);
+    compose(f, "Un borrador privado");
+    const id = f.workspace.selection();
+    f.workspace.minimize();
+    await render(f.fixture);
+    f.workspace.open();
+    await render(f.fixture);
+    expect(f.root.querySelector("textarea")?.value).toBe("Un borrador privado");
+    expect(f.workspace.selection()).toBe(id);
+    expect(f.stream).not.toHaveBeenCalled();
+    button(f.root, "Enviar pregunta").click();
+    await render(f.fixture);
+    f.workspace.minimize();
+    f.workspace.open();
+    await render(f.fixture);
+    expect(f.stream).toHaveBeenCalledOnce();
+    expect(f.root.textContent).toContain("Una respuesta guardada.");
+  });
+
+  it("cancels a pending conversation creation on Close without sending its late question", async () => {
+    const created = deferred<AssistantConversation>();
+    const f = setup(
+      { "assistant.createConversation": () => created.promise },
+      null,
+    );
+    await render(f.fixture);
+    compose(f);
+    button(f.root, "Enviar pregunta").click();
+    await vi.waitFor(() =>
+      expect(f.callsTo("assistant.createConversation")).toHaveLength(1),
+    );
+    button(f.root, "Cerrar panel").click();
+    f.fixture.detectChanges();
+    created.resolve(chat);
+    await render(f.fixture);
+    expect(f.stream).not.toHaveBeenCalled();
+    expect(f.workspace.selection()).toBeUndefined();
+    expect(f.root.querySelector("textarea")?.value).toBe("");
+    expect(f.workspace.opened()).toBe(false);
+  });
+
+  it("keeps an in-flight text stream alive while minimized without replay on reopen", async () => {
+    const finish = deferred<void>();
+    const f = setup();
+    f.stream.mockImplementationOnce(async (_owner, input, _signal, receive) => {
+      receive({ type: "turn", turn: turn(input) });
+      await finish.promise;
+      receive({
+        type: "done",
+        turn: {
+          ...turn(input),
+          status: "complete",
+          text: "Respuesta recibida mientras estaba minimizado",
+        },
+      });
+    });
+    await render(f.fixture);
+    compose(f);
+    button(f.root, "Enviar pregunta").click();
+    await vi.waitFor(() => expect(f.stream).toHaveBeenCalledOnce());
+    f.workspace.minimize();
+    await render(f.fixture);
+    expect(f.stream.mock.calls[0][2].aborted).toBe(false);
+    finish.resolve();
+    await render(f.fixture);
+    f.workspace.open();
+    await render(f.fixture);
+    expect(f.root.textContent).toContain(
+      "Respuesta recibida mientras estaba minimizado",
+    );
+    expect(f.stream).toHaveBeenCalledOnce();
+  });
+
+  it("requires separate before-processing acknowledgement and keeps provider identity outside the conversation", async () => {
+    const f = setup({
+      "assistant.configuration": () => ({
+        ...configuration,
+        provider: "openai",
+        model: "configured-model",
+        demonstration: false,
+      }),
+    });
+    await render(f.fixture);
+    compose(f);
+    expect(button(f.root, "Enviar pregunta").disabled).toBe(true);
+    const disclosure = f.root.querySelector(".processing-disclosure");
+    expect(disclosure?.textContent).toContain("configured-model");
+    expect(f.root.querySelector(".chat-messages")?.textContent).not.toContain(
+      "configured-model",
+    );
+    const consent = f.root.querySelector<HTMLInputElement>(
+      ".processing-consent input",
+    );
+    if (!consent) throw new Error("Missing separate consent");
+    consent.checked = true;
+    consent.dispatchEvent(new Event("change"));
+    f.fixture.detectChanges();
+    button(f.root, "Enviar pregunta").click();
+    await render(f.fixture);
+    expect(f.stream).toHaveBeenCalledOnce();
+  });
+
+  it("anchors a new answer once and never follows deltas or source updates", async () => {
+    const finish = deferred<void>();
+    const f = setup();
+    let receive: ((event: AssistantEvent) => void) | undefined;
+    f.stream.mockImplementationOnce(
+      async (_owner, input, _signal, callback) => {
+        receive = callback;
+        callback({ type: "turn", turn: turn(input) });
+        await finish.promise;
+      },
+    );
+    await render(f.fixture);
+    const scroll = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value: scroll,
+    });
+    compose(f);
+    button(f.root, "Enviar pregunta").click();
+    await render(f.fixture);
+    receive?.({ type: "delta", text: "Inicio" });
+    await render(f.fixture);
+    expect(scroll).toHaveBeenCalledOnce();
+    receive?.({ type: "delta", text: " Continuación extensa" });
+    await render(f.fixture);
+    f.workspace.minimize();
+    f.workspace.open();
+    await render(f.fixture);
+    expect(scroll).toHaveBeenCalledOnce();
+    expect(f.root.textContent).toContain("Ir al último mensaje");
+    finish.resolve();
+    await render(f.fixture);
   });
 
   it("distinguishes disabled, failed-history and invalid-link states without sending a question", async () => {

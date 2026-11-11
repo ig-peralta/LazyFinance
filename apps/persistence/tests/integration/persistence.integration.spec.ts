@@ -776,7 +776,7 @@ describe.skipIf(!ownerUrl)(
         expect(row.claimId).toBeNull();
         if (transition === "manual begin") {
           expect(row).toMatchObject({ eligible: true, runRevision: 0 });
-          expect(row.nextAttemptAt!.getTime()).toBeGreaterThan(Date.now());
+          expect(row.nextAttemptAt?.getTime() ?? 0).toBeGreaterThan(Date.now());
           expect(
             await locked.user.providerSync.facts.query({
               connectionId: locked.connectionId,
@@ -799,6 +799,103 @@ describe.skipIf(!ownerUrl)(
           });
         }
       } finally {
+        release.resolve();
+        await holding?.catch(() => {});
+        await pauseBanking(connections);
+      }
+    });
+
+    it("serializes scheduled begin extension with global capacity checks across an expired committed claim", async () => {
+      const connections: string[] = [];
+      const held = gate(),
+        release = gate();
+      let holding: Promise<unknown> | undefined;
+      try {
+        const extending = await bankingFixture();
+        connections.push(extending.connectionId);
+        const healthy = await bankingFixture();
+        connections.push(healthy.connectionId);
+        await sql`UPDATE finance.provider_sync_schedule SET next_attempt_at=now()-interval '2 hours' WHERE connection_id=${extending.connectionId}`.execute(
+          owner,
+        );
+        await sql`UPDATE finance.provider_sync_schedule SET next_attempt_at=now()-interval '1 hour' WHERE connection_id=${healthy.connectionId}`.execute(
+          owner,
+        );
+        const scheduler = purposeClient({
+          kind: "banking-scheduler",
+          requestId: randomUUID(),
+        });
+        const claim = await scheduler.providerScheduler.claim.mutate({
+          mode: "test",
+        });
+        expect(claim).toMatchObject({ connectionId: extending.connectionId });
+        if (!claim) throw new Error("Missing extending claim");
+        const originalExpiry = new Date(Date.now() - 1000);
+        await sql`UPDATE finance.provider_sync_schedule SET claim_expires_at=${originalExpiry} WHERE connection_id=${extending.connectionId}`.execute(
+          owner,
+        );
+        holding = withRequestContext(
+          runtime.withPlugin(new CamelCasePlugin()),
+          ctx(extending.userId),
+          async (tx) => {
+            await sql`select pg_advisory_xact_lock(hashtextextended(${`lazyfinance:user:${extending.userId}`},0))`.execute(
+              tx,
+            );
+            // Only the direct repository call sees an instant before expiry.
+            // Other sessions see the committed, already-expired tuple while
+            // this transaction holds its uncommitted future extension.
+            vi.useFakeTimers({ toFake: ["Date"] });
+            try {
+              vi.setSystemTime(originalExpiry.getTime() - 1000);
+              expect(
+                await app.get(ProviderConnectionRepository).begin({
+                  ...extending.begin,
+                  claimId: claim.id,
+                }),
+              ).toMatchObject({ acquired: true });
+            } finally {
+              vi.useRealTimers();
+            }
+            held.resolve();
+            await release.promise;
+          },
+        );
+        void holding.catch(held.reject);
+        await held.promise;
+        const committed = (
+          await sql<{
+            claimExpiresAt: Date;
+          }>`SELECT claim_expires_at AS "claimExpiresAt" FROM finance.provider_sync_schedule WHERE connection_id=${extending.connectionId}`.execute(
+            owner,
+          )
+        ).rows[0];
+        expect(committed.claimExpiresAt).toEqual(originalExpiry);
+        expect(committed.claimExpiresAt.getTime()).toBeLessThan(Date.now());
+        const probe = await withRequestContext(
+          runtime,
+          { kind: "banking-scheduler", requestId: randomUUID() },
+          (tx) =>
+            sql<{
+              acquired: boolean;
+            }>`SELECT pg_try_advisory_xact_lock(hashtextextended('lazyfinance:banking-scheduler',0)) AS acquired`.execute(
+              tx,
+            ),
+        );
+        expect(probe.rows[0].acquired).toBe(false);
+        const nextClaim = scheduler.providerScheduler.claim.mutate({
+          mode: "test",
+        });
+        release.resolve();
+        await holding;
+        expect(await nextClaim).toBeNull();
+        const active = await sql<{
+          count: number;
+        }>`SELECT count(*)::int AS count FROM finance.provider_sync_schedule WHERE claim_expires_at > clock_timestamp()`.execute(
+          owner,
+        );
+        expect(active.rows[0].count).toBe(1);
+      } finally {
+        vi.useRealTimers();
         release.resolve();
         await holding?.catch(() => {});
         await pauseBanking(connections);
