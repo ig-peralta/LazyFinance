@@ -94,11 +94,92 @@ skip focus, shortcut conflict/teardown, tag catalog edits, no-tag/reset, ownersh
 duplicate commands, stale reads and uncertain-outcome recovery.
 
 These jsdom tests do **not** prove viewport layout, contrast, native browser focus
-containment or screen-reader behavior. No browser executable/tool was available
-in this worktree session. Before release/integrated acceptance, verify widths
+containment or screen-reader behavior. The initial implementation session did not
+discover browser tooling; the browser follow-up below supersedes that gap for its
+explicitly tested states. Before release/integrated acceptance, verify widths
 320/390/768/1440, short height, 200% zoom and largest text in both themes; check
 long labels, amounts, editor/assistant controls, no document overflow, mobile
 Escape/focus return, compact-label keyboard tooltips and screen-reader names.
 Also test integrated shortcut focus/minimize/restore, authenticated navigation,
 logout, guest behavior and overlays with LAZ-72. No live bank/model, API listener,
 database, credentials or environment change is part of this work.
+
+### Chromium follow-up — 11 November 2026
+
+Used production static output from this worktree, Playwright 1.65 and Chromium
+158.0.8127.18 with mocked RPC only. An ephemeral HTTP listener bound to
+`127.0.0.1`; the script closed its browser and listener in `finally`. All other
+network destinations were intercepted and either mocked or blocked. No live API,
+provider, database, production identity, environment file or repository dependency
+was used or changed. Existing external tooling under `/tmp/opencode/laz71-browser`
+was reused read-only, not another feature worktree.
+
+**Bug found and fixed:** the original shared primary-button contrast selector had
+the same specificity as the later legacy workspace rule. In light mode the later
+rule won, producing dark `#052e22` text on `#086b4a` green (axe measured 2.26:1).
+The theme-aware selector now wins the cascade for primary actions, brand marks
+and skip links. A dedicated real-browser regression checks computed primary text
+and background contrast >= 4.5:1 in light/dark at all four widths. No budget or
+accessibility thresholds were relaxed.
+
+| Actual browser check | Result |
+| --- | --- |
+| Catalog/editor matrix: 360/390/768/1280 px, light/dark, every actual text choice | Passed, including long tag names and reachable editor actions |
+| Text controls | **Normal 100%, Grande 115%, Muy grande 130%**; no small or 125% control exists on this branch |
+| Appearance popover at viewport edges, keyboard Enter/Tab focus into options | Passed |
+| Full and compact desktop navigation, all text choices/both themes | Passed; accessible destination names and keyboard-visible tooltip labels |
+| Preference reload | Theme, largest text and compact choice retained |
+| 360 px native mobile menu, 10 Tab steps, Escape and opener return | Passed; no background control received focus; Chromium's native tab cycle can briefly focus the document body |
+| Skip link Enter | Focus moved to main without navigating |
+| Name validation, duplicate-name draft preservation and explicit creation | Passed |
+| Archive confirmation/cancel then confirmation | Passed; cancel made no write, confirmed archive retained its explanatory warning |
+| Lost create response after simulated commit | Catalog read recovered without another create, preserving the draft |
+| Filtered history → detail → history | Merchant/internal filters retained |
+| History toolbar Tab order and advanced-filter Escape | Search controls reachable; Escape returned focus to the filter toggle without changing the URL |
+| History at all four widths, largest text, both themes | No document overflow or essential horizontal viewport-edge clipping |
+| Detail at all four widths, largest text, both themes | No horizontal document overflow or essential horizontal viewport-edge clipping |
+| Selected tag → deliberate no-tag → reset → internal classification | Distinct commands/states; original amount/date and unrelated tag/internal decisions retained |
+| Lost decision response after simulated commit | Further writes disabled; close/read reconciliation made no duplicate mutation |
+| Failed reconciliation read followed by successful retry | Error stayed explicit; editor unavailable until successful detail read |
+| axe WCAG2 A/AA and WCAG2.1 AA | **99 scans, zero violations** in catalog, appearance, tag editor, compact navigation, mobile menu, archive confirmation, history and movement/detail/classification states |
+| Script assertions / browser errors / unexpected external requests | **199 passed / zero / zero** |
+
+The first harness draft incorrectly counted content inside closed native
+disclosures as clipped and tried to assert `:focus-visible` immediately after
+mouse/programmatic focus. The final checks use Chromium visibility checks and
+actual Tab/Shift+Tab keyboard modality, excluding those false positives. The
+contrast failure above was a real product failure, not a harness false positive.
+
+Revalidation after the fix: production UI build, all **446 UI tests across 58
+files**, formatting and architecture checks passed. The existing initial-bundle,
+assistant-style and CommonJS build warnings remain.
+
+#### Reusable scripts and artifacts
+
+The committed focused regression uses external tooling without adding packages:
+
+```sh
+pnpm --filter ui build
+BROWSER_TOOLING_ROOT=/tmp/opencode/laz71-browser \
+LD_LIBRARY_PATH=/tmp/opencode/laz71-browser/usr/lib \
+node apps/ui/tests/browser/workspace-contrast.mjs
+```
+
+Full mocked-RPC matrix and fault-injection script:
+`/tmp/opencode/laz75-browser.mjs`. It accepts `UI_DIST` to point at another built
+UI for coordinator integration reuse. Run with the same `LD_LIBRARY_PATH` above.
+It creates/stops its own ephemeral loopback server and writes
+`/tmp/opencode/laz75-browser-artifacts/results.json`, `run.log`, responsive editor
+screenshots and `compact.png`. `results.json` retains per-state axe results,
+assertion names, synthetic RPC calls and browser version. Build and UI suite logs
+are `build.log` and `ui-tests.log` in that directory. These are local artifacts,
+not a repository dependency or production fixture.
+
+**Limits:** this is Chromium automation and automated axe screening, not a
+screen-reader or complete WCAG audit, cross-browser certification, OS/browser
+200% zoom test or live-backend persistence proof. Native input scrolling for long
+draft names is expected; no essential control was hidden at the tested viewport
+edges. Dashboard-specific live data, live source freshness and account/banking
+pages were not part of this follow-up. LAZ-72 shortcut host wiring/focus behavior
+remains intentionally unmodified and requires integrated validation. The earlier
+history cursor-trail limitation is unchanged.

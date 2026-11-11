@@ -73,9 +73,9 @@ html:has(.workspace[data-text-size="largest"]) {
 .workspace .metric-period {
   color: var(--accent);
 }
-.workspace .button.primary,
-.workspace .brand-mark,
-.workspace .skip-link {
+.workspace[data-theme] .button.primary,
+.workspace[data-theme] .brand-mark,
+.workspace[data-theme] .skip-link {
   color: var(--accent-contrast);
 }
 .workspace[data-text-size]:not([data-text-size="standard"])
