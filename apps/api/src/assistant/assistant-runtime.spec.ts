@@ -81,6 +81,81 @@ function input(): AssistantRuntimeInput {
 }
 
 describe("actual provider-neutral AI SDK tool loop with controlled models", () => {
+  it.each([
+    {
+      kind: "create_budget",
+      field: "budget",
+      objective: {
+        name: "Compras",
+        amount: "150000.00",
+        schedule: { period: "monthly", startDate: "2026-12-01" },
+      },
+    },
+    {
+      kind: "create_savings_goal",
+      field: "goal",
+      objective: {
+        name: "Reserva",
+        amount: "150000.00",
+        schedule: { period: "lifetime" },
+      },
+    },
+  ])("exposes a nonempty tag alternative in the $kind model JSON schema", ({
+    kind,
+    field,
+    objective,
+  }) => {
+    const schema = z.toJSONSchema(FinancialActionRequestSchema, {
+      io: "input",
+    });
+    const branches = z
+      .object({
+        oneOf: z.array(
+          z.object({ properties: z.record(z.string(), z.unknown()) }),
+        ),
+      })
+      .parse(schema).oneOf;
+    const branch = branches.find((branch) => field in branch.properties);
+    const alternatives = z
+      .object({
+        anyOf: z.array(
+          z.object({
+            required: z.array(z.string()),
+            properties: z.record(
+              z.string(),
+              z.object({ minItems: z.number().optional() }).passthrough(),
+            ),
+          }),
+        ),
+      })
+      .parse(branch?.properties[field]).anyOf;
+    expect(alternatives).toHaveLength(2);
+    expect(
+      alternatives.every((branch) =>
+        ["tagIds", "newTags"].some(
+          (key) =>
+            branch.required.includes(key) &&
+            branch.properties[key].minItems === 1,
+        ),
+      ),
+    ).toBe(true);
+    expect(
+      FinancialActionRequestSchema.safeParse({
+        kind,
+        [field]: { ...objective, tagIds: [], newTags: [] },
+      }).success,
+    ).toBe(false);
+    expect(
+      FinancialActionRequestSchema.safeParse({
+        kind,
+        [field]: {
+          ...objective,
+          tagIds: [],
+          newTags: [{ name: "Compras", color: null }],
+        },
+      }).success,
+    ).toBe(true);
+  });
   it("executes a validated read, returns its source to the next model step and streams only answer text", async () => {
     const model = new MockLanguageModelV4({
       doStream: [
@@ -244,6 +319,80 @@ describe("actual provider-neutral AI SDK tool loop with controlled models", () =
     expect(JSON.stringify(model.doStreamCalls[2].prompt)).toContain(
       '"status":"proposed"',
     );
+  });
+
+  it("offers a real correction tool that returns the next unapproved version without preparing a replacement", async () => {
+    const original: FinancialAction = {
+      id: "00000000-0000-4000-8000-000000000009",
+      version: 1,
+      conversationId: "00000000-0000-4000-8000-000000000001",
+      turnId: "00000000-0000-4000-8000-000000000002",
+      origin: "assistant",
+      request: {
+        kind: "create_tag",
+        tag: { name: "Burger King", color: "#ef4444" },
+      },
+      context: { tags: [], movement: null },
+      status: "proposed",
+      createdAt: "2026-11-11T18:00:00Z",
+      expiresAt: "2026-11-11T18:15:00Z",
+      results: [],
+    };
+    const change = {
+      id: original.id,
+      version: 1,
+      action: {
+        kind: "create_tag",
+        tag: { name: "Burger King", color: "#112233" },
+      },
+    };
+    const updated: FinancialAction = {
+      ...original,
+      version: 2,
+      request: FinancialActionRequestSchema.parse(change.action),
+    };
+    const model = new MockLanguageModelV4({
+      doStream: [
+        response(
+          [
+            {
+              type: "tool-call",
+              toolCallId: "correct",
+              toolName: "corregir_propuesta_financiera",
+              input: JSON.stringify(change),
+            },
+          ],
+          "tool-calls",
+        ),
+        response(
+          text(
+            "Corregí el color de la solicitud. Puedes aceptarla o decirme qué más cambiar.",
+          ),
+        ),
+      ],
+    });
+    const request = {
+      ...input(),
+      propose: vi.fn(async () => original),
+      revise: vi.fn(async () => updated),
+    };
+    expect(
+      await new AiSdkAssistantRuntime(
+        testEnvironment(),
+        tools,
+        async () => model,
+      ).run(request),
+    ).toEqual({ complete: true });
+    expect(request.revise).toHaveBeenCalledExactlyOnceWith(change);
+    expect(request.propose).not.toHaveBeenCalled();
+    expect(JSON.stringify(model.doStreamCalls[1].prompt)).toContain(
+      '"version":2',
+    );
+    expect(
+      model.doStreamCalls[0].tools?.some((tool) =>
+        /aprobar|ejecutar/.test(tool.name),
+      ),
+    ).toBe(false);
   });
 
   it("rejects forged approval, ownership overrides and direct execution even when proposal tools are enabled", async () => {

@@ -1,12 +1,5 @@
-<section class="panel" style="max-width:760px;margin-inline:auto;overflow-wrap:anywhere"
-  aria-labelledby="mcp-consent-title">
-  <header class="page-heading">
-    <div>
-      <p class="eyebrow">AUTORIZACIÓN DE APLICACIONES</p>
-      <h1 id="mcp-consent-title">Autorizar una aplicación</h1>
-      <p class="subtitle">Una aplicación externa solicita acceso a tu información de LazyFinance.</p>
-    </div>
-  </header>
+<section class="panel consent-panel" aria-labelledby="mcp-consent-title">
+  <h1 id="mcp-consent-title" tabindex="-1">Conectar aplicación</h1>
   @if (!id()) {
     <p class="notice danger" role="alert">La solicitud no es válida. Inicia de nuevo la conexión desde tu aplicación.</p>
   } @else if (preview.isLoading()) {
@@ -18,37 +11,48 @@
     </p>
   }
   @if (consent(); as request) {
-    <h2 class="section-title">{{ request.clientName }}</h2>
-    <p class="record-meta">Identificador de la aplicación: {{ request.clientId }}</p>
-    <p class="notice">
-      Estás autorizando la cuenta <strong>{{ credentials.current()?.principal?.email }}</strong>.
-      Si no es tu cuenta, cierra sesión antes de continuar.
-    </p>
-    <p class="record-meta">
-      Destino de regreso: <strong>{{ callbackHost() }}</strong>.
-      El nombre de la aplicación es declarado por su cliente y no implica una recomendación de LazyFinance.
-    </p>
-    @if (localCallback()) {
-      <p class="notice warning">Esta aplicación usa un destino local en tu equipo. Comprueba que iniciaste la conexión en una aplicación de confianza.</p>
-    }
-    <h3 class="record-title" style="margin-top:24px">Permisos de solo lectura</h3>
-    <ul class="record-meta" style="padding-left:20px;margin-block:16px">
-      <li>Consultar saldos y movimientos guardados.</li>
-      <li>Consultar gastos, ingresos, presupuestos y metas con sus períodos y limitaciones.</li>
-      <li>La lectura no permite editar tus datos, conectar bancos, confirmar ingresos ni mover dinero.</li>
-    </ul>
-    @if (requestedWrites().length) {
-      <fieldset class="notice warning" style="margin-block:20px"><legend>Permisos de cambio opcionales</legend>
-        <p>Activa solo los cambios que quieras delegar a esta aplicación. Podrá ejecutarlos sin los botones de aprobación del chat de LazyFinance. La aplicación externa decide si pide confirmación en su interfaz.</p>
-        @for (scope of requestedWrites(); track scope) { <label style="display:flex;gap:10px;margin-block:12px;align-items:flex-start"><input type="checkbox" [checked]="selectedWrites().includes(scope)" [disabled]="!canDecide()" (change)="toggleWrite(scope)" />{{ permissionLabel(scope) }}</label> }
-        <p>Ninguno de estos permisos permite mover dinero, confirmar ingresos, cambiar hechos bancarios ni crear reglas automáticas.</p>
-      </fieldset>
-    }
-    <p class="field-hint">El acceso puede renovarse durante un máximo de 30 días. Puedes revocarlo en Aplicaciones conectadas sin desconectar tu banco. La aplicación externa podría conservar información que ya haya recibido.</p>
-    @if (request.scopes.includes('openid')) {
-      <p class="field-hint">También se comparte un identificador de tu cuenta para reconocer esta conexión; no se usa tu correo como identificador financiero.</p>
-    }
-    <div class="button-row" style="margin-top:24px">
+    <mcp-client-identity [clientId]="request.clientId"
+      [name]="request.clientName" [redirectUri]="request.redirectUri">
+      <div class="connection-facts">
+        <p>Solicitud válida hasta el {{ time(request.expiresAt) }} (Santiago).</p>
+        @if (localCallback()) {
+          <p>El regreso es a una aplicación local en este equipo. Comprueba que tú iniciaste esta conexión.</p>
+        }
+        <p>Permisos solicitados: {{ request.scopes.join(', ') }}.</p>
+        <p>La aplicación podría conservar información ya recibida. Cerrar esta página no revierte una decisión enviada.</p>
+      </div>
+    </mcp-client-identity>
+    <div class="consent-account" aria-label="Cuenta de LazyFinance">
+      <span>{{ credentials.current()?.principal?.email }}</span>
+      <button class="text-link" type="button" [disabled]="command.pending()" (click)="switchAccount.emit()">Usar otra cuenta</button>
+    </div>
+    @if (expired()) { <p class="notice warning" role="status">Solicitud vencida. Inicia una conexión nueva desde la aplicación.</p> }
+    <section class="consent-permissions" aria-labelledby="mcp-permissions-title">
+      <div class="read-permission">
+        <h2 id="mcp-permissions-title" class="permission-title">Consultar tus finanzas <span class="badge neutral">Requerido</span></h2>
+        <p class="permission-description">Saldos, movimientos, gastos, ingresos, presupuestos y metas.</p>
+        <p class="permission-description">Solo lectura: no permite cambios ni mover dinero.</p>
+      </div>
+      @if (request.scopes.includes('openid')) {
+        <p class="permission-description">Reconocer tu cuenta con un identificador.</p>
+      }
+      @if (requestedWrites().length) {
+        <fieldset class="optional-permissions">
+          <legend>Cambios opcionales</legend>
+          <p class="permission-description">Sin confirmación adicional en LazyFinance.</p>
+          <div class="permission-options">
+            @for (scope of requestedWrites(); track scope) {
+              <label><input type="checkbox" [checked]="selectedWrites().includes(scope)"
+                [disabled]="!canDecide()" (change)="toggleWrite(scope)" />
+                <span>{{ permissionLabel(scope) }}</span>
+              </label>
+            }
+          </div>
+        </fieldset>
+      }
+    </section>
+    <p class="permission-description access-duration">Hasta 30 días. Puedes <a routerLink="/aplicaciones-conectadas">revocar el acceso</a> cuando quieras.</p>
+    <div class="consent-actions">
       <button type="button" class="button primary" [disabled]="!canDecide()" (click)="decide(true)">
         {{ command.pending() ? 'Esperando confirmación…' : selectedWrites().length ? 'Autorizar permisos seleccionados' : 'Autorizar solo lectura' }}
       </button>
@@ -61,6 +65,4 @@
   @if (needsReconciliation()) {
     <p class="notice warning">El resultado no está confirmado. No repetiremos esta decisión: revisa tus aplicaciones conectadas y, si hace falta, inicia una conexión nueva desde el cliente.</p>
   }
-  <p class="field-hint" style="margin-top:20px">Cerrar esta página no autoriza por sí solo una aplicación ni revierte una decisión que el servidor ya haya recibido.</p>
-  <a class="text-link" routerLink="/aplicaciones-conectadas">Revisar aplicaciones conectadas</a>
 </section>

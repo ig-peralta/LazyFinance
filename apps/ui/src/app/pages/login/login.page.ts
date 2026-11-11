@@ -4,6 +4,7 @@ import {
   DestroyRef,
   effect,
   inject,
+  input,
   signal,
 } from "@angular/core";
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
@@ -15,8 +16,10 @@ import { SessionService } from "../../core/auth/session.service";
   selector: "login-page",
   imports: [RouterLink],
   templateUrl: "./login.page.html",
+  styleUrl: "./login.page.css",
 })
 export class LoginPage {
+  readonly mcpMode = input(false);
   readonly session = inject(SessionService);
   private readonly api = inject(AuthApi);
   private readonly router = inject(Router);
@@ -47,6 +50,7 @@ export class LoginPage {
     inject(DestroyRef).onDestroy(() => this.lifetime.abort());
     effect(() => {
       if (
+        !this.mcpMode() &&
         this.provider() === "firebase" &&
         this.session.active() &&
         !this.busy() &&
@@ -198,6 +202,8 @@ export class LoginPage {
 
   private async completeLogin(): Promise<void> {
     this.lifetime.signal.throwIfAborted();
+    // The connection page reacts to verified account state in place, never to a redirect.
+    if (this.mcpMode()) return;
     if (this.leaving) return;
     this.leaving = true;
     try {
@@ -213,6 +219,6 @@ export class LoginPage {
     const redirect = this.route.snapshot.queryParamMap.get("redirect");
     return redirect?.startsWith("/") && !redirect.startsWith("//")
       ? redirect
-      : "/dashboard";
+      : "/asistente";
   }
 }

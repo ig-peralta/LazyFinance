@@ -3,6 +3,10 @@ import { Inject, Injectable } from "@nestjs/common";
 import { z } from "zod";
 import { EnvironmentService } from "../../../environment/environment.service";
 import {
+  FintocRequestAdmission,
+  ProviderAdmissionDeferred,
+} from "./fintoc-request-admission";
+import {
   FintocAccountSchema,
   FintocMovementSchema,
 } from "./fintoc-snapshot.schema";
@@ -63,6 +67,7 @@ export class FintocClient {
   constructor(
     private readonly environment: EnvironmentService,
     @Inject(FINTOC_FETCH) private readonly fetch: typeof globalThis.fetch,
+    private readonly admission: FintocRequestAdmission,
   ) {}
 
   configuration() {
@@ -70,6 +75,9 @@ export class FintocClient {
     if (!publicKey) return { enabled: false as const };
     return {
       enabled: true as const,
+      automaticSyncEnabled: this.environment.get(
+        "BANKING_AUTOMATIC_SYNC_ENABLED",
+      ),
       publicKey,
       mode: publicKey.startsWith("pk_test_")
         ? ("test" as const)
@@ -102,11 +110,15 @@ export class FintocClient {
     return parsed.data;
   }
 
-  async link(token: string, signal?: AbortSignal) {
+  async link(
+    token: string,
+    signal?: AbortSignal,
+    purpose: "sync" | "lifecycle" = "lifecycle",
+  ) {
     const data = await this.request(
       `/v1/links/${encodeURIComponent(token)}`,
       { signal },
-      "link",
+      purpose === "sync" ? "sync-link" : "link",
     );
     const parsed = linkSchema.safeParse(data);
     if (!parsed.success) throw new FintocFailure("unavailable");
@@ -235,7 +247,7 @@ export class FintocClient {
   private async request(
     path: string,
     options?: RequestInit,
-    operation?: "exchange" | "link" | "disconnect",
+    operation?: "exchange" | "link" | "disconnect" | "sync-link",
   ): Promise<unknown> {
     return (await this.response(path, options, operation)).data;
   }
@@ -243,11 +255,26 @@ export class FintocClient {
   private async response(
     path: string,
     options?: RequestInit,
-    operation?: "exchange" | "link" | "disconnect" | "snapshot",
+    operation?: "exchange" | "link" | "disconnect" | "snapshot" | "sync-link",
   ): Promise<{ data: unknown; headers: Headers }> {
     const key = this.environment.get("FINTOC_SECRET_KEY");
     if (!key) throw new FintocFailure("unavailable");
+    const cancellation = AbortSignal.any([
+      AbortSignal.timeout(20_000),
+      ...(options?.signal ? [options.signal] : []),
+    ]);
+    let permit: { id: string; expiresAt: string } | undefined;
     try {
+      permit = await this.admission.acquire(
+        key.startsWith("sk_test_") ? "test" : "live",
+        operation === "snapshot" || operation === "sync-link"
+          ? "sync"
+          : "lifecycle",
+        cancellation,
+      );
+      cancellation.throwIfAborted();
+      const remaining = Date.parse(permit.expiresAt) - Date.now();
+      if (remaining <= 0) throw new FintocFailure("unavailable");
       const response = await this.fetch(`https://api.fintoc.com${path}`, {
         ...options,
         headers: {
@@ -258,7 +285,8 @@ export class FintocClient {
         redirect: "error",
         cache: "no-store",
         signal: AbortSignal.any([
-          AbortSignal.timeout(20_000),
+          cancellation,
+          AbortSignal.timeout(Math.max(1, Math.min(20_000, remaining))),
           ...(options?.signal ? [options.signal] : []),
         ]),
       });
@@ -274,7 +302,10 @@ export class FintocClient {
         // Do not use a 401 server API-key failure as evidence of user revocation.
         if (operation === "exchange" && [400, 403].includes(response.status))
           throw new FintocFailure("invalid_exchange");
-        if (operation === "link" && [403, 404].includes(response.status))
+        if (
+          (operation === "link" || operation === "sync-link") &&
+          [403, 404].includes(response.status)
+        )
           throw new FintocFailure("revoked");
         const retry = response.headers.get("Retry-After");
         const retryTime =
@@ -283,14 +314,18 @@ export class FintocClient {
             : /^\d+$/.test(retry)
               ? Date.now() + Number(retry) * 1000
               : Date.parse(retry);
-        throw new FintocFailure(
-          "unavailable",
+        const retryAfter =
           Number.isFinite(retryTime) &&
-            retryTime > Date.now() &&
-            retryTime <= 253_402_300_799_999
+          retryTime > Date.now() &&
+          retryTime <= 253_402_300_799_999
             ? new Date(retryTime).toISOString()
-            : null,
-        );
+            : null;
+        if (retryAfter)
+          await this.admission.defer(
+            key.startsWith("sk_test_") ? "test" : "live",
+            retryAfter,
+          );
+        throw new FintocFailure("unavailable", retryAfter);
       }
       const reader = response.body?.getReader();
       if (!reader) throw new FintocFailure("unavailable");
@@ -323,8 +358,12 @@ export class FintocClient {
         );
       }
     } catch (error) {
+      if (error instanceof ProviderAdmissionDeferred)
+        throw new FintocFailure("unavailable", error.retryAt);
       if (error instanceof FintocFailure) throw error;
       throw new FintocFailure("unavailable");
+    } finally {
+      if (permit) await this.admission.release(permit.id);
     }
   }
 }

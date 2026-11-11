@@ -49,6 +49,11 @@ describe("owned tag management", () => {
       root.querySelector<HTMLElement>(".tag-swatch")?.style.backgroundColor,
     ).toBe("rgb(34, 170, 119)");
     expect(root.querySelector("form")).toBeNull();
+    expect(root.querySelectorAll(".tag-card")).toHaveLength(1);
+    expect(
+      root.querySelector('.record-actions [aria-label="Archivar Comida"]'),
+    ).not.toBeNull();
+    expect(mock.callsTo("tags.archive")).toHaveLength(0);
     [...root.querySelectorAll("button")]
       .find((button) => button.textContent?.includes("Nueva etiqueta"))
       ?.click();
@@ -111,6 +116,94 @@ describe("owned tag management", () => {
     await revisited.whenStable();
     revisited.detectChanges();
     expect(revisited.nativeElement.textContent).toContain("Viajes");
+  });
+
+  it("uses only validated hex colors for catalog swatches", async () => {
+    setupRpc({
+      "tags.list": () => [
+        { ...tag, color: "url(https://example.invalid/color)" },
+      ],
+    });
+    const fixture = TestBed.createComponent(TagsPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement;
+    expect(
+      root.querySelector<HTMLElement>(".tag-swatch")?.style.backgroundColor,
+    ).toBe("rgb(181, 193, 170)");
+    expect(root.textContent).not.toContain("Color personalizado");
+  });
+
+  it("filters the card collection locally and clears an empty search without writes", async () => {
+    const mock = setupRpc({
+      "tags.list": () => [tag, { ...tag, id: "second-tag", name: "Viajes" }],
+    });
+    const fixture = TestBed.createComponent(TagsPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement;
+    const input = root.querySelector<HTMLInputElement>('input[type="search"]');
+    if (!input) throw new Error("Missing tag search");
+    expect(root.querySelectorAll(".tag-card")).toHaveLength(2);
+    input.value = "VIA";
+    input.dispatchEvent(eventsIn(root)("input"));
+    fixture.detectChanges();
+    expect(root.querySelectorAll(".tag-card")).toHaveLength(1);
+    expect(root.querySelector(".tag-card h3")?.textContent).toBe("Viajes");
+    expect(root.querySelector(".catalog-results")?.textContent).toContain(
+      "1 resultado",
+    );
+    input.value = "No existe";
+    input.dispatchEvent(eventsIn(root)("input"));
+    fixture.detectChanges();
+    expect(root.querySelectorAll(".tag-card")).toHaveLength(0);
+    expect(root.querySelector(".catalog-results")?.textContent).toContain(
+      "0 resultados",
+    );
+    [...root.querySelectorAll("button")]
+      .find((button) => button.textContent?.trim() === "Limpiar búsqueda")
+      ?.click();
+    fixture.detectChanges();
+    expect(input.value).toBe("");
+    expect(root.querySelectorAll(".tag-card")).toHaveLength(2);
+    expect(mock.callsTo("tags.list")).toHaveLength(1);
+    expect(mock.callsTo("tags.update")).toHaveLength(0);
+    expect(mock.callsTo("tags.archive")).toHaveLength(0);
+  });
+
+  it("keeps archive confirmation on the chosen card and cancels without writing", async () => {
+    const mock = setupRpc({
+      "tags.list": () => [tag, { ...tag, id: "second-tag", name: "Viajes" }],
+    });
+    const fixture = TestBed.createComponent(TagsPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement;
+    const trigger = root.querySelector<HTMLButtonElement>(
+      '[aria-label="Archivar Comida"]',
+    );
+    if (!trigger) throw new Error("Missing tag archive action");
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    trigger.click();
+    fixture.detectChanges();
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    const confirmation = root.querySelector<HTMLElement>(
+      `[id="${trigger.getAttribute("aria-controls")}"]`,
+    );
+    expect(confirmation?.hidden).toBe(false);
+    expect(
+      confirmation?.closest(".tag-card")?.querySelector("h3")?.textContent,
+    ).toBe("Comida");
+    [...(confirmation?.querySelectorAll("button") ?? [])]
+      .find((button) => button.textContent?.trim() === "Cancelar")
+      ?.click();
+    fixture.detectChanges();
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(confirmation?.hidden).toBe(true);
+    expect(mock.callsTo("tags.archive")).toHaveLength(0);
   });
 
   it("prevents duplicate writes, cancels obsolete ownership and clears drafts/notices for the next user", async () => {
@@ -191,5 +284,71 @@ describe("owned tag management", () => {
     expect(root.querySelector<HTMLInputElement>("#tag-name")?.value).toBe("");
     expect(root.querySelector("dialog")).not.toBeNull();
     expect(root.textContent).not.toContain("Etiqueta creada");
+  });
+
+  it("retains a rejected draft and reconciles an uncertain create without replay", async () => {
+    const mock = setupRpc({
+      "tags.create": () => {
+        throw new Error("Lost response");
+      },
+    });
+    const fixture = TestBed.createComponent(TagsPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const root: HTMLElement = fixture.nativeElement;
+    const event = eventsIn(root);
+    [...root.querySelectorAll("button")]
+      .find((button) => button.textContent?.includes("Nueva etiqueta"))
+      ?.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const input = root.querySelector<HTMLInputElement>("#tag-name");
+    if (!input) throw new Error("Missing name");
+    input.value = "Borrador";
+    input.dispatchEvent(event("input"));
+    root.querySelector("form")?.dispatchEvent(event("submit"));
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(input.value).toBe("Borrador");
+    expect(root.textContent).toContain("El resultado es incierto");
+    root.querySelector("form")?.dispatchEvent(event("submit"));
+    await fixture.whenStable();
+    expect(mock.callsTo("tags.create")).toHaveLength(1);
+    [...root.querySelectorAll("button")]
+      .find((button) => button.textContent?.includes("Comprobar catálogo"))
+      ?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(root.textContent).toContain("Catálogo comprobado");
+    expect(input.value).toBe("Borrador");
+    expect(mock.callsTo("tags.create")).toHaveLength(1);
+    expect(mock.callsTo("tags.list").length).toBeGreaterThan(1);
+  });
+
+  it("keeps duplicate and invalid names editable without issuing a catalog write", async () => {
+    const mock = setupRpc();
+    const fixture = TestBed.createComponent(TagsPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const root: HTMLElement = fixture.nativeElement;
+    const event = eventsIn(root);
+    [...root.querySelectorAll("button")]
+      .find((button) => button.textContent?.includes("Nueva etiqueta"))
+      ?.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const input = root.querySelector<HTMLInputElement>("#tag-name");
+    if (!input) throw new Error("Missing name");
+    for (const name of ["   ", tag.name]) {
+      input.value = name;
+      input.dispatchEvent(event("input"));
+      root.querySelector("form")?.dispatchEvent(event("submit"));
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(root.querySelector(".field-error")).not.toBeNull();
+      expect(input.value).toBe(name);
+    }
+    expect(mock.callsTo("tags.create")).toHaveLength(0);
+    expect(root.querySelector("dialog")).not.toBeNull();
   });
 });

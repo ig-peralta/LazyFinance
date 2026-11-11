@@ -1,0 +1,38 @@
+<div #frame class="workspace mcp-authorization"
+  [attr.data-theme]="preferences.value().theme"
+  [attr.data-text-size]="preferences.value().textSize">
+  <header class="authorization-brand">
+    <a routerLink="/" aria-label="LazyFinance · Inicio">
+      <span class="authorization-mark"><app-icon name="trend" /></span>
+      <span>LazyFinance<span class="accent-text">.</span></span>
+    </a>
+    <span><app-icon name="security" /> Conexión de aplicaciones</span>
+  </header>
+  <main class="authorization-main">
+    @if (!id()) {
+      <section class="panel">
+        <h1 tabindex="-1">No hay una conexión válida</h1>
+        <p class="notice danger" role="alert">Inicia de nuevo la conexión desde la aplicación que quieres conectar. Este enlace no contiene una solicitud válida.</p>
+      </section>
+    } @else if (switchError()) {
+      <section class="panel">
+        <h1 tabindex="-1">No pudimos cambiar de cuenta</h1>
+        <p class="notice danger" role="alert">Tu acceso local se cerró, pero no pudimos confirmar el cierre completo. Vuelve a intentarlo antes de usar otra cuenta.</p>
+        <button class="button" type="button" (click)="changeAccount()">Volver a cerrar sesión</button>
+      </section>
+    } @else if (switching()) {
+      <section class="panel">
+        <h1 tabindex="-1">Cambiando de cuenta</h1>
+        <p role="status">Cerrando la sesión antes de elegir otra cuenta…</p>
+      </section>
+    } @else {
+      @for (id of interactions(); track id) {
+        @for (owner of owners(); track owner) {
+          <mcp-consent-page (switchAccount)="changeAccount()" />
+        } @empty {
+          <login-page [mcpMode]="true" />
+        }
+      }
+    }
+  </main>
+</div>

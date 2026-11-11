@@ -1,5 +1,5 @@
 <header class="page-header">
-  <div><p class="eyebrow">LA HISTORIA DETRÁS DE TUS NÚMEROS</p><h1>Movimientos<span class="accent-text">.</span></h1><p class="page-description">Explora tus registros, encuentra una compra y entiende qué está contando. Sin confundir una página con todo tu historial.</p></div>
+  <div><p class="eyebrow">MI DINERO</p><h1>Movimientos<span class="accent-text">.</span></h1><p class="page-description">Abre un movimiento para revisar sus hechos, etiqueta o clasificación.</p></div>
   <span class="badge"><app-icon name="activity" /> Importes originales · CLP</span>
 </header>
 @if (error()) { <p class="notice danger" role="alert">{{ error() }} <button type="button" (click)="openFilters()">Revisar filtros</button></p> }
@@ -60,22 +60,24 @@
   @else if (data.page.error()) { <div class="notice danger" role="alert">No pudimos cargar el historial. No significa que esté vacío. <button type="button" (click)="data.page.reload()">Reintentar</button></div> }
   @else if (!data.items().length) { <div class="empty-state"><span class="empty-icon"><app-icon name="search" /></span><h3>No hay movimientos en esta selección</h3><p>Cambia los filtros o vuelve a consultar. La ausencia de registros no confirma que el banco haya entregado todo tu historial.</p><button class="button" type="button" (click)="reset()">Ver todos mis movimientos</button></div> }
   @else {
+    <ng-container [ngTemplateOutlet]="pagination" [ngTemplateOutletContext]="{ position: 'superior' }" />
     <div class="table-scroll desktop-ledger">
       <table class="ledger"><caption class="sr-only">Movimientos de la selección actual, con importe y cuenta</caption><thead><tr><th scope="col">Movimiento</th><th scope="col">Fecha</th><th scope="col">Cuenta</th><th scope="col">Etiqueta</th><th scope="col" style="text-align:right">Importe</th></tr></thead>
-        <tbody>@for (item of data.items(); track item.id) { <tr><td><a class="record-title text-link" [routerLink]="['/movimientos', item.id]" [queryParams]="route.snapshot.queryParams">{{ item.merchant || item.description || 'Movimiento' }}</a><p class="record-meta">{{ item.type === 'debit' ? 'Cargo' : 'Abono · no implica ingreso' }} @if (item.reviewStatus === 'needs_review') { <span class="badge warning">Por revisar</span> }</p></td><td style="white-space:nowrap">{{ date(item.bookedAt) }}</td><td>{{ item.account.alias || 'Cuenta' }}</td><td><span class="badge neutral"><span class="tag-swatch" [style.backgroundColor]="item.tag?.color || '#b5c1aa'"></span>{{ item.tag?.name || 'Sin etiqueta' }}</span></td><td class="record-amount">{{ money(item.amount) }}</td></tr> }</tbody>
+        <tbody>@for (item of data.items(); track item.id) { <tr><td><a class="record-title text-link" [routerLink]="['/movimientos', item.id]" [queryParams]="route.snapshot.queryParams">{{ item.merchant || item.description || 'Movimiento' }}</a><p class="record-meta">{{ item.type === 'debit' ? 'Cargo' : 'Abono · no implica ingreso' }} @if (item.reviewStatus === 'needs_review') { <span class="badge warning">Por revisar</span> }</p></td><td style="white-space:nowrap">{{ date(item.bookedAt) }}</td><td>{{ item.account.alias || 'Cuenta' }}</td><td><span class="badge neutral"><span class="tag-swatch" [style.backgroundColor]="item.tag?.color || '#b5c1aa'" aria-hidden="true"></span>{{ item.tag?.name || 'Sin etiqueta' }}</span><p class="field-hint">{{ item.tagDecisionOrigin === 'manual' ? 'Tu decisión' : item.tagDecisionOrigin === 'rule' ? 'Regla automática' : 'Sin revisar' }}</p></td><td class="record-amount money">{{ money(item.amount) }}</td></tr> }</tbody>
       </table>
     </div>
     <ul class="mobile-ledger" aria-label="Movimientos de la selección actual">
       @for (item of data.items(); track item.id) {
         <li>
-          <div class="record-row"><a class="record-title text-link" [routerLink]="['/movimientos', item.id]" [queryParams]="route.snapshot.queryParams">{{ item.merchant || item.description || 'Movimiento' }}</a><strong class="record-amount">{{ money(item.amount) }}</strong></div>
+          <div class="record-row"><a class="record-title text-link" [routerLink]="['/movimientos', item.id]" [queryParams]="route.snapshot.queryParams">{{ item.merchant || item.description || 'Movimiento' }}</a><strong class="record-amount money">{{ money(item.amount) }}</strong></div>
           <p class="record-meta">{{ date(item.bookedAt) }} · {{ item.account.alias || 'Cuenta' }}</p>
           <p class="record-meta">{{ item.type === 'debit' ? 'Cargo' : 'Abono · no implica ingreso' }}{{ item.reviewStatus === 'needs_review' ? ' · por revisar' : '' }}</p>
-          <span class="badge neutral" style="margin-top:8px"><span class="tag-swatch" [style.backgroundColor]="item.tag?.color || '#b5c1aa'"></span>{{ item.tag?.name || 'Sin etiqueta' }}</span>
+          <div class="section-toolbar"><span class="badge neutral"><span class="tag-swatch" [style.backgroundColor]="item.tag?.color || '#b5c1aa'" aria-hidden="true"></span>{{ item.tag?.name || 'Sin etiqueta' }}</span><span class="field-hint">{{ item.tagDecisionOrigin === 'manual' ? 'Tu decisión' : item.tagDecisionOrigin === 'rule' ? 'Regla automática' : 'Sin revisar' }}</span></div>
         </li>
       }
     </ul>
-    <div class="pagination"><span>Página {{ data.pageNumber() }} · {{ data.items().length }} movimientos en esta página</span><div class="button-row"><button class="button small" type="button" [disabled]="data.pageNumber() === 1 || data.page.isLoading()" (click)="data.previous()">Anterior</button><button class="button small" type="button" [disabled]="!data.page.hasValue() || !data.page.value().pageInfo.hasMore || data.page.isLoading()" (click)="data.next()">Siguiente <app-icon name="arrow" /></button></div></div>
+    <ng-container [ngTemplateOutlet]="pagination" [ngTemplateOutletContext]="{ position: 'inferior' }" />
   }
-  <p class="field-hint" style="margin-top:20px">La paginación usa límites estables, pero una corrección bancaria puede cambiar el orden. Recarga para reconciliar los datos actuales; no sumes páginas para calcular gastos o saldos.</p>
+  <details class="section-disclosure"><summary>Sobre las páginas del historial</summary><p>La paginación usa límites estables, pero una corrección bancaria puede cambiar el orden. Recarga para reconciliar los datos actuales; no sumes páginas para calcular gastos o saldos.</p></details>
 </section>
+<ng-template #pagination let-position="position"><nav class="pagination" [attr.aria-label]="'Páginas del historial · ' + position"><span>Página {{ data.pageNumber() }} · {{ data.items().length }} movimientos en esta página</span><div class="row-actions"><button class="button small" type="button" [disabled]="data.pageNumber() === 1 || data.page.isLoading()" (click)="data.previous()">Anterior</button><button class="button small" type="button" [disabled]="!data.page.hasValue() || !data.page.value().pageInfo.hasMore || data.page.isLoading()" (click)="data.next()">Siguiente <app-icon name="arrow" /></button></div></nav></ng-template>

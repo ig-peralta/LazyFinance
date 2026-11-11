@@ -4,6 +4,7 @@ import {
   BankingConnectionsSchema,
   BankingImportResultSchema,
   BankingIntentSchema,
+  BankingSelectionSchema,
   BankingSyncStatusSchema,
   type CompleteBankingIntent,
   CompleteBankingIntentSchema,
@@ -11,9 +12,13 @@ import {
   CreateBankingIntentSchema,
   RpcEmptySchema,
   RpcIdSchema,
+  type SelectBankingAccounts,
+  SelectBankingAccountsSchema,
 } from "@lazyfinance/contracts";
 import { Ctx, Input, Mutation, Query, Router } from "nestjs-trpc";
+import { PersistenceClient } from "../../persistence/persistence.client";
 import { type ApiRequestContext, rpcUser } from "../../rpc/context";
+import { FintocDiscoveryService } from "../fintoc/discovery/fintoc-discovery.service";
 import { FintocImportService } from "../fintoc/import/fintoc-import.service";
 import { BankingSyncStatusService } from "../status/banking-sync-status.service";
 import { BankingLinksService } from "./banking-links.service";
@@ -24,6 +29,8 @@ export class BankingLinksRpc {
     private readonly service: BankingLinksService,
     private readonly imports: FintocImportService,
     private readonly status: BankingSyncStatusService,
+    private readonly discovery: FintocDiscoveryService,
+    private readonly persistence: PersistenceClient,
   ) {}
 
   @Query({
@@ -114,5 +121,47 @@ export class BankingLinksRpc {
   })
   syncStatus(@Ctx() ctx: ApiRequestContext, @Input() input: { id: string }) {
     return this.status.forUser(rpcUser(ctx), input.id);
+  }
+
+  @Query({
+    input: RpcIdSchema,
+    output: BankingSelectionSchema,
+    meta: { auth: "user" },
+  })
+  async accountSelection(
+    @Ctx() ctx: ApiRequestContext,
+    @Input() input: { id: string },
+  ) {
+    return (
+      await this.persistence
+        .user(rpcUser(ctx))
+        .providerSelection.get.query(input)
+    ).selection;
+  }
+
+  @Mutation({
+    input: RpcIdSchema,
+    output: BankingSelectionSchema,
+    meta: { auth: "user" },
+  })
+  discoverAccounts(
+    @Ctx() ctx: ApiRequestContext,
+    @Input() input: { id: string },
+  ) {
+    return this.discovery.discover(rpcUser(ctx), input.id);
+  }
+
+  @Mutation({
+    input: SelectBankingAccountsSchema,
+    output: BankingSelectionSchema,
+    meta: { auth: "user" },
+  })
+  selectAccounts(
+    @Ctx() ctx: ApiRequestContext,
+    @Input() input: SelectBankingAccounts,
+  ) {
+    return this.persistence
+      .user(rpcUser(ctx))
+      .providerSelection.select.mutate(input);
   }
 }

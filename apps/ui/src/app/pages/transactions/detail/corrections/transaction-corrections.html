@@ -1,6 +1,33 @@
-<section class="editor-form"><p class="panel-subtitle">Corrige el contexto, no los hechos bancarios.</p>
-@if (command.error()) { <p class="notice danger" role="alert">{{ command.error() }}</p> }
-@if (item().removedAt) { <p class="notice warning">Un movimiento retirado no admite correcciones.</p> }
-<fieldset [disabled]="command.pending() || !!item().removedAt" style="border:0;margin:0;padding:0"><form (ngSubmit)="setTag()"><div class="field"><label for="correction-tag">Etiqueta</label><select id="correction-tag" name="tag" [(ngModel)]="selection"><option value="none">Sin etiqueta · decisión explícita</option>@if (item().tag; as current) { <option [value]="current.id">{{ current.name }} · actual</option> }@if (tags.hasValue()) { @for (tag of tags.value(); track tag.id) { @if (tag.id !== item().tag?.id) { <option [value]="tag.id">{{ tag.name }}</option> } } }</select><small>Origen actual: {{ item().tagDecisionOrigin === 'manual' ? 'decisión manual' : item().tagDecisionOrigin === 'unreviewed' ? 'sin revisar' : 'regla' }}. Dejar sin etiqueta no es lo mismo que restablecer.</small></div><div class="button-row" style="margin-top:12px"><button class="button small primary" type="submit">Guardar etiqueta</button><button class="button small" type="button" (click)="resetTag()">Restablecer decisión</button></div></form>
-@if (tags.error()) { <p class="notice warning" role="alert">No se cargó el catálogo. <button type="button" (click)="tags.reload()">Reintentar etiquetas</button></p> }
-<form (ngSubmit)="setInternal()" style="margin-top:24px;padding-top:20px;border-top:1px solid var(--line)"><div class="field"><label for="correction-internal">¿Es un movimiento interno?</label><select id="correction-internal" name="internal" [(ngModel)]="internal"><option value="provider">Usar evaluación del proveedor</option><option value="internal">Sí, transferencia interna</option><option value="external">No, movimiento externo</option></select><small>Los internos no cuentan como compras ni ingresos recibidos. Volver al proveedor puede dejar el estado sin determinar.</small></div><button class="button small primary" type="submit" style="margin-top:12px">Guardar clasificación</button></form></fieldset><div class="form-actions"><button class="button" type="button" (click)="cancelled.emit()">Cerrar</button></div></section>
+<section class="editor-form">
+  <p class="panel-subtitle">Cambia la clasificación sin modificar el importe ni la fecha del banco.</p>
+  @if (command.error()) { <p class="notice danger" role="alert">{{ command.error() }}</p> }
+  @if (needsCheck()) { <p class="notice warning" role="status">Cierra este panel y recarga el movimiento para comprobar el resultado antes de hacer otro cambio. No se repetirá la operación.</p> }
+  @if (item().removedAt) { <p class="notice warning">Un movimiento retirado no admite correcciones.</p> }
+  @if (unavailableSelection()) { <p class="notice warning">La etiqueta seleccionada no está en el catálogo activo. Su historial se conserva. Elige otra etiqueta, deja sin etiqueta o marca sin revisar.</p> }
+  <fieldset [disabled]="command.pending() || needsCheck() || !!item().removedAt" class="form-fieldset stack">
+    <form (ngSubmit)="setTag()">
+      <h3>Etiqueta del movimiento</h3>
+      <div class="field">
+        <label for="correction-tag">Una etiqueta o ninguna</label>
+        <select id="correction-tag" name="tag" [(ngModel)]="selection" aria-describedby="correction-tag-help">
+          <option value="none">Sin etiqueta · decisión explícita</option>
+          @if (item().tag; as current) { <option [value]="current.id">{{ current.name }} · actual</option> }
+          @if (tags.hasValue()) { @for (tag of tags.value(); track tag.id) { @if (tag.id !== item().tag?.id) { <option [value]="tag.id">{{ tag.name }}</option> } } }
+        </select>
+        <small id="correction-tag-help">Origen actual: {{ item().tagDecisionOrigin === 'manual' ? 'decisión manual' : item().tagDecisionOrigin === 'unreviewed' ? 'sin revisar' : 'regla' }}. Sin etiqueta guarda tu decisión; marcar sin revisar borra la decisión manual.</small>
+      </div>
+      <div class="row-actions"><button class="button small primary" type="submit">Guardar etiqueta</button><button class="button small" type="button" (click)="resetTag()">Marcar sin revisar</button></div>
+    </form>
+    @if (tags.error()) { <p class="notice warning" role="alert">No se cargó el catálogo. <button type="button" (click)="tags.reload()">Reintentar etiquetas</button></p> }
+    <form (ngSubmit)="setInternal()">
+      <h3>Clasificación interna</h3>
+      <div class="field">
+        <label for="correction-internal">¿Es un movimiento interno?</label>
+        <select id="correction-internal" name="internal" [(ngModel)]="internal" aria-describedby="correction-internal-help"><option value="provider">Usar evaluación del proveedor</option><option value="internal">Sí, transferencia interna</option><option value="external">No, movimiento externo</option></select>
+        <small id="correction-internal-help">Los internos no cuentan como compras ni ingresos recibidos. Volver al proveedor puede dejar el estado sin determinar. La etiqueta no cambia esta clasificación.</small>
+      </div>
+      <div class="row-actions"><button class="button small primary" type="submit">Guardar clasificación</button></div>
+    </form>
+  </fieldset>
+  <div class="form-actions"><button class="button" type="button" (click)="cancelled.emit()">Cerrar</button></div>
+</section>

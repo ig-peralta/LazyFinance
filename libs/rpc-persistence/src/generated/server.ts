@@ -13,8 +13,8 @@ import { z } from "zod";
 
 const t = initTRPC.create();
 const publicProcedure = t.procedure;
-import { FinancialActionIdSchema, FinancialActionSchema, FinancialActionPreviewSchema, FinancialActionVersionSchema, RpcEmptySchema, AssistantConversationsSchema, AssistantConversationIdSchema, AssistantConversationSchema, CreateAssistantConversationSchema, AssistantRemovedSchema, SavingsGoalSchema, SavingsHistoryInputSchema, SavingsHistoryPageSchema, SavingsGoalVersionSchema, BudgetDetailSchema, BudgetHistoryInputSchema, BudgetHistoryPageSchema, BudgetVersionInputSchema, RpcIdSchema, BankingConnectionsSchema, BankingConnectionSchema, UpdateTagSchema, TagDecisionSchema, SetInternalMovementSchema, InternalMovementDecisionSchema, ExpenseAdjustmentsInputSchema, ExpenseAdjustmentsPageSchema, SetExpenseAdjustmentSchema, ExpenseAdjustmentSchema, ExpenseAdjustmentPairSchema, TransactionsInputSchema, AuthPrincipalSchema, McpGrantIdSchema, McpRevokeResultSchema, McpGrantsSchema, McpGrantSchema, OnboardingStateSchema, FinishOnboardingSchema } from "@lazyfinance/contracts";
-import { PreviewFinancialActionSchema, PrepareFinancialActionSchema, ReviseFinancialActionCommandSchema, ApplyFinancialActionSchema, ExecuteFinancialActionSchema, BeginAssistantTurnSchema, BeginAssistantTurnResultSchema, FinishAssistantTurnSchema, FinishAssistantTurnResultSchema, EmptyInputSchema, AccountRecordsSchema, IdInputSchema, ExpectationRecordsSchema, ExpectationCreateSchema, ExpectationRecordSchema, ExpectationUpdateSchema, VoidResultSchema, ReceiptConfirmSchema, ReceiptFactSchema, IncomeSourceRecordsSchema, IncomeSourceRecordSchema, IncomeSourceCreateSchema, IncomeSourceUpdateSchema, AtIdInputSchema, PeriodInputSchema, ExpectedIncomeFactsSchema, ReceiptFactsSchema, IncomeFactsSchema, BudgetSpendingEvidenceInputSchema, SpendingEvidenceFactsSchema, SavingsReadSchema, SavingsFactsSchema, SavingsEvidenceReadSchema, SavingsEvidenceRecordsSchema, CreateSavingsCommandSchema, UpdateSavingsCommandSchema, ObjectiveRecordsSchema, BudgetPeriodInputSchema, BudgetPeriodRecordsSchema, CreateBudgetCommandSchema, UpdateBudgetCommandSchema, ObjectiveSpendingInputSchema, ObjectiveSpendingFactsSchema, BeginProviderSyncSchema, ProviderSyncBeginSchema, ProviderSyncStatusFactsSchema, ProviderSyncScopeSchema, ProviderSyncFactsSchema, CommitProviderSyncSchema, ProviderSyncOutcomeSchema, RecordProviderFailureSchema, ProviderReviewRecordsSchema, ProviderLinkSecretSchema, SaveProviderIntentSchema, ProviderIntentSavedSchema, ClaimProviderIntentSchema, ProviderIntentClaimSchema, CompleteProviderIntentSchema, FailProviderIntentSchema, ProviderIntentStateSchema, UpdateProviderLinkSchema, FinishProviderDisconnectSchema, TagRecordSchema, TagRecordsSchema, TagCreateSchema, TagRuleRecordsSchema, TagRuleCreateSchema, TagRuleRecordSchema, TagRuleReplaceSchema, TaggingFactsSchema, ManualTagCommandSchema, RuleCandidatesInputSchema, RuleCandidatesSchema, CommitRuleDecisionsSchema, ChangedCountSchema, TransactionDetailRecordSchema, SummarySpendingEvidenceInputSchema, RecentTransactionRecordsSchema, TransactionRecordsPageSchema, MovementAggregatesSchema, TaggedMovementAggregatesSchema, IdentityResolutionInputSchema, FindMcpArtifactSchema, McpArtifactSchema, SaveMcpArtifactSchema, McpArtifactSaveResultSchema, McpArtifactKeySchema, McpArtifactConsumeResultSchema, McpArtifactDestroyResultSchema, McpGrantIdentitySchema, BindMcpGrantSchema } from "@lazyfinance/contracts/internal";
+import { FinancialActionIdSchema, FinancialActionSchema, FinancialActionPreviewSchema, FinancialActionVersionSchema, RpcEmptySchema, DecideAssistantConsentSchema, AssistantConversationsSchema, AssistantConversationIdSchema, CreateAssistantConversationSchema, AssistantRemovedSchema, SetAccountAliasSchema, AccountListItemSchema, SavingsGoalSchema, SavingsHistoryInputSchema, SavingsHistoryPageSchema, SavingsGoalVersionSchema, BudgetDetailSchema, BudgetHistoryInputSchema, BudgetHistoryPageSchema, BudgetVersionInputSchema, RpcIdSchema, BankingConnectionsSchema, BankingConnectionSchema, BankingSelectionSchema, SelectBankingAccountsSchema, UpdateTagSchema, TagDecisionSchema, SetInternalMovementSchema, InternalMovementDecisionSchema, ExpenseAdjustmentsInputSchema, ExpenseAdjustmentsPageSchema, SetExpenseAdjustmentSchema, ExpenseAdjustmentSchema, ExpenseAdjustmentPairSchema, TransactionsInputSchema, AuthPrincipalSchema, McpGrantIdSchema, McpRevokeResultSchema, McpGrantsSchema, McpGrantSchema, OnboardingStateSchema, FinishOnboardingSchema } from "@lazyfinance/contracts";
+import { PreviewFinancialActionSchema, PrepareFinancialActionSchema, ReviseFinancialActionCommandSchema, ApplyFinancialActionSchema, ExecuteFinancialActionSchema, StoredAssistantConsentSchema, StoredAssistantConversationSchema, BeginAssistantTurnSchema, BeginAssistantTurnResultSchema, FinishAssistantTurnSchema, FinishAssistantTurnResultSchema, RecordAssistantVoiceQuestionSchema, EmptyInputSchema, AccountRecordsSchema, IdInputSchema, ExpectationRecordsSchema, ExpectationCreateSchema, ExpectationRecordSchema, ExpectationUpdateSchema, VoidResultSchema, ReceiptConfirmSchema, ReceiptFactSchema, IncomeSourceRecordsSchema, IncomeSourceRecordSchema, IncomeSourceCreateSchema, IncomeSourceUpdateSchema, AtIdInputSchema, PeriodInputSchema, ExpectedIncomeFactsSchema, ReceiptFactsSchema, IncomeFactsSchema, BudgetSpendingEvidenceInputSchema, SpendingEvidenceFactsSchema, SavingsReadSchema, SavingsFactsSchema, SavingsEvidenceReadSchema, SavingsEvidenceRecordsSchema, CreateSavingsCommandSchema, UpdateSavingsCommandSchema, ObjectiveRecordsSchema, BudgetPeriodInputSchema, BudgetPeriodRecordsSchema, CreateBudgetCommandSchema, UpdateBudgetCommandSchema, ObjectiveSpendingInputSchema, ObjectiveSpendingFactsSchema, BeginProviderSyncSchema, ProviderSyncBeginSchema, ProviderSyncStatusFactsSchema, ProviderSyncScopeSchema, ProviderSyncFactsSchema, CommitProviderSyncSchema, ProviderSyncOutcomeSchema, RecordProviderFailureSchema, ProviderReviewRecordsSchema, ProviderLinkSecretSchema, SaveProviderIntentSchema, ProviderIntentSavedSchema, ClaimProviderIntentSchema, ProviderIntentClaimSchema, CompleteProviderIntentSchema, FailProviderIntentSchema, ProviderIntentStateSchema, UpdateProviderLinkSchema, FinishProviderDisconnectSchema, ClaimProviderScheduleSchema, ProviderScheduleClaimSchema, AcquireProviderRequestSchema, ProviderRequestPermitSchema, ProviderRequestReleasedSchema, DeferProviderRequestsSchema, ProviderTrackingSchema, SaveProviderDiscoverySchema, DeferProviderDiscoverySchema, TagRecordSchema, TagRecordsSchema, TagCreateSchema, TagRuleRecordsSchema, TagRuleCreateSchema, TagRuleRecordSchema, TagRuleReplaceSchema, TaggingFactsSchema, ManualTagCommandSchema, RuleCandidatesInputSchema, RuleCandidatesSchema, CommitRuleDecisionsSchema, ChangedCountSchema, TransactionDetailRecordSchema, SummarySpendingEvidenceInputSchema, RecentTransactionRecordsSchema, TransactionRecordsPageSchema, MovementAggregatesSchema, TaggedMovementAggregatesSchema, IdentityResolutionInputSchema, FindMcpArtifactSchema, McpArtifactSchema, SaveMcpArtifactSchema, McpArtifactSaveResultSchema, McpArtifactKeySchema, McpArtifactConsumeResultSchema, McpArtifactDestroyResultSchema, McpGrantIdentitySchema, BindMcpGrantSchema } from "@lazyfinance/contracts/internal";
 
 const appRouter = t.router({
   financialActions: t.router({
@@ -47,6 +47,16 @@ const appRouter = t.router({
       .output(FinancialActionSchema)
       .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
     }),
+  assistantConsent: t.router({
+    get: publicProcedure
+      .input(RpcEmptySchema)
+      .output(StoredAssistantConsentSchema.nullable())
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    decide: publicProcedure
+      .input(DecideAssistantConsentSchema)
+      .output(StoredAssistantConsentSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
+    }),
   assistantConversations: t.router({
     list: publicProcedure
       .input(RpcEmptySchema)
@@ -54,11 +64,11 @@ const appRouter = t.router({
       .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
     get: publicProcedure
       .input(AssistantConversationIdSchema)
-      .output(AssistantConversationSchema)
+      .output(StoredAssistantConversationSchema)
       .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
     create: publicProcedure
       .input(CreateAssistantConversationSchema)
-      .output(AssistantConversationSchema)
+      .output(StoredAssistantConversationSchema)
       .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
     begin: publicProcedure
       .input(BeginAssistantTurnSchema)
@@ -66,6 +76,10 @@ const appRouter = t.router({
       .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
     finish: publicProcedure
       .input(FinishAssistantTurnSchema)
+      .output(FinishAssistantTurnResultSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    recordVoiceQuestion: publicProcedure
+      .input(RecordAssistantVoiceQuestionSchema)
       .output(FinishAssistantTurnResultSchema)
       .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
     remove: publicProcedure
@@ -77,7 +91,11 @@ const appRouter = t.router({
     listActive: publicProcedure
       .input(EmptyInputSchema)
       .output(AccountRecordsSchema)
-      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    setAlias: publicProcedure
+      .input(SetAccountAliasSchema)
+      .output(AccountListItemSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
     }),
   incomeExpectations: t.router({
     list: publicProcedure
@@ -269,6 +287,44 @@ const appRouter = t.router({
     finishDisconnect: publicProcedure
       .input(FinishProviderDisconnectSchema)
       .output(BankingConnectionSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
+    }),
+  providerScheduler: t.router({
+    claim: publicProcedure
+      .input(ClaimProviderScheduleSchema)
+      .output(ProviderScheduleClaimSchema.nullable())
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
+    }),
+  providerRequests: t.router({
+    acquire: publicProcedure
+      .input(AcquireProviderRequestSchema)
+      .output(ProviderRequestPermitSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    release: publicProcedure
+      .input(RpcIdSchema)
+      .output(ProviderRequestReleasedSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    defer: publicProcedure
+      .input(DeferProviderRequestsSchema)
+      .output(ProviderRequestReleasedSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
+    }),
+  providerSelection: t.router({
+    get: publicProcedure
+      .input(RpcIdSchema)
+      .output(ProviderTrackingSchema)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    discover: publicProcedure
+      .input(SaveProviderDiscoverySchema)
+      .output(BankingSelectionSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    select: publicProcedure
+      .input(SelectBankingAccountsSchema)
+      .output(BankingSelectionSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    deferDiscovery: publicProcedure
+      .input(DeferProviderDiscoverySchema)
+      .output(BankingSelectionSchema)
       .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
     }),
   tags: t.router({

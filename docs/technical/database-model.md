@@ -1,8 +1,8 @@
 # Implemented database model
 
 This reference describes the checked-in Kysely migrations, not a conceptual
-product model. PostgreSQL 18 holds **28 application tables** in fixed `identity`,
-`finance` and `assistant` schemas. Twenty-seven sensitive tables force user/identity/OAuth-purpose RLS;
+product model. PostgreSQL 18 holds **33 application tables** in fixed `identity`,
+`finance` and `assistant` schemas. Thirty-two sensitive tables force scoped RLS;
 `finance.provider` is the shared read-only catalog exception. There is no tenancy,
 membership or account-sharing model. See [security and RLS](persistence-security.md)
 for policy/grant details.
@@ -28,11 +28,16 @@ All unqualified table names in the finance section below belong to `finance`.
 | `identity.onboarding` | PK `user_id` → user | Optional-guide skip/completion; self-owned read/insert and status/timestamp update, no runtime delete |
 | `identity.mcp_grant` | Opaque text `id`; unique `interaction_id`; `user_id` → user | Immutable owner/client/resource/scopes/maximum-30-day expiry; self-owned listing and monotonic revocation |
 | `identity.mcp_artifact` | PK `(model, key)` with SHA-256 key; optional `account_id` → user | Allowlisted OAuth provider state encrypted by API; expiry/consumption/UID/grant indexes, dedicated-purpose writes |
-| `assistant.conversation` | `id`; `user_id` → user; owner/update-time index | Server-owned bounded turns and sources, generation lease and fixed maximum-30-day availability; no financial facts or credentials |
+| `assistant.conversation` | `id`; `user_id` → user; owner/mode/update-time index | Immutable text/voice mode, bounded retained turns and sources, generation lease and fixed maximum-30-day availability; no financial facts or credentials |
 | `assistant.action` | `id`; `user_id` → user; nullable `conversation_id` → conversation; unique `(user_id, origin, request_id)` | Versioned proposals and immutable finalized receipts; client/grant-bound direct execution; chat deletion only nulls its reference |
+| `assistant.processing_consent` | PK `user_id` → user | Latest accepted/refused external-processing decision, policy key, CAS revision and server decision time; no runtime delete/reassignment |
 | `provider` | `id`; unique `identifier` | Shared catalog; runtime SELECT only |
 | `provider_connection` | `id` → provider; `user_id`; unique provider/mode/external Link ID | Owned access status, API-encrypted credential/version, institution/holder and terminal disconnect/remote-cleanup state; legacy fixture fields remain nullable |
 | `provider_link_intent` | `id`; unique provider intent ID; optional original/completed connection FKs | Owner-bound, expiring callback claims with hashed exchange token, version-pinned relink and durable completion |
+| `provider_account_selection` | PK `connection_id`; immutable `user_id` → user | Minimal bounded discovery, credential/discovery/selection versions, selected IDs, consent and connection read backoff; no balances or movements |
+| `provider_sync_schedule` | PK `connection_id`; immutable `user_id` → user | Operational eligibility, next due time, failure streak, claim/run references and bounded daily attempts; scheduler can update claim fields only |
+| `provider_request_admission` | Caller-generated UUID; mode/purpose and time indexes | Durable deployment-wide rate/concurrency/read-volume admission; dedicated banking-transport context only |
+| `provider_request_backoff` | PK `mode` (`test`/`live`) | Greatest retained provider waiting period shared by all transport reads/lifecycle requests; banking-transport context only, no runtime delete |
 | `account` | `id`; unique `(provider_connection_id, external_id)`; `user_id` | Owned account and owned connection must agree; independent nullable source balance |
 | `transaction` | `id`; unique non-null `(account_id, external_id)` | Ownership through account; provider fact plus preserved user interpretation |
 | `tag` | `id`; unique `(user_id, name)` | User-owned catalog with archive flag |
@@ -61,10 +66,17 @@ policy independently rejects it.
 
 The [editable PlantUML source](../diagrams/sources/er.puml) and
 [full-size rendered PNG](../diagrams/er.png) are part of the
-[implemented ER and 4+1 atlas](../diagrams/README.md). They cover all
-**28 application tables and 44 foreign keys**, with PK/FK markers, nullable ends,
+[implemented ER and 4+1 atlas](../diagrams/README.md). They show the earlier
+**28-table, 44-foreign-key baseline**, with PK/FK markers, nullable ends,
 identifying/non-identifying relationships and selected domain attributes.
 Entity titles use qualified SQL `schema.table` names.
+
+The four banking operational tables added by migration `202611100030` are listed
+above but not drawn in that baseline image. Selection and schedules each reference
+the owned connection and user. Migration 032's consent table also references the
+user, bringing the current schema to 33 tables and 49 foreign keys. Neither
+addition is drawn in the baseline image. The transport tables contain no
+financial-owner references.
 
 ![Implemented relationships across identity, finance and assistant](../diagrams/er.png)
 
@@ -90,6 +102,18 @@ financial access. See [OAuth persistence and lifecycle](mcp-authorization.md).
   named upsert preserves terminal completion and its first timestamp, including
   concurrent first writes. No reset/delete RPC exists; financial setup never
   controls this non-financial preference.
+- Assistant processing consent has no row until an explicit decision. Stored
+  `accepted`/`refused` decisions retain a SHA-256 policy key, positive integer
+  revision and server `decided_at`. Compare-and-set writes serialize under the
+  user lock; an unchanged current decision preserves its revision/timestamp.
+  Outdated policy projects to `unset` at the API without changing the stored row.
+  This is one latest preference, not a historical decision ledger.
+- Assistant conversations have immutable `text`/`voice` mode after migration 033.
+  Nonempty voice-only histories are backfilled without rewriting transcripts;
+  mixed/empty histories remain text. Text lists/reads/context exclude voice
+  sessions/turns, but the database retains them under the same availability policy.
+  Separate quotas allow ten text and 100 voice conversations per owner; the
+  single active owner lease still spans both modes. Runtime cannot update mode.
 - Monetary columns use `numeric(15,2)` and cross RPC as decimal strings. CLP is the
   implemented currency. Transaction amounts are nonzero, with negative debits and
   positive credits enforced together. The balance is nullable and independent of
@@ -166,6 +190,14 @@ attempt, not a synthesized failure or successful refresh. Provider backoff remai
 durable across requests. The owned status projection includes source dates and
 balance-presence flags without downloading movements or encrypted credentials.
 
+For Fintoc, run state also captures credential/selection versions and the optional
+scheduling claim. Completion/failure must match the live revision, versions and
+claim; scheduled expiry is aligned with the ingestion lease. Selection and schedule
+records are separate from imported account facts. Deselecting or disconnecting
+invalidates work without using `account.active` to hide retained history. Empty or
+legacy selection never implicitly authorizes an import. Durable quota exhaustion
+postpones and releases the exhausted claim so healthy due work is not blocked.
+
 An explicit temporary unbooking adds a `provider_unbooked` conflict and excludes
 the retained movement with `needs_review`. Confirmation can resolve that conflict
 without deleting decisions/receipts/allocations; unrelated conflicts remain. This
@@ -173,7 +205,7 @@ is distinct from permanent tombstones, which replay never reactivates.
 
 ## Migration and seed lifecycle
 
-Twenty-nine migrations are globally ordered across `migrations/identity`,
+Thirty-two migrations are globally ordered across `migrations/identity`,
 `migrations/finance` and `migrations/assistant`: schema/bootstrap foundations plus
 the table migrations.
 Kysely's PostgreSQL migrator owns locking and transactional DDL/ledger updates.
@@ -215,6 +247,17 @@ create the final shapes directly; it carries no upgrade bridge for previous
 development histories or older grant constraints. A reset of an existing database
 requires explicit authorization for that exact target, and is separate from normal
 migration/runtime startup. Do not edit migrations to upgrade a retained/live database.
+
+Migration 031 adds nullable `identity.mcp_grant.redirect_uri` for the exact callback
+approved at consent. Existing grants keep all facts and history; null means the
+callback was not recorded, not that the client has no callback. No scope, RLS,
+runtime update privilege, grant lifetime or OAuth authority changes. Destructive
+rollback is refused to preserve this history.
+
+Migration 032 adds only `assistant.processing_consent`, with self-owned read/
+insert, column-limited updates and forced RLS. Runtime cannot delete or reassign
+records. It changes no existing data and needs no reseed/reset; apply it only to
+an authorized target. Destructive rollback requires an explicit recovery plan.
 
 Seeding is explicit owner-only demo tooling, never startup or migration work.
 Stable fixture IDs allow repeatable updates and preserve existing transaction

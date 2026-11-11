@@ -32,6 +32,8 @@ import { z } from "zod";
 import { AppModule } from "../../src/app.module";
 import { createDatabase } from "../../src/database/connection";
 import { DatabaseModule } from "../../src/database/database.module";
+import { up as addConversationModes } from "../../src/database/migrations/assistant/202611110033-assistant-conversation-modes";
+import { up as addGrantCallback } from "../../src/database/migrations/identity/202611110031-mcp-grant-callback";
 import { MultiMigrationProvider, migrate } from "../../src/database/migrator";
 import {
   assertRuntimeRole,
@@ -43,6 +45,9 @@ import {
   withRequestContext,
 } from "../../src/database/rls";
 import { RLS_DB } from "../../src/database/tokens";
+import { ProviderConnectionRepository } from "../../src/finance/provider-connection/provider-connection.repository";
+import { ProviderScheduleRepository } from "../../src/finance/provider-scheduling/provider-schedule.repository";
+import { ProviderSelectionRepository } from "../../src/finance/provider-selection/provider-selection.repository";
 import { McpAuthorizationRepository } from "../../src/identity/mcp-authorization/mcp-authorization.repository";
 import type { McpAuthorizationTables } from "../../src/identity/mcp-authorization/mcp-authorization.tables";
 import type { PersistenceRequestContext } from "../../src/rpc/persistence.context";
@@ -142,6 +147,68 @@ describe.skipIf(!ownerUrl)(
         ],
       });
     const hash = (id: string) => createHash("sha256").update(id).digest("hex");
+    const bankingFixture = async () => {
+      const userId = randomUUID(),
+        connectionId = randomUUID();
+      await sql`INSERT INTO identity."user"(id,email,name) VALUES (${userId},${`${userId}@example.test`},'Independent banking owner')`.execute(
+        owner,
+      );
+      await sql`INSERT INTO finance.provider_connection(id,user_id,provider_id,mode,external_id,holder_type,institution_id,institution_name,encrypted_credential)
+        SELECT ${connectionId},${userId},id,'test',${`link_${randomUUID()}`},'individual','cl_test','Test bank','fixture-ciphertext'
+        FROM finance.provider WHERE identifier='fintoc'`.execute(owner);
+      const user = purposeClient(ctx(userId));
+      const discovered = await user.providerSelection.discover.mutate({
+        connectionId,
+        expectedCredentialVersion: 0,
+        accounts: [
+          {
+            externalId: "acc_owned",
+            name: "Cuenta corriente",
+            currency: "CLP",
+            numberSuffix: "1234",
+            unavailableReason: null,
+          },
+        ],
+      });
+      const selection = await user.providerSelection.select.mutate({
+        id: connectionId,
+        expectedVersion: 0,
+        discoveryVersion: discovered.discoveryVersion,
+        accountIds: ["acc_owned"],
+        automaticEnrolled: true,
+      });
+      return {
+        userId,
+        connectionId,
+        user,
+        selection,
+        begin: {
+          connectionId,
+          provider: "fintoc",
+          expectedCredentialVersion: 0,
+          expectedSelectionVersion: selection.version,
+        },
+      };
+    };
+    const pauseBanking = async (connectionIds: string[]) => {
+      if (!connectionIds.length) return;
+      await sql`UPDATE finance.provider_sync_schedule SET eligible=false,next_attempt_at=NULL,
+        claim_id=NULL,claim_expires_at=NULL,run_revision=NULL WHERE connection_id IN (${sql.join(connectionIds)})`.execute(
+        owner,
+      );
+      await sql`UPDATE finance.provider_sync_state SET lease_expires_at=NULL WHERE provider_connection_id IN (${sql.join(connectionIds)})`.execute(
+        owner,
+      );
+    };
+    const gate = () => {
+      let resolve!: () => void;
+      let reject!: (reason: unknown) => void;
+      const promise = new Promise<void>((yes, no) => {
+        resolve = yes;
+        reject = no;
+      });
+      return { promise, resolve, reject };
+    };
     const artifactKey = ({ model, key }: SaveMcpArtifact) => ({ model, key });
     const oauthArtifact = (
       overrides: Partial<SaveMcpArtifact> = {},
@@ -310,7 +377,7 @@ describe.skipIf(!ownerUrl)(
           .filter((name) => !name.startsWith("failure."))
           .sort(),
       ).toEqual(expected.sort());
-      expect(expected).toHaveLength(94);
+      expect(expected).toHaveLength(105);
 
       for (const name of expected)
         expect(procedures[name]._def.meta).toMatchObject({
@@ -319,11 +386,15 @@ describe.skipIf(!ownerUrl)(
               ? "identity-bootstrap"
               : name.startsWith("mcpArtifacts.")
                 ? "mcp-authorization"
-                : "user",
+                : name.startsWith("providerScheduler.")
+                  ? "banking-scheduler"
+                  : name.startsWith("providerRequests.")
+                    ? "banking-transport"
+                    : "user",
         });
     });
 
-    it("migrates idempotently and enables/forces RLS on all 27 sensitive tables", async () => {
+    it("migrates idempotently and enables/forces RLS on all 32 sensitive tables", async () => {
       expect(await migrate(owner, migrationProvider())).toEqual([]);
       const { rows } = await sql<{
         relrowsecurity: boolean;
@@ -332,10 +403,779 @@ describe.skipIf(!ownerUrl)(
       from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname in ('identity','finance','assistant') and c.relkind='r' and c.relname != 'provider'`.execute(
         owner,
       );
-      expect(rows).toHaveLength(27);
+      expect(rows).toHaveLength(32);
       expect(
         rows.every((row) => row.relrowsecurity && row.relforcerowsecurity),
       ).toBe(true);
+    });
+
+    it("isolates scheduler and transport purposes from user finance and each other", async () => {
+      const scheduler = purposeClient({
+        kind: "banking-scheduler",
+        requestId: randomUUID(),
+      });
+      const transport = purposeClient({
+        kind: "banking-transport",
+        requestId: randomUUID(),
+      });
+      const user = purposeClient(ctx(a));
+      for (const work of [
+        () => scheduler.accounts.listActive.query(),
+        () => scheduler.providerLinks.connection.query({ id: connectionA }),
+        () => scheduler.providerSelection.get.query({ id: connectionA }),
+        () =>
+          scheduler.providerRequests.acquire.mutate({
+            id: randomUUID(),
+            mode: "test",
+            purpose: "sync",
+          }),
+        () => transport.providerScheduler.claim.mutate({ mode: "test" }),
+        () => transport.accounts.listActive.query(),
+        () => user.providerScheduler.claim.mutate({ mode: "test" }),
+        () =>
+          user.providerRequests.acquire.mutate({
+            id: randomUUID(),
+            mode: "test",
+            purpose: "sync",
+          }),
+      ])
+        await expect(work()).rejects.toMatchObject({
+          data: { code: "FORBIDDEN" },
+        });
+      for (const kind of ["banking-scheduler", "banking-transport"] as const) {
+        await withRequestContext(
+          runtime,
+          { kind, requestId: randomUUID() },
+          async (tx) => {
+            const result = await sql<{
+              count: number;
+            }>`select count(*)::int as count from finance.account`.execute(tx);
+            expect(result.rows[0].count).toBe(0);
+          },
+        );
+      }
+    });
+
+    it("shares durable provider admission across callers and reserves lifecycle capacity separately from read quota", async () => {
+      const transport = purposeClient({
+        kind: "banking-transport",
+        requestId: randomUUID(),
+      });
+      const ids: string[] = [];
+      try {
+        const first = randomUUID(),
+          second = randomUUID();
+        ids.push(first, second);
+        const permits = await Promise.all(
+          [first, second].map((id) =>
+            transport.providerRequests.acquire.mutate({
+              id,
+              mode: "test",
+              purpose: "sync",
+            }),
+          ),
+        );
+        expect(permits.every((permit) => permit.acquired)).toBe(true);
+        expect(
+          await transport.providerRequests.acquire.mutate({
+            id: randomUUID(),
+            mode: "test",
+            purpose: "sync",
+          }),
+        ).toMatchObject({ acquired: false });
+        await Promise.all(
+          ids.map((id) => transport.providerRequests.release.mutate({ id })),
+        );
+        const seeded = await sql<{
+          id: string;
+        }>`INSERT INTO finance.provider_request_admission(id,mode,purpose,started_at,expires_at,finished_at)
+          SELECT gen_random_uuid(),'test','sync',now()-interval '2 minutes',now()-interval '100 seconds',now()-interval '110 seconds' FROM generate_series(1,1000) RETURNING id`.execute(
+          owner,
+        );
+        ids.push(...seeded.rows.map((row) => row.id));
+        const limited = await transport.providerRequests.acquire.mutate({
+          id: randomUUID(),
+          mode: "test",
+          purpose: "sync",
+        });
+        expect(limited).toMatchObject({ acquired: false });
+        if (!limited.acquired)
+          expect(Date.parse(limited.retryAt)).toBeGreaterThan(
+            Date.now() + 50 * 60_000,
+          );
+        // Release does not erase quota history, and foreground lifecycle calls
+        // are subject to shared rate/concurrency but not the read-volume cap.
+        await sql`UPDATE finance.provider_request_admission SET started_at=now()-interval '2 minutes',expires_at=now()-interval '100 seconds' WHERE id IN (${sql.join([first, second])})`.execute(
+          owner,
+        );
+        const lifecycle = randomUUID();
+        ids.push(lifecycle);
+        expect(
+          await transport.providerRequests.acquire.mutate({
+            id: lifecycle,
+            mode: "test",
+            purpose: "lifecycle",
+          }),
+        ).toMatchObject({ acquired: true });
+      } finally {
+        if (ids.length)
+          await sql`DELETE FROM finance.provider_request_admission WHERE id IN (${sql.join(ids)})`.execute(
+            owner,
+          );
+      }
+    });
+
+    it("claims only enrolled server-owned work and rejects late selection-bound runs", async () => {
+      const connectionId = randomUUID();
+      const syncUserId = randomUUID();
+      await sql`INSERT INTO identity."user"(id,email,name) VALUES (${syncUserId},${`${syncUserId}@example.test`},'Banking test owner')`.execute(
+        owner,
+      );
+      await sql`INSERT INTO finance.provider_connection(id,user_id,provider_id,mode,external_id,holder_type,institution_id,institution_name,encrypted_credential)
+        SELECT ${connectionId},${syncUserId},id,'test',${`link_${randomUUID()}`},'individual','cl_test','Test bank','fixture-ciphertext'
+        FROM finance.provider WHERE identifier='fintoc'`.execute(owner);
+      const user = purposeClient(ctx(syncUserId));
+      const scheduler = purposeClient({
+        kind: "banking-scheduler",
+        requestId: randomUUID(),
+      });
+      const discovered = await user.providerSelection.discover.mutate({
+        connectionId,
+        expectedCredentialVersion: 0,
+        accounts: [
+          {
+            externalId: "acc_owned",
+            name: "Cuenta corriente",
+            currency: "CLP",
+            numberSuffix: "1234",
+            unavailableReason: null,
+          },
+        ],
+      });
+      const selected = await user.providerSelection.select.mutate({
+        id: connectionId,
+        expectedVersion: 0,
+        discoveryVersion: discovered.discoveryVersion,
+        accountIds: ["acc_owned"],
+        automaticEnrolled: true,
+      });
+      const claim = await scheduler.providerScheduler.claim.mutate({
+        mode: "test",
+      });
+      expect(claim).toMatchObject({
+        connectionId,
+        userId: syncUserId,
+        selectionVersion: selected.version,
+      });
+      expect(
+        await scheduler.providerScheduler.claim.mutate({ mode: "test" }),
+      ).toBeNull();
+      if (!claim) throw new Error("Missing work claim");
+      const run = await user.providerSync.begin.mutate({
+        connectionId,
+        provider: "fintoc",
+        expectedCredentialVersion: 0,
+        expectedSelectionVersion: selected.version,
+        claimId: claim.id,
+      });
+      expect(run.acquired).toBe(true);
+      await expect(
+        withRequestContext(
+          runtime,
+          { kind: "banking-scheduler", requestId: randomUUID() },
+          async (tx) => {
+            await sql`UPDATE finance.provider_sync_schedule SET eligible=false WHERE connection_id=${connectionId}`.execute(
+              tx,
+            );
+          },
+        ),
+      ).rejects.toMatchObject({ code: "42501" });
+      await user.providerSelection.select.mutate({
+        id: connectionId,
+        expectedVersion: selected.version,
+        discoveryVersion: selected.discoveryVersion,
+        accountIds: [],
+        automaticEnrolled: true,
+      });
+      await expect(
+        user.providerSync.facts.query({
+          connectionId,
+          revision: run.revision,
+          keys: [],
+        }),
+      ).rejects.toMatchObject({ data: { code: "CONFLICT" } });
+      expect(
+        await scheduler.providerScheduler.claim.mutate({ mode: "test" }),
+      ).toBeNull();
+      expect(
+        await user.providerSync.failure.mutate({
+          connectionId,
+          revision: run.revision,
+          reason: "invalid_data",
+          observedAt: new Date().toISOString(),
+          retryAfter: null,
+          scheduling: { nextAttemptAt: null, expectedFailureCount: 0 },
+        }),
+      ).toEqual({ status: "superseded" });
+    });
+
+    it("defers the oldest exhausted daily budget and immediately admits healthy due work", async () => {
+      const connections: string[] = [];
+      try {
+        const exhausted = await bankingFixture();
+        connections.push(exhausted.connectionId);
+        const healthy = await bankingFixture();
+        connections.push(healthy.connectionId);
+        const oldest = new Date(Date.now() - 23 * 60 * 60_000);
+        // Deliberately unsorted: the earliest rolling-window attempt determines eligibility.
+        const attempts = [
+          new Date(oldest.getTime() + 60_000),
+          oldest,
+          ...Array.from(
+            { length: 28 },
+            (_, i) => new Date(oldest.getTime() + (i + 2) * 60_000),
+          ),
+        ];
+        await sql`UPDATE finance.provider_sync_schedule SET attempts=${attempts},next_attempt_at=now()-interval '2 hours'
+          WHERE connection_id=${exhausted.connectionId}`.execute(owner);
+        await sql`UPDATE finance.provider_sync_schedule SET next_attempt_at=now()-interval '1 hour'
+          WHERE connection_id=${healthy.connectionId}`.execute(owner);
+        await sql`INSERT INTO finance.provider_sync_state(provider_connection_id,revision) VALUES (${exhausted.connectionId},7)`.execute(
+          owner,
+        );
+        const scheduler = purposeClient({
+          kind: "banking-scheduler",
+          requestId: randomUUID(),
+        });
+        const claim = await scheduler.providerScheduler.claim.mutate({
+          mode: "test",
+        });
+        expect(claim).toMatchObject({ connectionId: exhausted.connectionId });
+        if (!claim) throw new Error("Missing exhausted claim");
+        const before = (
+          await sql`SELECT * FROM finance.provider_sync_state WHERE provider_connection_id=${exhausted.connectionId}`.execute(
+            owner,
+          )
+        ).rows;
+        const retryAt = new Date(oldest.getTime() + 24 * 60 * 60_000);
+        expect(
+          await exhausted.user.providerSync.begin.mutate({
+            ...exhausted.begin,
+            claimId: claim.id,
+          }),
+        ).toMatchObject({
+          acquired: false,
+          revision: 7,
+          retryAfter: retryAt.toISOString(),
+        });
+        const schedule = (
+          await sql<{
+            nextAttemptAt: Date;
+            claimId: string | null;
+            claimExpiresAt: Date | null;
+            runRevision: number | null;
+            attempts: Date[];
+          }>`SELECT next_attempt_at AS "nextAttemptAt",claim_id AS "claimId",claim_expires_at AS "claimExpiresAt",run_revision AS "runRevision",attempts FROM finance.provider_sync_schedule WHERE connection_id=${exhausted.connectionId}`.execute(
+            owner,
+          )
+        ).rows[0];
+        expect(schedule).toMatchObject({
+          nextAttemptAt: retryAt,
+          claimId: null,
+          claimExpiresAt: null,
+          runRevision: null,
+          attempts,
+        });
+        expect(
+          (
+            await sql`SELECT * FROM finance.provider_sync_state WHERE provider_connection_id=${exhausted.connectionId}`.execute(
+              owner,
+            )
+          ).rows,
+        ).toEqual(before);
+        const next = await scheduler.providerScheduler.claim.mutate({
+          mode: "test",
+        });
+        expect(next).toMatchObject({ connectionId: healthy.connectionId });
+        if (!next) throw new Error("Missing healthy claim");
+        expect(
+          await healthy.user.providerSync.begin.mutate({
+            ...healthy.begin,
+            claimId: next.id,
+          }),
+        ).toMatchObject({ acquired: true });
+      } finally {
+        await pauseBanking(connections);
+      }
+    });
+
+    it.each([
+      "manual begin",
+      "deselection",
+    ] as const)("skips an owner-locked due row during %s without overwriting its transition", async (transition) => {
+      const connections: string[] = [];
+      const held = gate(),
+        release = gate();
+      let holding: Promise<unknown> | undefined;
+      try {
+        const locked = await bankingFixture();
+        connections.push(locked.connectionId);
+        const healthy = await bankingFixture();
+        connections.push(healthy.connectionId);
+        await sql`UPDATE finance.provider_sync_schedule SET next_attempt_at=now()-interval '2 hours' WHERE connection_id=${locked.connectionId}`.execute(
+          owner,
+        );
+        await sql`UPDATE finance.provider_sync_schedule SET next_attempt_at=now()-interval '1 hour' WHERE connection_id=${healthy.connectionId}`.execute(
+          owner,
+        );
+        holding = withRequestContext(
+          runtime.withPlugin(new CamelCasePlugin()),
+          ctx(locked.userId),
+          async (tx) => {
+            await sql`select pg_advisory_xact_lock(hashtextextended(${`lazyfinance:user:${locked.userId}`},0))`.execute(
+              tx,
+            );
+            if (transition === "manual begin") {
+              expect(
+                await app.get(ProviderConnectionRepository).begin(locked.begin),
+              ).toMatchObject({ acquired: true });
+            } else {
+              await app.get(ProviderSelectionRepository).select({
+                id: locked.connectionId,
+                expectedVersion: locked.selection.version,
+                discoveryVersion: locked.selection.discoveryVersion,
+                accountIds: [],
+                automaticEnrolled: false,
+              });
+            }
+            // The old committed tuple is still due; only SKIP LOCKED can avoid claiming it.
+            held.resolve();
+            await release.promise;
+          },
+        );
+        void holding.catch(held.reject);
+        await held.promise;
+        const scheduler = purposeClient({
+          kind: "banking-scheduler",
+          requestId: randomUUID(),
+        });
+        expect(
+          await scheduler.providerScheduler.claim.mutate({ mode: "test" }),
+        ).toMatchObject({ connectionId: healthy.connectionId });
+        release.resolve();
+        await holding;
+        const row = (
+          await sql<{
+            claimId: string | null;
+            eligible: boolean;
+            runRevision: number | null;
+            nextAttemptAt: Date | null;
+          }>`SELECT claim_id AS "claimId",eligible,run_revision AS "runRevision",next_attempt_at AS "nextAttemptAt" FROM finance.provider_sync_schedule WHERE connection_id=${locked.connectionId}`.execute(
+            owner,
+          )
+        ).rows[0];
+        expect(row.claimId).toBeNull();
+        if (transition === "manual begin") {
+          expect(row).toMatchObject({ eligible: true, runRevision: 0 });
+          expect(row.nextAttemptAt?.getTime() ?? 0).toBeGreaterThan(Date.now());
+          expect(
+            await locked.user.providerSync.facts.query({
+              connectionId: locked.connectionId,
+              revision: 0,
+              keys: [],
+            }),
+          ).toMatchObject({ state: { revision: 0 } });
+        } else {
+          expect(row).toMatchObject({
+            eligible: false,
+            runRevision: null,
+            nextAttemptAt: null,
+          });
+          expect(
+            await locked.user.providerSelection.get.query({
+              id: locked.connectionId,
+            }),
+          ).toMatchObject({
+            selection: { accountIds: [], automaticEnrolled: false },
+          });
+        }
+      } finally {
+        release.resolve();
+        await holding?.catch(() => {});
+        await pauseBanking(connections);
+      }
+    });
+
+    it("serializes scheduled begin extension with global capacity checks across an expired committed claim", async () => {
+      const connections: string[] = [];
+      const held = gate(),
+        release = gate();
+      let holding: Promise<unknown> | undefined;
+      try {
+        const extending = await bankingFixture();
+        connections.push(extending.connectionId);
+        const healthy = await bankingFixture();
+        connections.push(healthy.connectionId);
+        await sql`UPDATE finance.provider_sync_schedule SET next_attempt_at=now()-interval '2 hours' WHERE connection_id=${extending.connectionId}`.execute(
+          owner,
+        );
+        await sql`UPDATE finance.provider_sync_schedule SET next_attempt_at=now()-interval '1 hour' WHERE connection_id=${healthy.connectionId}`.execute(
+          owner,
+        );
+        const scheduler = purposeClient({
+          kind: "banking-scheduler",
+          requestId: randomUUID(),
+        });
+        const claim = await scheduler.providerScheduler.claim.mutate({
+          mode: "test",
+        });
+        expect(claim).toMatchObject({ connectionId: extending.connectionId });
+        if (!claim) throw new Error("Missing extending claim");
+        const originalExpiry = new Date(Date.now() - 1000);
+        await sql`UPDATE finance.provider_sync_schedule SET claim_expires_at=${originalExpiry} WHERE connection_id=${extending.connectionId}`.execute(
+          owner,
+        );
+        holding = withRequestContext(
+          runtime.withPlugin(new CamelCasePlugin()),
+          ctx(extending.userId),
+          async (tx) => {
+            await sql`select pg_advisory_xact_lock(hashtextextended(${`lazyfinance:user:${extending.userId}`},0))`.execute(
+              tx,
+            );
+            // Only the direct repository call sees an instant before expiry.
+            // Other sessions see the committed, already-expired tuple while
+            // this transaction holds its uncommitted future extension.
+            vi.useFakeTimers({ toFake: ["Date"] });
+            try {
+              vi.setSystemTime(originalExpiry.getTime() - 1000);
+              expect(
+                await app.get(ProviderConnectionRepository).begin({
+                  ...extending.begin,
+                  claimId: claim.id,
+                }),
+              ).toMatchObject({ acquired: true });
+            } finally {
+              vi.useRealTimers();
+            }
+            held.resolve();
+            await release.promise;
+          },
+        );
+        void holding.catch(held.reject);
+        await held.promise;
+        const committed = (
+          await sql<{
+            claimExpiresAt: Date;
+          }>`SELECT claim_expires_at AS "claimExpiresAt" FROM finance.provider_sync_schedule WHERE connection_id=${extending.connectionId}`.execute(
+            owner,
+          )
+        ).rows[0];
+        expect(committed.claimExpiresAt).toEqual(originalExpiry);
+        expect(committed.claimExpiresAt.getTime()).toBeLessThan(Date.now());
+        const probe = await withRequestContext(
+          runtime,
+          { kind: "banking-scheduler", requestId: randomUUID() },
+          (tx) =>
+            sql<{
+              acquired: boolean;
+            }>`SELECT pg_try_advisory_xact_lock(hashtextextended('lazyfinance:banking-scheduler',0)) AS acquired`.execute(
+              tx,
+            ),
+        );
+        expect(probe.rows[0].acquired).toBe(false);
+        const nextClaim = scheduler.providerScheduler.claim.mutate({
+          mode: "test",
+        });
+        release.resolve();
+        await holding;
+        expect(await nextClaim).toBeNull();
+        const active = await sql<{
+          count: number;
+        }>`SELECT count(*)::int AS count FROM finance.provider_sync_schedule WHERE claim_expires_at > clock_timestamp()`.execute(
+          owner,
+        );
+        expect(active.rows[0].count).toBe(1);
+      } finally {
+        vi.useRealTimers();
+        release.resolve();
+        await holding?.catch(() => {});
+        await pauseBanking(connections);
+      }
+    });
+
+    it("aligns claim and ingestion expiry and rejects old failures after claim replacement without changing state", async () => {
+      const connections: string[] = [];
+      try {
+        const f = await bankingFixture();
+        connections.push(f.connectionId);
+        const scheduler = purposeClient({
+          kind: "banking-scheduler",
+          requestId: randomUUID(),
+        });
+        const claim = await scheduler.providerScheduler.claim.mutate({
+          mode: "test",
+        });
+        if (!claim) throw new Error("Missing original claim");
+        expect(claim.connectionId).toBe(f.connectionId);
+        await sql`UPDATE finance.provider_sync_schedule SET claim_expires_at=now()+interval '1 minute' WHERE connection_id=${f.connectionId}`.execute(
+          owner,
+        );
+        const run = await f.user.providerSync.begin.mutate({
+          ...f.begin,
+          claimId: claim.id,
+        });
+        expect(run.acquired).toBe(true);
+        const aligned = (
+          await sql<{
+            claimExpiresAt: Date;
+          }>`SELECT claim_expires_at AS "claimExpiresAt" FROM finance.provider_sync_schedule WHERE connection_id=${f.connectionId}`.execute(
+            owner,
+          )
+        ).rows[0];
+        expect(aligned.claimExpiresAt.toISOString()).toBe(run.leaseExpiresAt);
+        // Model legacy/poisoned expiry independently of the still-live ingestion lease.
+        await sql`UPDATE finance.provider_sync_schedule SET claim_expires_at=now()-interval '1 second',next_attempt_at=now()-interval '1 second'
+          WHERE connection_id=${f.connectionId}`.execute(owner);
+        const replacement = await scheduler.providerScheduler.claim.mutate({
+          mode: "test",
+        });
+        expect(replacement).toMatchObject({ connectionId: f.connectionId });
+        if (!replacement) throw new Error("Missing replacement claim");
+        expect(replacement.id).not.toBe(claim.id);
+        const before =
+          await sql`SELECT row_to_json(s) AS schedule,row_to_json(r) AS state,row_to_json(c) AS connection
+          FROM finance.provider_sync_schedule s JOIN finance.provider_sync_state r ON r.provider_connection_id=s.connection_id
+          JOIN finance.provider_connection c ON c.id=s.connection_id WHERE s.connection_id=${f.connectionId}`.execute(
+            owner,
+          );
+        for (const reason of [
+          "retryable",
+          "revoked",
+          "invalid_data",
+        ] as const) {
+          const retryAfter =
+            reason === "retryable"
+              ? new Date(Date.now() + 60 * 60_000).toISOString()
+              : null;
+          expect(
+            await f.user.providerSync.failure.mutate({
+              connectionId: f.connectionId,
+              revision: run.revision,
+              reason,
+              observedAt: new Date().toISOString(),
+              retryAfter,
+              scheduling: {
+                expectedFailureCount: 0,
+                nextAttemptAt: retryAfter,
+              },
+            }),
+          ).toEqual({ status: "superseded" });
+        }
+        await expect(
+          withRequestContext(
+            runtime.withPlugin(new CamelCasePlugin()),
+            ctx(f.userId),
+            () =>
+              app.get(ProviderScheduleRepository).finish(
+                f.connectionId,
+                run.revision,
+                claim.id,
+                {
+                  expectedFailureCount: 0,
+                  nextAttemptAt: new Date(
+                    Date.now() + 60 * 60_000,
+                  ).toISOString(),
+                },
+                "retryable",
+              ),
+          ),
+        ).rejects.toMatchObject({ code: "CONFLICT" });
+        expect(
+          (
+            await sql`SELECT row_to_json(s) AS schedule,row_to_json(r) AS state,row_to_json(c) AS connection
+          FROM finance.provider_sync_schedule s JOIN finance.provider_sync_state r ON r.provider_connection_id=s.connection_id
+          JOIN finance.provider_connection c ON c.id=s.connection_id WHERE s.connection_id=${f.connectionId}`.execute(
+              owner,
+            )
+          ).rows,
+        ).toEqual(before.rows);
+        expect(
+          await scheduler.providerScheduler.claim.mutate({ mode: "test" }),
+        ).toBeNull();
+      } finally {
+        await pauseBanking(connections);
+      }
+    });
+
+    it("persists greatest mode-specific transport backoff across clients without purpose or lifecycle bypass", async () => {
+      const transport = () =>
+        purposeClient({ kind: "banking-transport", requestId: randomUUID() });
+      const first = new Date(Date.now() + 60 * 60_000).toISOString();
+      const later = new Date(Date.now() + 2 * 60 * 60_000).toISOString();
+      const earlier = new Date(Date.now() + 30 * 60_000).toISOString();
+      const admissions: string[] = [];
+      let created = false;
+      expect(
+        (
+          await sql`SELECT * FROM finance.provider_request_backoff`.execute(
+            owner,
+          )
+        ).rows,
+      ).toEqual([]);
+      try {
+        created = true;
+        await transport().providerRequests.defer.mutate({
+          mode: "test",
+          retryAfter: first,
+        });
+        await Promise.all(
+          [later, earlier].map((retryAfter) =>
+            transport().providerRequests.defer.mutate({
+              mode: "test",
+              retryAfter,
+            }),
+          ),
+        );
+        await transport().providerRequests.defer.mutate({
+          mode: "test",
+          retryAfter: earlier,
+        });
+        expect(
+          (
+            await sql<{
+              retryAfter: Date;
+            }>`SELECT retry_after AS "retryAfter" FROM finance.provider_request_backoff WHERE mode='test'`.execute(
+              owner,
+            )
+          ).rows[0].retryAfter.toISOString(),
+        ).toBe(later);
+        for (const purpose of ["sync", "lifecycle"] as const) {
+          const id = randomUUID();
+          admissions.push(id);
+          expect(
+            await transport().providerRequests.acquire.mutate({
+              id,
+              mode: "test",
+              purpose,
+            }),
+          ).toEqual({ acquired: false, retryAt: later });
+        }
+        expect(
+          (
+            await sql`SELECT id FROM finance.provider_request_admission WHERE id IN (${sql.join(admissions)})`.execute(
+              owner,
+            )
+          ).rows,
+        ).toEqual([]);
+        const live = randomUUID();
+        admissions.push(live);
+        expect(
+          await transport().providerRequests.acquire.mutate({
+            id: live,
+            mode: "live",
+            purpose: "sync",
+          }),
+        ).toMatchObject({ acquired: true });
+        await transport().providerRequests.release.mutate({ id: live });
+        // Release cannot clear the backoff or its durable record.
+        const afterRelease = randomUUID();
+        admissions.push(afterRelease);
+        expect(
+          await transport().providerRequests.acquire.mutate({
+            id: afterRelease,
+            mode: "test",
+            purpose: "sync",
+          }),
+        ).toEqual({ acquired: false, retryAt: later });
+        for (const identity of [
+          ctx(a),
+          { kind: "banking-scheduler" as const, requestId: randomUUID() },
+          oauthContext(),
+        ]) {
+          // User/scheduler/OAuth purposes must neither read operational waiting state nor shorten it.
+          await expect(
+            purposeClient(identity).providerRequests.defer.mutate({
+              mode: "test",
+              retryAfter: earlier,
+            }),
+          ).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
+          await withRequestContext(runtime, identity, async (tx) => {
+            expect(
+              (
+                await sql`SELECT * FROM finance.provider_request_backoff`.execute(
+                  tx,
+                )
+              ).rows,
+            ).toEqual([]);
+            expect(
+              (
+                await sql`UPDATE finance.provider_request_backoff SET retry_after=now() WHERE mode='test' RETURNING mode`.execute(
+                  tx,
+                )
+              ).rows,
+            ).toEqual([]);
+          });
+          await expect(
+            withRequestContext(runtime, identity, (tx) =>
+              sql`INSERT INTO finance.provider_request_backoff(mode,retry_after) VALUES ('live',now())`.execute(
+                tx,
+              ),
+            ),
+          ).rejects.toMatchObject({ code: "42501" });
+        }
+        await expect(
+          withRequestContext(
+            runtime,
+            { kind: "banking-transport", requestId: randomUUID() },
+            (tx) =>
+              sql`DELETE FROM finance.provider_request_backoff WHERE mode='test'`.execute(
+                tx,
+              ),
+          ),
+        ).rejects.toMatchObject({ code: "42501" });
+        await expect(
+          withRequestContext(
+            runtime,
+            { kind: "banking-transport", requestId: randomUUID() },
+            (tx) =>
+              sql`UPDATE finance.provider_request_backoff SET mode='live' WHERE mode='test'`.execute(
+                tx,
+              ),
+          ),
+        ).rejects.toMatchObject({ code: "42501" });
+        const afterDeniedWrites = randomUUID();
+        admissions.push(afterDeniedWrites);
+        expect(
+          await transport().providerRequests.acquire.mutate({
+            id: afterDeniedWrites,
+            mode: "test",
+            purpose: "lifecycle",
+          }),
+        ).toEqual({ acquired: false, retryAt: later });
+        // Expiry restores admission without deleting history or a time-based sleep.
+        await sql`UPDATE finance.provider_request_backoff SET retry_after=now()-interval '1 second' WHERE mode='test'`.execute(
+          owner,
+        );
+        const resumed = randomUUID();
+        admissions.push(resumed);
+        expect(
+          await transport().providerRequests.acquire.mutate({
+            id: resumed,
+            mode: "test",
+            purpose: "sync",
+          }),
+        ).toMatchObject({ acquired: true });
+        await transport().providerRequests.release.mutate({ id: resumed });
+      } finally {
+        if (created)
+          await sql`DELETE FROM finance.provider_request_backoff WHERE mode='test'`.execute(
+            owner,
+          );
+        if (admissions.length)
+          await sql`DELETE FROM finance.provider_request_admission WHERE id IN (${sql.join(admissions)})`.execute(
+            owner,
+          );
+      }
     });
 
     it("admits OAuth state only for the dedicated purpose, with no financial or identity-bootstrap authority", async () => {
@@ -422,6 +1262,7 @@ describe.skipIf(!ownerUrl)(
         user.mcpGrants.bind.mutate({ ...input, clientId: "foreign-client" }),
       ).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
       const grant = await user.mcpGrants.bind.mutate(input);
+      expect(grant.redirectUri).toBeNull();
       expect((await state.mcpArtifacts.identity.query({ id }))?.userId).toBe(a);
       expect(
         (await other.mcpGrants.list.query()).some((row) => row.id === id),
@@ -540,6 +1381,31 @@ describe.skipIf(!ownerUrl)(
       ).toEqual({ saved: false });
     });
 
+    it("adds callback history without rewriting retained grant facts", async () => {
+      // Probe the previous shape in a rolled-back transaction on this disposable
+      // database; never downgrade the actual migration ledger.
+      const rollback = new Error("rollback migration probe");
+      await expect(
+        owner.transaction().execute(async (tx) => {
+          await sql`alter table identity.mcp_grant drop column redirect_uri`.execute(
+            tx,
+          );
+          const before = await sql<
+            Record<string, unknown>
+          >`select * from identity.mcp_grant order by id`.execute(tx);
+          expect(before.rows.length).toBeGreaterThan(0);
+          await addGrantCallback(tx);
+          const after = await sql<
+            Record<string, unknown>
+          >`select * from identity.mcp_grant order by id`.execute(tx);
+          expect(after.rows).toEqual(
+            before.rows.map((row) => ({ ...row, redirect_uri: null })),
+          );
+          throw rollback;
+        }),
+      ).rejects.toBe(rollback);
+    });
+
     it("rolls back failed OAuth writes, enforces expiry and refuses a destructive migration rollback", async () => {
       const repository = new McpAuthorizationRepository(
         createRlsDbProxy<McpAuthorizationTables>(),
@@ -628,7 +1494,7 @@ describe.skipIf(!ownerUrl)(
             owner,
           );
         }
-        for (const column of ["user_id", "id", "expires_at"]) {
+        for (const column of ["user_id", "id", "expires_at", "mode"]) {
           await expect(
             withRequestContext(runtime, ctx(a), (tx) =>
               sql`update assistant.conversation set ${sql.id(column)}=${column === "expires_at" ? new Date() : b} where id=${chat.id}`.execute(
@@ -646,6 +1512,172 @@ describe.skipIf(!ownerUrl)(
         ).rejects.toThrow(/row-level security/);
       } finally {
         await first.remove.mutate({ id: chat.id });
+      }
+    });
+
+    it("backfills voice-only history without rewriting transcripts, classifying mixed or empty text records as text", async () => {
+      const ids = Array.from({ length: 4 }, () => randomUUID());
+      const text = {
+        id: randomUUID(),
+        question: "Pregunta escrita",
+        text: "Respuesta",
+        status: "complete",
+        sources: [],
+        actions: [],
+        createdAt: new Date().toISOString(),
+      };
+      const voice = {
+        ...text,
+        id: randomUUID(),
+        question: "Consulta por voz",
+        voice: { question: "Pregunta hablada" },
+      };
+      const histories = [
+        [voice],
+        [{ ...text, question: "Consulta por voz" }],
+        [voice, text],
+        [],
+      ];
+      await expect(
+        owner.transaction().execute(async (tx) => {
+          await sql`ALTER TABLE assistant.conversation DROP COLUMN mode`.execute(
+            tx,
+          );
+          for (let index = 0; index < ids.length; index++)
+            await sql`INSERT INTO assistant.conversation(id,user_id,turns) VALUES (${ids[index]},${a},${JSON.stringify(histories[index])}::jsonb)`.execute(
+              tx,
+            );
+          await addConversationModes(tx);
+          for (let index = 0; index < ids.length; index++) {
+            const result = await sql<{
+              mode: string;
+              turns: unknown;
+            }>`SELECT mode,turns FROM assistant.conversation WHERE id=${ids[index]}`.execute(
+              tx,
+            );
+            expect(result.rows[0]).toEqual({
+              mode: index < 2 ? "voice" : "text",
+              turns: histories[index],
+            });
+          }
+          const rls = await sql<{
+            relforcerowsecurity: boolean;
+          }>`SELECT relforcerowsecurity FROM pg_class WHERE oid='assistant.conversation'::regclass`.execute(
+            tx,
+          );
+          expect(rls.rows[0].relforcerowsecurity).toBe(true);
+          throw new Error("Rollback isolated migration fixture");
+        }),
+      ).rejects.toThrow("Rollback isolated migration fixture");
+      expect(
+        (
+          await sql`SELECT id FROM assistant.conversation WHERE id IN (${sql.join(ids)})`.execute(
+            owner,
+          )
+        ).rows,
+      ).toEqual([]);
+    });
+
+    it("retains owned voice sessions outside text history and rejects cross-mode turn admission", async () => {
+      const client = purposeClient(ctx(a)).assistantConversations;
+      const text = await client.create.mutate();
+      const voice = await client.create.mutate({ mode: "voice" });
+      try {
+        expect(text.mode).toBe("text");
+        expect(voice.mode).toBe("voice");
+        expect((await client.list.query()).map((row) => row.id)).toContain(
+          text.id,
+        );
+        expect((await client.list.query()).map((row) => row.id)).not.toContain(
+          voice.id,
+        );
+        expect((await client.get.query({ id: voice.id })).mode).toBe("voice");
+        await expect(
+          purposeClient(ctx(b)).assistantConversations.get.query({
+            id: voice.id,
+          }),
+        ).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
+        const input = {
+          requestId: randomUUID(),
+          text: "Consulta por voz",
+          lease: randomUUID(),
+        };
+        await expect(
+          client.begin.mutate({ ...input, conversationId: voice.id }),
+        ).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
+        await expect(
+          client.begin.mutate({
+            ...input,
+            mode: "voice",
+            conversationId: text.id,
+          }),
+        ).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
+        const started = await client.begin.mutate({
+          ...input,
+          mode: "voice",
+          conversationId: voice.id,
+        });
+        await expect(
+          client.begin.mutate({
+            ...input,
+            requestId: randomUUID(),
+            conversationId: text.id,
+          }),
+        ).rejects.toMatchObject({ data: { code: "CONFLICT" } });
+        await client.finish.mutate({
+          conversationId: voice.id,
+          lease: input.lease,
+          turn: {
+            ...started.turn,
+            status: "complete",
+            text: "Respuesta hablada",
+            voice: { question: "Pregunta hablada" },
+          },
+        });
+        expect(
+          (await client.get.query({ id: voice.id })).turns[0].voice?.question,
+        ).toBe("Pregunta hablada");
+        await sql`UPDATE assistant.conversation SET turns=${JSON.stringify([{ ...started.turn, status: "complete", voice: { question: "Voz heredada" } }])}::jsonb WHERE id=${text.id}`.execute(
+          owner,
+        );
+        expect(
+          (await client.list.query()).find((row) => row.id === text.id)
+            ?.turnCount,
+        ).toBe(0);
+        await expect(
+          client.begin.mutate({ ...input, conversationId: text.id }),
+        ).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
+      } finally {
+        await client.remove.mutate({ id: text.id });
+        await client.remove.mutate({ id: voice.id });
+      }
+    });
+
+    it("keeps retained voice capacity separate from the ten text conversations", async () => {
+      const userId = randomUUID();
+      await sql`INSERT INTO identity."user"(id,email,name) VALUES (${userId},${`${userId}@example.test`},'Mode quota owner')`.execute(
+        owner,
+      );
+      const client = purposeClient(ctx(userId)).assistantConversations;
+      const chats = await Promise.all(
+        Array.from({ length: 10 }, () => client.create.mutate()),
+      );
+      try {
+        await expect(client.create.mutate()).rejects.toMatchObject({
+          data: { code: "TOO_MANY_REQUESTS" },
+        });
+        chats.push(await client.create.mutate({ mode: "voice" }));
+        await sql`INSERT INTO assistant.conversation(user_id,mode) SELECT ${userId},'voice' FROM generate_series(1,99)`.execute(
+          owner,
+        );
+        await expect(
+          client.create.mutate({ mode: "voice" }),
+        ).rejects.toMatchObject({ data: { code: "TOO_MANY_REQUESTS" } });
+        expect(await client.list.query()).toHaveLength(10);
+      } finally {
+        await sql`DELETE FROM assistant.conversation WHERE user_id=${userId}`.execute(
+          owner,
+        );
       }
     });
 
@@ -830,6 +1862,103 @@ describe.skipIf(!ownerUrl)(
       }
     });
 
+    it("fills a delayed native question without approving its interrupted proposal or changing the next lease", async () => {
+      const client = purposeClient(ctx(a));
+      const chats = client.assistantConversations;
+      const chat = await chats.create.mutate({ mode: "voice" });
+      const lease = randomUUID();
+      try {
+        const first = await chats.begin.mutate({
+          conversationId: chat.id,
+          requestId: randomUUID(),
+          lease,
+          text: "Consulta por voz",
+          mode: "voice",
+        });
+        const request = {
+          kind: "create_tag" as const,
+          tag: { name: `Voice ${randomUUID()}`, color: "#112233" },
+        };
+        const proposal = await client.financialActions.prepare.mutate({
+          conversationId: chat.id,
+          turnId: first.turn.id,
+          action: request,
+          command: request,
+        });
+        await chats.finish.mutate({
+          conversationId: chat.id,
+          lease,
+          turn: {
+            ...first.turn,
+            status: "interrupted",
+            actions: [proposal],
+            voice: {
+              question: "Audio interrumpido · transcripción no disponible",
+              transcriptionPending: true,
+            },
+          },
+        });
+        const nextLease = randomUUID();
+        const next = await chats.begin.mutate({
+          conversationId: chat.id,
+          requestId: randomUUID(),
+          lease: nextLease,
+          text: "La etiqueta debe ser roja",
+          mode: "voice",
+        });
+        const input = {
+          conversationId: chat.id,
+          turnId: first.turn.id,
+          question: "Un presupuesto mensual de cien mil",
+        };
+        await expect(
+          purposeClient(
+            ctx(b),
+          ).assistantConversations.recordVoiceQuestion.mutate(input),
+        ).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
+        expect(await chats.recordVoiceQuestion.mutate(input)).toEqual({
+          saved: true,
+        });
+        expect(await chats.recordVoiceQuestion.mutate(input)).toEqual({
+          saved: true,
+        });
+        expect(
+          await chats.recordVoiceQuestion.mutate({
+            ...input,
+            question: "Overwrite",
+          }),
+        ).toEqual({ saved: false });
+        const saved = await chats.get.query({ id: chat.id });
+        expect(saved.turns[0]).toMatchObject({
+          status: "interrupted",
+          actions: [{ id: proposal.id, status: "proposed" }],
+          voice: { question: input.question },
+        });
+        expect(saved.turns[0].voice?.transcriptionPending).toBeUndefined();
+        expect(saved.turns[1].status).toBe("pending");
+        await expect(
+          client.financialActions.apply.mutate({
+            id: proposal.id,
+            version: 1,
+            command: request,
+          }),
+        ).rejects.toMatchObject({ data: { code: "CONFLICT" } });
+        expect(
+          await chats.finish.mutate({
+            conversationId: chat.id,
+            lease: nextLease,
+            turn: {
+              ...next.turn,
+              status: "complete",
+              text: "¿Qué color prefieres?",
+            },
+          }),
+        ).toEqual({ saved: true });
+      } finally {
+        await chats.remove.mutate({ id: chat.id });
+      }
+    });
+
     it("recovers expired assistant leases without replaying old turns or adopting late answers", async () => {
       const client = purposeClient(ctx(a)).assistantConversations;
       const chat = await client.create.mutate();
@@ -916,6 +2045,195 @@ describe.skipIf(!ownerUrl)(
           chats.map((chat) => client.remove.mutate({ id: chat.id })),
         );
       }
+    });
+
+    it("persists versioned account consent, serializes competing first writes and preserves unchanged timestamps", async () => {
+      const userId = randomUUID();
+      await sql`insert into identity."user"(id,email,name) values (${userId},${`${userId}@example.test`},'Consent owner')`.execute(
+        owner,
+      );
+      const first = purposeClient(ctx(userId)).assistantConsent;
+      const policyKey = "a".repeat(64);
+      expect(await first.get.query()).toBeNull();
+      expect(
+        (
+          await sql`select * from assistant.processing_consent where user_id=${userId}`.execute(
+            owner,
+          )
+        ).rows,
+      ).toEqual([]);
+      const before = await sql<{
+        now: Date;
+      }>`select statement_timestamp() as now`.execute(owner);
+      const raced = await Promise.allSettled([
+        first.decide.mutate({
+          policyKey,
+          decision: "accepted",
+          expectedRevision: 0,
+        }),
+        first.decide.mutate({
+          policyKey,
+          decision: "refused",
+          expectedRevision: 0,
+        }),
+      ]);
+      expect(
+        raced.filter((result) => result.status === "fulfilled"),
+      ).toHaveLength(1);
+      expect(
+        raced.filter((result) => result.status === "rejected"),
+      ).toHaveLength(1);
+      const saved = await first.get.query();
+      const after = await sql<{
+        now: Date;
+      }>`select statement_timestamp() as now`.execute(owner);
+      expect(saved?.revision).toBe(1);
+      if (!saved) throw new Error("Consent missing");
+      expect(Date.parse(saved.decidedAt)).toBeGreaterThanOrEqual(
+        before.rows[0].now.getTime(),
+      );
+      expect(Date.parse(saved.decidedAt)).toBeLessThanOrEqual(
+        after.rows[0].now.getTime(),
+      );
+      expect(
+        await purposeClient(ctx(userId)).assistantConsent.get.query(),
+      ).toEqual(saved);
+      expect(
+        await first.decide.mutate({
+          policyKey,
+          decision: saved.decision,
+          expectedRevision: 1,
+        }),
+      ).toEqual(saved);
+      const refused = await first.decide.mutate({
+        policyKey,
+        decision: "refused",
+        expectedRevision: 1,
+      });
+      const accepted = await first.decide.mutate({
+        policyKey,
+        decision: "accepted",
+        expectedRevision: refused.revision,
+      });
+      expect(accepted.revision).toBe(refused.revision + 1);
+      const withdrawn = await first.decide.mutate({
+        policyKey,
+        decision: "refused",
+        expectedRevision: accepted.revision,
+      });
+      expect(withdrawn.revision).toBe(accepted.revision + 1);
+      expect(withdrawn.decidedAt).toEqual(expect.any(String));
+      await expect(
+        first.decide.mutate({
+          policyKey: "b".repeat(64),
+          decision: "accepted",
+          expectedRevision: 0,
+        }),
+      ).rejects.toMatchObject({ data: { code: "CONFLICT" } });
+      const newPolicy = await first.decide.mutate({
+        policyKey: "b".repeat(64),
+        decision: "accepted",
+        expectedRevision: withdrawn.revision,
+      });
+      expect(newPolicy.revision).toBe(withdrawn.revision + 1);
+      expect(
+        await purposeClient(ctx(b)).assistantConsent.get.query(),
+      ).toBeNull();
+      const raw = createTRPCUntypedClient({
+        links: [
+          httpLink({
+            url: `${url}/trpc`,
+            headers: async () => ({
+              authorization: `Bearer ${await sign(ctx(userId))}`,
+            }),
+          }),
+        ],
+      });
+      await expect(
+        raw.mutation("assistantConsent.decide", {
+          policyKey,
+          decision: "accepted",
+          expectedRevision: newPolicy.revision,
+          userId: b,
+        }),
+      ).rejects.toMatchObject({ data: { code: "BAD_REQUEST" } });
+      await expect(
+        raw.query("assistantConsent.get", { userId: b }),
+      ).rejects.toMatchObject({ data: { code: "BAD_REQUEST" } });
+    });
+
+    it("forces consent owner RLS and grants no deletion or owner reassignment", async () => {
+      const policyKey = "c".repeat(64);
+      await sql`insert into assistant.processing_consent(user_id,policy_key,decision,revision) values (${a},${policyKey},'accepted',1),(${b},${policyKey},'refused',1)`.execute(
+        owner,
+      );
+      await withRequestContext(runtime, ctx(a), async (tx) => {
+        const rows = await sql<{
+          user_id: string;
+        }>`select user_id from assistant.processing_consent`.execute(tx);
+        expect(rows.rows.map((row) => row.user_id)).toEqual([a]);
+        expect(
+          (
+            await sql`update assistant.processing_consent set decision='accepted' where user_id=${b} returning user_id`.execute(
+              tx,
+            )
+          ).rows,
+        ).toEqual([]);
+      });
+      expect(
+        (await sql`select * from assistant.processing_consent`.execute(runtime))
+          .rows,
+      ).toEqual([]);
+      for (const identity of [
+        oauthContext(),
+        {
+          kind: "identity-bootstrap" as const,
+          identity: {
+            provider: "mock" as const,
+            issuer: "https://identity.example.test",
+            providerSubject: "test",
+            verifiedEmail: null,
+            displayName: null,
+          },
+          requestId: randomUUID(),
+        },
+      ]) {
+        await withRequestContext(runtime, identity, async (tx) => {
+          expect(
+            (await sql`select * from assistant.processing_consent`.execute(tx))
+              .rows,
+          ).toEqual([]);
+        });
+      }
+      await expect(
+        withRequestContext(runtime, ctx(a), (tx) =>
+          sql`insert into assistant.processing_consent(user_id,policy_key,decision,revision) values (${b},${policyKey},'accepted',1)`.execute(
+            tx,
+          ),
+        ),
+      ).rejects.toThrow(/row-level security/);
+      for (const operation of [
+        (tx: QueryExecutorProvider) =>
+          sql`delete from assistant.processing_consent where user_id=${a}`.execute(
+            tx,
+          ),
+        (tx: QueryExecutorProvider) =>
+          sql`update assistant.processing_consent set user_id=${b} where user_id=${a}`.execute(
+            tx,
+          ),
+      ])
+        await expect(
+          withRequestContext(runtime, ctx(a), operation),
+        ).rejects.toThrow(/permission denied/);
+      const flags = await sql<{
+        relrowsecurity: boolean;
+        relforcerowsecurity: boolean;
+      }>`select relrowsecurity,relforcerowsecurity from pg_class where oid='assistant.processing_consent'::regclass`.execute(
+        owner,
+      );
+      expect(flags.rows).toEqual([
+        { relrowsecurity: true, relforcerowsecurity: true },
+      ]);
     });
 
     it("persists account onboarding, keeps completion terminal and preserves its first timestamp across races", async () => {

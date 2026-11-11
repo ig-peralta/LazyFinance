@@ -31,12 +31,29 @@ export class ExpectationEditor {
     this.estimate = entry?.isEstimate ?? false;
   }
 
+  private parsedInput() {
+    return IncomeExpectationInputSchema.safeParse({
+      date: this.date,
+      amount: decimalInput(this.amount),
+      isEstimate: this.estimate,
+    });
+  }
+
+  protected invalid(field: "date" | "amount") {
+    if (!this.error()) return false;
+    const parsed = this.parsedInput();
+    const source = this.source();
+    return (
+      (!parsed.success &&
+        parsed.error.issues.some((issue) => issue.path[0] === field)) ||
+      (field === "date" &&
+        (this.date < source.startDate ||
+          (!!source.endDate && this.date > source.endDate)))
+    );
+  }
+
   protected save() {
-    const parsed = IncomeExpectationInputSchema.safeParse({
-        date: this.date,
-        amount: decimalInput(this.amount),
-        isEstimate: this.estimate,
-      }),
+    const parsed = this.parsedInput(),
       source = this.source();
     if (
       source.archivedAt ||

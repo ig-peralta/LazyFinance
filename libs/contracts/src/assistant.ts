@@ -59,6 +59,15 @@ export const AssistantTurnSchema = z.object({
   sources: z.array(AssistantSourceSchema).max(8),
   actions: z.array(FinancialActionSchema).max(4),
   createdAt: z.iso.datetime(),
+  // Legacy voice records only. Input transcription is disabled; new native turns
+  // retain sources/actions without creating or waiting for a readable transcript.
+  voice: z
+    .object({
+      question: z.string().min(1).max(ASSISTANT_MAX_INPUT),
+      // An interrupted answer may finish before the asynchronous input record.
+      transcriptionPending: z.literal(true).optional(),
+    })
+    .optional(),
 });
 
 export const AssistantConversationSummarySchema = z.object({
@@ -77,9 +86,14 @@ export const AssistantConversationsSchema = z
   .array(AssistantConversationSummarySchema)
   .max(10);
 export const AssistantConversationIdSchema = z.strictObject({ id: z.uuid() });
-// Express normalizes an absent JSON POST body to {}. This empty command permits
-// either representation, but never caller-selected owner/history fields.
-export const CreateAssistantConversationSchema = z.strictObject({}).default({});
+// Express normalizes an absent JSON POST body to {}. Both forms create text by
+// default; only new-session mode is selectable, never owner or history fields.
+export const AssistantConversationModeSchema = z.enum(["text", "voice"]);
+export const CreateAssistantConversationSchema = z
+  .strictObject({
+    mode: AssistantConversationModeSchema.default("text"),
+  })
+  .default({ mode: "text" });
 export const AssistantConfigurationSchema = z.object({
   enabled: z.boolean(),
   provider: z.string().max(100),
@@ -99,6 +113,10 @@ export const AssistantEventSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("status"), text: z.string().max(200) }),
   z.object({ type: z.literal("source"), source: AssistantSourceSchema }),
   z.object({ type: z.literal("action"), action: FinancialActionSchema }),
+  z.object({
+    type: z.literal("action_updated"),
+    action: FinancialActionSchema,
+  }),
   z.object({
     type: z.literal("delta"),
     text: z.string().max(ASSISTANT_MAX_OUTPUT),

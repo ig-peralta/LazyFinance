@@ -1,5 +1,5 @@
 <header class="page-header dashboard-header">
-  <div><p class="eyebrow">Hola, {{ session.user()?.name }}</p><h1>Una mirada más clara<br>a <span class="accent-text">tu dinero.</span></h1><p class="page-description">Entiende tu mes. Dale un rumbo a lo que viene.</p></div>
+  <div><p class="eyebrow">Hola, {{ session.user()?.name }}</p><h1>Resumen del mes<span class="accent-text">.</span></h1><p class="page-description">Gastos, ingresos y planes del período seleccionado.</p></div>
   <div class="page-actions"><label class="button month-picker"><app-icon name="calendar" /><span class="sr-only">Mes del resumen</span><input #monthPicker type="month" [value]="summaries.month()" [max]="maxMonth" (change)="selectMonth(monthPicker.value)" /></label></div>
 </header>
 <onboarding-hint />
@@ -8,7 +8,7 @@
   @let data = summaries.monthly.value();
   <section class="metric-grid dashboard-metrics" aria-label="Las cifras de tu mes">
     <article class="metric-card accent"><span class="metric-label"><app-icon name="wallet" /> Gastos netos del mes</span><strong class="metric-value">{{ money(data.spending) }}</strong><p class="metric-note">Compras menos devoluciones y reembolsos confirmados.</p><span class="metric-period">{{ period() }}</span></article>
-    <article class="metric-card"><span class="metric-label"><app-icon name="income" /> Ingresos recibidos</span><strong class="metric-value">{{ money(data.receivedIncome) }}</strong><p class="metric-note">Abonos confirmados como ingresos. No es tu saldo.</p><a class="text-link" routerLink="/ingresos">Revisar ingresos recibidos <span aria-hidden="true">↗</span></a></article>
+    <article class="metric-card"><span class="metric-label"><app-icon name="income" /> Ingresos recibidos</span><strong class="metric-value money">{{ money(data.receivedIncome) }}</strong><p class="metric-note">Abonos confirmados como ingresos. No es tu saldo.</p><a class="text-link" routerLink="/ingresos" [queryParams]="{ month: summaries.month() }">Revisar ingresos recibidos <span aria-hidden="true">↗</span></a></article>
     <article class="metric-card"><span class="metric-label"><app-icon name="calendar" /> Ingresos esperados</span><strong class="metric-value">{{ money(data.expectedIncome.amount) }}</strong><p class="metric-note">Plan del mes completo · no es dinero disponible.@if (data.expectedIncome.estimatedAmount !== '0.00') { Incluye {{ money(data.expectedIncome.estimatedAmount) }} en estimaciones. } @if (data.expectedIncome.unknownAmountCount) { {{ data.expectedIncome.unknownAmountCount }} importes por definir. }</p><a class="text-link" routerLink="/ingresos/fuentes">Ver mis fuentes <span aria-hidden="true">↗</span></a></article>
   </section>
 } @else if (summaries.monthly.isLoading()) {
@@ -17,12 +17,14 @@
 
 <nav class="dashboard-shortcuts" aria-label="Accesos rápidos">
   <a routerLink="/movimientos"><app-icon name="activity" /><span>Explorar movimientos</span><app-icon name="arrow" /></a>
-  <a routerLink="/ingresos"><app-icon name="income" /><span>Confirmar ingresos</span><app-icon name="arrow" /></a>
-  <a routerLink="/presupuestos-y-metas"><app-icon name="wallet" /><span>Planificar gastos</span><app-icon name="arrow" /></a>
+  <a routerLink="/ingresos" [queryParams]="{ month: summaries.month() }"><app-icon name="income" /><span>Confirmar ingresos</span><app-icon name="arrow" /></a>
+  <a routerLink="/presupuestos-y-metas" [queryParams]="{ month: summaries.month() }"><app-icon name="wallet" /><span>Planificar gastos</span><app-icon name="arrow" /></a>
   <a routerLink="/metas"><app-icon name="target" /><span>Ver mis metas</span><app-icon name="arrow" /></a>
 </nav>
 
 <div class="dashboard-sections">
+  <dashboard-account />
+  <dashboard-activity />
   <div class="dashboard-analysis"><dashboard-summary /><dashboard-comparison /></div>
   <section aria-labelledby="planning-heading">
     <div class="section-heading"><div><p class="eyebrow">ESPACIO PARA LO QUE IMPORTA</p><h2 id="planning-heading">Tus planes, en marcha</h2><p class="panel-subtitle">Límites de gasto y metas de ahorro: cada uno con su propia medida.</p></div><span class="badge neutral">{{ period() }}</span></div>
@@ -34,6 +36,4 @@
       </div>
     </div>
   </section>
-  <dashboard-account />
-  <dashboard-activity />
 </div>

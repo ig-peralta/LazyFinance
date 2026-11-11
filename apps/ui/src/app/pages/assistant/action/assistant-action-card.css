@@ -5,13 +5,13 @@
 }
 .action-card {
   padding: 20px;
-  border: 1px solid #d5b77944;
+  border: 1px solid var(--accent-line);
   border-radius: 15px;
-  background: linear-gradient(130deg, #d5b77908, transparent), #142019;
+  background: var(--raised);
   overflow-wrap: anywhere;
 }
 .action-card.applied {
-  border-color: #6ee7b744;
+  border-color: var(--accent);
 }
 .action-card header {
   display: flex;
@@ -21,27 +21,27 @@
   flex-wrap: wrap;
 }
 .action-card .eyebrow {
-  font-size: 9px;
-  color: #cfbd94;
+  font-size: 0.7rem;
+  color: var(--muted);
   letter-spacing: 1.3px;
   margin: 0 0 7px;
 }
 .action-card h2 {
-  font-size: 15px;
-  color: #e2ede5;
+  font-size: 1rem;
+  color: var(--ink);
   margin: 0;
   line-height: 1.5;
 }
 .action-status {
-  font-size: 10px;
-  color: #dbc79d;
-  border: 1px solid #d5b77933;
+  font-size: 0.75rem;
+  color: var(--ink);
+  border: 1px solid var(--line);
   border-radius: 6px;
   padding: 5px 8px;
 }
 .applied .action-status {
-  color: #b0e8c4;
-  border-color: #6ee7b733;
+  color: var(--ink);
+  border-color: var(--accent-line);
 }
 .action-card dl {
   margin: 18px 0;
@@ -57,15 +57,15 @@
 .action-note,
 .action-card label,
 .action-card legend {
-  font-size: 11px;
+  font-size: 0.8125rem;
   line-height: 1.8;
-  color: #b3c7ba;
+  color: var(--muted);
 }
 .action-card dd {
-  font-size: 12px;
+  font-size: 0.875rem;
   line-height: 1.8;
   margin: 0;
-  color: #e2ede5;
+  color: var(--ink);
 }
 .color-detail {
   display: flex;
@@ -75,7 +75,7 @@
 .action-color-swatch {
   flex: 0 0 32px;
   height: 22px;
-  border: 1px solid #ffffff80;
+  border: 1px solid var(--ink);
   border-radius: 6px;
 }
 .action-color-swatch.no-color {
@@ -83,7 +83,7 @@
   background: linear-gradient(
     145deg,
     transparent 46%,
-    #b3c7ba 48% 52%,
+    var(--muted) 48% 52%,
     transparent 54%
   );
 }
@@ -97,27 +97,27 @@
   margin: 18px 0 10px;
 }
 .action-card button {
-  border: 1px solid #ffffff22;
-  background: #ffffff05;
-  color: #d3e6da;
+  border: 1px solid var(--line);
+  background: var(--canvas);
+  color: var(--ink);
   padding: 9px 13px;
   border-radius: 9px;
-  font-size: 11px;
+  font-size: 0.8125rem;
   cursor: pointer;
-  min-height: 38px;
+  min-height: 44px;
 }
 .action-card button.primary {
-  background: #31513e;
-  border-color: #76bb9144;
-  color: #e5f5eb;
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+  color: var(--ink);
 }
 .action-card button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
 .action-card a {
-  color: #b2eccb;
-  font-size: 12px;
+  color: var(--accent);
+  font-size: 0.8125rem;
   line-height: 1.8;
   text-underline-offset: 4px;
 }
@@ -137,11 +137,11 @@
   width: 100%;
   margin-top: 5px;
   padding: 10px;
-  border: 1px solid #ffffff29;
+  border: 1px solid var(--input-border, var(--line));
   border-radius: 8px;
-  background: #0b1610;
-  color: #e2ede5;
-  font-size: 12px;
+  background: var(--canvas);
+  color: var(--ink);
+  font-size: 0.875rem;
 }
 .action-card input[type="color"] {
   width: 64px;
@@ -159,23 +159,24 @@
   align-items: center;
 }
 .action-card fieldset {
-  border: 1px solid #ffffff19;
+  border: 1px solid var(--line);
   border-radius: 8px;
   margin: 14px 0;
   padding: 8px 12px;
 }
-.action-card :is(button, a, input, select, textarea):focus-visible {
-  outline: 2px solid #a7f3d0;
+.action-card
+  :is(button, a, input[type="checkbox"], input[type="radio"]):focus-visible {
+  outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
 .action-card [role="alert"] {
-  color: #f0bb9c;
-  font-size: 11px;
+  color: var(--ink);
+  font-size: 0.8125rem;
   line-height: 1.8;
 }
 .action-card [role="status"] {
-  font-size: 11px;
-  color: #bfd8c8;
+  font-size: 0.8125rem;
+  color: var(--ink);
 }
 @media (max-width: 540px) {
   .action-card {

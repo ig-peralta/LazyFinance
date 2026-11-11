@@ -16,6 +16,13 @@ export const routes: Routes = [
       import("./pages/login/login.page").then((m) => m.LoginPage),
   },
   {
+    path: "autorizar-mcp",
+    loadComponent: () =>
+      import("./pages/mcp-authorization/mcp-authorization.page").then(
+        (m) => m.McpAuthorizationPage,
+      ),
+  },
+  {
     path: "",
     component: WorkspaceBoundary,
     children: [
@@ -26,8 +33,8 @@ export const routes: Routes = [
           workspaceRoute("asistente", {
             heading: "Asistente financiero",
             load: () =>
-              import("./pages/assistant/assistant.page").then(
-                (m) => m.AssistantPage,
+              import("./pages/assistant/assistant-entry").then(
+                (m) => m.AssistantEntry,
               ),
           }),
           workspaceRoute("comenzar", {
@@ -89,13 +96,6 @@ export const routes: Routes = [
             load: () =>
               import("./pages/security/security.page").then(
                 (m) => m.SecurityPage,
-              ),
-          }),
-          workspaceRoute("autorizar-mcp", {
-            heading: "Autorizar una aplicación",
-            load: () =>
-              import("./pages/mcp-authorization/mcp-consent.page").then(
-                (m) => m.McpConsentPage,
               ),
           }),
           workspaceRoute("aplicaciones-conectadas", {

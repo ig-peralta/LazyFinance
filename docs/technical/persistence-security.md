@@ -42,12 +42,14 @@ not the signing key. Generate a pair with `pnpm rpc:keys`; do not commit its out
 | Lifetime | Issued-at and expiry required; maximum age and lifetime 30 seconds |
 | Context | Strict discriminated union from `@lazyfinance/contracts/context` |
 
-The three allowed context shapes are:
+The five allowed context shapes are:
 
 ```ts
 { kind: "user", userId: "<internal UUID>", requestId: "<UUID>" }
 { kind: "identity-bootstrap", identity: verifiedIdentity, requestId: "<UUID>" }
 { kind: "mcp-authorization", requestId: "<UUID>" }
+{ kind: "banking-scheduler", requestId: "<UUID>" }
+{ kind: "banking-transport", requestId: "<UUID>" }
 ```
 
 The API creates these from verified server-side state, never a client-proposed
@@ -68,6 +70,11 @@ then requires matching procedure metadata:
   `mcpArtifacts` procedures. It cannot assert a user, bootstrap identity or read
   financial/profile tables. Ordinary user contexts cannot call it.
 - Missing, unknown or mismatched policy is forbidden.
+
+`banking-scheduler` may call only `providerScheduler.claim`; `banking-transport`
+may call only `providerRequests.acquire`, `release` and `defer`. User/bootstrap/
+OAuth contexts cannot invoke these procedures, and neither banking purpose can
+invoke ordinary owned procedures. Both purposes have no user assertion.
 
 **Limits of the assertion:** it authenticates context, not an encrypted request.
 It has no one-time nonce/replay store and is not bound to the procedure or body.
@@ -155,8 +162,8 @@ incorrectly commit. Result-size failures also throw before commit.
 
 ## RLS and related ownership
 
-All 27 sensitive application tables enable **and force** RLS. The twenty-eighth,
-`finance.provider`, is a shared runtime-read-only catalog. Runtime grants and RLS
+Sensitive application tables enable **and force** RLS; `finance.provider` is a
+shared runtime-read-only catalog. Runtime grants and RLS
 are both required: a policy alone is not permission to access a table.
 
 `identity.current_user_id()` returns a UUID only for user context. Finance policies
@@ -178,10 +185,22 @@ or external-identity write permission. Its named upsert makes completion termina
 and retains the first server timestamp; no financial facts are changed.
 
 `assistant.conversation` is a separate owner-RLS schema, with no runtime CREATE
-or owner/ID/retention reassignment. Its named commands enforce creation/turn quotas,
+or owner/ID/mode/retention reassignment. Its named commands enforce separate
+10-text/100-voice creation quotas, matching-mode turn admission,
 nonce replay and lease-checked completion under the user advisory lock. Model
 calls remain outside SQL; conversation deletion changes no financial facts. See
 [assistant persistence, cancellation and retention limits](financial-assistant.md).
+
+`assistant.processing_consent` is one owner-scoped account preference. Reads never
+insert. Only explicit accepted/refused decisions can insert/update policy key,
+revision and server decision time under the common user lock. Stale revisions
+conflict; unchanged current decisions retain their time/revision. Runtime has no
+DELETE or owner-update privilege; bootstrap, OAuth, scheduler, transport and
+unscoped contexts see no records. The API binds the policy key to disclosure
+version/provider/model/compatible endpoint and requires current acceptance before
+new non-demo text or voice admission. This is not an atomic gate around all future
+provider I/O, global live-session cancellation or withdrawal of already-sent data.
+History/create/delete and exact financial-action approval need no new AI consent.
 
 `assistant.action` forces owner RLS and checks the optional conversation's owner.
 Runtime cannot update ownership/origin/request/grant/client metadata or delete
@@ -238,6 +257,7 @@ or generic transaction scripts.
 | Command | Authoritative persistence work | API work outside SQL |
 | --- | --- | --- |
 | Onboarding finish | Upsert only the scoped user's skip/completion; retain terminal completion and its first timestamp under concurrent writes | Authenticated optional-guide intent; no financial prerequisites or writes |
+| Assistant processing decision | Compare expected revision under the user lock; save only the owned policy key/decision and server timestamp, preserving unchanged decisions | Validate current processing policy and explicit accepted/refused intent; fail closed before new model/voice admission |
 | External-client grant | Validate provider-artifact ownership, bind immutable consent; atomically consume credentials and revoke/delete a family | Verify first-party consent, run the OAuth protocol, encrypt/decrypt artifacts and enforce resource/scope/owner on MCP |
 | Financial action | Recheck saved approval/version/fingerprint or MCP grant; execute bounded named commands and record one durable receipt, including dependent tags and decision events | Normalize exact money/schedules, prepare proposals, authenticate explicit UI approval or separately scoped MCP execution; no model execution authority |
 | Income confirmation | Lock/check source and eligible movement; reject any retained expense allocation; upsert one receipt | Calendar/money calculations and response composition |
@@ -247,8 +267,9 @@ or generic transaction scripts.
 | Savings target create/edit/archive | Check related tags and expected version; retain immutable revisions and current selection; record archival cutoff | Supported goal dates and current-definition allocation meaning; never synthesize contributions |
 | Internal-movement correction | Lock owned nonremoved movement; save override/effective state and related conflict acknowledgements atomically | Exclude internal movements from spending/income; retain receipts/recoveries for eligibility re-evaluation, independently of tag names |
 | Prepared rule application | Re-read candidate fingerprint, check eligibility, persist decisions/events | Match the bounded candidate page |
-| Provider sync begin | Check owned provider/status/credential version; acquire a five-minute revision-bound lease or honor existing lease/backoff without changing attempt metadata | Resolve/decrypt owned credentials; perform no provider calls without an acquired lease |
-| Provider sync commit | Check live lease/revision/fingerprint; persist facts, suspensions, tombstones, conflicts, decisions/events and checkpoint together | Fetch/validate all pages and prepare classifications |
+| Provider selection | Check owned discovery/credential/selection versions and supported IDs; save consent, invalidate old runs and refresh schedule without deleting history | Explicit bounded discovery discards balances; public command owner comes from authentication |
+| Provider sync begin | Check owned provider/status/credential/selection versions and any claim; acquire a five-minute revision-bound lease within the daily attempt budget or honor existing lease/backoff | Resolve/decrypt owned credentials; perform no provider calls without an acquired lease |
+| Provider sync commit | Check live lease/revision/claim/versions/fingerprint and selected scope; persist facts, suspensions, tombstones, conflicts, decisions/events, checkpoint and schedule completion together | Fetch/validate all pages and prepare classifications/cadence outside SQL |
 
 Prepared fingerprints are based on normalized, canonically sorted wire facts and
 are recomputed under the user write lock. They prevent stale calculations from
@@ -261,8 +282,58 @@ Completion/failure ends the lease and advances its revision. Expired/revoked syn
 failures also advance the credential version, preventing an earlier access check
 from reactivating the connection. A crashed/unconfirmed attempt becomes interrupted
 after lease expiry; a new claim supersedes late old results. Provider retry timing
-is enforced on begin, not an automatic retry scheduler. Source freshness advances
+is enforced on begin and shared by manual/automatic execution. Source freshness advances
 only with the successful financial commit, never with begin, status or failure.
+
+### Selected-account work and operational purpose isolation (migration 030)
+
+Discovery saves only bounded choice metadata, not balances, holder identity or raw
+account numbers. Owned versioned selection is separate from `account.active` and
+financial account storage; unconfirmed/empty selections authorize no import.
+Begin binds credential/selection versions and any scheduler claim; facts/commit/
+failure must match the live revision, claim and lease. Commit independently
+rejects account snapshots, movements, removals and suspensions outside the selected
+set. Selection/lifecycle changes supersede old work while preserving financial
+history, aliases and user decisions. An unavailable selected account fails the
+whole intended snapshot, not a partial commit.
+
+`provider_account_selection` and `provider_sync_schedule` use owned RLS with
+related-connection checks and immutable owner/connection triggers. Runtime DELETE
+is revoked. Scheduler-purpose RLS additionally exposes schedule records for claims
+only; a trigger allows that purpose to change just `claim_id`/`claim_expires_at`,
+not eligibility, owner, enrollment or financial data. `FOR UPDATE SKIP LOCKED`
+chooses one due row without waiting on a user-held row lock. A short global
+operational advisory lock enforces one reserved background claim across replicas;
+provider I/O never runs under that lock or a database transaction.
+
+`provider_request_admission` and `provider_request_backoff` have forced RLS only
+for `banking-transport`; runtime updates are limited to completion time and retry
+time respectively. Shared durable admission allows two starts per rolling second,
+two in-flight requests and 1,000 sync/discovery reads per mode per rolling hour.
+Lifecycle requests share rate/concurrency, but not the read quota. Permits last
+25 seconds; lost releases reserve capacity until expiry. Valid provider waiting
+periods are persisted per mode with nondecreasing retry time. Owned discovery/read
+backoff also survives restart and gates discovery/begin; manual work cannot bypass
+it. Granted-but-unconfirmed permits are counted conservatively, not replayed.
+
+Manual and automatic acquired starts share at most 30 attempts per connection per
+rolling 24 hours; coalesced/status calls are not attempts. Daily quota exhaustion
+moves due time, clears claim/run references and returns a deferred result without
+provider I/O. Due-time ordering permits other work to proceed; other early begin
+deferrals retain only their bounded claim expiry. Completion requires matching
+claim, run revision and expected failure streak; late results cannot finish newer
+work. Success resets the streak; retryable failures wait 5/15/60/360 minutes plus
+up to one minute jitter, respecting later provider waits. Five consecutive failures,
+invalid data, unavailable selected accounts and access failure pause automation.
+
+The worker uses server-recorded claim owners through ordinary signed user-scoped
+commands, not a privileged financial bypass. `BankingSyncModule` remains independent
+of public routers/timers; the headless host reuses the same engine and private RPC,
+never a direct DB pool. These purpose checks do not limit a compromised trusted
+signer that can already assert users. Future separate-service extraction requires
+explicit signing-authority, secrets and network review; module portability alone
+does not authorize sharing the broad API key or adding an administrator context.
+This source description is not new regression/live-provider verification evidence.
 
 Only known rolled-back stale-input conflicts are recomputed, up to two retries in
 the API's prepared workflows. Network/timeout ambiguity is **not** permission to

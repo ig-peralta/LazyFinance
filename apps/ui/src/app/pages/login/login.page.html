@@ -1,5 +1,6 @@
-<main class="min-h-screen bg-surface-0 text-color dark:bg-surface-950">
-  <div class="grid min-h-screen lg:grid-cols-2">
+<div class="login-surface min-h-screen bg-surface-0 text-color dark:bg-surface-950" [attr.role]="mcpMode() ? null : 'main'" [class.mcp-signin]="mcpMode()">
+  <div [class]="mcpMode() ? '' : 'grid min-h-screen lg:grid-cols-2'">
+    @if (!mcpMode()) {
     <aside
       class="relative hidden overflow-hidden bg-gradient-to-br from-emerald-950 via-emerald-900 to-emerald-700 px-12 py-12 text-white lg:flex lg:flex-col lg:justify-between xl:px-20"
     >
@@ -62,29 +63,35 @@
 
       <p class="relative text-sm text-emerald-100">© 2026 LazyFinance</p>
     </aside>
+    }
 
-    <section
-      class="flex min-h-screen items-center justify-center px-6 py-12 sm:px-10 lg:px-16 xl:px-24"
-    >
-      <div class="w-full max-w-md">
+    <section [class]="mcpMode() ? 'mcp-signin-content' : 'flex min-h-screen items-center justify-center px-6 py-12 sm:px-10 lg:px-16 xl:px-24'">
+      <div [class]="mcpMode() ? '' : 'w-full max-w-md'">
+        @if (!mcpMode()) {
         <a
           routerLink="/"
           class="mb-12 inline-flex items-center gap-2 text-base font-semibold text-primary lg:hidden"
         >
           LazyFinance
         </a>
+        }
         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-          Acceso a tu cuenta
+          {{ mcpMode() ? 'CONEXIÓN DE UNA APLICACIÓN' : 'Acceso a tu cuenta' }}
         </p>
-        <h1 class="mt-3 text-4xl font-semibold tracking-tight text-color-emphasis">
-          Bienvenido de nuevo
+        <h1 class="mt-3 text-4xl font-semibold tracking-tight text-color-emphasis" [attr.tabindex]="mcpMode() ? -1 : null">
+          {{ mcpMode() ? 'Inicia sesión para conectar una aplicación' : 'Bienvenido de nuevo' }}
         </h1>
         <p class="mt-4 leading-7 text-muted-color">
-          Ingresa para continuar con tus finanzas en LazyFinance.
+          {{ mcpMode() ? 'Usa tu cuenta de LazyFinance. Después comprobarás qué aplicación solicita acceso y elegirás sus permisos.' : 'Ingresa para continuar con tus finanzas en LazyFinance.' }}
         </p>
+        @if (mcpMode()) {
+          <p class="connection-note mt-5 rounded-xl border border-primary-200 bg-primary-50 p-4 text-sm leading-6 text-color dark:border-primary-800 dark:bg-primary-950">Iniciar sesión <strong>no autoriza a la aplicación</strong>. No compartimos tu contraseña con ella. Solo volverás al cliente después de aceptar o rechazar los permisos.</p>
+        }
 
         @if (loadingConfig()) {
           <p class="mt-10 text-sm text-muted-color">Cargando opciones de acceso...</p>
+        } @else if (session.active() && mcpMode()) {
+          <p role="status" class="mt-8 text-muted-color">Sesión comprobada. Preparando la revisión de permisos…</p>
         } @else if (session.active()) {
           <div
             class="mt-10 rounded-2xl border border-primary-200 bg-primary-50 p-6 dark:border-primary-800 dark:bg-primary-950"
@@ -107,7 +114,7 @@
             </p>
             <p class="mt-1 text-sm text-muted-color">{{ session.user()?.email }}</p>
             <div class="mt-7 flex flex-wrap items-center gap-5">
-              <a routerLink="/dashboard" class="text-sm font-semibold text-primary">Ir al panel</a>
+              <a routerLink="/asistente" class="text-sm font-semibold text-primary">Ir a mi espacio</a>
               @if (provider() === 'firebase') {
                 <a routerLink="/seguridad" class="text-sm font-semibold text-primary">Métodos de acceso</a>
               }
@@ -124,7 +131,7 @@
         } @else if (session.error()) {
           <button type="button" class="mt-8 text-sm font-semibold text-primary" [disabled]="busy()" (click)="retry()">Reintentar acceso</button>
         } @else if (needsVerification()) {
-          <div class="mt-10 space-y-4 rounded-2xl border border-surface bg-surface-100 p-6 dark:bg-surface-900">
+          <div class="verification-panel mt-10 space-y-4 rounded-2xl border border-surface bg-surface-100 p-6 dark:bg-surface-900">
             <h2 class="text-lg font-semibold">Verifica tu correo</h2>
             <p class="text-sm leading-6 text-muted-color">
               Confirma el enlace enviado a {{ session.firebaseAccount()?.email }}. Todavía no has accedido a tus datos de LazyFinance.
@@ -199,7 +206,7 @@
                 class="flex w-full items-center justify-center rounded-xl bg-primary px-5 py-3.5 font-semibold text-primary-contrast transition-colors hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
                 [disabled]="loading()"
               >
-                {{ loading() ? 'Conectando...' : 'Iniciar sesión' }}
+                {{ loading() ? 'Conectando...' : mcpMode() ? 'Iniciar sesión y revisar permisos' : 'Iniciar sesión' }}
               </button>
             </form>
           } @else if (provider() === 'firebase') {
@@ -226,7 +233,7 @@
                     d="M12 6c1.5 0 2.8.5 3.8 1.5l2.9-2.9A9.6 9.6 0 0 0 12 2a10 10 0 0 0-9 5.4L6.4 10A6 6 0 0 1 12 6Z"
                   />
                 </svg>
-                {{ loading() ? 'Conectando...' : 'Continuar con Google' }}
+                {{ loading() ? 'Conectando...' : mcpMode() ? 'Google · continuar a permisos' : 'Continuar con Google' }}
               </button>
             </div>
             <div class="my-6 flex items-center gap-4 text-xs text-muted-color">
@@ -288,7 +295,7 @@
                 [disabled]="busy()"
                 class="w-full rounded-xl bg-primary px-5 py-3.5 font-semibold text-primary-contrast disabled:opacity-60"
               >
-                {{ busy() ? 'Procesando...' : passwordMode() === 'register' ? 'Crear cuenta' : 'Iniciar sesión con correo' }}
+                {{ busy() ? 'Procesando...' : passwordMode() === 'register' ? 'Crear cuenta' : mcpMode() ? 'Iniciar sesión y revisar permisos' : 'Iniciar sesión con correo' }}
               </button>
               <div class="flex flex-wrap justify-between gap-3 text-sm">
                 <button
@@ -334,4 +341,4 @@
       </div>
     </section>
   </div>
-</main>
+</div>

@@ -6,7 +6,8 @@ import {
   resource,
   signal,
 } from "@angular/core";
-import { RouterLink } from "@angular/router";
+import { toSignal } from "@angular/core/rxjs-interop";
+import { ActivatedRoute, RouterLink } from "@angular/router";
 import { formatClp } from "../../../../utils/currency";
 import { AuthCredentials } from "../../../core/auth/auth-credentials";
 import { reportWorkspaceReadiness } from "../../../core/rendering/workspace-preparation";
@@ -22,6 +23,13 @@ import { SavingsEditor } from "./savings-editor/savings-editor";
   templateUrl: "./savings.page.html",
 })
 export class SavingsPage {
+  private readonly route = inject(ActivatedRoute);
+  private readonly query = toSignal(this.route.queryParamMap, {
+    initialValue: this.route.snapshot.queryParamMap,
+  });
+  protected readonly fromOnboarding = computed(
+    () => this.query().get("from") === "onboarding",
+  );
   private readonly rpc = inject(RpcClient);
   protected readonly goals = resource({
     params: () => this.rpc.authenticatedScope(),

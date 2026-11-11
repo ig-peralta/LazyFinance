@@ -67,7 +67,25 @@ An MCP access token is not a Firebase credential and cannot authorize public
 financial management RPC. Conversely, Firebase/development tokens are not external
 MCP grants.
 
-The first-party `/autorizar-mcp?interaction=…` interaction displays the authenticated account, client identity,
+The first-party `/autorizar-mcp?interaction=…` interaction is one focused connection
+page outside the app's financial workspace. Account sign-in, verification, account
+switching and permission review happen in place on that same URL. Its purpose is
+explicit: sign in to connect an external application, then separately review
+permissions. Signing in never approves a grant. The page reuses the same mock/
+Firebase authentication, password reset and email-verification behavior as ordinary
+login; it is not another account system and never uses the OAuth provider's example
+username/password pages. There is no companion MCP login route or compatibility
+redirect, and no general login/dashboard detour.
+
+Sign-in does not navigate away or follow a supplied `redirect`.
+Replacing the interaction destroys the old form and aborts its pending continuation.
+An already verified user skips login but still must decide. **Usar otra cuenta**
+closes the local account before showing sign-in on the same request; failed provider
+sign-out cannot silently resume consent. No dashboard, onboarding or financial
+resources are requested as part of login/consent. Client metadata is not trusted
+or disclosed as verified before the authenticated cookie-bound preview.
+
+The interaction displays the authenticated account, client identity,
 callback hostname, read capabilities and any requested optional write permissions.
 Write choices are unchecked by default. Client names from registration are
 claims, not an endorsement. Approval and denial are explicit and bound to the
@@ -81,6 +99,67 @@ access and refresh credentials without disconnecting a bank or changing financia
 records, Firebase methods or another client's grant. App logout is not implicit
 external-client revocation. Already-running requests need not be cancelled, but
 new requests after confirmed revocation must fail.
+
+## Connected-app identity and local artwork (LAZ-71, LAZ-80, LAZ-83)
+
+Consent leads with the app, accepted account and readable permissions, with a short
+unverified-identity notice. Exact client ID, callback, raw requested scopes and
+request expiry remain available under a collapsed **Detalles de la conexión**.
+The default card fits short desktop screens; expanded details, narrow screens and
+enlarged text retain natural scrolling rather than clipped controls or smaller text.
+Connected-app settings share the identity block but keep full identity and grant
+facts visible. Stored grants retain the callback approved at consent through
+additive migration 031; earlier grants explicitly say it was not recorded. No
+callback is inferred from a friendly name. Optional writes remain unchecked, tied
+to the accepted account and interaction, and do not expand OAuth authority.
+Expired requests cannot be submitted; expired grants remain revocable. Revocation
+confirms the selected connection and preserves banks, finance and other grants.
+A failed/uncertain revoke remains locked through failed reads until an explicit
+successful later read reconciles it; no mutation is automatically replayed.
+
+**Logo source contract:** OAuth `logo_uri`, client HTML/SVG and arbitrary remote
+image URLs are never rendered, proxied or fetched for branding. Only the exact
+`https://opencode.ai/oauth/opencode/client.json` ID with its published loopback
+callback profile maps to the checked-in `/opencode-logo.png`. Names, lookalike
+domains, unrelated callbacks and arbitrary DCR IDs cannot select that artwork.
+This is a curated presentation mapping, not proof of the requesting installation,
+verified identity, endorsement or live-client compatibility.
+
+The sole supported asset is a local raster PNG, 512×512 pixels and 7,194 bytes,
+obtained from `https://opencode.ai/web-app-manifest-512x512.png` with a 64 KiB / 10 s
+download bound, without redirects. SHA-256:
+`63495f813cb7ea507cb6eb2cd1ee9d673e456a6af3eeb4138bc920d24ec9f15f`.
+Registry changes require source review, exact identity/callback mapping and bounded
+bundled raster artwork; there is no runtime metadata-origin allowlist or remote
+fetch escape hatch. Therefore no private-address branding fetch, tracking request,
+remote format parser or supplied SVG/HTML executes. The original artwork identifies
+OpenCode; it does not imply an affiliation with LazyFinance.
+
+A fixed 48 CSS-pixel decorative slot always contains an `App` fallback. Local
+artwork overlays it only after loading and is abandoned after two seconds or an
+error. Missing, rejected, slow and failed images never block controls or readiness,
+shift layout, or replace the adjacent readable identity/security facts. The image
+has empty alternative text because the adjacent name provides its text equivalent.
+Every identity still displays the unverified notice, including curated artwork.
+
+On 10–11 November 2026 the full mocked-RPC UI suite and real signed-RPC API suite ran
+against the isolated branch and a newly created disposable PostgreSQL 18 container.
+The persistence suite checks callback capture, null legacy callbacks, ownership,
+monotonic revocation and an additive migration probe preserving all retained facts.
+Production static output also passed a Chromium mocked-RPC check at widths
+320/390/768/1440 with 125% text, keyboard confirmation/Escape/focus return, optional
+scope selection, malicious name text, no external branding requests and lost-response
+reconciliation. Both tested pages had zero automated axe WCAG A/AA violations.
+These are not a full accessibility audit, live Firebase/provider test or a new
+named-client compatibility claim. No existing service, environment, grant or user
+database was used or modified.
+
+Branch validation: 440 UI tests, 493 API tests (5 conditional skips), 69 persistence
+unit tests and 37 PostgreSQL tests passed. Workspace build/typecheck, RPC generation
+and drift, architecture, format and lint checks passed. Lint retains 27 warnings
+and 10 infos; build retains existing initial/assistant-style budget and CommonJS
+warnings. Generated routers are byte-unchanged because they reference the updated
+contract schemas. The dedicated test container and ephemeral listeners were removed.
 
 ## Optional financial write delegation
 
@@ -243,6 +322,17 @@ PKCE, refresh and the HTTPS callback `https://claude.ai/api/mcp/auth_callback`;
 other Claude products/API supplied-token mode must not be conflated with that
 interactive flow. Follow each product's current source linked below. No existing
 client configuration is changed by these instructions.
+
+For a local OpenCode test, keep UI and API on `localhost` and add the resource URL:
+
+```sh
+opencode mcp add lazyfinance --global --url http://localhost:3000/mcp
+opencode mcp list
+```
+
+Then use **`/mcps` → `lazyfinance` → Sign in**. Configuration alone grants no
+financial access; the server remains awaiting authentication until the user
+finishes the browser flow. Existing Linear or other MCP connections are separate.
 
 Example outcomes:
 

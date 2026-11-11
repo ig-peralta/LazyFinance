@@ -43,21 +43,32 @@ readiness. Other UI hosting only needs equivalent static fallback/caching.
 
 ## Authenticated workspace
 
-The authenticated workspace uses dark surfaces, emerald accents, rounded cards
-and pill actions aligned with the public landing's visual language. Its dark
-tokens are workspace-scoped, including PrimeNG controls; the public landing and
-login retain their existing system-aware theme.
+The authenticated workspace offers system/light/dark themes and three text sizes
+under **Apariencia** in the top bar. The menu closes on Escape, outside pointer or
+keyboard departure; Escape and its close button return focus to the trigger.
+Shared rem-based typography scales task links, help and controls together, rather
+than applying a separate enlarged-text override layer. Semantic tokens also reach
+dialogs, PrimeNG controls and assistant content inside the workspace. Only allowlisted
+device presentation values (theme, text size and compact navigation) enter the
+`lazyfinance-workspace-preferences` localStorage key; financial data, identity,
+messages and drafts never enter it. Invalid/blocked storage falls back safely.
+The public landing and login retain their existing system-aware theme.
 
-Navigation includes **Asistente**, **Resumen**, **Mi dinero** (movements, accounts,
+Navigation includes **Inicio**, **Resumen completo**, **Mi dinero** (movements, accounts,
 tags), **Planificación** (budgets, savings, income and sources), and **Mi cuenta**
 (access/security, connected applications, bank connections, plus a resume link only for skipped setup).
 Bank connection settings stay reachable regardless of whether setup is active,
 skipped or completed. Direct contextual links appear above the page, wrap rather
 than scroll, and retain the active destination on detail routes.
+Pages do not repeat those destinations in a second set of route tabs.
 The sidebar has no internal scrolling or expandable lists. Narrow or short
 viewports replace it with a compact native modal menu, including a two-column
 layout on short screens, focus containment and Escape handling. A skip link and
 keyboard-visible focus remain available.
+Desktop users can explicitly toggle **Navegación compacta**. Destination and
+logout labels remain available by accessible name and hover/keyboard tooltip;
+the mobile/short-screen modal retains full labels regardless of that preference.
+The compact-navigation control is desktop-only; mobile has one menu trigger.
 
 Financial editors are opened explicitly instead of occupying a permanent page
 column: tags, budget/savings creation and adjustments, income sources and dated
@@ -73,15 +84,100 @@ Source editing and irregular-payment planning are separate actions; expected
 payments expand under their source and open their own editor, never a nested
 modal. Filters, month selectors and sign-in forms stay in place.
 
-`/autorizar-mcp?interaction=…` is a private, cookie-bound OAuth consent page, not
-an external-client login form. It displays the accepted account, declared client,
-actual callback hostname, read permission and optional requested write capabilities
-(unchecked by default) before explicit
-approval/denial. `/aplicaciones-conectadas` lists owned grants and requires explicit
+`/autorizar-mcp?interaction=…` is the single cookie-bound OAuth connection page,
+outside the financial workspace shell. It hosts account sign-in, verification,
+account switching and permission review in place, without an intermediate login
+route or workspace detour. Shared account authentication uses explicit connection-
+purpose copy: sign-in is step one, not permission approval. It never follows a
+caller-supplied redirect. Changing the interaction destroys the old login form and
+aborts its continuation. Verified users skip sign-in, not consent; switching
+accounts preserves the request and resets optional permission choices. No dashboard,
+onboarding or financial reads start during this flow. The page displays the accepted
+account, declared client, actual callback hostname, read permission and optional
+requested write capabilities (unchecked by default) before explicit approval/denial.
+`/aplicaciones-conectadas` lists owned grants and requires explicit
 revoke confirmation. Neither page exposes OAuth tokens to the UI or modifies bank
 connections/financial facts. Reads/commands are scope-cancelled, obsolete results
 cannot navigate or expire a newer login, and uncertain decisions are not replayed.
+The compact connection card leads with the app, account and readable permissions.
+Technical client IDs, callbacks, raw scopes and request expiry are available in
+collapsed **Detalles de la conexión**. The default desktop card fits short screens;
+expanded details and enlarged/narrow layouts can scroll naturally without clipping
+controls. Connected-app settings keep the complete identity and grant facts visible.
+A curated bundled PNG is decorative only; arbitrary
+OAuth logo URLs are never loaded, and unknown/failed artwork uses a fixed fallback
+without implying verification. Legacy grants disclose an unrecorded callback.
+Failed revocation remains locked until a successful explicit later read, not merely
+a retry click. Scoped styles inherit text/theme tokens without changing the shell.
 See [OAuth browser/site configuration and compatibility](../../docs/technical/mcp-authorization.md).
+
+The assistant-first home at `/asistente` keeps an ordinary month-selectable financial
+strip above one full-width chat, without requiring AI consent/model calls for the
+snapshot. The strip expands for detailed figures and month selection; the default
+home keeps the composer on screen and lets messages use the available viewport.
+There is no hero, empty results pane or conversation/results tab switcher.
+Proposals stay inline, while **Ver consultas** opens source details on request.
+Privacy, availability and deletion are grouped under one options disclosure.
+`/dashboard` preserves the complete dashboard. The shell provides one persistent
+theme-token-aligned assistant, inline at home and docked
+beside other pages. A compact, neutral **Texto / Voz** segmented switch lives in
+the header beside icon-only history/new/options actions, without another toolbar
+row. Narrow panels retain accessible title text while keeping controls on one line.
+Text remains the default; history opens in a drawer. Native
+voice uses a distinct stage and server-run tools, not transcript-to-text/read-aloud.
+Switching back to text stops capture and restores the original text draft and
+conversation. Voice records stay in the database, outside text history/context;
+their proposal/query review remains in the separate voice view after capture ends.
+Confirmed receipts enter their own conversation's next server context; verbal
+agreement is never approval. See the [assistant guide](../../docs/technical/financial-assistant.md).
+Outside home, **Asistente · ?** in the top bar (accessible name **Abrir asistente · ?**)
+exposes the actual keyboard shortcut without a floating button covering page
+actions. It restores/focuses that instance without resending, respects editable
+fields and real modals, and is bound only within the accepted authenticated shell lifetime.
+Minimize returns focus to the connected invoker, or to the same persistent header
+control if navigation removed or hid that invoker. Deferred loading never replaces it.
+Loading/error cancellation also restores the control before the assistant code is ready.
+`/asistente` opens the existing panel; explicit conversation deep links select
+server-owned history. First open loads it once; authenticated navigation preserves
+in-memory text state without resend. Minimize retains it, while Close panel clears
+the draft/selection and stops work without deleting saved history. Separate Delete
+still requires confirmation. Owner/credential replacement clears private state.
+New answers anchor once at their beginning; later tokens never force scrolling.
+A small centered down arrow returns to the latest message. Quiet activity text
+sits above the input rather than in a full-width status row.
+Requested source details retain their observation cutoffs and keep financial
+approval inline with text replies, never duplicated in a source-only pane.
+Outside home, the desktop dock becomes modal with inert background
+and focus containment on narrow screens; the inline home remains ordinary page
+content. Escape dismisses options, history or requested details before minimizing
+an outside-home dock.
+Processing consent is saved on the account through authenticated RPC, not browser
+storage. New/refused/outdated consent opens a dedicated screen; accepted consent
+survives reload/sign-out/devices. **Ahora no** saves refusal and minimizes a dock;
+the home snapshot and consent/history entry remain available without processing.
+**Ver historial sin IA** keeps saved chats readable/deletable without new processing.
+Reopening checks permission without remounting an accepted chat. Failed/uncertain
+saves require an explicit state check, never automatic mutation replay.
+**Opciones del asistente → Privacidad y consentimiento → Retirar consentimiento**
+immediately stops local voice/text and blocks new processing; it does not erase
+previous disclosures or guarantee remote
+voice termination on other devices. Consent and financial approval remain separate.
+Optional live WebRTC voice is disabled by default and requires separate start/privacy
+confirmation. After saved processing acceptance, **Conversar por voz** opens its
+disclosure without a repeated checkbox. Only **Entiendo, iniciar micrófono** can
+request capture; accepting account consent, opening or canceling requests none.
+New conversations promote voice with a larger central entry. Visible subtitles,
+input ASR and browser transcript collection are unwired. New voice turns retain
+sources/proposals/status, not spoken text; no completion waits for transcription.
+Existing transcript records are not deleted or replayed into resumed calls.
+One centered accessible problem card replaces duplicate footer errors and ended-session
+boilerplate. Admission cooldowns disable voice retries without disabling text sends;
+incomplete answers warn without closing a healthy call or automatically retrying.
+Capture stops immediately and saved state refreshes after asynchronous closure.
+Loading, failed and disabled availability are shown under assistant options, with
+**Volver a comprobar voz** for an explicit read after configuration changes.
+Minimize/navigation/hidden tabs end capture. See the
+[voice contract and unverified live gates](../../docs/technical/assistant-live-voice.md).
 
 `/asistente` provides financial questions, explicit suggestions, streamed replies,
 Stop, server-owned history, separate financial reference cards, copy and confirmed
@@ -97,14 +193,20 @@ provider/model before sending. Separate action cards show exact proposals for
 budget/goal creation, tag management and single-movement tagging. Tag colors use
 visual swatches and native color pickers, not displayed hex codes. Approve submits
 only a saved ID/version; Edit saves a new unapproved version, and Cancel is not an
-undo. Stale/expired proposals require review. Ambiguous action outcomes block
+undo. Stale/expired proposals require review. Voice/text corrections revise the
+same request, including dependent tag colors, without creating another tag or
+replacing the budget request. Native voice reviews one request at a time while
+retaining access to previous ones; delayed history cannot undo newer versions.
+An outdated manual form cannot overwrite a newer voice correction. Ambiguous outcomes block
 another write until an explicit status read; stopping/deleting chat never reverses
 committed finance or deletes durable receipts. MCP consent delegates separately
 selected capabilities without these chat buttons. See [configuration, limits, privacy and evaluation](../../docs/technical/financial-assistant.md).
 
 The dashboard leads with selected-month net spending, received income and the
-full-month income plan, followed by workflow shortcuts, spending analysis,
-planning, stored account balances and recent activity. Balances are not added
+full-month income plan, followed by workflow shortcuts, stored account balances,
+a compact activity preview, spending analysis and planning. The preview shows five
+of the ten loaded movements; expansion reveals the rest without another read.
+Income/budget shortcuts retain the selected month. Balances are not added
 across different account types or confused with income/available cash. Financial
 display formats decimal strings through bigint cents, retaining nonzero cents
 and large values without floating-point rounding. Income cards distinguish
@@ -122,9 +224,15 @@ are unchanged. Chart colors are a presentation palette, not edits to tag colors.
 
 `/etiquetas` manages the active owned catalog: create, rename/recolor and explicit
 archive confirmation. Archived names remain reserved and historical references are
-retained. Its resource is page-owned; commands reject duplicate submissions and
+retained. A bounded search field filters compact color/name cards locally, with
+nearby edit/archive actions and inline archive confirmation. Tags and income
+sources share a wrapping action bar: edit is emphasized, archive remains quiet
+until its separate confirmation. The tag resource is page-owned; commands reject duplicate submissions and
 discard obsolete owner/component results. Form drafts are cleared on owner changes
 and no financial record is cached in browser storage or hydration transfer state.
+Catalog editing does not assign movements or create rules. Known duplicate names
+are explained without clearing the draft. An uncertain create/update/archive
+requires an explicit catalog read before another attempt; reads never replay writes.
 
 `/movimientos` is a URL-filtered cursor ledger (account, Santiago dates, nullable
 tag/internal status, direction and literal merchant substring). Previous/next
@@ -137,10 +245,26 @@ discards that draft and restores focus. Catalog failures preserve selected IDs,
 and owner changes clear unsubmitted drafts.
 `/movimientos/:id` reads owned source and
 classification detail without changing the original banking facts.
+Its back link accepts only fixed, validated budget-evidence or income context,
+never an arbitrary return URL. Budget evidence preserves revision, month and
+observation cutoffs; income restores its selected month without reopening a draft.
+Ordinary ledger links retain only allowlisted ledger filters.
 The detail view supports explicit tag/no-tag/reset and nullable internal-status
 corrections. A saved command reloads detail; history, summaries and budget pages
 refetch on navigation rather than sharing a stale application-wide cache. Removed
 records are read-only, and the backend remains authoritative for valid references.
+History and detail distinguish manual no-tag, unreviewed and automatic decisions.
+An unavailable active-tag reference stays visible, but cannot be newly submitted.
+An uncertain correction asks the user to close and reload detail before another
+attempt. Dashboard tagging offers **Comprobar movimiento**, a fresh detail read
+that reconciles page-local decisions and invalidates dependent summaries.
+
+The callback-based `layout/app-shell/assistant-shortcut.ts` binding reserves **?**
+outside editable controls, composition, repeats and modal/popover dialogs. It
+must be installed by the authenticated persistent assistant host, with teardown,
+and call that host's `open()`; it never mounts a host, starts a chat or sends a
+message itself. Integration and focus ownership are recorded in the
+[Stage C workspace delivery](../../docs/planning/stage-c/workspace-delivery.md).
 
 `/ingresos/fuentes` manages owned fixed/variable, regular/irregular declarations,
 all supported weekly/14-day/monthly/twice-monthly schedules, archival and dated
@@ -152,6 +276,9 @@ amounts, received confirmations, unclassified credits and recovered expenses.
 Its paginated external-credit browser opens one owned detail to validate facts;
 confirmation/reassignment and explicit clearing preserve booked amounts/dates.
 Retained links remain clearable even when current facts no longer count as income.
+Income month selection is URL-readable, and abono review precedes the detailed
+planning lists. Receipt confirmation explains the actual ineligibility facts; an
+empty source catalog links to source creation without enabling an unfillable form.
 
 `/presupuestos-y-metas` creates spending budgets and shows backend net progress;
 `/presupuestos/:id` separates effective/pending revisions, paginated history and
@@ -164,6 +291,10 @@ month and observation cutoffs. Its complete backend totals (not page sums)
 separate original purchases, refunds, reimbursements and net spending. Continuation
 retains returned cutoffs, explains current-fact drift and never claims complete
 bank coverage. Changed revisions require reopening the current progress selection.
+The overview is progress-first, with active/future configurations behind a native
+disclosure and a URL-readable month. Fixed-budget locks are explained before edit
+entry; revision history controls expose their expanded state. Evidence returns to
+the same progress month. Monetary strings stay unbroken while rows can stack.
 
 `/metas` creates selected-tag lifetime/monthly/yearly/fixed savings targets;
 `/metas/:id` provides owned detail, immutable configuration history and expected-
@@ -182,6 +313,11 @@ decisions invalidate savings allocations as well as spending/budget reads.
 and links into movement history. It does not load banking settings or contact
 Fintoc. A **Conectar banco** shortcut and the empty state link to the separate
 connection settings; they do not launch authorization themselves.
+Personal names are owned display labels, edited in a scoped drawer and preserved
+on synchronization/relink. Removing a name requires explicit `null`, not blank
+text. An uncertain save locks the editor until the parent reloads stored accounts.
+Retained balances show selected/paused/no-access tracking separately from source
+age; deselection does not hide an account or erase its history.
 
 `/conexiones-bancarias` (**Mi cuenta → Conexiones bancarias**) supports owned Fintoc
 authorization, explicit access checks, same-bank/same-holder relinking and confirmed
@@ -202,6 +338,23 @@ failure, retry timing, conflicts, source freshness and retained history bounds.
 Its per-account movement links use the returned owned account IDs. Balances still
 belong to `/cuentas`; no client-side balance reconstruction or connection guessing
 is added to the public account-summary projection.
+Saved status leads the panel. **Administrar cuentas** mounts selection on demand,
+or opens automatically when a selection is required. Collapsing keeps its command
+and uncertain-outcome reconciliation lifetime; expansion does not discover accounts
+or import. Disabled import controls have an associated factual explanation.
+An uncertain selection also locks import while management is collapsed. Only a
+successful **Consultar selección guardada** read clears that lock; a synchronization
+status read alone does not resolve which accounts were saved.
+
+Authorization opens the same panel from settings or optional onboarding; neither
+path imports implicitly. **Consultar cuentas disponibles** explicitly discovers
+only minimal metadata. Choose supported accounts and separately opt into future
+automatic imports. **Confirmar e importar selección** saves one versioned set
+before starting the first import. Empty selection confirms a pause without deleting
+history. New accounts stay unselected; unavailable or missing selected accounts can
+be deselected. Server-disabled automation is disclosed even when intent is saved.
+Onboarding's `from=onboarding` context provides a fixed return link to `/comenzar`;
+there is no arbitrary return URL or separate banking workflow.
 
 **Importar datos disponibles** calls the explicit initial-import command; after a
 confirmed success, **Actualizar datos disponibles** replays the backend's bounded
@@ -234,7 +387,11 @@ A confirmed outcome reloads only the selected status; confirmed lifecycle fields
 can update the page-local connection projection without destroying the outcome.
 An ambiguous transport failure requires an explicit successful status read made
 after that failure before another write is enabled. A pre-response read cannot
-unlock a retry. There is no automatic polling or mutation replay. Closing a panel
+unlock a retry. The open panel makes at most twelve provider-free observation reads:
+every five seconds while a run is active, otherwise every thirty seconds while
+automatic imports are enabled and enrolled. Errors, scope changes and teardown
+cancel observation; its expiry leaves the explicit status-read button available.
+Observation never discovers, selects, enrolls or replays a mutation. Closing a panel
 stops waiting, not server processing; reopening reconciles its durable lease.
 Other financial pages read fresh data when navigated to, without a root cache.
 Server configuration/mode and authoritative status eligibility both gate imports;

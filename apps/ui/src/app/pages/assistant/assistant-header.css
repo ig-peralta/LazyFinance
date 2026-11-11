@@ -1,0 +1,174 @@
+.assistant-heading {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--line);
+  container-type: inline-size;
+}
+.assistant-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.assistant-brand > app-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--accent);
+}
+.assistant-brand :is(h1, h2) {
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+.assistant-modes {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--raised);
+  margin-right: auto;
+}
+.assistant-modes button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--text-caption);
+  font-weight: 500;
+  line-height: 1.4;
+  cursor: pointer;
+}
+.assistant-modes app-icon {
+  width: 15px;
+  height: 15px;
+}
+.assistant-modes button[aria-pressed="true"] {
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow:
+    0 1px 3px #0001,
+    inset 0 0 0 1px var(--line);
+}
+.assistant-modes button:not([aria-pressed="true"]):not(:disabled):hover {
+  background: var(--paper);
+  color: var(--ink);
+}
+.assistant .assistant-modes button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  background: var(--paper);
+  color: var(--ink);
+}
+.assistant-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.assistant-toolbar-button,
+.assistant-options > summary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px;
+  min-width: 40px;
+  min-height: 40px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--text-small);
+  cursor: pointer;
+  list-style: none;
+}
+.assistant-toolbar-button app-icon,
+.assistant-options app-icon {
+  width: 18px;
+  height: 18px;
+}
+.assistant-options > summary::-webkit-details-marker {
+  display: none;
+}
+.assistant-toolbar-button:hover,
+.assistant-options > summary:hover {
+  color: var(--ink);
+  background: var(--raised);
+}
+.assistant-options-content {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  right: 12px;
+  display: grid;
+  gap: 12px;
+  width: min(360px, calc(100vw - 58px));
+  max-height: 55dvh;
+  overflow: auto;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+  box-shadow: 0 12px 32px #0002;
+  font-size: var(--text-small);
+  line-height: 1.6;
+}
+.assistant-options-content p {
+  margin: 0;
+  color: var(--muted);
+}
+.assistant-options-content .text-link {
+  justify-self: start;
+  text-align: left;
+}
+.processing-disclosure p {
+  margin: 10px 0;
+}
+.processing-disclosure summary {
+  cursor: pointer;
+}
+@container (max-width: 540px) {
+  .assistant-heading:has(.assistant-modes) .assistant-brand {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+@container (max-width: 380px) {
+  .assistant-modes app-icon {
+    display: none;
+  }
+}
+@media (max-width: 720px) {
+  .assistant-heading {
+    padding: 8px 12px;
+    gap: 8px;
+  }
+  .assistant-toolbar-button {
+    min-width: 36px;
+    padding: 8px 6px;
+  }
+  .assistant-heading-actions {
+    gap: 0;
+  }
+}

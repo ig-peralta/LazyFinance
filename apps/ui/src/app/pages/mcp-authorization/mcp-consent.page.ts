@@ -1,4 +1,12 @@
-import { Component, computed, inject, resource, signal } from "@angular/core";
+import {
+  Component,
+  computed,
+  DestroyRef,
+  inject,
+  output,
+  resource,
+  signal,
+} from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
 import { ActivatedRoute, RouterLink } from "@angular/router";
 import {
@@ -9,11 +17,9 @@ import {
   AuthCredentials,
   type VerifiedCredentials,
 } from "../../core/auth/auth-credentials";
-import {
-  initialReadSettled,
-  reportWorkspaceReadiness,
-} from "../../core/rendering/workspace-preparation";
 import { createScopedCommand } from "../../core/rpc/scoped-command";
+import { McpClientIdentity } from "../../features/mcp-authorization/client-identity";
+import { mcpInteractionId } from "../../features/mcp-authorization/interaction-id";
 import {
   MCP_AUTH_NAVIGATE,
   OAuthInteractionClient,
@@ -21,17 +27,30 @@ import {
 
 @Component({
   selector: "mcp-consent-page",
-  imports: [RouterLink],
+  imports: [RouterLink, McpClientIdentity],
   templateUrl: "./mcp-consent.page.html",
+  styleUrl: "./mcp-consent.page.css",
 })
 export class McpConsentPage {
+  readonly switchAccount = output<void>();
+  private readonly now = signal(Date.now());
+  protected readonly expired = computed(() => {
+    const request = this.consent();
+    return !!request && Date.parse(request.expiresAt) <= this.now();
+  });
+  protected readonly time = (value: string) =>
+    new Intl.DateTimeFormat("es-CL", {
+      timeZone: "America/Santiago",
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(value));
   protected readonly credentials = inject(AuthCredentials);
   private readonly interaction = inject(OAuthInteractionClient);
   private readonly navigate = inject(MCP_AUTH_NAVIGATE);
   private readonly query = toSignal(inject(ActivatedRoute).queryParamMap);
   protected readonly id = computed(() => {
     const value = this.query()?.get("interaction");
-    return value && /^[A-Za-z0-9_-]{1,256}$/.test(value) ? value : undefined;
+    return mcpInteractionId(value);
   });
   protected readonly command = createScopedCommand(() => this.id());
   private readonly writeSelection = signal<{
@@ -87,16 +106,13 @@ export class McpConsentPage {
       ? value.consent
       : undefined;
   });
-  protected readonly callbackHost = computed(() => {
-    const consent = this.consent();
-    return consent ? new URL(consent.redirectUri).host : "";
-  });
   protected readonly localCallback = computed(() =>
     this.consent()?.redirectUri.startsWith("http:"),
   );
   protected readonly canDecide = computed(
     () =>
       !!this.consent() &&
+      !this.expired() &&
       !this.preview.isLoading() &&
       !this.preview.error() &&
       !this.command.pending() &&
@@ -104,9 +120,8 @@ export class McpConsentPage {
   );
 
   constructor() {
-    reportWorkspaceReadiness(
-      () => !this.id() || initialReadSettled(this.preview),
-    );
+    const clock = setInterval(() => this.now.set(Date.now()), 1000);
+    inject(DestroyRef).onDestroy(() => clearInterval(clock));
   }
 
   protected async decide(approve: boolean) {

@@ -28,10 +28,7 @@ describe.skipIf(!integration)(
             reversedMovements: 1,
             uncertainMovements: 7,
             unknownCardBalances: ["acc_card"],
-            skippedAccounts: [
-              { externalId: "acc_usd", reason: "unsupported_currency" },
-              { externalId: "acc_line", reason: "unsupported_type" },
-            ],
+            skippedAccounts: [],
           },
         });
         expect(await f.first.accounts.list.query()).toEqual(
@@ -219,6 +216,21 @@ describe.skipIf(!integration)(
         expect(failed.checkpoint).toBeNull();
         f.onRead.mockReset();
         f.state.failMovements = false;
+        expect(await f.run()).toMatchObject({ status: "retry_later" });
+        // Advance only the disposable fixture's waiting period; production
+        // recovery cannot bypass persisted application/provider backoff.
+        await f.db.update(
+          "provider_sync_state",
+          f.connected.id,
+          { retryAfter: new Date(Date.now() - 1).toISOString() },
+          "providerConnectionId",
+        );
+        await f.db.update(
+          "provider_account_selection",
+          f.connected.id,
+          { readRetryAfter: new Date(Date.now() - 1).toISOString() },
+          "connectionId",
+        );
         expect(await f.run()).toMatchObject({ status: "complete" });
         const good = (
           await f.db.rows("provider_sync_state", {

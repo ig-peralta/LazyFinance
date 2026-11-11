@@ -11,9 +11,18 @@ const paths = {
   bank: "M3 9h18L12 3 3 9z M5 10v8 M10 10v8 M14 10v8 M19 10v8 M3 21h18",
   security: "M12 3l8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3z M8 12l3 3 5-6",
   menu: "M4 6h16 M4 12h16 M4 18h16",
+  panel: "M3 4h18v16H3z M8 4v16 M5 8h.01 M5 12h.01 M5 16h.01",
+  appearance:
+    "M12 3v2 M12 19v2 M3 12h2 M19 12h2 M5.6 5.6 7 7 M17 17l1.4 1.4 M5.6 18.4 7 17 M17 7l1.4-1.4 M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0",
   close: "M6 6l12 12 M6 18 18 6",
   arrow: "M4 12h16 M14 6l6 6-6 6",
   plus: "M12 5v14 M5 12h14",
+  more: "M5 12h.01 M12 12h.01 M19 12h.01",
+  message:
+    "M21 11a8 8 0 0 1-8 8H7l-4 3V7a4 4 0 0 1 4-4h6a8 8 0 0 1 8 8 M7 8h10 M7 12h7",
+  history: "M3 11a9 9 0 1 1 2.6 7 M3 4v7h7 M12 7v5l3 2",
+  edit: "M16 3l5 5 M4 15L16 3l5 5L9 20l-6 1 1-6z",
+  archive: "M3 4h18v4H3z M5 8v12h14V8 M10 12h4",
   check: "M5 12l4 4L19 6",
   logout: "M9 3H4v18h5 M9 12h12 M16 7l5 5-5 5",
   search: "M20 20l-5-5 M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0",
@@ -24,6 +33,8 @@ const paths = {
     "M20 10a8 8 0 0 0-14-5L3 8 M3 3v5h5 M4 14a8 8 0 0 0 14 5l3-3 M21 21v-5h-5",
   info: "M12 11v6 M12 7h.01 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0",
   spark: "M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5L12 3z",
+  microphone:
+    "M9 6a3 3 0 0 1 6 0v6a3 3 0 0 1-6 0V6 M5 10v2a7 7 0 0 0 14 0v-2 M12 19v3 M8 22h8",
 } as const;
 
 export type IconName = keyof typeof paths;

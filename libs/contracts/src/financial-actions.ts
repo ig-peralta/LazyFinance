@@ -31,14 +31,31 @@ export const MCP_PERMISSION_LABELS: Record<
   offline_access: "Mantener acceso hasta su vencimiento o revocación",
 };
 
-const selection = {
-  tagIds: z.array(z.uuid()).max(50).default([]),
-  newTags: z.array(TagCreateInputSchema).max(5).default([]),
-};
-const selected = (value: { tagIds: string[]; newTags: { name: string }[] }) =>
-  value.tagIds.length + value.newTags.length > 0 &&
-  new Set(value.tagIds).size === value.tagIds.length &&
-  new Set(value.newTags.map((tag) => tag.name)).size === value.newTags.length;
+const tagIds = z
+  .array(z.uuid())
+  .max(50)
+  .refine((ids) => new Set(ids).size === ids.length, "Select distinct tags");
+const newTags = z
+  .array(TagCreateInputSchema)
+  .max(5)
+  .refine(
+    (tags) => new Set(tags.map((tag) => tag.name)).size === tags.length,
+    "Select distinct new tags",
+  );
+
+// The non-empty selection must survive JSON Schema conversion for model tools,
+// not only Zod's runtime refinement. Neither alternative permits a tagless goal.
+const selectedObjective = <Shape extends z.ZodRawShape>(
+  fields: z.ZodObject<Shape>,
+) =>
+  z
+    .union([
+      fields.extend({ tagIds: tagIds.min(1), newTags: newTags.default([]) }),
+      fields.extend({ tagIds: tagIds.default([]), newTags: newTags.min(1) }),
+    ])
+    .describe(
+      "Requiere al menos una etiqueta existente en tagIds o una etiqueta nueva en newTags. No admite presupuestos ni metas sin etiquetas.",
+    );
 
 export const TagActionRequestSchemas = [
   z.strictObject({ kind: z.literal("create_tag"), tag: TagCreateInputSchema }),
@@ -57,15 +74,11 @@ export const TagActionRequestSchemas = [
 export const FinancialActionRequestSchema = z.discriminatedUnion("kind", [
   z.strictObject({
     kind: z.literal("create_budget"),
-    budget: CreateBudgetInputSchema.omit({ tagIds: true })
-      .extend(selection)
-      .refine(selected, "Select at least one distinct tag"),
+    budget: selectedObjective(CreateBudgetInputSchema.omit({ tagIds: true })),
   }),
   z.strictObject({
     kind: z.literal("create_savings_goal"),
-    goal: CreateSavingsGoalSchema.omit({ tagIds: true })
-      .extend(selection)
-      .refine(selected, "Select at least one distinct tag"),
+    goal: selectedObjective(CreateSavingsGoalSchema.omit({ tagIds: true })),
   }),
   ...TagActionRequestSchemas,
 ]);

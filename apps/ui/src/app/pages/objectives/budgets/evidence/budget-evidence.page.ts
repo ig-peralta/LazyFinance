@@ -76,6 +76,30 @@ export class BudgetEvidencePage {
       return null;
     }
   });
+  protected readonly backQuery = computed(() => {
+    const parsed = this.parsed();
+    return {
+      month: this.page.hasValue()
+        ? this.page.value().month
+        : parsed.success
+          ? parsed.data.month
+          : undefined,
+    };
+  });
+  protected readonly movementContext = computed(() => {
+    const selection = this.selection();
+    if (!selection || !this.page.hasValue()) return null;
+    const page = this.page.value();
+    return {
+      returnTo: "budget-evidence",
+      budget: selection.input.id,
+      revision: selection.input.revisionId,
+      month: page.month,
+      asOf: page.tracking.asOf,
+      adjustmentsAsOf: page.tracking.adjustmentsAsOf,
+      reported: this.reported() ?? undefined,
+    };
+  });
   protected readonly reconciles = computed(() =>
     this.reported() !== null && this.page.hasValue()
       ? moneyCents(this.reported() ?? "0") ===

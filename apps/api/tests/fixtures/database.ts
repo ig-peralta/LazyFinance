@@ -1,4 +1,6 @@
 import type {
+  BankingAutomation,
+  BankingSelection,
   BudgetRevision,
   IncomeExpectation,
   ObjectiveSummary,
@@ -138,6 +140,25 @@ interface FixtureTables {
     confirmedAt: string;
   };
   provider_sync_state: ProviderSyncFacts["state"];
+  provider_account_selection: BankingSelection & {
+    userId: string;
+    credentialVersion: number | null;
+  };
+  provider_sync_schedule: {
+    connectionId: string;
+    userId: string;
+    mode: "test" | "live";
+    credentialVersion: number;
+    selectionVersion: number;
+    eligible: boolean;
+    nextAttemptAt: string | null;
+    failureCount: number;
+    pauseReason: BankingAutomation["pauseReason"];
+    claimId: string | null;
+    claimExpiresAt: string | null;
+    runRevision: number | null;
+    attempts: Date[];
+  };
   provider_movement_removal: ProviderSyncFacts["removals"][number];
   provider_movement_conflict: {
     transactionId: string;
@@ -157,6 +178,7 @@ type Stored<TableName extends Table> = {
   [Column in keyof FixtureTables[TableName]]: Column extends
     | `${string}At`
     | "retryAfter"
+    | "readRetryAfter"
     ? Timestamp<FixtureTables[TableName][Column]>
     : FixtureTables[TableName][Column];
 };
@@ -207,6 +229,8 @@ const schemas = {
   savings_revision_tag: "finance",
   expense_adjustment: "finance",
   provider_sync_state: "finance",
+  provider_account_selection: "finance",
+  provider_sync_schedule: "finance",
   provider_movement_removal: "finance",
   provider_movement_conflict: "finance",
 } as const satisfies Record<Table, "identity" | "finance">;

@@ -1,4 +1,11 @@
-import { Component, effect, inject, input, output } from "@angular/core";
+import {
+  Component,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+} from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { SetTagSchema, type TransactionDetail } from "@lazyfinance/contracts";
 import { createScopedCommand } from "../../../../core/rpc/scoped-command";
@@ -15,7 +22,8 @@ export class TransactionCorrections {
   readonly saved = output<string>();
   readonly cancelled = output<void>();
   protected readonly tags = inject(TagsData).tags;
-  protected readonly command = createScopedCommand();
+  protected readonly command = createScopedCommand(() => this.item().id);
+  protected readonly needsCheck = signal(false);
   protected selection = "none";
   protected internal = "provider";
 
@@ -32,13 +40,14 @@ export class TransactionCorrections {
     });
   }
 
-  protected setTag() {
+  protected async setTag() {
+    if (this.needsCheck() || this.unavailableSelection()) return;
     const parsed = SetTagSchema.safeParse({
       transactionId: this.item().id,
       tagId: this.selection === "none" ? null : this.selection,
     });
     if (!parsed.success || this.item().removedAt) return;
-    void this.command.run(
+    const confirmed = await this.command.run(
       (scope, signal) =>
         scope.client.tags.decide.mutate(parsed.data, { signal }),
       () =>
@@ -46,11 +55,12 @@ export class TransactionCorrections {
           "Etiqueta corregida. Los gastos y presupuestos se recalcularán con esta selección.",
         ),
     );
+    this.checkOutcome(confirmed);
   }
 
-  protected resetTag() {
-    if (this.item().removedAt) return;
-    void this.command.run(
+  protected async resetTag() {
+    if (this.item().removedAt || this.needsCheck()) return;
+    const confirmed = await this.command.run(
       (scope, signal) =>
         scope.client.tags.reset.mutate({ id: this.item().id }, { signal }),
       () =>
@@ -58,18 +68,20 @@ export class TransactionCorrections {
           "Decisión manual restablecida. El movimiento vuelve a quedar sin revisar.",
         ),
     );
+    this.checkOutcome(confirmed);
   }
 
-  protected setInternal() {
+  protected async setInternal() {
     if (
       this.item().removedAt ||
+      this.needsCheck() ||
       !["provider", "internal", "external"].includes(this.internal)
     )
       return;
     const id = this.item().id,
       isInternalMovement =
         this.internal === "provider" ? null : this.internal === "internal";
-    void this.command.run(
+    const confirmed = await this.command.run(
       (scope, signal) =>
         scope.client.transactions.setInternalMovement.mutate(
           { id, isInternalMovement },
@@ -79,6 +91,20 @@ export class TransactionCorrections {
         this.saved.emit(
           "Clasificación corregida. Se revisarán gastos, presupuestos y elegibilidad de ingresos sin alterar los hechos bancarios.",
         ),
+    );
+    this.checkOutcome(confirmed);
+  }
+
+  private checkOutcome(confirmed: boolean) {
+    if (!confirmed && this.command.error()?.startsWith("No pudimos confirmar"))
+      this.needsCheck.set(true);
+  }
+
+  protected unavailableSelection() {
+    return (
+      this.selection !== "none" &&
+      this.tags.hasValue() &&
+      !this.tags.value().some((tag) => tag.id === this.selection)
     );
   }
 }

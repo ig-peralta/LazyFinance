@@ -1,26 +1,26 @@
 :host {
   display: block;
-  margin-block: 18px;
+  margin-block: 16px;
 }
 
 .sync-panel {
   padding: clamp(16px, 3vw, 24px);
   border: 1px solid var(--line);
-  border-radius: 18px;
+  border-radius: 16px;
   background: var(--surface-soft, rgba(255, 255, 255, 0.025));
   overflow-wrap: anywhere;
 }
 
 h4 {
-  font-size: 18px;
+  font-size: 1.125rem;
 }
 
 h5 {
-  font-size: 15px;
+  font-size: 1rem;
 }
 
 .sync-actions {
-  margin-block: 18px 12px;
+  margin-block: 16px 12px;
 }
 
 .sync-actions .button {
@@ -38,12 +38,12 @@ h5 {
 .sync-report p,
 .sync-summary > p,
 .sync-accounts p {
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 .sync-report {
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--text-control);
   line-height: 1.7;
 }
 
@@ -51,31 +51,31 @@ h5 {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: 16px;
-  margin-block: 18px;
+  margin-block: 16px;
 }
 
 .sync-facts dt {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--text-small);
 }
 
 .sync-facts dd {
-  margin-top: 6px;
-  font-size: 14px;
+  margin-top: 8px;
+  font-size: var(--text-body);
 }
 
 .sync-accounts {
   display: grid;
   gap: 16px;
   list-style: none;
-  margin-top: 22px;
+  margin-top: 24px;
   padding: 0;
 }
 
 .sync-accounts li {
   padding-top: 16px;
   border-top: 1px solid var(--line);
-  font-size: 13px;
+  font-size: var(--text-control);
   line-height: 1.7;
 }
 

@@ -2,9 +2,9 @@
   <div>
     <p class="eyebrow">TU CUENTA, TUS AUTORIZACIONES</p>
     <h1>Conexiones bancarias<span class="accent-text">.</span></h1>
-    <p class="page-description">Conecta tus bancos y administra sus permisos de acceso. Esta configuración siempre está disponible en Mi cuenta, aunque hayas saltado la guía inicial.</p>
+    <p class="page-description">Conecta un banco para elegir qué cuentas seguir. Autorizar el acceso no importa datos.</p>
   </div>
-  <a class="button" routerLink="/cuentas"><app-icon name="wallet" /> Ver cuentas y saldos</a>
+  <div class="button-row">@if (fromOnboarding()) { <a class="button" routerLink="/comenzar">Volver a primeros pasos</a> }<a class="button" routerLink="/cuentas"><app-icon name="wallet" /> Ver cuentas y saldos</a></div>
 </header>
 
 <section class="panel" aria-labelledby="banking-title">
@@ -40,7 +40,7 @@
     <p class="notice warning">Fintoc no está habilitado en este servidor. Puedes consultar tus registros y solicitar una desconexión; la limpieza remota quedará pendiente hasta que el servidor esté configurado.</p>
   }
 
-  <div class="notice"><strong>Conectar, importar y comprobar acceso son acciones distintas.</strong> En Datos y sincronización puedes traer saldos y movimientos desde el día de vinculación en Santiago, sin importar los días anteriores. No forzamos al banco a actualizarlos. Comprobar acceso no vuelve actuales los saldos guardados.</div>
+   <details class="section-disclosure"><summary>Conectar y actualizar son pasos separados</summary><p class="record-meta">En Datos y sincronización puedes traer saldos y movimientos desde el día de vinculación en Santiago, sin importar los días anteriores. No forzamos al banco a actualizarlos. Comprobar acceso no vuelve actuales los saldos guardados.</p></details>
   @if (notice() || command.success()) {
     <p class="notice" role="status">{{ notice() || command.success() }}</p>
   }
@@ -66,7 +66,7 @@
   } @else if (!data.connections.value().length) {
     <div class="connection-empty">
       <app-icon name="bank" /><h3>Aún no hay conexiones guardadas</h3>
-      <p class="record-meta">Cuando autorices un banco, su acceso aparecerá aquí. Después podrás importar explícitamente los datos disponibles y consultar su antigüedad.</p>
+      <p class="record-meta">Usa Conectar banco para empezar. Después elige las cuentas y confirma su primera importación.</p>
     </div>
   } @else {
     <ul class="record-list" aria-label="Conexiones bancarias de tu cuenta">
@@ -97,7 +97,7 @@
           @if (!compatible(bank) && !bank.disconnectedAt) {
             <p class="field-hint">No podemos comprobar o revincular esta conexión con la configuración disponible. La desconexión local sigue disponible.</p>
           }
-          <div class="button-row connection-actions">
+          <div class="row-actions connection-actions">
             <button class="button small" type="button" [disabled]="busy()"
               [attr.aria-label]="'Ver datos y sincronización de ' + bank.institution.name"
               [attr.aria-expanded]="selectedSync() === bank.id" [attr.aria-controls]="selectedSync() === bank.id ? 'bank-sync-' + bank.id : null"
@@ -108,14 +108,16 @@
               <button class="button small" type="button" [attr.aria-label]="'Revincular ' + bank.institution.name"
                 [disabled]="busy() || !compatible(bank)" (click)="connect(bank)">Revincular</button>
             }
-            @if (!bank.disconnectedAt || bank.disconnectPending) {
+          </div>
+          @if (!bank.disconnectedAt || bank.disconnectPending) {
+            <div class="danger-actions">
               <button class="button small danger" type="button"
                 [attr.aria-label]="(bank.disconnectPending ? 'Completar desconexión de ' : 'Desconectar ') + bank.institution.name"
                 [disabled]="busy()" (click)="confirmDisconnect(bank, $event)">{{ bank.disconnectPending ? 'Completar desconexión' : 'Desconectar' }}</button>
-            }
-          </div>
+            </div>
+          }
           @if (selectedSync() === bank.id) {
-            <bank-sync-panel [connection]="bank" [enabled]="compatible(bank)" [locked]="command.pending() || !!activeFlow() || !!confirming()"
+            <bank-sync-panel [connection]="bank" [enabled]="compatible(bank)" [automaticEnabled]="!!configuration()?.automaticSyncEnabled" [locked]="command.pending() || !!activeFlow() || !!confirming()"
               (stateRead)="data.adoptStatus($event)" (pendingChange)="syncPending(bank, $event)" (closed)="closeSync(bank)" />
           }
           @if (confirming()?.id === bank.id) {

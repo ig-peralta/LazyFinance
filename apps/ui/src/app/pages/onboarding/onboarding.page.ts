@@ -48,20 +48,22 @@ export class OnboardingPage {
     {
       title: "Conoce tus cuentas",
       description:
-        "Conecta tu banco desde Mi cuenta → Conexiones bancarias. La importación de saldos y movimientos todavía está pendiente.",
+        "Conecta un banco, elige las cuentas y confirma su primera importación.",
       path: "/conexiones-bancarias",
+      queryParams: { from: "onboarding" },
       icon: "bank" as const,
       action: "Conectar banco",
       loading: this.accounts.isLoading(),
       error: !!this.accounts.error(),
       done: this.accounts.hasValue() && this.accounts.value().length > 0,
-      blocked: true,
+      blocked: false,
     },
     {
       title: "Dale forma a tus ingresos",
       description:
         "Declara una fuente y su calendario. Planificar no confirma ingresos recibidos.",
       path: "/ingresos/fuentes",
+      queryParams: { from: "onboarding" },
       icon: "income" as const,
       loading: this.sources.isLoading(),
       error: !!this.sources.error(),
@@ -72,9 +74,9 @@ export class OnboardingPage {
     },
     {
       title: "Elige un límite que te ayude",
-      description:
-        "Crea un presupuesto de gasto con etiquetas. Puedes organizar las etiquetas primero.",
+      description: "Define cuánto quieres gastar y qué etiquetas incluir.",
       path: "/presupuestos-y-metas",
+      queryParams: { from: "onboarding" },
       icon: "wallet" as const,
       loading: this.objectives.isLoading(),
       error: !!this.objectives.error(),
@@ -86,8 +88,9 @@ export class OnboardingPage {
     {
       title: "Ponle nombre a una meta",
       description:
-        "Define tu objetivo de ahorro. Solo los registros seleccionados medirán su asignación.",
+        "Define un objetivo de ahorro y los registros que medirán su avance.",
       path: "/metas",
+      queryParams: { from: "onboarding" },
       icon: "target" as const,
       loading: this.objectives.isLoading(),
       error: !!this.objectives.error(),
@@ -117,7 +120,7 @@ export class OnboardingPage {
       this.onboarding.state.reload();
     effect(() => {
       if (this.onboarding.status() === "completed")
-        void this.router.navigateByUrl("/dashboard", { replaceUrl: true });
+        void this.router.navigateByUrl("/asistente", { replaceUrl: true });
     });
   }
 
@@ -129,7 +132,7 @@ export class OnboardingPage {
         // Setting the resource cancels any older read before it can restore a hint.
         this.onboarding.state.set(state);
         if (state.status !== "completed")
-          void this.router.navigateByUrl("/dashboard");
+          void this.router.navigateByUrl("/asistente");
       },
     );
   }

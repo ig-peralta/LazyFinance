@@ -213,7 +213,7 @@ describe("LoginPage", () => {
       "mock-session-token",
       expect.any(AbortSignal),
     );
-    expect(navigate).toHaveBeenCalledWith("/dashboard");
+    expect(navigate).toHaveBeenCalledWith("/asistente");
     expect(fixture.nativeElement.textContent).toContain(principal.name);
 
     (
@@ -256,7 +256,7 @@ describe("LoginPage", () => {
     google.click();
     await fixture.whenStable();
     expect(loginWithGoogle).toHaveBeenCalledOnce();
-    expect(navigate).toHaveBeenCalledWith("/dashboard");
+    expect(navigate).toHaveBeenCalledWith("/asistente");
   });
 
   it("preserves a restored Firebase session on the login page", async () => {
@@ -273,6 +273,24 @@ describe("LoginPage", () => {
       fixture.detectChanges();
       expect(navigate).toHaveBeenCalledWith("/etiquetas");
     });
+  });
+
+  it.each([
+    "mock",
+    "firebase",
+  ] as const)("never redirects a restored %s account out of embedded MCP sign-in", async (provider) => {
+    const { fixture, navigate, loginMock, loginWithGoogle } = setup(
+      provider,
+      false,
+      true,
+      "/dashboard",
+    );
+    fixture.componentRef.setInput("mcpMode", true);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(navigate).not.toHaveBeenCalled();
+    expect(loginMock).not.toHaveBeenCalled();
+    expect(loginWithGoogle).not.toHaveBeenCalled();
   });
 
   it("does not establish a session when mock login is rejected", async () => {
@@ -392,7 +410,7 @@ describe("LoginPage", () => {
     expect(resendVerification).toHaveBeenCalledOnce();
     await fixture.componentInstance.checkVerification();
     expect(checkEmailVerification).toHaveBeenCalledOnce();
-    expect(navigate).toHaveBeenCalledExactlyOnceWith("/dashboard");
+    expect(navigate).toHaveBeenCalledExactlyOnceWith("/asistente");
   });
 
   it("rejects mismatched registration passwords without calling Firebase or retaining the inputs", async () => {

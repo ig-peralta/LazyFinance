@@ -123,8 +123,9 @@ Empty data, loading and failure are distinct states, even where a resource has
 an empty-array default. Use `hasValue()` before accessing a resource that has no
 default or is in an error state.
 
-The activity resource requests `transactions.list` with `{ limit: 10 }` and renders
-only that first page. It deliberately does not follow `pageInfo.nextCursor`,
+The activity resource requests `transactions.list` with `{ limit: 10 }`. Its compact
+view renders five rows; expansion reveals the rest of that same loaded page without
+a request. It deliberately does not follow `pageInfo.nextCursor`,
 accumulate pages or expose pagination controls. The full history page owns a separate
 URL-filtered cursor trail. Its scope cancellation,
 retry and confirmed-decision overlay apply to the page's items unchanged.
@@ -168,14 +169,27 @@ rather than being shown as a misleading successful rule operation.
 
 External MCP consent uses the same accepted-credential and component lifetimes,
 but a fixed cookie-bound HTTP interaction rather than generic RPC. Its dedicated
-client includes API cookies only on that path, validates the interaction ID and
-issuer resume destination, and expires only the exact snapshot that received a
+standalone `/autorizar-mcp` route owns one connection page. It reuses `LoginPage`
+in an explicitly labelled, embedded connection context, then displays consent in
+place after verified account authentication settles. The parent keys the form to
+the validated interaction: replacement unmounts the form, clears passwords and
+aborts obsolete sign-in. The embedded form never follows a redirect or opens a
+second login route. Restored accounts skip sign-in, never permission approval.
+Account switching waits for logout and keeps the same URL and interaction. No
+workspace entrance animation, dashboard, onboarding or financial reads run in this
+flow. The interaction's dedicated client includes API cookies only on that path,
+validates the interaction ID and issuer resume destination, and expires only the
+exact snapshot that received a
 401. Approval/denial is explicit and an uncertain result is not resubmitted.
 Requested financial write scopes start unchecked and remain bound to the accepted
 owner/interaction. Only selected capabilities are submitted; connected-app settings
 show actual grants. MCP writes do not use the first-party chat approval cards.
 Connected-app settings use page-owned RPC resources and a scoped revoke command
-with confirmation and keyboard focus return. Neither page stores external access/
+with confirmation and keyboard focus return. A failed revoke keeps writes locked
+until a successful explicit later grant read; a failed reconciliation cannot
+unlock another attempt. Local-only decorative client artwork has a two-second
+fallback deadline and never gates page readiness. Exact client IDs/callbacks and
+unverified identity remain readable even without an image. Neither page stores external access/
 refresh tokens or serializes protected data into hydration. Server-side persisted
 single-use decisions and grant ownership remain authoritative; see
 [MCP authorization](mcp-authorization.md).
@@ -208,6 +222,21 @@ Savings evidence compares the returned goal version with its measurement; change
 versions require a fresh read. The dashboard measures only one featured goal;
 lists do not issue an unbounded per-goal measurement/suggestion fan-out on entry.
 
+### Bounded workflow navigation
+
+Budget and income month selections react to validated URL query parameters before
+their first visible resource read. Invalid values fall back to the current/default
+month; budget selection also rejects future months. Navigation restores selection,
+not a private editor draft or a cross-page financial cache.
+
+`core/navigation/return-context.ts` accepts only fixed movement-detail return kinds:
+`budget-evidence` validates the budget/revision UUIDs, month and ISO observation
+cutoffs; `income` accepts only a valid optional month. No return URL is accepted.
+Unknown/invalid kinds fall back to `/movimientos` without carrying their parameters.
+Ordinary ledger entry preserves only its known filter keys. Evidence emits returned
+cutoffs and returns to progress with its selected month, not a cursor snapshot or
+ledger-filter approximation. All destinations still perform owned reads normally.
+
 Optional setup progress is derived from owned account/source/objective reads.
 `OnboardingData` is a deliberate application/render-local exception for small
 non-financial account metadata shared by the shell, dashboard hint and guide;
@@ -228,8 +257,59 @@ resource to the confirmed result cancels an older read so it cannot restore a
 prompt. Ambiguous failures remain unconfirmed and offer an explicit state check,
 not automatic mutation replay. Completion closes the optional guide, not a claim
 that optional financial steps or bank import are complete.
+Setup destinations use only the fixed `from=onboarding` return to `/comenzar`.
 
 ## Financial assistant lifetime
+
+The shell mounts `AssistantPage` once on first open, outside the route outlet.
+Its persistent top-bar control remains mounted before and after deferred loading,
+and is hidden on home; there is no passive floating launcher over financial actions.
+The shell passes that element as the focus-return fallback when the original
+invoker is unavailable.
+Before deferred code mounts, the shell owns loading/error cancellation focus and
+returns it to that control after removing background inertness.
+`AssistantWorkspace.open()/minimize()/toggle()` restores/focuses that same instance
+without sending or reloading a turn. `/asistente` is an entry/deep-link component,
+not a second chat host. It owns only the ordinary scoped snapshot above the
+inline conversation; summary loading is independent of consent/model availability.
+The summary is a compact disclosure rather than a hero/card grid. The home shell
+uses the available viewport height, with scrolling owned by the message area and
+the composer kept on screen. No permanent result column or conversation/results tabs reduce that
+default chat area. The ordinary workspace footer and redundant home launcher do
+not occupy the conversation viewport.
+The same instance docks beside other pages. Minimize keeps the text draft/selection/generation in memory;
+Close panel clears them and stops generation without deleting server history.
+Full reload discards private browser state and reads saved history through the API.
+Owner/credential changes clear private state; no chat cache/storage is introduced.
+The panel owns `AssistantConsentData`: account-scoped reads plus explicit revisioned
+decisions, never a browser-stored permission. Missing/refused/outdated decisions
+show a dedicated entry screen. Reopening checks saved consent while retaining an
+already-authorized composer, selection, focus and opened query details; new sends
+wait for that check. Confirmed acceptance opens chat but never sends or starts
+voice. Refusal minimizes a docked panel, not the home snapshot; history-only entry
+still permits owned reading/deletion.
+An uncertain save blocks local processing until an explicit causal state read;
+ordinary reopening or stale reads cannot reconcile it. Withdrawal immediately
+invalidates deferred creation and local text/voice, without claiming server rollback
+or remote cancellation on other devices.
+The inline/docked region leaves financial navigation available. Narrow screens
+outside home use a full-screen modal with inert background and Tab containment;
+both support Escape, focus return and safe areas. First-answer anchoring occurs
+once; later streamed updates, history and requested query details preserve the
+reading position. An explicit jump control is separate from automatic anchoring.
+It is an icon-only down arrow centered at the bottom of the message pane, not a
+text button in the corner. Activity text sits quietly above the input, aligned
+with the composer; its polite live announcement remains available to assistive
+technology. Progress/help/timestamp text uses a softer tone without dimming errors,
+financial amounts or approval controls.
+Message timestamps show only the time for today's Santiago calendar day; older
+messages retain date and time. Source observation and banking timestamps keep
+their full dates, so this presentation rule never hides evidence freshness.
+Both change only the message pane's scroll position, never a clipped ancestor;
+the chat surface itself is not a scroll container, so the composer stays pinned
+through pending, streamed and stopped replies.
+The history drawer focuses its close control and makes the covered chat surface
+inert until dismissed.
 
 `AssistantPage` owns configuration/history/detail resources and a credential-,
 selection- and component-bound streamed turn. Creation, deletion and duplicate-send
@@ -239,21 +319,65 @@ snapshot on 401, validates matching turn IDs/questions and requires a persisted
 non-pending `done`. Fragmented UTF-8 is supported; malformed, excessive, foreign or
 out-of-order events fail closed. No browser history or owner is sent to the model.
 
-Stop, logout, credential replacement, chat navigation and destruction abort old
+Stop, logout, credential replacement, conversation replacement and destruction abort old
 work and suppress late callbacks. Stop/disconnection never implies rollback;
 failed/missing confirmation is reconciled through an explicit history read, not
 generation replay. Pending saved turns block another question. User/answer/source
 data and drafts are not stored in cookies, browser storage or transfer state.
-References are separate financial cards projected from validated stored results,
+Ordinary authenticated route navigation retains text work, but ends live microphone
+capture. Voice also ends on minimize, hidden tab, device loss and session changes;
+late permission/events cannot revive capture or adopt another owner's transcript.
+Native voice turns use an independent persisted conversation ID, separate
+authenticated observation stream, server-executed tools and the same lease policy
+and approvals. Text/voice have separate accepted-scope resources and retained turn
+buffers; text history lists never request voice sessions. Native audio never invokes
+the text stream, and completed text answers never trigger literal read-aloud.
+Separate input ASR, transcript handlers, browser caption signals and saved speech
+replay are intentionally unwired for cost/privacy. New voice turns have an
+immutable lease question, empty answer text and saved sources/actions/status only.
+Native output metadata is checked transiently server-side for grounding, not
+streamed to the browser. Legacy `turn.voice` records remain readable but unchanged.
+The **Texto / Voz** controls switch independent views. Returning to text stops capture,
+closes voice details and preserves the original text selection/draft, without
+inserting voice messages or their proposals. Ending capture retains proposal/query
+review in the voice view without exposing transcripts. Returning to that view does
+not capture; resumption requires explicit microphone start again. Ending an in-flight
+turn reconciles the owned voice read rather than replaying it. Pending voice review
+blocks replacing that voice session; text history remains independent.
+One centered accessible problem card distinguishes admission, permission, setup,
+connection and incomplete-answer failures. No duplicate footer alert or ended-session
+boilerplate is shown. Retry requires explicit capture confirmation; rate/capacity
+cooldowns gate voice starts, not text sends. A nonfatal warning leaves a healthy
+call usable without replay. Local capture ends immediately, while a separate
+closing signal waits for server termination; closure refreshes saved voice state
+again after that asynchronous work, so an early pending read cannot leave text
+blocked after finalization. Unresolved pending records still require reconciliation.
+See the [voice privacy/lifetime contract](assistant-live-voice.md).
+After saved processing acceptance, voice has no repeated consent checkbox. Only
+the separate explicit microphone-start control can initiate capture. Availability
+loading/error/disabled states are available in the options disclosure with a
+readonly retry; refresh includes that resource.
+Empty conversations also show a large central voice entry, opening the same
+explicit start disclosure without requesting capture.
+References are financial cards projected from validated stored results,
 not raw JSON or model-authored markup. They retain uncertainty/cutoff disclosures,
-show at most four rows with a preview notice, and use service totals rather than
-page sums. Trusted links open the relevant section or owned detail; budget evidence
-retains the revision, month and observation cutoffs. Current sources explicitly use
+show up to 100 rows in the on-demand query detail view, and use service totals
+rather than page sums. Trusted links open the relevant section or owned detail;
+budget evidence retains the revision, month and observation cutoffs. Current sources explicitly use
 null for section-level targets; all turns include their action array. Missing fields
 are not upgraded from earlier development formats. Model-generated source codes
 are hidden in rendered/copied replies; original evidence remains stored.
-Action cards are separate from prose/reference cards. They show saved fields,
-current decisions and effects; only an explicit button submits the saved ID/version.
+Action cards appear inline with text replies, without duplicating approval controls
+in source details. Native voice can reveal its proposal in that same optional
+detail surface while mute/end controls and mode switching remain available. Review shows one
+request at a time, with explicit access to older requests. Owner/selection-scoped
+in-memory turn retention bridges history reloads and rapid voice turns; older
+snapshots cannot downgrade a revision or applied receipt. This is not browser
+storage or an independent financial authority. `action_updated` updates the
+original card for voice/text corrections without duplicating approval controls. The
+presentation-only `AssistantVoiceStage` shares the page-owned voice client; it does
+not own capture. The cards show saved fields, current decisions and effects; only
+an explicit button submits the saved ID/version.
 Editing saves a new unapproved revision, and stale/expired selections require
 review. A model answer or conversational agreement cannot authorize execution.
 Component-owned scoped commands prevent duplicate clicks and suppress obsolete
@@ -261,6 +385,14 @@ results. After ambiguous responses the card blocks further writes and offers an
 explicit action-status read, never an automatic mutation retry. Confirmed outcomes
 reload chat snapshots from the ledger and link to saved results. Deleting chat or
 stopping a stream does not undo financial changes or delete durable receipts.
+The next server turn receives fresh, bounded action outcomes independently of the
+recent-message window, never a browser assertion of success. Query-detail selection is
+memory-only and is cleared on owner/conversation changes; details are not mounted
+until explicitly requested or a native voice proposal needs visual review. Privacy,
+voice availability and deletion live under the single options disclosure. Closing
+details restores focus to their opener or the active text/voice control. Ordinary
+source observations retain their query timestamp and are not silently relabelled
+as current data.
 
 Model-generated HTML/links/images are inactive. The small Markdown presentation
 component prefixes its unencapsulated styles with its own host tag so sanitized
@@ -310,6 +442,24 @@ Its credential/ID/read-version resource calls readonly `banking.syncStatus` and
 forwards cancellation. Unopened panels issue no status calls, and settings entry
 does not fan out requests for every connection/account. The returned owned account
 IDs provide movement links, while values remain in the separate stored-balance page.
+Within the panel, **Administrar cuentas** mounts selection only when explicitly
+opened or required by saved status. Once mounted, collapsing retains that same
+command/reconciliation owner; it must not unlock or replay an uncertain selection.
+The selector emits pending and reconciliation state separately. An unresolved
+selection blocks the panel's import command even when collapsed and when a status
+read reports `canRefresh`; only the selector's successful later selection read
+releases that selection lock.
+
+The panel's scoped `BankAccountSelector` reads stored selection separately and
+performs discovery only after an explicit action. A versioned account-ID set and
+automatic-enrollment intent are confirmed together; only a confirmed save can
+continue into the existing first-import/refresh command. A pause or current
+waiting period does not invent an import result. Missing/unsupported selected
+accounts remain removable and history is retained. The shared route carries only
+a fixed onboarding return context, never an alternative financial flow.
+Selection commands suppress duplicates and latch uncertain responses to a
+post-response read version; a prior in-flight read cannot unlock another write.
+Scope, connection and component changes cancel obsolete reads/commands.
 
 The panel offers explicit `importInitial` before a confirmed success and `refresh`
 afterward. Both use the immutable local first-link day through today; the client
@@ -333,6 +483,17 @@ An uncertain write response latches reconciliation to the read version at failur
 another command requires an explicit successful later status read. A read completed
 while that mutation was still pending cannot unlock the next attempt. The backend
 continues to enforce lease/backoff/version checks against concurrent clients.
+An open panel observes at most twelve readonly statuses: five-second intervals
+for active work, thirty-second intervals for enabled/enrolled unpaused automation.
+There is no provider read or mutation in that observation. Resource failure or
+teardown stops its timer; owner/connection changes create a new bounded lifetime.
+The explicit status button remains usable after observation ends.
+
+Account aliases use a separate scoped drawer command. Input/owner changes clear
+the local draft and pending outcome; only confirmed save emits success. An
+uncertain response disables another write and asks the parent to close/reload
+stored accounts. This changes neither bank identity nor provider facts and adds
+no browser financial cache.
 
 Closing destroys the panel's read/command lifetime and explains that the server may
 still be processing. Reopening starts with a fresh readonly status, not a replay.
@@ -421,6 +582,20 @@ changes as well as link clicks. Tag pickers drop their drafts/overlay on scope o
 movement changes, cancel deferred positioning and return action focus to the
 trigger. Do not copy PrimeNG exit-snapshot workarounds into these native lifetimes.
 
+Workspace presentation preferences are an explicit exception to the no-private-data
+storage rule: one allowlisted localStorage object holds only system/light/dark,
+standard/large/largest text and the compact-navigation boolean. Invalid values are
+discarded and blocked storage keeps an in-memory preference with feedback. Never
+extend that object with identities, financial records, conversations or drafts.
+
+Catalog editors retain rejected drafts. An ambiguous tag write blocks another
+attempt until an explicit catalog read; movement corrections require closing and
+reloading detail. Dashboard tag decisions expose an explicit detail reconciliation
+read, publish the observed selection to page-local state and invalidate dependent
+summaries without replaying a mutation. A created catalog tag and a failed movement
+assignment are not claimed as one atomic UI operation. Provider classification,
+manual no-tag and reset-to-unreviewed remain separate decisions.
+
 ## Tests and extension rules
 
 UI tests inject `RPC_FETCH` and exercise real vanilla clients/resources with
@@ -450,6 +625,7 @@ scope in protected query params, forward abort signals, avoid protected hydratio
 IDs, invalidate only actual dependencies, and test out-of-order completions. Do
 not restore the removed catch-all API service, RxJS compatibility facade or fake
 HTTP errors. Delivered management workflows are indexed in the UI README;
-voice features and bank-forced/scheduled refresh remain unavailable,
-not missing client aliases or simulated success paths. Real-provider browser
+bank-forced refresh remains unavailable. Live voice is implemented but disabled
+by default, with explicit microphone/processing controls and separate live gates,
+not a simulated success path. Real-provider browser
 verification is separate evidence from mocked UI resource/command tests.

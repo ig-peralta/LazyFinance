@@ -153,6 +153,13 @@ describe("owned savings target management", () => {
     await harness.fixture.whenStable();
     harness.detectChanges();
     const root: HTMLElement = harness.fixture.nativeElement;
+    const historyToggle = root.querySelector<HTMLButtonElement>(
+      '[aria-controls="savings-revision-history"]',
+    );
+    expect(historyToggle?.getAttribute("aria-expanded")).toBe("false");
+    expect(
+      root.querySelector<HTMLElement>("#savings-revision-history")?.hidden,
+    ).toBe(true);
     [...root.querySelectorAll("button")]
       .find((button) => button.textContent?.includes("Ver historial"))
       ?.click();
@@ -160,6 +167,10 @@ describe("owned savings target management", () => {
     await harness.fixture.whenStable();
     harness.detectChanges();
     expect(mock.callsTo("objectives.savingsGoalHistory")).toHaveLength(1);
+    expect(historyToggle?.getAttribute("aria-expanded")).toBe("true");
+    expect(
+      root.querySelector<HTMLElement>("#savings-revision-history")?.hidden,
+    ).toBe(false);
     [...root.querySelectorAll("button")]
       .find((button) => button.textContent?.includes("Archivar meta"))
       ?.click();

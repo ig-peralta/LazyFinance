@@ -1,6 +1,6 @@
 import type { MonthlySummary } from "@lazyfinance/contracts";
 import { describe, expect, it } from "vitest";
-import { emptySummary } from "../../../../testing/rpc";
+import { emptySummary } from "../../../testing/rpc";
 import { spendingDistribution } from "./spending-distribution";
 
 function tag(id: string, amount: string): MonthlySummary["tags"][number] {

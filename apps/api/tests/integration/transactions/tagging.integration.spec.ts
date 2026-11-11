@@ -275,7 +275,9 @@ describe.skipIf(!integration)(
             await f.db.rows("tag_decision_event", {
               transactionId: purchase.id,
             })
-          ).map((row) => row.kind),
+          )
+            .map((row) => row.kind)
+            .sort(),
         ).toEqual(["rule_applied", "rule_revalidated"]);
         await f.tagging.assignManualTagForUser(f.userId, purchase.id, {
           tagId: null,

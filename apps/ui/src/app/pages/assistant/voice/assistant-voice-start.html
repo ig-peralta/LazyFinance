@@ -1,0 +1,8 @@
+<section class="voice-start" aria-labelledby="voice-start-title">
+  <span class="voice-start-icon" aria-hidden="true"><app-icon name="microphone" /></span>
+  <h3 id="voice-start-title" tabindex="-1">Conversemos por voz</h3>
+  <p>Habla con Lazy en una sesión de voz separada. Puedes interrumpir o volver al texto cuando quieras.</p>
+  <p class="voice-start-privacy">OpenAI procesará tu audio, contexto reciente y consultas financieras. No guardamos audio. Puede generar costes.</p>
+  <details><summary>Privacidad y controles</summary><p>No generamos transcripciones ni guardamos el texto hablado. Las consultas y solicitudes se guardan en el servidor. La retención del proveedor es independiente. No se envían credenciales bancarias.</p><p>Máximo cinco minutos. La voz termina al navegar o dejar esta pestaña. Decir «sí» no aprueba cambios: las solicitudes se aceptan en su tarjeta.</p></details>
+  <div class="voice-start-buttons"><button type="button" class="button primary" [disabled]="!ready()" (click)="started.emit()">Entiendo, iniciar micrófono</button><button type="button" class="text-link" (click)="cancelled.emit()">Cancelar voz</button></div>
+</section>

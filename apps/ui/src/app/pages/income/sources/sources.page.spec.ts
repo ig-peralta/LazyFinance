@@ -1,4 +1,6 @@
 import { TestBed } from "@angular/core/testing";
+import { ActivatedRoute, convertToParamMap } from "@angular/router";
+import { BehaviorSubject } from "rxjs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { deferred } from "../../../../testing/deferred";
 import { useDialogStub } from "../../../../testing/dialog";
@@ -9,11 +11,58 @@ import {
   type RpcOutput,
   setupRpc,
 } from "../../../../testing/rpc";
+import { SourceEditor } from "./source-editor/source-editor";
 import { SourcesPage } from "./sources.page";
 
 describe("income source management", () => {
   useDialogStub();
   afterEach(() => TestBed.resetTestingModule());
+
+  it("associates source help and invalid state with the fields that failed validation", async () => {
+    const mock = setupRpc();
+    const fixture = TestBed.createComponent(SourceEditor);
+    fixture.componentRef.setInput("source", incomeSource);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const root: HTMLElement = fixture.nativeElement;
+    const amount = root.querySelector<HTMLInputElement>("#source-amount");
+    if (!amount) throw new Error("Missing amount");
+    amount.value = "-1";
+    amount.dispatchEvent(eventsIn(root)("input"));
+    root.querySelector("form")?.dispatchEvent(eventsIn(root)("submit"));
+    fixture.detectChanges();
+    expect(amount.getAttribute("aria-invalid")).toBe("true");
+    expect(
+      root.querySelector("#source-name")?.getAttribute("aria-invalid"),
+    ).toBe("false");
+    expect(
+      root.querySelector(`#${amount.getAttribute("aria-describedby")}`)
+        ?.textContent,
+    ).toContain("Hasta 2 decimales");
+    expect(mock.callsTo("income.updateSource")).toHaveLength(0);
+  });
+
+  it("offers only a fixed onboarding return and reacts when that context is removed", async () => {
+    setupRpc();
+    const query = new BehaviorSubject(
+      convertToParamMap({ from: "onboarding" }),
+    );
+    Object.defineProperty(TestBed.inject(ActivatedRoute), "queryParamMap", {
+      value: query,
+    });
+    const fixture = TestBed.createComponent(SourcesPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement;
+    const link = root.querySelector("a.workflow-return");
+    expect(link?.textContent).toBe("Volver a primeros pasos");
+    expect(link?.getAttribute("href")).toBe("/comenzar");
+    expect(root.querySelector("nav.section-tabs")).toBeNull();
+    query.next(convertToParamMap({ from: "https://example.com" }));
+    fixture.detectChanges();
+    expect(root.querySelector("a.workflow-return")).toBeNull();
+  });
 
   it("persists a source, edits it and archives it with retained history after reload", async () => {
     let rows: RpcOutput<"income.sources"> = [];
@@ -82,6 +131,13 @@ describe("income source management", () => {
     fixture.detectChanges();
     await fixture.whenStable();
     expect(root.textContent).toContain("no borra ingresos recibidos");
+    const confirmation = [...root.querySelectorAll("li")].find((row) =>
+      row.textContent?.includes("¿Archivar Sueldo principal?"),
+    );
+    expect(confirmation).toBeDefined();
+    expect(confirmation?.querySelector("h3")?.textContent).toBe(
+      "Sueldo principal",
+    );
     [...root.querySelectorAll("button")]
       .find((button) => button.textContent?.includes("Confirmar archivo"))
       ?.click();
@@ -165,6 +221,13 @@ describe("income source management", () => {
     };
     expect(mock.callsTo("income.expectations")).toHaveLength(0);
     await click("Planificar pagos");
+    expect(
+      [...root.querySelectorAll("button")]
+        .find((button) =>
+          button.textContent?.includes("Ocultar pagos esperados"),
+        )
+        ?.getAttribute("aria-expanded"),
+    ).toBe("true");
     expect(mock.callsTo("income.expectations")).toHaveLength(1);
     expect(root.querySelector("form")).toBeNull();
     await click("Nuevo pago esperado");
@@ -179,5 +242,53 @@ describe("income source management", () => {
     await click("Cancelar");
     expect(root.querySelector("dialog")).toBeNull();
     expect(root.textContent).toContain("Pagos puntuales esperados");
+  });
+
+  it("groups named edit and archive actions together and keeps confirmation explicit", async () => {
+    const mock = setupRpc({
+      "income.sources": () => [
+        incomeSource,
+        {
+          ...incomeSource,
+          id: "archived-source",
+          name: "Fuente anterior",
+          archivedAt: "2026-11-08T15:00:00.000Z",
+        },
+      ],
+    });
+    const fixture = TestBed.createComponent(SourcesPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement;
+    const actions = root.querySelector(".record-actions");
+    expect(actions?.querySelector("button")?.getAttribute("aria-label")).toBe(
+      `Editar fuente ${incomeSource.name}`,
+    );
+    const archive = actions?.querySelector<HTMLButtonElement>(
+      `[aria-label="Archivar ${incomeSource.name}"]`,
+    );
+    if (!archive) throw new Error("Missing source archive action");
+    expect(
+      root.querySelector('[aria-label="Archivar Fuente anterior"]'),
+    ).toBeNull();
+    expect(
+      root.querySelector('[aria-label="Ver declaración de Fuente anterior"]'),
+    ).not.toBeNull();
+    archive.click();
+    fixture.detectChanges();
+    expect(archive.getAttribute("aria-expanded")).toBe("true");
+    const confirmation = actions?.querySelector<HTMLElement>(
+      ".record-action-confirmation",
+    );
+    expect(confirmation?.hidden).toBe(false);
+    expect(mock.callsTo("income.archiveSource")).toHaveLength(0);
+    [...(confirmation?.querySelectorAll("button") ?? [])]
+      .find((button) => button.textContent?.trim() === "Cancelar")
+      ?.click();
+    fixture.detectChanges();
+    expect(confirmation?.hidden).toBe(true);
+    expect(archive.getAttribute("aria-expanded")).toBe("false");
+    expect(mock.callsTo("income.archiveSource")).toHaveLength(0);
   });
 });

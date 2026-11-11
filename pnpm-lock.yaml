@@ -64,10 +64,10 @@ importers:
         version: 2.0.2(@modelcontextprotocol/core@2.4.0)(@modelcontextprotocol/node@2.1.2(@modelcontextprotocol/server@2.4.0))(@modelcontextprotocol/server@2.4.0)(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/core@11.2.1(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/microservices@11.2.1)(@nestjs/platform-express@11.2.1)(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/microservices@11.2.1(@grpc/grpc-js@1.14.7)(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/core@11.2.1)(reflect-metadata@0.2.2)(rxjs@7.8.1))(express@5.2.1)(reflect-metadata@0.2.2)(zod@4.6.5)
       '@trpc/client':
         specifier: 11.24.0
-        version: 11.24.0(@trpc/server@11.24.0(@types/express@5.0.6)(typescript@5.9.3))(typescript@5.9.3)
+        version: 11.24.0(@trpc/server@11.24.0(@types/express@5.0.6)(@types/ws@8.18.2)(typescript@5.9.3))(typescript@5.9.3)
       '@trpc/server':
         specifier: 11.24.0
-        version: 11.24.0(@types/express@5.0.6)(typescript@5.9.3)
+        version: 11.24.0(@types/express@5.0.6)(@types/ws@8.18.2)(typescript@5.9.3)
       ai:
         specifier: 7.0.165
         version: 7.0.165(zod@4.6.5)
@@ -79,7 +79,7 @@ importers:
         version: 14.5.0(@firebase/app-compat@0.5.20)(@firebase/app@0.16.4)
       nestjs-trpc:
         specifier: 2.14.0
-        version: 2.14.0(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/core@11.2.1(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/microservices@11.2.1)(@nestjs/platform-express@11.2.1)(reflect-metadata@0.2.2)(rxjs@7.8.1))(@trpc/server@11.24.0(@types/express@5.0.6)(typescript@5.9.3))(reflect-metadata@0.2.2)(rxjs@7.8.1)(zod@4.6.5)
+        version: 2.14.0(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/core@11.2.1(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/microservices@11.2.1)(@nestjs/platform-express@11.2.1)(reflect-metadata@0.2.2)(rxjs@7.8.1))(@trpc/server@11.24.0(@types/express@5.0.6)(@types/ws@8.18.2)(typescript@5.9.3))(reflect-metadata@0.2.2)(rxjs@7.8.1)(zod@4.6.5)
       oidc-provider:
         specifier: 9.13.3
         version: 9.13.3
@@ -89,6 +89,9 @@ importers:
       rxjs:
         specifier: 7.8.1
         version: 7.8.1
+      ws:
+        specifier: 8.22.2
+        version: 8.22.2
       zod:
         specifier: ^4.6.5
         version: 4.6.5
@@ -126,6 +129,9 @@ importers:
       '@types/supertest':
         specifier: ^7.0.0
         version: 7.2.1
+      '@types/ws':
+        specifier: 8.18.2
+        version: 8.18.2
       pg:
         specifier: 8.23.1
         version: 8.23.1
@@ -173,7 +179,7 @@ importers:
         version: 11.2.1(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/core@11.2.1)
       '@trpc/server':
         specifier: 11.24.0
-        version: 11.24.0(@types/express@5.0.6)(typescript@5.9.3)
+        version: 11.24.0(@types/express@5.0.6)(@types/ws@8.18.1)(typescript@5.9.3)
       dotenv:
         specifier: ^17.4.2
         version: 17.4.2
@@ -182,7 +188,7 @@ importers:
         version: 0.29.8
       nestjs-trpc:
         specifier: 2.14.0
-        version: 2.14.0(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/core@11.2.1(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/microservices@11.2.1)(@nestjs/platform-express@11.2.1)(reflect-metadata@0.2.2)(rxjs@7.8.1))(@trpc/server@11.24.0(@types/express@5.0.6)(typescript@5.9.3))(reflect-metadata@0.2.2)(rxjs@7.8.1)(zod@4.6.5)
+        version: 2.14.0(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/core@11.2.1(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/microservices@11.2.1)(@nestjs/platform-express@11.2.1)(reflect-metadata@0.2.2)(rxjs@7.8.1))(@trpc/server@11.24.0(@types/express@5.0.6)(@types/ws@8.18.1)(typescript@5.9.3))(reflect-metadata@0.2.2)(rxjs@7.8.1)(zod@4.6.5)
       pg:
         specifier: 8.23.1
         version: 8.23.1
@@ -210,7 +216,7 @@ importers:
         version: 1.16.1
       '@trpc/client':
         specifier: 11.24.0
-        version: 11.24.0(@trpc/server@11.24.0(@types/express@5.0.6)(typescript@5.9.3))(typescript@5.9.3)
+        version: 11.24.0(@trpc/server@11.24.0(@types/express@5.0.6)(@types/ws@8.18.1)(typescript@5.9.3))(typescript@5.9.3)
       '@types/express':
         specifier: ^5.0.0
         version: 5.0.6
@@ -273,10 +279,10 @@ importers:
         version: 21.0.4
       '@trpc/client':
         specifier: 11.24.0
-        version: 11.24.0(@trpc/server@11.24.0(@types/express@5.0.6)(typescript@6.0.3))(typescript@6.0.3)
+        version: 11.24.0(@trpc/server@11.24.0(@types/express@5.0.6)(@types/ws@8.18.1)(typescript@6.0.3))(typescript@6.0.3)
       '@trpc/server':
         specifier: 11.24.0
-        version: 11.24.0(@types/express@5.0.6)(typescript@6.0.3)
+        version: 11.24.0(@types/express@5.0.6)(@types/ws@8.18.1)(typescript@6.0.3)
       firebase:
         specifier: ^13.1.0
         version: 13.1.0
@@ -347,7 +353,7 @@ importers:
         version: link:../contracts
       '@trpc/server':
         specifier: 11.24.0
-        version: 11.24.0(@types/express@5.0.6)(typescript@5.9.3)
+        version: 11.24.0(@types/express@5.0.6)(@types/ws@8.18.1)(typescript@5.9.3)
       zod:
         specifier: ^4
         version: 4.6.5
@@ -379,7 +385,7 @@ importers:
         version: link:../contracts
       '@trpc/server':
         specifier: 11.24.0
-        version: 11.24.0(@types/express@5.0.6)(typescript@5.9.3)
+        version: 11.24.0(@types/express@5.0.6)(@types/ws@8.18.1)(typescript@5.9.3)
       zod:
         specifier: ^4
         version: 4.6.5
@@ -2659,6 +2665,12 @@ packages:
 
   '@types/supertest@7.2.1':
     resolution: {integrity: sha512-4CbBvoYVLHL7+yhbYrZET0vsvuyXTC05aRe7dNQkwMzm56auceoy6Yu3K50uZmwfHna1os3CMSgM/3QVkUtPTw==}
+
+  '@types/ws@8.18.1':
+    resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
+
+  '@types/ws@8.18.2':
+    resolution: {integrity: sha512-67MQl+fpWKVTT1NYdnmo3U4sc/xPo/zQBncVnI74qmQa0z/b+1g6iYqNmGCPbxO+zz2aklb08a0oHfegiVd0/w==}
 
   '@vercel/oidc@3.2.0':
     resolution: {integrity: sha512-UycprH3T6n3jH0k44NHMa7pnFHGu/N05MjojYr+Mc6I7obkoLIJujSWwin1pCvdy/eOxrI/l3uDLQsmcrOb4ug==}
@@ -5398,6 +5410,18 @@ packages:
   wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
 
+  ws@8.22.2:
+    resolution: {integrity: sha512-/rEZ2ejown2N5gxVTHUu9bVVC7ttu0/Tgzf5hbTOixR3Fs7mbbXgn2DbdbcKgJOmpQMtrIUWivtYuVMnp/W/yA==}
+    engines: {node: '>=10.0.0'}
+    peerDependencies:
+      bufferutil: ^4.0.1
+      utf-8-validate: '>=5.0.2'
+    peerDependenciesMeta:
+      bufferutil:
+        optional: true
+      utf-8-validate:
+        optional: true
+
   xhr2@0.2.1:
     resolution: {integrity: sha512-sID0rrVCqkVNUn8t6xuv9+6FViXjUVXq8H5rWOH2rz9fDNQEd4g0EA2XlcEdJXRz5BMEn4O1pJFdT+z4YHhoWw==}
     engines: {node: '>= 6'}
@@ -7414,27 +7438,41 @@ snapshots:
 
   '@tokenizer/token@0.3.0': {}
 
-  '@trpc/client@11.24.0(@trpc/server@11.24.0(@types/express@5.0.6)(typescript@5.9.3))(typescript@5.9.3)':
+  '@trpc/client@11.24.0(@trpc/server@11.24.0(@types/express@5.0.6)(@types/ws@8.18.1)(typescript@5.9.3))(typescript@5.9.3)':
     dependencies:
-      '@trpc/server': 11.24.0(@types/express@5.0.6)(typescript@5.9.3)
+      '@trpc/server': 11.24.0(@types/express@5.0.6)(@types/ws@8.18.1)(typescript@5.9.3)
       typescript: 5.9.3
 
-  '@trpc/client@11.24.0(@trpc/server@11.24.0(@types/express@5.0.6)(typescript@6.0.3))(typescript@6.0.3)':
+  '@trpc/client@11.24.0(@trpc/server@11.24.0(@types/express@5.0.6)(@types/ws@8.18.1)(typescript@6.0.3))(typescript@6.0.3)':
     dependencies:
-      '@trpc/server': 11.24.0(@types/express@5.0.6)(typescript@6.0.3)
+      '@trpc/server': 11.24.0(@types/express@5.0.6)(@types/ws@8.18.1)(typescript@6.0.3)
       typescript: 6.0.3
 
-  '@trpc/server@11.24.0(@types/express@5.0.6)(typescript@5.9.3)':
+  '@trpc/client@11.24.0(@trpc/server@11.24.0(@types/express@5.0.6)(@types/ws@8.18.2)(typescript@5.9.3))(typescript@5.9.3)':
+    dependencies:
+      '@trpc/server': 11.24.0(@types/express@5.0.6)(@types/ws@8.18.2)(typescript@5.9.3)
+      typescript: 5.9.3
+
+  '@trpc/server@11.24.0(@types/express@5.0.6)(@types/ws@8.18.1)(typescript@5.9.3)':
     dependencies:
       typescript: 5.9.3
     optionalDependencies:
       '@types/express': 5.0.6
+      '@types/ws': 8.18.1
 
-  '@trpc/server@11.24.0(@types/express@5.0.6)(typescript@6.0.3)':
+  '@trpc/server@11.24.0(@types/express@5.0.6)(@types/ws@8.18.1)(typescript@6.0.3)':
     dependencies:
       typescript: 6.0.3
     optionalDependencies:
       '@types/express': 5.0.6
+      '@types/ws': 8.18.1
+
+  '@trpc/server@11.24.0(@types/express@5.0.6)(@types/ws@8.18.2)(typescript@5.9.3)':
+    dependencies:
+      typescript: 5.9.3
+    optionalDependencies:
+      '@types/express': 5.0.6
+      '@types/ws': 8.18.2
 
   '@tsconfig/node10@1.0.13': {}
 
@@ -7598,6 +7636,15 @@ snapshots:
     dependencies:
       '@types/methods': 1.1.4
       '@types/superagent': 8.1.11
+
+  '@types/ws@8.18.1':
+    dependencies:
+      '@types/node': 24.13.3
+    optional: true
+
+  '@types/ws@8.18.2':
+    dependencies:
+      '@types/node': 24.13.3
 
   '@vercel/oidc@3.2.0': {}
 
@@ -9268,11 +9315,22 @@ snapshots:
 
   neo-async@2.6.2: {}
 
-  nestjs-trpc@2.14.0(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/core@11.2.1(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/microservices@11.2.1)(@nestjs/platform-express@11.2.1)(reflect-metadata@0.2.2)(rxjs@7.8.1))(@trpc/server@11.24.0(@types/express@5.0.6)(typescript@5.9.3))(reflect-metadata@0.2.2)(rxjs@7.8.1)(zod@4.6.5):
+  nestjs-trpc@2.14.0(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/core@11.2.1(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/microservices@11.2.1)(@nestjs/platform-express@11.2.1)(reflect-metadata@0.2.2)(rxjs@7.8.1))(@trpc/server@11.24.0(@types/express@5.0.6)(@types/ws@8.18.1)(typescript@5.9.3))(reflect-metadata@0.2.2)(rxjs@7.8.1)(zod@4.6.5):
     dependencies:
       '@nestjs/common': 11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.1)
       '@nestjs/core': 11.2.1(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/microservices@11.2.1)(@nestjs/platform-express@11.2.1)(reflect-metadata@0.2.2)(rxjs@7.8.1)
-      '@trpc/server': 11.24.0(@types/express@5.0.6)(typescript@5.9.3)
+      '@trpc/server': 11.24.0(@types/express@5.0.6)(@types/ws@8.18.1)(typescript@5.9.3)
+      lodash: 4.18.1
+      reflect-metadata: 0.2.2
+      rxjs: 7.8.1
+      tslib: 2.8.1
+      zod: 4.6.5
+
+  nestjs-trpc@2.14.0(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/core@11.2.1(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/microservices@11.2.1)(@nestjs/platform-express@11.2.1)(reflect-metadata@0.2.2)(rxjs@7.8.1))(@trpc/server@11.24.0(@types/express@5.0.6)(@types/ws@8.18.2)(typescript@5.9.3))(reflect-metadata@0.2.2)(rxjs@7.8.1)(zod@4.6.5):
+    dependencies:
+      '@nestjs/common': 11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.1)
+      '@nestjs/core': 11.2.1(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/microservices@11.2.1)(@nestjs/platform-express@11.2.1)(reflect-metadata@0.2.2)(rxjs@7.8.1)
+      '@trpc/server': 11.24.0(@types/express@5.0.6)(@types/ws@8.18.2)(typescript@5.9.3)
       lodash: 4.18.1
       reflect-metadata: 0.2.2
       rxjs: 7.8.1
@@ -10456,6 +10514,8 @@ snapshots:
       strip-ansi: 7.2.0
 
   wrappy@1.0.2: {}
+
+  ws@8.22.2: {}
 
   xhr2@0.2.1: {}
 

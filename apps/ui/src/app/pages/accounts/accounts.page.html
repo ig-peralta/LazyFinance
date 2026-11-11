@@ -1,15 +1,39 @@
 <header class="page-header">
   <div>
-    <p class="eyebrow">TUS CUENTAS, SIN SUPOSICIONES</p><h1>Tu dinero en origen<span class="accent-text">.</span></h1>
-    <p class="page-description">Consulta tus saldos guardados y la última sincronización informada. Las autorizaciones bancarias se administran por separado en Mi cuenta.</p>
+    <p class="eyebrow">MI DINERO</p><h1>Cuentas<span class="accent-text">.</span></h1>
+    <p class="page-description">Tus saldos guardados y su fecha de origen.</p>
   </div>
-  <div class="button-row">
+  <div class="page-actions">
     <a class="button primary" routerLink="/conexiones-bancarias"><app-icon name="plus" /> Conectar banco</a>
-    <button class="button" type="button" [disabled]="accounts.isLoading()" (click)="accounts.reload()"><app-icon name="refresh" /> Consultar datos guardados</button>
+    <button class="button" type="button" [disabled]="accounts.isLoading()" (click)="accounts.reload()"><app-icon name="refresh" /> Recargar cuentas</button>
   </div>
 </header>
-<h2 class="section-title" style="margin-bottom:18px">Cuentas y saldos guardados</h2>
+<details class="section-disclosure"><summary>Sobre estos saldos</summary><p>Son saldos guardados, independientes del acceso bancario; no garantizan disponibilidad en tiempo real. Un saldo desconocido no es cero. Recargar cuentas solo consulta estos datos: no solicita una actualización al banco.</p><p>Administra el acceso y las importaciones en <a class="text-link" routerLink="/conexiones-bancarias">Conexiones bancarias</a>.</p></details>
 @if (accounts.isLoading()) { <p class="notice" role="status">Consultando las cuentas guardadas…</p> }
 @else if (accounts.error()) { <p class="notice danger" role="alert">No pudimos consultar tus cuentas. No significa saldo cero ni importación vacía. <button type="button" (click)="accounts.reload()">Reintentar lectura</button></p> }
 @else if (!accounts.value().length) { <div class="empty-state"><span class="empty-icon"><app-icon name="bank" /></span><h2>No hay cuentas activas para mostrar</h2><p>Autorizar un banco no importa sus datos automáticamente. Abre Datos y sincronización en Conexiones bancarias para iniciar la importación. Un listado vacío no confirma una importación exitosa ni un saldo cero.</p><a class="button" routerLink="/conexiones-bancarias">Ver conexiones bancarias <app-icon name="arrow" /></a></div> }
-@else { <section class="accounts-grid" aria-label="Cuentas activas devueltas por el backend">@for (account of accounts.value(); track account.id) { <article class="panel"><div class="panel-heading"><span class="record-icon"><app-icon [name]="account.type === 'credit_card' ? 'wallet' : 'bank'" /></span><span class="badge neutral">{{ account.currency }}</span></div><h2 class="record-title" style="font-size:18px">{{ account.alias || type(account.type) }}</h2><p class="record-meta">{{ type(account.type) }}</p><p class="metric-label" style="margin-top:24px">{{ label(account) }}</p><strong class="metric-value">{{ balance(account) }}</strong><p class="record-meta">{{ account.lastSyncedAt ? 'Última sincronización registrada: ' + time(account.lastSyncedAt) + ' · Santiago.' : 'Sin fecha de sincronización informada.' }}</p>@if (old(account.lastSyncedAt)) { <p class="notice warning">Registro anterior a 24 horas. Esto describe su antigüedad, no el estado actual de la conexión.</p> }<p class="field-hint" style="margin-top:14px">Saldos guardados, independientes del acceso bancario. {{ account.balance === null ? 'Un saldo desconocido no es cero.' : 'No son una garantía de disponibilidad en tiempo real.' }}</p><a class="button small" style="margin-top:18px" routerLink="/movimientos" [queryParams]="{ account: account.id }">Ver movimientos <app-icon name="arrow" /></a></article> }</section> }
+@else {
+  <section class="accounts-grid" aria-label="Cuentas y saldos guardados">
+    @for (account of accounts.value(); track account.id) {
+      <article class="panel account-card">
+        <div class="panel-heading"><span class="record-icon"><app-icon [name]="account.type === 'credit_card' ? 'wallet' : 'bank'" /></span><span class="badge neutral">{{ account.currency }}</span></div>
+        <div><h2 class="record-title">{{ account.alias || type(account.type) }}</h2>
+        <p class="record-meta">{{ type(account.type) }}</p></div>
+        @if (account.trackingStatus) { <p class="badge" [class.warning]="account.trackingStatus !== 'tracked'">{{ account.trackingStatus === 'tracked' ? 'Seleccionada para seguimiento' : account.trackingStatus === 'paused' ? 'Seguimiento en pausa' : 'Acceso no disponible' }}</p> }
+        <div><p class="metric-label">{{ label(account) }}</p><strong class="metric-value money">{{ balance(account) }}</strong>
+        <p class="record-meta">{{ account.lastSyncedAt ? 'Saldo al ' + time(account.lastSyncedAt) + ' · Santiago.' : 'Sin fecha de origen informada.' }}</p></div>
+        @if (old(account.lastSyncedAt)) { <p class="notice warning">Registro anterior a 24 horas. Esto describe su antigüedad, no el estado actual de la conexión.</p> }
+        @if (account.trackingStatus === 'paused' || account.trackingStatus === 'disconnected') { <p class="notice">Conservamos el último saldo y tu historial, pero esta cuenta no está recibiendo importaciones.</p> }
+        <div class="row-actions">
+          <a class="button small" routerLink="/movimientos" [queryParams]="{ account: account.id }">Ver movimientos <app-icon name="arrow" /></a>
+          <button class="button small" type="button" [attr.aria-label]="'Editar nombre de ' + (account.alias || type(account.type))" (click)="edit(account)">Editar nombre</button>
+        </div>
+      </article>
+    }
+  </section>
+}
+@if (editing(); as account) {
+  <editor-drawer title="Nombre personal de la cuenta" (dismissed)="closeEditor()">
+    <account-alias-editor [account]="account" (saved)="saved()" (reconcile)="saved()" />
+  </editor-drawer>
+}

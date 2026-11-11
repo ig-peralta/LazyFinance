@@ -10,6 +10,7 @@ import { toSignal } from "@angular/core/rxjs-interop";
 import { ActivatedRoute, RouterLink } from "@angular/router";
 import { formatClp } from "../../../../utils/currency";
 import { formatDate } from "../../../../utils/date";
+import { movementReturn } from "../../../core/navigation/return-context";
 import { reportWorkspaceReadiness } from "../../../core/rendering/workspace-preparation";
 import { RpcClient } from "../../../core/rpc/rpc-client";
 import { EditorDrawer } from "../../../shared/ui/editor-drawer";
@@ -23,6 +24,12 @@ import { TransactionCorrections } from "./corrections/transaction-corrections";
 })
 export class TransactionPage {
   protected readonly route = inject(ActivatedRoute);
+  private readonly query = toSignal(this.route.queryParamMap, {
+    initialValue: this.route.snapshot.queryParamMap,
+  });
+  protected readonly returnContext = computed(() =>
+    movementReturn(this.query()),
+  );
   private readonly params = toSignal(this.route.paramMap, {
     initialValue: this.route.snapshot.paramMap,
   });

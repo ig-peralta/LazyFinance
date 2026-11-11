@@ -1,5 +1,6 @@
-import { NgTemplateOutlet } from "@angular/common";
+import { DOCUMENT, NgTemplateOutlet } from "@angular/common";
 import {
+  afterRenderEffect,
   Component,
   computed,
   DestroyRef,
@@ -20,16 +21,31 @@ import {
 import { filter, map } from "rxjs";
 import { AuthCredentials } from "../../core/auth/auth-credentials";
 import { SessionService } from "../../core/auth/session.service";
+import { AssistantWorkspace } from "../../features/assistant/assistant-workspace";
 import { OnboardingData } from "../../features/onboarding/onboarding.data";
+import { AssistantPage } from "../../pages/assistant/assistant.page";
 import { Icon } from "../../shared/ui/icon";
+import { bindAssistantShortcut } from "./assistant-shortcut";
+import { WorkspaceAppearance } from "./workspace-appearance";
 import { workspaceLocation, workspaceNavigation } from "./workspace-navigation";
+import { WorkspacePreferences } from "./workspace-preferences";
 
 @Component({
   selector: "app-shell",
-  imports: [RouterLink, RouterOutlet, NgTemplateOutlet, Icon],
+  imports: [
+    RouterLink,
+    RouterOutlet,
+    NgTemplateOutlet,
+    Icon,
+    WorkspaceAppearance,
+    AssistantPage,
+  ],
   templateUrl: "./app-shell.html",
 })
 export class AppShell {
+  protected readonly preferences = inject(WorkspacePreferences);
+  protected readonly assistantWorkspace = inject(AssistantWorkspace);
+  private readonly document = inject(DOCUMENT);
   protected readonly session = inject(SessionService);
   private readonly router = inject(Router);
   private readonly credentials = inject(AuthCredentials);
@@ -53,6 +69,13 @@ export class AppShell {
   private readonly dialog =
     viewChild<ElementRef<HTMLDialogElement>>("menuDialog");
   private readonly content = viewChild<ElementRef<HTMLElement>>("content");
+  // Query presence by name so the assistant class stays out of the eager bundle.
+  private readonly assistantHost = viewChild("assistantHost");
+  private readonly assistantLauncher =
+    viewChild<ElementRef<HTMLButtonElement>>("assistantLauncher");
+  private readonly assistantPendingCancel = viewChild<
+    ElementRef<HTMLButtonElement>
+  >("assistantPendingCancel");
   protected readonly person = computed(
     () => this.credentials.current()?.principal.name ?? "Tu espacio",
   );
@@ -69,7 +92,36 @@ export class AppShell {
 
   constructor() {
     effect(() => {
+      this.assistantWorkspace.home.set(
+        this.url().split(/[?#]/, 1)[0] === "/asistente",
+      );
+    });
+    let assistantWasOpen = false;
+    afterRenderEffect(() => {
+      const opened = this.assistantWorkspace.opened();
+      // Before deferred code mounts, the shell owns loading/error focus too.
+      if (!this.assistantHost()) {
+        if (opened) this.assistantPendingCancel()?.nativeElement.focus();
+        else if (assistantWasOpen)
+          untracked(() =>
+            this.assistantWorkspace.restoreFocus(
+              this.assistantLauncher()?.nativeElement,
+            ),
+          );
+      }
+      assistantWasOpen = opened;
+    });
+    effect((onCleanup) => {
+      if (!this.credentials.current()) return;
+      onCleanup(
+        bindAssistantShortcut(this.document, () =>
+          this.assistantWorkspace.open(),
+        ),
+      );
+    });
+    effect(() => {
       this.url();
+      this.assistantWorkspace.opened();
       // Programmatic navigation/back/forward must dismiss the native modal too.
       untracked(() => this.closeMenu());
     });

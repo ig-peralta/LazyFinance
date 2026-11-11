@@ -31,6 +31,15 @@ describe("truthful stored account status", () => {
     await fixture.whenStable();
     fixture.detectChanges();
     const root: HTMLElement = fixture.nativeElement;
+    expect(root.querySelector("h1")?.textContent).toContain("Cuentas");
+    const disclosure = root.querySelector("details");
+    expect(disclosure?.open).toBe(false);
+    expect(disclosure?.querySelector("summary")?.textContent).toBe(
+      "Sobre estos saldos",
+    );
+    expect(disclosure?.textContent).toContain(
+      "no solicita una actualización al banco",
+    );
     expect(root.textContent).toContain("Saldo no disponible");
     expect(root.textContent).toContain("Saldo adeudado");
     expect(root.textContent).toContain("$9.007.199.254.740,99");

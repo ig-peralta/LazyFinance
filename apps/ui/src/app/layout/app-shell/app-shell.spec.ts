@@ -1,12 +1,19 @@
 import "@angular/compiler";
 import { Component, signal } from "@angular/core";
-import { TestBed } from "@angular/core/testing";
+import {
+  DeferBlockBehavior,
+  DeferBlockState,
+  TestBed,
+} from "@angular/core/testing";
 import { provideRouter, Router } from "@angular/router";
 import { RouterTestingHarness } from "@angular/router/testing";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { AuthCredentials } from "../../core/auth/auth-credentials";
 import { SessionService } from "../../core/auth/session.service";
+import { AssistantWorkspace } from "../../features/assistant/assistant-workspace";
 import { OnboardingData } from "../../features/onboarding/onboarding.data";
 import { AppShell } from "./app-shell";
+import { WorkspacePreferences } from "./workspace-preferences";
 
 @Component({ selector: "tags-stub", template: "<h1>Etiquetas</h1>" })
 class TagsStub {}
@@ -36,7 +43,10 @@ class BankConnectionsStub {}
 class McpAccessStub {}
 
 describe("AppShell", () => {
-  afterEach(() => TestBed.resetTestingModule());
+  afterEach(() => {
+    localStorage.clear();
+    TestBed.resetTestingModule();
+  });
 
   async function setup(failLogout = false) {
     const onboardingStatus = signal<
@@ -72,7 +82,6 @@ describe("AppShell", () => {
               { path: "metas", component: ObjectivesStub },
               { path: "seguridad", component: SecurityStub },
               { path: "aplicaciones-conectadas", component: McpAccessStub },
-              { path: "autorizar-mcp", component: McpAccessStub },
               { path: "conexiones-bancarias", component: BankConnectionsStub },
               { path: "comenzar", component: SecurityStub },
             ],
@@ -107,8 +116,8 @@ describe("AppShell", () => {
     );
 
     expect(links.map((a) => a.textContent?.trim())).toEqual([
-      "Asistente",
-      "Resumen",
+      "Inicio",
+      "Resumen completo",
       "Mi dinero",
       "Planificación",
       "Mi cuenta",
@@ -130,6 +139,64 @@ describe("AppShell", () => {
     ).toEqual(["/movimientos", "/cuentas", "/etiquetas"]);
   });
 
+  it("binds one discoverable shortcut to the existing assistant only for the accepted shell scope", async () => {
+    const { harness, root } = await setup();
+    const open = vi
+      .spyOn(TestBed.inject(AssistantWorkspace), "open")
+      .mockImplementation(() => {});
+    const credentials = TestBed.inject(AuthCredentials);
+    const press = () =>
+      document.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "?",
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    press();
+    expect(open).not.toHaveBeenCalled();
+    credentials.accept(
+      {
+        userId: "shortcut-owner",
+        name: "Synthetic",
+        email: "shortcut@example.test",
+      },
+      "synthetic",
+    );
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    expect(
+      root.querySelector('[aria-keyshortcuts="?"]')?.textContent,
+    ).toContain("Asistente");
+    expect(root.querySelectorAll('[aria-keyshortcuts="?"]')).toHaveLength(1);
+    expect(
+      root.querySelector(".workspace-topbar #workspace-assistant-launcher"),
+    ).not.toBeNull();
+    press();
+    expect(open).toHaveBeenCalledTimes(1);
+    await harness.navigateByUrl("/cuentas");
+    press();
+    expect(open).toHaveBeenCalledTimes(2);
+    credentials.accept(
+      {
+        userId: "shortcut-owner",
+        name: "Synthetic",
+        email: "shortcut@example.test",
+      },
+      "refreshed",
+    );
+    await harness.fixture.whenStable();
+    press();
+    expect(open).toHaveBeenCalledTimes(3);
+    credentials.clear();
+    await harness.fixture.whenStable();
+    press();
+    expect(open).toHaveBeenCalledTimes(3);
+    harness.fixture.destroy();
+    press();
+    expect(open).toHaveBeenCalledTimes(3);
+  });
+
   it("toggles the mobile menu and closes it after navigating", async () => {
     const { harness, root } = await setup();
     const toggle = root.querySelector(
@@ -144,8 +211,8 @@ describe("AppShell", () => {
       "#mobile-menu .workspace-links a",
     );
     expect([...mobileLinks].map((link) => link.textContent?.trim())).toEqual([
-      "Asistente",
-      "Resumen",
+      "Inicio",
+      "Resumen completo",
       "Mi dinero",
       "Planificación",
       "Mi cuenta",
@@ -162,6 +229,140 @@ describe("AppShell", () => {
       false,
     );
     expect(TestBed.inject(Router).url).toBe("/presupuestos-y-metas");
+  });
+
+  it.each([
+    [DeferBlockState.Loading, "Cancelar apertura"],
+    [DeferBlockState.Error, "Cerrar aviso"],
+  ] as const)("recovers keyboard focus when deferred assistant state %s is dismissed", async (state, label) => {
+    TestBed.configureTestingModule({
+      deferBlockBehavior: DeferBlockBehavior.Manual,
+    });
+    const { harness, root } = await setup();
+    const workspace = TestBed.inject(AssistantWorkspace);
+    TestBed.inject(AuthCredentials).accept(
+      {
+        userId: "deferred-owner",
+        name: "Synthetic",
+        email: "synthetic@example.test",
+      },
+      "synthetic",
+    );
+    await harness.fixture.whenStable();
+    const [block] = await harness.fixture.getDeferBlocks();
+    document.body.append(root);
+    try {
+      workspace.modal.set(true);
+      const trigger = root.querySelector<HTMLButtonElement>(
+        "#workspace-assistant-launcher",
+      );
+      trigger?.focus();
+      trigger?.click();
+      await block.render(state);
+      harness.detectChanges();
+      await harness.fixture.whenStable();
+      const cancel = [
+        ...root.querySelectorAll<HTMLButtonElement>("button"),
+      ].find((button) => button.textContent?.trim() === label);
+      expect(cancel).toBeDefined();
+      expect(document.activeElement).toBe(cancel);
+      expect(
+        root.querySelector(".workspace-content")?.hasAttribute("inert"),
+      ).toBe(true);
+      cancel?.click();
+      harness.detectChanges();
+      await harness.fixture.whenStable();
+      expect(root.querySelector(".assistant-load-status")).toBeNull();
+      expect(
+        root.querySelector(".workspace-content")?.hasAttribute("inert"),
+      ).toBe(false);
+      expect(document.activeElement).toBe(trigger);
+    } finally {
+      root.remove();
+    }
+  });
+
+  it("keeps one named sidebar toggle on the left of the toolbar, not on the rail or mobile menu", async () => {
+    const { harness, root } = await setup();
+    const toggle = root.querySelector<HTMLButtonElement>(
+      ".desktop-navigation-toggle",
+    );
+    expect(toggle).not.toBeNull();
+    expect(root.querySelector(".topbar-location")?.firstElementChild).toBe(
+      toggle,
+    );
+    expect(root.querySelectorAll(".desktop-navigation-toggle")).toHaveLength(1);
+    expect(
+      root.querySelector(".topbar-right .desktop-navigation-toggle"),
+    ).toBeNull();
+    expect(
+      root.querySelector("#workspace-sidebar .desktop-navigation-toggle"),
+    ).toBeNull();
+    expect(
+      root.querySelector("#mobile-menu .desktop-navigation-toggle"),
+    ).toBeNull();
+    expect(toggle?.querySelector("app-icon")?.getAttribute("name")).toBe(
+      "panel",
+    );
+    expect(toggle?.getAttribute("aria-controls")).toBe("workspace-sidebar");
+    expect(root.querySelector("#workspace-sidebar")).not.toBeNull();
+    expect(toggle?.title).toBe("Contraer navegación");
+    expect(toggle?.getAttribute("aria-label")).toBe("Contraer navegación");
+    expect(toggle?.getAttribute("aria-expanded")).toBe("true");
+    toggle?.click();
+    harness.detectChanges();
+    expect(toggle?.title).toBe("Expandir navegación");
+    expect(toggle?.getAttribute("aria-label")).toBe("Expandir navegación");
+    expect(toggle?.getAttribute("aria-expanded")).toBe("false");
+    toggle?.click();
+    harness.detectChanges();
+    expect(toggle?.title).toBe("Contraer navegación");
+    expect(toggle?.getAttribute("aria-label")).toBe("Contraer navegación");
+    expect(toggle?.getAttribute("aria-expanded")).toBe("true");
+  });
+
+  it("keeps compact navigation explicit, named and independent of the mobile modal at every text size", async () => {
+    const { harness, root } = await setup();
+    const preferences = TestBed.inject(WorkspacePreferences);
+    root
+      .querySelector<HTMLButtonElement>(".desktop-navigation-toggle")
+      ?.click();
+    harness.detectChanges();
+    expect(
+      root
+        .querySelector(".workspace")
+        ?.classList.contains("compact-navigation"),
+    ).toBe(true);
+    for (const textSize of ["standard", "large", "largest"] as const) {
+      preferences.update({ textSize, theme: "light" });
+      harness.detectChanges();
+      expect(
+        root.querySelector(".workspace")?.getAttribute("data-text-size"),
+      ).toBe(textSize);
+      for (const link of root.querySelectorAll(
+        ".workspace-sidebar .workspace-links a",
+      )) {
+        expect(link.getAttribute("aria-label")).toBe(link.textContent?.trim());
+        expect(link.getAttribute("title")).toBe(link.textContent?.trim());
+      }
+    }
+    root
+      .querySelector<HTMLButtonElement>('[aria-controls="mobile-menu"]')
+      ?.click();
+    harness.detectChanges();
+    expect(root.querySelector<HTMLDialogElement>("#mobile-menu")?.open).toBe(
+      true,
+    );
+    expect(
+      root.querySelectorAll("#mobile-menu .workspace-links .nav-label"),
+    ).toHaveLength(5);
+    root.querySelector<HTMLButtonElement>(".drawer-close")?.click();
+    harness.detectChanges();
+    expect(root.querySelector<HTMLDialogElement>("#mobile-menu")?.open).toBe(
+      false,
+    );
+    root.querySelector<HTMLAnchorElement>(".skip-link")?.click();
+    expect(root.ownerDocument.activeElement).toBe(root.querySelector("main"));
   });
 
   it("moves skip-link focus into content without navigating to the public landing", async () => {
@@ -206,11 +407,6 @@ describe("AppShell", () => {
       ["/movimientos/example", "Mi dinero", "Movimientos"],
       ["/conexiones-bancarias", "Mi cuenta", "Conexiones bancarias"],
       ["/aplicaciones-conectadas", "Mi cuenta", "Aplicaciones conectadas"],
-      [
-        "/autorizar-mcp?interaction=fixture",
-        "Mi cuenta",
-        "Aplicaciones conectadas",
-      ],
       ["/comenzar", "Mi cuenta", "Retomar configuración"],
     ]) {
       await harness.navigateByUrl(path);
@@ -221,7 +417,7 @@ describe("AppShell", () => {
       expect([...active].map((link) => link.textContent?.trim())).toEqual([
         area,
       ]);
-      expect(active[0].getAttribute("aria-label")).toBeNull();
+      expect(active[0].getAttribute("aria-label")).toBe(area);
       const current = root.querySelectorAll(
         '.workspace-subnav a[aria-current="page"]',
       );

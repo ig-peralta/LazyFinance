@@ -8,6 +8,12 @@
     </div>
     <span class="reference-status">{{ source().status === 'available' ? 'Consultado' : source().status === 'limited' ? 'Vista limitada' : 'No disponible' }}</span>
   </header>
+  @if (chart(); as chart) { @if (chart.segments.length) {
+    <figure class="assistant-chart" aria-label="Distribución del gasto neto por etiqueta">
+      <svg viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="80" fill="none" stroke="var(--line)" stroke-width="22" />@for (segment of chart.segments; track segment.key) { <circle cx="100" cy="100" r="80" fill="none" stroke-width="22" pathLength="100" transform="rotate(-90 100 100)" [attr.stroke]="segment.color" [attr.stroke-dasharray]="segment.width + ' ' + (100 - segment.width)" [attr.stroke-dashoffset]="-segment.offset" /> }</svg>
+      <figcaption>@for (segment of chart.segments; track segment.key) { <div><i [style.background]="segment.color" aria-hidden="true"></i><span>{{ segment.name }}</span><strong>{{ segment.percentage }}</strong></div> }<p>Incluye sin etiqueta. Importes exactos debajo; porcentajes redondeados.</p></figcaption>
+    </figure>
+  } }
 
   @if (view().metrics.length) {
     <dl class="reference-metrics">

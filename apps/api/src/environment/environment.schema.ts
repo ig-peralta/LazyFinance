@@ -37,6 +37,16 @@ export const ENV_SCHEMA = z
     ASSISTANT_MODEL: z.string().trim().min(1).max(200).optional(),
     ASSISTANT_API_KEY: z.string().trim().min(1).optional(),
     ASSISTANT_BASE_URL: z.url().optional(),
+    ASSISTANT_VOICE_ENABLED: z.enum(["true", "false"]).default("false"),
+    ASSISTANT_VOICE_API_KEY: z.string().trim().min(1).optional(),
+    ASSISTANT_VOICE_MODEL: z.string().trim().min(1).max(200).optional(),
+    ASSISTANT_VOICE_NAME: z.enum(["marin", "cedar"]).default("marin"),
+    ASSISTANT_VOICE_MAX_STARTS_PER_HOUR: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(60)
+      .optional(),
     MCP_OAUTH_ISSUER: corsOrigin.optional(),
     MCP_OAUTH_UI_ORIGIN: corsOrigin.optional(),
     MCP_OAUTH_STATE_KEY: z
@@ -49,6 +59,10 @@ export const ENV_SCHEMA = z
       .string()
       .regex(/^pk_(test|live)_[A-Za-z0-9_-]+$/)
       .optional(),
+    BANKING_AUTOMATIC_SYNC_ENABLED: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((value) => value === "true"),
     FINTOC_SECRET_KEY: z
       .string()
       .regex(/^sk_(test|live)_[A-Za-z0-9_-]+$/)
@@ -65,6 +79,18 @@ export const ENV_SCHEMA = z
   })
   .superRefine((values, context) => {
     const provider = values.ASSISTANT_PROVIDER;
+    if (
+      values.ASSISTANT_VOICE_ENABLED === "true" &&
+      (!values.ASSISTANT_VOICE_API_KEY ||
+        !values.ASSISTANT_VOICE_MODEL ||
+        ["disabled", "demo"].includes(provider))
+    )
+      context.addIssue({
+        code: "custom",
+        path: ["ASSISTANT_VOICE_ENABLED"],
+        message:
+          "Voice requires a dedicated key/model and configured non-demo text assistant",
+      });
     const issue = (message: string) =>
       context.addIssue({
         code: "custom",

@@ -13,6 +13,7 @@ import { RouterLink } from "@angular/router";
 import type { FinancialAction } from "@lazyfinance/contracts";
 import { RpcClient, type RpcScope } from "../../../core/rpc/rpc-client";
 import { createScopedCommand } from "../../../core/rpc/scoped-command";
+import { latestAssistantAction } from "../../../features/assistant/assistant-action-state";
 import {
   type ActionFields,
   actionDetails,
@@ -41,6 +42,10 @@ export class AssistantActionCard {
     null,
   );
   protected readonly editing = signal(false);
+  private readonly editingVersion = signal<number | undefined>(undefined);
+  protected readonly outdatedEdit = computed(
+    () => this.editing() && this.editingVersion() !== this.current().version,
+  );
   protected readonly fields = signal<ActionFields | null>(null);
   protected readonly invalid = signal(false);
   protected readonly clock = signal(Date.now());
@@ -49,9 +54,8 @@ export class AssistantActionCard {
     const value = this.replacement();
     return value &&
       value.scope === this.rpc.authenticatedScope() &&
-      value.action.id === this.action().id &&
-      value.action.version >= this.action().version
-      ? value.action
+      value.action.id === this.action().id
+      ? latestAssistantAction(this.action(), value.action)
       : this.action();
   });
   protected readonly needsReconciliation = computed(
@@ -82,6 +86,19 @@ export class AssistantActionCard {
       this.current().request.kind,
     ),
   );
+  protected readonly newTags = computed(() => {
+    const fields = this.fields();
+    return fields
+      ? [
+          ...new Set(
+            fields.newTags
+              .split("\n")
+              .map((name) => name.trim())
+              .filter(Boolean),
+          ),
+        ].map((name) => ({ name, color: fields.newTagColors[name] ?? null }))
+      : [];
+  });
   protected readonly tagEditor = computed(() =>
     ["create_tag", "update_tag"].includes(this.current().request.kind),
   );
@@ -132,9 +149,29 @@ export class AssistantActionCard {
     key: K,
     value: ActionFields[K],
   ) {
-    this.fields.update((fields) =>
-      fields ? { ...fields, [key]: value } : fields,
-    );
+    this.fields.update((fields) => {
+      if (!fields) return fields;
+      if (key === "newTags" && typeof value === "string") {
+        const before = fields.newTags
+          .split("\n")
+          .map((name) => name.trim())
+          .filter(Boolean);
+        const names = value
+          .split("\n")
+          .map((name) => name.trim())
+          .filter(Boolean);
+        const newTagColors = Object.fromEntries(
+          names.map((name, index) => [
+            name,
+            Object.hasOwn(fields.newTagColors, name)
+              ? fields.newTagColors[name]
+              : (fields.newTagColors[before[index]] ?? null),
+          ]),
+        );
+        return { ...fields, [key]: value, newTagColors };
+      }
+      return { ...fields, [key]: value };
+    });
   }
 
   protected toggleTag(id: string) {
@@ -148,9 +185,16 @@ export class AssistantActionCard {
       );
   }
 
+  protected newTagColor(name: string, color: string | null) {
+    const fields = this.fields();
+    if (fields)
+      this.field("newTagColors", { ...fields.newTagColors, [name]: color });
+  }
+
   protected edit() {
     if (this.mutable()) {
       this.fields.set(actionFields(this.current()));
+      this.editingVersion.set(this.current().version);
       this.invalid.set(false);
       this.editing.set(true);
     }
@@ -200,7 +244,7 @@ export class AssistantActionCard {
   }
   protected async save() {
     const fields = this.fields();
-    if (!fields) return;
+    if (!fields || this.outdatedEdit()) return;
     const parsed = editedAction(this.current(), fields);
     this.invalid.set(!parsed.success);
     if (parsed.success) await this.run("revise", parsed.data);

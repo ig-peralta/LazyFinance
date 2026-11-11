@@ -128,7 +128,14 @@ const sections: Record<
   },
 };
 
-const accountsSchema = z.object({ accounts: z.array(AccountSummarySchema) });
+// Saved evidence may predate account tracking metadata; never strip a supplied status.
+const accountsSchema = z.object({
+  accounts: z.array(
+    AccountSummarySchema.extend({
+      trackingStatus: z.enum(["tracked", "paused", "disconnected"]).nullish(),
+    }),
+  ),
+});
 const movementsSchema = z.object({
   transactions: z.array(RecentTransactionSchema),
 });
@@ -166,6 +173,7 @@ const period = (value: string | null) =>
 /** Presentation of validated stored observations only: no new reads, totals or model-authored cards. */
 export function assistantReferenceView(
   source: AssistantSource,
+  expanded = false,
 ): AssistantReferenceView {
   const section = sections[source.tool];
   const view: AssistantReferenceView = {
@@ -202,7 +210,7 @@ export function assistantReferenceView(
           formatClp(account.balance ?? "") === "—"
             ? "—"
             : formatAccountBalance(account),
-        detail: `${accountTypeLabel(account.type)} · ${formatClp(account.balance ?? "") === "—" ? "Saldo no disponible" : accountBalanceLabel(account)} · ${accountFreshnessLabel(account)}`,
+        detail: `${accountTypeLabel(account.type)} · ${formatClp(account.balance ?? "") === "—" ? "Saldo no disponible" : accountBalanceLabel(account)} · ${accountFreshnessLabel(account)}${account.trackingStatus === "paused" ? " · Seguimiento pausado: último saldo conocido" : account.trackingStatus === "disconnected" ? " · Conexión desconectada: último saldo conocido" : account.trackingStatus === "tracked" ? " · Cuenta en seguimiento" : ""}`,
       }));
       view.empty = view.rows.length
         ? null
@@ -470,7 +478,7 @@ export function assistantReferenceView(
     }
   }
 
-  view.preview ||= view.rows.length > 4;
-  view.rows = view.rows.slice(0, 4);
+  view.preview ||= view.rows.length > (expanded ? 100 : 4);
+  view.rows = view.rows.slice(0, expanded ? 100 : 4);
   return view;
 }

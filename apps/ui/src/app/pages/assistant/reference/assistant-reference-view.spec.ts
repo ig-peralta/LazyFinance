@@ -48,6 +48,23 @@ const spendingPage = {
 };
 
 describe("human-readable financial reference projections", () => {
+  it.each([
+    "paused",
+    "disconnected",
+  ])("labels supplied %s tracking metadata as last-known facts", (trackingStatus) => {
+    const view = assistantReferenceView(
+      assistantSource({
+        data: { accounts: [{ ...assistantAccount, trackingStatus }] },
+      }),
+    );
+    expect(view.rows[0].detail).toContain("último saldo conocido");
+    expect(view.rows[0].detail).toContain(
+      trackingStatus === "paused"
+        ? "Seguimiento pausado"
+        : "Conexión desconectada",
+    );
+  });
+
   it("preserves cash/card distinctions, unknown amounts and exact large-money formatting without aggregating accounts", () => {
     const view = assistantReferenceView(
       assistantSource({

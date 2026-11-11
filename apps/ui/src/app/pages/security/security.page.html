@@ -1,28 +1,26 @@
-<section class="mx-auto max-w-3xl space-y-8">
-  <header>
-    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Tu cuenta</p>
-    <h1 class="mt-3 text-3xl font-semibold text-color-emphasis">Acceso y seguridad</h1>
-    <p class="mt-4 leading-7 text-muted-color">
-      Conecta Google y una contraseña para entrar a la misma cuenta. Tus datos financieros siguen perteneciendo al mismo usuario.
-    </p>
+<section class="stack">
+  <header class="page-header">
+    <div><p class="eyebrow">TU CUENTA</p>
+    <h1>Acceso y seguridad</h1>
+    <p class="page-description">Administra cómo entras a tu cuenta, sin cambiar tus datos financieros.</p></div>
   </header>
 
   @if (session.provider() !== 'firebase') {
-    <p class="rounded-2xl border border-surface bg-surface-0 p-6">
+    <p class="notice">
       El acceso de demostración no permite modificar métodos de acceso.
     </p>
   } @else if (account(); as identity) {
-    <p class="text-sm text-muted-color">Cuenta de Firebase: {{ identity.email }}</p>
+    <p class="record-meta">Correo de la cuenta: {{ identity.email }}</p>
 
     <section
-      class="rounded-2xl border border-surface bg-surface-0 p-6"
+      class="panel"
       aria-labelledby="google-method"
     >
-      <h2 id="google-method" class="text-lg font-semibold">Google</h2>
+      <h2 id="google-method">Google</h2>
       @if (identity.google) {
-        <p class="mt-3 text-sm text-primary" data-testid="google-connected">Conectado</p>
+        <p class="badge" data-testid="google-connected">Conectado</p>
       } @else if (identity.password) {
-        <p class="mt-3 text-sm leading-6 text-muted-color">
+        <p class="record-meta">
           Primero confirma tu contraseña actual. Después abre Google para demostrar que también controlas esa cuenta.
         </p>
         @if (session.googleLinkReady()) {
@@ -31,17 +29,16 @@
             data-testid="link-google"
             [disabled]="busy()"
             (click)="linkGoogle()"
-            class="mt-5 rounded-xl bg-primary px-5 py-3 font-semibold text-primary-contrast disabled:opacity-60"
+            class="button primary"
           >
             Conectar Google
           </button>
         } @else {
           <form
-            class="mt-5 space-y-4"
             data-testid="prepare-google-form"
             (submit)="prepareGoogle($event, currentPassword)"
           >
-            <label for="current-password" class="block text-sm font-semibold">Contraseña actual</label>
+            <div class="form-grid"><div class="field full"><label for="current-password">Contraseña actual</label>
             <input
               #currentPassword
               id="current-password"
@@ -51,40 +48,38 @@
               maxlength="4096"
               required
               [disabled]="busy()"
-              class="w-full rounded-xl border border-surface bg-surface-100 px-4 py-3 outline-none"
             />
-            <button
+            </div></div><div class="form-actions"><button
               type="submit"
               [disabled]="busy()"
-              class="rounded-xl bg-primary px-5 py-3 font-semibold text-primary-contrast disabled:opacity-60"
+              class="button primary"
             >
               Confirmar identidad
-            </button>
+            </button></div>
           </form>
         }
       } @else {
-        <p class="mt-3 text-sm text-muted-color">Inicia sesión con un método compatible antes de conectar Google.</p>
+        <p class="record-meta">Inicia sesión con un método compatible antes de conectar Google.</p>
       }
     </section>
 
     <section
-      class="rounded-2xl border border-surface bg-surface-0 p-6"
+      class="panel"
       aria-labelledby="password-method"
     >
-      <h2 id="password-method" class="text-lg font-semibold">Correo y contraseña</h2>
+      <h2 id="password-method">Correo y contraseña</h2>
       @if (identity.password) {
-        <p class="mt-3 text-sm text-primary" data-testid="password-connected">Conectado</p>
+        <p class="badge" data-testid="password-connected">Conectado</p>
       } @else if (identity.google && identity.emailVerified) {
-        <p class="mt-3 text-sm leading-6 text-muted-color">
+        <p class="record-meta">
           Añade una contraseña para {{ identity.email }}. Te pediremos confirmar tu identidad en Google antes de conectarla.
         </p>
         <form
-          class="mt-5 space-y-4"
           data-testid="add-password-form"
           (submit)="addPassword($event, newPassword, confirmation)"
         >
-          <div>
-            <label for="new-password" class="mb-2 block text-sm font-semibold">Nueva contraseña</label>
+          <div class="form-grid"><div class="field">
+            <label for="new-password">Nueva contraseña</label>
             <input
               #newPassword
               id="new-password"
@@ -95,11 +90,10 @@
               maxlength="4096"
               required
               [disabled]="busy()"
-              class="w-full rounded-xl border border-surface bg-surface-100 px-4 py-3 outline-none"
             />
           </div>
-          <div>
-            <label for="confirm-password" class="mb-2 block text-sm font-semibold">Repite la contraseña</label>
+          <div class="field">
+            <label for="confirm-password">Repite la contraseña</label>
             <input
               #confirmation
               id="confirm-password"
@@ -110,25 +104,24 @@
               maxlength="4096"
               required
               [disabled]="busy()"
-              class="w-full rounded-xl border border-surface bg-surface-100 px-4 py-3 outline-none"
             />
           </div>
-          <button
+          </div><div class="form-actions"><button
             type="submit"
             [disabled]="busy()"
-            class="rounded-xl bg-primary px-5 py-3 font-semibold text-primary-contrast disabled:opacity-60"
+            class="button primary"
           >
             Conectar contraseña
-          </button>
+          </button></div>
         </form>
       } @else if (!identity.emailVerified) {
-        <p class="mt-3 text-sm leading-6 text-muted-color">Verifica tu correo antes de conectar una contraseña.</p>
-        <div class="mt-4 flex flex-wrap gap-4">
+        <p class="notice warning">Verifica tu correo antes de conectar una contraseña.</p>
+        <div class="form-actions">
           <button
             type="button"
             [disabled]="busy()"
             (click)="resendVerification()"
-            class="text-sm font-semibold text-primary disabled:opacity-60"
+            class="button"
           >
             Enviar verificación
           </button>
@@ -136,7 +129,7 @@
             type="button"
             [disabled]="busy()"
             (click)="checkVerification()"
-            class="text-sm font-semibold text-primary disabled:opacity-60"
+            class="button"
           >
             Ya verifiqué mi correo
           </button>
@@ -145,20 +138,20 @@
     </section>
 
     @if (notice()) {
-      <p role="status" class="text-sm text-primary">{{ notice() }}</p>
+      <p role="status" class="notice">{{ notice() }}</p>
     }
     @if (error()) {
-      <p role="alert" class="text-sm text-red-600">{{ error() }}</p>
+      <p role="alert" class="notice danger">{{ error() }}</p>
     }
 
-    <p class="text-sm leading-6 text-muted-color">
+    <p class="notice warning">
       Cada método conectado permite entrar por separado: conectarlos no activa verificación en dos pasos ni hace que la contraseña herede la protección de Google.
     </p>
-    <p class="text-sm leading-6 text-muted-color">
+    <p class="field-hint">
       Un correo coincidente no autoriza unir cuentas. Si el método ya pertenece a otro usuario de Firebase, detenemos la conexión: no fusionamos identidades ni datos financieros.
       Cerrar la página cancela los pasos pendientes, pero no revierte un cambio que Firebase ya haya confirmado.
     </p>
   } @else {
-    <p role="status" class="text-sm text-muted-color">Validando los métodos de acceso en este navegador...</p>
+    <p role="status" class="notice">Validando los métodos de acceso en este navegador...</p>
   }
 </section>

@@ -13,11 +13,19 @@ import { TransactionsModule } from "../transactions/transactions.module";
 import { AssistantHttp } from "./assistant.http";
 import { AssistantRpc } from "./assistant.rpc";
 import { AssistantService } from "./assistant.service";
+import { AssistantConsentService } from "./assistant-consent.service";
 import {
   AiSdkAssistantRuntime,
   ASSISTANT_RUNTIME,
   DemonstrationAssistantRuntime,
 } from "./assistant-runtime";
+import { AssistantVoiceHttp } from "./assistant-voice.http";
+import { AssistantVoiceService, VOICE_FETCH } from "./assistant-voice.service";
+import {
+  AssistantVoiceRuntime,
+  VOICE_SOCKET,
+  voiceSocket,
+} from "./assistant-voice-runtime";
 import { FinancialReads } from "./financial-reads";
 
 @Module({
@@ -33,11 +41,19 @@ import { FinancialReads } from "./financial-reads";
     ObjectivesModule,
     FinancialEvidenceModule,
   ],
-  controllers: [AssistantHttp],
+  controllers: [AssistantHttp, AssistantVoiceHttp],
   providers: [
     FinancialReads,
     AssistantService,
+    AssistantConsentService,
     AssistantRpc,
+    AssistantVoiceService,
+    AssistantVoiceRuntime,
+    { provide: VOICE_SOCKET, useValue: voiceSocket },
+    {
+      provide: VOICE_FETCH,
+      useValue: (...args: Parameters<typeof fetch>) => fetch(...args),
+    },
     {
       provide: ASSISTANT_RUNTIME,
       inject: [EnvironmentService, FinancialReads],

@@ -1,6 +1,7 @@
 # Stage C — expanded experience
 
-**Scope selected on 2026-11-09 (America/Santiago); implementation is not claimed.**
+**Scope selected on 2026-11-09 (America/Santiago).** Planning baselines below are
+retained; implementation evidence does not by itself close the stage/release gate.
 Make everyday financial management clear and low-friction: guided bank setup,
 chosen accounts kept up to date automatically, easier classification, a persistent
 readable assistant and live voice. **The November 11 scope addition also requires
@@ -47,7 +48,13 @@ ordering, not a delivery forecast. Linear owns their live values.
 
 | Document | Responsibility |
 | --- | --- |
+| [Integrated experience delivery](experience-delivery.md) | Four requested feature workstreams, PR stack, executed combined verification and remaining release gates; not Stage C closure |
 | [Scope and planning record](planning.md) | All 18 feedback items, required/optional selection, dependencies, decisions and exclusions |
+| [Selected-account synchronization policy](banking-sync-policy.md) | LAZ-89 decision and implemented selection/consent, isolated portable execution, background authority and recovery; live enablement remains gated |
+| [Banking delivery](banking-delivery.md) and [browser verification](banking-browser-validation.md) | LAZ-74 implementation traceability, executed local checks and explicit unverified operational limits |
+| [Workspace delivery](workspace-delivery.md) | LAZ-75 workflows, preferences, shortcut integration and executed Chromium/accessibility screening |
+| [Financial assistant](../../technical/financial-assistant.md) and [live voice contract](../../technical/assistant-live-voice.md) | LAZ-72 persistent conversation/voice implementation, privacy, review fixes and remaining live-provider gates |
+| [Integrated assistant browser validation](assistant-browser-validation.md) | Final mocked Chromium matrix, deferred-focus regression/fix, responsive/accessibility results and synthetic voice boundaries |
 | [Validation plan](validation-plan.md) | Observable journeys, appropriate evidence and unresolved live checks |
 | [Stage Definition of Done](definition-of-done.md) | Required completion and gate checks, all still open |
 | [Dated issue snapshot](../snapshots/backlog-2026-11-10-stage-c-planning.md) | Complete project inventory after selection; not a live board |

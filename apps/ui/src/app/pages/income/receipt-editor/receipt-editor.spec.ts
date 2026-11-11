@@ -33,6 +33,82 @@ const receipt = {
 describe("received income decisions", () => {
   afterEach(() => TestBed.resetTestingModule());
 
+  it("offers source creation instead of an unfillable confirmation when the catalog is empty", async () => {
+    const mock = setupRpc({
+      "transactions.detail": () => credit,
+      "income.sources": () => [],
+    });
+    const fixture = TestBed.createComponent(ReceiptEditor);
+    fixture.componentRef.setInput("transactionId", credit.id);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement;
+    expect(root.textContent).toContain("Primero crea una fuente de ingreso.");
+    expect(root.querySelector('a[href="/ingresos/fuentes"]')?.textContent).toBe(
+      "Crear fuente",
+    );
+    expect(
+      root.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled,
+    ).toBe(true);
+    root.querySelector("form")?.dispatchEvent(eventsIn(root)("submit"));
+    await fixture.whenStable();
+    expect(mock.callsTo("income.confirm")).toHaveLength(0);
+  });
+
+  it("still clears a retained ineligible receipt with no sources available", async () => {
+    const mock = setupRpc({
+      "transactions.detail": () => ({
+        ...credit,
+        isInternalMovement: true,
+        receipt,
+      }),
+      "income.sources": () => [],
+      "income.clear": () => rpcResponse(undefined),
+    });
+    const fixture = TestBed.createComponent(ReceiptEditor);
+    fixture.componentRef.setInput("transactionId", credit.id);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement;
+    expect(root.textContent).toContain("Es una transferencia interna.");
+    expect(root.textContent).not.toContain("Tiene una revisión pendiente.");
+    expect(root.textContent).not.toContain(
+      "Tiene vínculos de devolución o reembolso.",
+    );
+    [...root.querySelectorAll("button")]
+      .find((button) => button.textContent?.includes("Quitar vínculo"))
+      ?.click();
+    fixture.detectChanges();
+    const clear = [...root.querySelectorAll("button")].find((button) =>
+      button.textContent?.includes("Sí, quitar"),
+    );
+    expect(clear?.disabled).toBe(false);
+    clear?.click();
+    await fixture.whenStable();
+    expect(mock.callsTo("income.clear")).toHaveLength(1);
+    expect(mock.callsTo("income.confirm")).toHaveLength(0);
+  });
+
+  it.each([
+    ["2026-09", "returnTo=income&month=2026-09"],
+    ["2026-99", "returnTo=income"],
+  ])("links movement detail with bounded income return context for %s", async (month, query) => {
+    setupRpc({ "transactions.detail": () => credit });
+    const fixture = TestBed.createComponent(ReceiptEditor);
+    fixture.componentRef.setInput("transactionId", credit.id);
+    fixture.componentRef.setInput("month", month);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(
+      fixture.nativeElement
+        .querySelector("a.record-title")
+        ?.getAttribute("href"),
+    ).toBe(`/movimientos/${credit.id}?${query}`);
+  });
+
   it("confirms and reassigns an eligible credit and clears a retained ineligible receipt", async () => {
     let detail: RpcOutput<"transactions.detail"> = credit;
     const second = {
@@ -123,12 +199,34 @@ describe("received income decisions", () => {
   });
 
   it.each([
-    { isInternalMovement: null },
-    { reviewStatus: "needs_review" as const },
-    { removedAt: "2026-11-01T15:00:00.000Z" },
-    { hasExpenseAdjustments: true },
-    { type: "debit" as const },
-  ])("does not offer confirmation for ineligible facts %j", async (facts) => {
+    {
+      facts: { isInternalMovement: null },
+      reason: "Falta determinar si es una transferencia interna.",
+    },
+    {
+      facts: { reviewStatus: "needs_review" as const },
+      reason: "Tiene una revisión pendiente.",
+    },
+    {
+      facts: { removedAt: "2026-11-01T15:00:00.000Z" },
+      reason: "El banco retiró este movimiento.",
+    },
+    {
+      facts: { hasExpenseAdjustments: true },
+      reason: "Tiene vínculos de devolución o reembolso.",
+    },
+    {
+      facts: { type: "debit" as const },
+      reason: "Este movimiento no es un abono.",
+    },
+    {
+      facts: { bookedAt: new Date(Date.now() + 86400000).toISOString() },
+      reason: "Su fecha de registro aún no llega.",
+    },
+  ])("does not offer confirmation for ineligible facts %j", async ({
+    facts,
+    reason,
+  }) => {
     const mock = setupRpc({
       "transactions.detail": () => ({ ...credit, ...facts }),
       "income.sources": () => [incomeSource],
@@ -138,7 +236,15 @@ describe("received income decisions", () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector("fieldset").disabled).toBe(true);
+    const root: HTMLElement = fixture.nativeElement;
+    expect(root.querySelector<HTMLFieldSetElement>("fieldset")?.disabled).toBe(
+      true,
+    );
+    expect(
+      [...root.querySelectorAll(".notice.warning li")].map(
+        (item) => item.textContent,
+      ),
+    ).toEqual([reason]);
     expect(mock.callsTo("income.confirm")).toHaveLength(0);
   });
 

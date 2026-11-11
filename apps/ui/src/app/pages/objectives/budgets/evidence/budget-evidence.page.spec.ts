@@ -84,6 +84,26 @@ describe("budget contribution reconciliation", () => {
     const root: HTMLElement = harness.fixture.nativeElement;
     expect(root.textContent).toContain("La selección concilia");
     expect(root.textContent).toContain("$120.000");
+    const back = root.querySelector<HTMLAnchorElement>(".page-back");
+    expect(back?.getAttribute("href")).toBe(
+      "/presupuestos-y-metas?month=2026-11",
+    );
+    const movementLinks = root.querySelectorAll<HTMLAnchorElement>(
+      `a[href^="/movimientos/${movement.id}"]`,
+    );
+    expect(movementLinks).toHaveLength(2);
+    for (const link of movementLinks) {
+      const query = new URL(link.href, "http://localhost").searchParams;
+      expect(Object.fromEntries(query)).toEqual({
+        returnTo: "budget-evidence",
+        budget: budgetDetail.id,
+        revision: budgetRevision.id,
+        month: "2026-11",
+        asOf: evidence.tracking.asOf,
+        adjustmentsAsOf: evidence.tracking.adjustmentsAsOf,
+        reported: "120000.00",
+      });
+    }
     expect(root.textContent).toContain(
       "no certifican que el historial bancario esté completo",
     );
@@ -134,5 +154,28 @@ describe("budget contribution reconciliation", () => {
       "El enlace no contiene",
     );
     expect(mock.callsTo("objectives.budgetContributions")).toHaveLength(0);
+  });
+
+  it("omits invalid reported amounts and uses returned cutoffs rather than requested ones", async () => {
+    const mock = setupRpc({ "objectives.budgetContributions": () => evidence });
+    mock.navigate.mockRestore();
+    TestBed.inject(Router).resetConfig([
+      { path: "presupuestos/:id/movimientos", component: BudgetEvidencePage },
+    ]);
+    const harness = await RouterTestingHarness.create(
+      `/presupuestos/${budgetDetail.id}/movimientos?revision=${budgetRevision.id}&month=2026-11&asOf=2026-11-01T15:00:00.000Z&reported=invalid&returnUrl=https://example.com`,
+    );
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    const root: HTMLElement = harness.fixture.nativeElement;
+    const link = root.querySelector<HTMLAnchorElement>(
+      `a[href^="/movimientos/${movement.id}"]`,
+    );
+    if (!link) throw new Error("Missing movement link");
+    const query = new URL(link.href, "http://localhost").searchParams;
+    expect(query.get("asOf")).toBe(evidence.tracking.asOf);
+    expect(query.has("reported")).toBe(false);
+    expect(query.has("returnUrl")).toBe(false);
+    expect(query.has("cursor")).toBe(false);
   });
 });

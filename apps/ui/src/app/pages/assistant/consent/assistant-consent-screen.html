@@ -1,0 +1,34 @@
+<section class="consent-screen" aria-labelledby="assistant-consent-title">
+  <span class="consent-mark"><app-icon name="security" /></span>
+  @if (loading()) {
+    <h3 #heading id="assistant-consent-title" tabindex="-1">Comprobando tu decisión</h3>
+    <p role="status">Consultando el consentimiento guardado en tu cuenta…</p>
+  } @else if (!state() || (failed() && !needsCheck())) {
+    <h3 #heading id="assistant-consent-title" tabindex="-1">Tu privacidad, antes de empezar</h3>
+    <p role="alert">No pudimos comprobar tu decisión. No se enviará información a un modelo.</p>
+    <button type="button" class="button" (click)="checked.emit()">Volver a comprobar consentimiento</button>
+  } @else if (state(); as consent) {
+    <p class="eyebrow">TÚ DECIDES QUÉ COMPARTIR</p>
+    <h3 #heading id="assistant-consent-title" tabindex="-1">¿Permites el procesamiento con IA?</h3>
+    <p>Para responder tus preguntas, el asistente comparte el mensaje, contexto reciente y los datos financieros que consulte con <strong>{{ consent.policy.provider }}</strong> ({{ consent.policy.model }}).</p>
+    @if (consent.policy.endpoint) { <p class="consent-destination">Destino configurado: <strong>{{ consent.policy.endpoint }}</strong>.</p> }
+    <ul>
+      <li>No se comparten tus credenciales bancarias.</li>
+      <li>La retención del proveedor es independiente del historial de LazyFinance. Retirar el permiso no elimina datos ya enviados.</li>
+      <li>La voz es opcional: el audio se procesa en OpenAI solo después de un inicio separado. Aceptar aquí no activa el micrófono.</li>
+      <li>Ningún cambio financiero se aprueba por aceptar este permiso.</li>
+    </ul>
+    <p>Guardaremos tu decisión en tu cuenta para tus próximos accesos y dispositivos. Puedes retirarla desde <strong>Privacidad</strong>. Si cambia el proveedor, modelo, destino o aviso, te preguntaremos de nuevo.</p>
+    @if (consent.decision === 'refused') { <p class="notice">Elegiste no permitirlo. Puedes mantener tu decisión o cambiarla aquí.</p> }
+    @if (consent.decision === 'accepted') { <p class="notice">El consentimiento guardado sigue activo. Revisa tu decisión antes de continuar.</p> }
+    @if (pending()) { <p role="status">Guardando tu decisión en la cuenta…</p> }
+    @if (failed() || needsCheck()) {
+      <div class="notice warning" role="alert"><p>No pudimos confirmar el cambio. Comprueba la decisión guardada antes de volver a intentarlo. No repetiremos la solicitud automáticamente.</p><button class="button small" type="button" [disabled]="pending()" (click)="checked.emit()">Comprobar decisión guardada</button></div>
+    }
+    <div class="consent-actions">
+      <button type="button" class="button primary" [disabled]="!canDecide()" (click)="accepted.emit()">{{ pending() ? 'Guardando decisión…' : 'Permitir y abrir asistente' }}</button>
+      <button type="button" class="button" [disabled]="!canDecide()" (click)="refused.emit()">Ahora no</button>
+    </div>
+  }
+  <button type="button" class="text-link consent-history" [disabled]="pending()" (click)="history.emit()">Ver historial sin IA</button>
+</section>

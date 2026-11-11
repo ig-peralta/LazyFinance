@@ -1,15 +1,18 @@
 import {
   ASSISTANT_MAX_TURNS,
-  AssistantConversationSchema,
   type AssistantTurn,
+  CreateAssistantConversationSchema,
 } from "@lazyfinance/contracts";
-import type {
-  BeginAssistantTurn,
-  FinishAssistantTurn,
+import {
+  type BeginAssistantTurn,
+  type FinishAssistantTurn,
+  type RecordAssistantVoiceQuestion,
+  StoredAssistantConversationSchema,
 } from "@lazyfinance/contracts/internal";
 import { Inject, Injectable } from "@nestjs/common";
 import { TRPCError } from "@trpc/server";
 import { type Kysely, type Selectable, sql } from "kysely";
+import type { z } from "zod";
 import { ActionRepository } from "../actions/action.repository";
 import { RLS_DB } from "../database/tokens";
 import { wireValue } from "../serialization";
@@ -35,8 +38,11 @@ export class AssistantRepository {
       .selectFrom("assistant.conversation")
       .select([
         ...summaryFields,
-        sql<number>`jsonb_array_length(turns)`.as("turnCount"),
+        sql<number>`jsonb_array_length(jsonb_path_query_array(turns, '$[*] ? (!exists(@.voice) && @.question != "Consulta por voz")'))`.as(
+          "turnCount",
+        ),
       ])
+      .where("mode", "=", "text")
       .where("expiresAt", ">", sql<Date>`clock_timestamp()`)
       .orderBy("updatedAt", "desc")
       .limit(10)
@@ -44,7 +50,7 @@ export class AssistantRepository {
     return wireValue(rows);
   }
 
-  async create() {
+  async create({ mode }: z.infer<typeof CreateAssistantConversationSchema>) {
     await this.db
       .deleteFrom("assistant.conversation")
       .where("expiresAt", "<=", sql<Date>`clock_timestamp()`)
@@ -52,16 +58,21 @@ export class AssistantRepository {
     const count = await this.db
       .selectFrom("assistant.conversation")
       .select(sql<number>`count(*)::int`.as("count"))
+      .where("mode", "=", mode)
       .executeTakeFirstOrThrow();
-    if (count.count >= 10)
+    if (count.count >= (mode === "voice" ? 100 : 10))
       throw new TRPCError({
         code: "TOO_MANY_REQUESTS",
-        message: "Delete an existing conversation before creating another",
+        message:
+          mode === "voice"
+            ? "Voice session storage limit reached"
+            : "Delete an existing conversation before creating another",
       });
     const row = await this.db
       .insertInto("assistant.conversation")
       .values({
         userId: sql<string>`identity.current_user_id()`,
+        mode,
         lease: null,
         leaseExpiresAt: null,
       })
@@ -111,7 +122,7 @@ export class AssistantRepository {
         return current;
       }),
     }));
-    return AssistantConversationSchema.parse({
+    return StoredAssistantConversationSchema.parse({
       ...wireValue(row),
       turns,
       turnCount: turns.length,
@@ -124,11 +135,24 @@ export class AssistantRepository {
 
   async begin(input: BeginAssistantTurn) {
     const row = await this.owned(input.conversationId, true);
+    if (row.mode !== input.mode)
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Conversation mode is unavailable",
+      });
     const conversation = await this.snapshot(row);
     const existing = conversation.turns.find(
       (turn) => turn.id === input.requestId,
     );
     if (existing) {
+      if (
+        input.mode === "text" &&
+        (existing.voice || existing.question === "Consulta por voz")
+      )
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Voice turn is unavailable in text mode",
+        });
       if (existing.question !== input.text)
         throw new TRPCError({
           code: "CONFLICT",
@@ -214,5 +238,43 @@ export class AssistantRepository {
       .returning("id")
       .executeTakeFirst();
     return { removed: !!row };
+  }
+
+  async recordVoiceQuestion({
+    conversationId,
+    turnId,
+    question,
+  }: RecordAssistantVoiceQuestion) {
+    // Legacy reconciliation only. Native voice no longer calls this procedure:
+    // separate input transcription is intentionally disabled for cost/privacy.
+    const row = await this.owned(conversationId, true);
+    const turn = row.turns.find((turn) => turn.id === turnId);
+    if (
+      !turn?.voice ||
+      turn.question !== "Consulta por voz" ||
+      !["interrupted", "failed"].includes(turn.status)
+    )
+      return { saved: false };
+    if (!turn.voice.transcriptionPending)
+      return { saved: turn.voice.question === question };
+    // Fill only the missing readable input. Never change answer status, actions,
+    // receipts, the current lease, or a question already recorded by the server.
+    await this.db
+      .updateTable("assistant.conversation")
+      .set({
+        turns: JSON.stringify(
+          row.turns.map((value) =>
+            value.id === turnId
+              ? {
+                  ...value,
+                  voice: { question },
+                }
+              : value,
+          ),
+        ),
+      })
+      .where("id", "=", conversationId)
+      .execute();
+    return { saved: true };
   }
 }

@@ -8,11 +8,46 @@ import {
   rpcResponse,
   setupRpc,
 } from "../../../../../testing/rpc";
+import { ExpectationEditor } from "./expectation-editor";
 import { Expectations } from "./expectations";
 
 describe("dated income expectations", () => {
   useDialogStub();
   afterEach(() => TestBed.resetTestingModule());
+
+  it("connects field help and flags invalid expectation dates without marking a valid amount", async () => {
+    const mock = setupRpc();
+    const fixture = TestBed.createComponent(ExpectationEditor);
+    fixture.componentRef.setInput("source", {
+      ...incomeSource,
+      startDate: "2026-11-01",
+      endDate: "2026-11-30",
+    });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const root: HTMLElement = fixture.nativeElement;
+    for (const [id, value] of [
+      ["#expectation-date", "2026-12-01"],
+      ["#expectation-amount", "123,45"],
+    ]) {
+      const input = root.querySelector<HTMLInputElement>(id);
+      if (!input) throw new Error(id);
+      input.value = value;
+      input.dispatchEvent(eventsIn(root)("input"));
+    }
+    root.querySelector("form")?.dispatchEvent(eventsIn(root)("submit"));
+    fixture.detectChanges();
+    const date = root.querySelector("#expectation-date");
+    expect(date?.getAttribute("aria-invalid")).toBe("true");
+    expect(
+      root.querySelector("#expectation-amount")?.getAttribute("aria-invalid"),
+    ).toBe("false");
+    expect(
+      root.querySelector(`#${date?.getAttribute("aria-describedby")}`)
+        ?.textContent,
+    ).toContain("2026-11-30");
+    expect(mock.callsTo("income.createExpectation")).toHaveLength(0);
+  });
 
   it("creates, edits and removes an estimate without confirming income", async () => {
     let entries: RpcOutput<"income.expectations"> = [];

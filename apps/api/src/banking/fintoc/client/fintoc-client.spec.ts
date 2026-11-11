@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  fintocAdmission,
   fintocEnvironment,
   fintocIntent,
   fintocLink,
@@ -15,9 +16,14 @@ describe("Fintoc aggregation-only transport", () => {
       .mockResolvedValueOnce(
         Response.json({ ...fintocLink, link_token: null }),
       );
-    const client = new FintocClient(fintocEnvironment(), fetch);
+    const client = new FintocClient(
+      fintocEnvironment(),
+      fetch,
+      fintocAdmission(),
+    );
     expect(client.configuration()).toEqual({
       enabled: true,
+      automaticSyncEnabled: false,
       publicKey: "pk_test_fixture",
       mode: "test",
     });
@@ -52,9 +58,11 @@ describe("Fintoc aggregation-only transport", () => {
     const fetch = vi.fn<typeof globalThis.fetch>(
       async () => new Response(null, { status }),
     );
-    await new FintocClient(fintocEnvironment(), fetch).disconnect(
-      "link_fixture",
-    );
+    await new FintocClient(
+      fintocEnvironment(),
+      fetch,
+      fintocAdmission(),
+    ).disconnect("link_fixture");
     expect(fetch).toHaveBeenCalledOnce();
     expect(fetch.mock.calls[0][0]).toBe(
       "https://api.fintoc.com/v1/links/link_fixture",
@@ -75,7 +83,11 @@ describe("Fintoc aggregation-only transport", () => {
         { status: Number(status) },
       ),
     );
-    const error = await new FintocClient(fintocEnvironment(), fetch)
+    const error = await new FintocClient(
+      fintocEnvironment(),
+      fetch,
+      fintocAdmission(),
+    )
       .link("token")
       .catch((error: unknown) => error);
     expect(error).toMatchObject({ kind });
@@ -95,7 +107,11 @@ describe("Fintoc aggregation-only transport", () => {
         throw new Error("request URL contains sensitive-link-token");
       }),
     ]) {
-      const error = await new FintocClient(fintocEnvironment(), fetch)
+      const error = await new FintocClient(
+        fintocEnvironment(),
+        fetch,
+        fintocAdmission(),
+      )
         .link("sensitive-link-token")
         .catch((error: unknown) => error);
       expect(error).toMatchObject({ kind: "unavailable" });
@@ -105,9 +121,14 @@ describe("Fintoc aggregation-only transport", () => {
 
   it("propagates the whole-run cancellation signal and sanitizes aborted provider errors", async () => {
     const controller = new AbortController();
+    let entered = () => {};
+    const started = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
     const fetch = vi.fn<typeof globalThis.fetch>(async (_address, options) => {
       const signal = options?.signal;
       if (!signal) throw new Error("Missing fetch cancellation signal");
+      entered();
       return new Promise<Response>((_resolve, reject) => {
         signal.addEventListener(
           "abort",
@@ -116,10 +137,12 @@ describe("Fintoc aggregation-only transport", () => {
         );
       });
     });
-    const pending = new FintocClient(fintocEnvironment(), fetch).link(
-      "private-token",
-      controller.signal,
-    );
+    const pending = new FintocClient(
+      fintocEnvironment(),
+      fetch,
+      fintocAdmission(),
+    ).link("private-token", controller.signal);
+    await started;
     controller.abort();
     const error: unknown = await pending.catch((error: unknown) => error);
     expect(error).toMatchObject({ kind: "unavailable" });

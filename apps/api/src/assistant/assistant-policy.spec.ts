@@ -3,11 +3,16 @@ import {
   AssistantSourceSchema,
   type AssistantTurn,
   AssistantTurnSchema,
+  type FinancialAction,
 } from "@lazyfinance/contracts";
 import { describe, expect, it } from "vitest";
 import { testEnvironment } from "../../tests/fixtures/environment";
 import { ENV_SCHEMA } from "../environment/environment.schema";
-import { assistantHistory, assistantInstructions } from "./assistant-policy";
+import {
+  assistantActionContext,
+  assistantHistory,
+  assistantInstructions,
+} from "./assistant-policy";
 import { assistantModel } from "./assistant-runtime";
 
 const turn = (
@@ -24,6 +29,89 @@ const turn = (
 });
 
 describe("provider-neutral assistant configuration and bounded context", () => {
+  const action = (
+    status: FinancialAction["status"],
+    version = 1,
+  ): FinancialAction => ({
+    id: randomUUID(),
+    version,
+    conversationId: randomUUID(),
+    turnId: randomUUID(),
+    origin: "assistant",
+    request: {
+      kind: "create_tag",
+      tag: { name: `Versión ${version}`, color: null },
+    },
+    context: { tags: [], movement: null },
+    status,
+    createdAt: "2026-11-11T00:00:00.000Z",
+    expiresAt: "2026-11-12T00:00:00.000Z",
+    results:
+      status === "applied"
+        ? [
+            {
+              id: randomUUID(),
+              title: `Versión ${version}`,
+              path: "/etiquetas",
+              outcome: "created",
+            },
+          ]
+        : [],
+  });
+
+  it.each([
+    "applied",
+    "cancelled",
+    "stale",
+    "expired",
+    "proposed",
+  ] as const)("supplies authoritative %s outcomes beyond recent completed messages without inventing execution", (status) => {
+    const proposal = { ...turn("interrupted"), actions: [action(status, 2)] };
+    const turns = [proposal, ...Array.from({ length: 12 }, () => turn())];
+    expect(
+      assistantHistory(turns).some((message) =>
+        message.content.includes(proposal.actions[0].id),
+      ),
+    ).toBe(false);
+    const current = assistantActionContext(turns);
+    expect(current).toContain(proposal.actions[0].id);
+    expect(current).toContain(`"status":"${status}"`);
+    expect(current).toContain('"version":2');
+    expect(current).toContain("Versión 2");
+    expect(current).toContain(
+      status === "applied" ? '"outcome":"created"' : '"results":[]',
+    );
+  });
+
+  it("uses readable voice questions within voice follow-ups and describes a missing saved proposal explicitly", () => {
+    const voice = {
+      ...turn(),
+      question: "Consulta por voz",
+      voice: { question: "¿Y octubre?" },
+    };
+    expect(assistantHistory([voice])[0].content).toBe("¿Y octubre?");
+    expect(assistantActionContext([])).toContain(
+      "no hay ninguna solicitud guardada",
+    );
+    expect(assistantActionContext([])).toContain("NO prueba que exista");
+    expect(assistantActionContext([])).toContain("No inventes una tarjeta");
+  });
+
+  it("requires neutral Spanish and tagged objectives without changing Santiago/CLP semantics", () => {
+    const instructions = assistantInstructions(
+      new Date("2026-11-11T22:00:00Z"),
+    );
+    expect(instructions).toContain("español neutral");
+    expect(instructions).toContain("sin regionalismos ni jerga chilena");
+    expect(instructions).not.toContain("español de Chile");
+    expect(instructions).toContain("America/Santiago");
+    expect(instructions).toContain("Moneda CLP");
+    expect(instructions).toContain("sin etiquetas NO es una opción");
+    expect(instructions).toContain("consultar_etiquetas no prepara nada");
+    expect(instructions).toContain(
+      "consultar_estado_accion vuelve a mostrar su tarjeta actual",
+    );
+  });
   it("requires the current turn and source shapes instead of upgrading earlier development formats", () => {
     const current = turn();
     expect(AssistantTurnSchema.safeParse(current).success).toBe(true);
@@ -113,7 +201,7 @@ describe("provider-neutral assistant configuration and bounded context", () => {
     expect(model.specificationVersion).toBe("v4");
   });
 
-  it("keeps only completed server turns, limits historical pairs and does not expose reasoning, raw tools or unfinished answers", () => {
+  it("keeps completed answers and unfinished user intent within the shared context budget", () => {
     const turns = Array.from({ length: 20 }, () => turn());
     const history = assistantHistory([
       ...turns,
@@ -121,7 +209,7 @@ describe("provider-neutral assistant configuration and bounded context", () => {
       turn("interrupted"),
       turn("pending"),
     ]);
-    expect(history).toHaveLength(16);
+    expect(history).toHaveLength(14);
     expect(history[0].role).toBe("user");
     expect(
       assistantHistory(
@@ -136,5 +224,42 @@ describe("provider-neutral assistant configuration and bounded context", () => {
       "muestra las referencias por separado como tarjetas",
     );
     expect(prompt).toContain("no incluyas códigos de fuente");
+  });
+
+  it("retains interrupted voice corrections and failed text questions, never their unconfirmed answers or missing transcripts", () => {
+    const history = assistantHistory([
+      {
+        ...turn("interrupted"),
+        question: "Consulta por voz",
+        voice: { question: "Mensual, de cien mil, desde el próximo mes" },
+        text: "Invented unfinished answer",
+      },
+      {
+        ...turn("failed"),
+        question: "Usa una etiqueta Burger King roja",
+        text: "False success",
+      },
+      {
+        ...turn("interrupted"),
+        voice: {
+          question: "Audio interrumpido · transcripción no disponible",
+          transcriptionPending: true,
+        },
+      },
+    ]);
+    expect(history).toEqual([
+      { role: "user", content: "Mensual, de cien mil, desde el próximo mes" },
+      { role: "user", content: "Usa una etiqueta Burger King roja" },
+    ]);
+    const prompt = assistantInstructions(new Date("2026-12-01T02:30:00Z"));
+    expect(prompt).toContain("2026-11-30 23:30:00");
+    expect(prompt).toContain("mes actual 2026-11");
+    expect(prompt).toContain("UNA A LA VEZ");
+    expect(prompt).toContain("budget.newTags");
+    expect(prompt).toContain("pregunta qué color quiere");
+    expect(prompt).toContain("corregir_propuesta_financiera");
+    expect(prompt).toContain(
+      "Puedes aceptarla en la tarjeta o decirme qué corregir",
+    );
   });
 });

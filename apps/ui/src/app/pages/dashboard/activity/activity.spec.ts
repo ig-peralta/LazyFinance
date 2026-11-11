@@ -54,6 +54,33 @@ describe("Activity resource view", () => {
     expect(TestBed.inject(TransferState).toJson()).toBe("{}");
   });
 
+  it("keeps a five-row preview and expands the already loaded activity without another read", async () => {
+    const { callsTo } = setupRpc({
+      "transactions.list": () =>
+        transactionPage(
+          Array.from({ length: 10 }, (_, index) => ({
+            ...movement,
+            id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+          })),
+        ),
+    });
+    const fixture = TestBed.createComponent(Activity);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    const toggle = root.querySelector<HTMLButtonElement>(
+      '[aria-controls="recent-activity-list"]',
+    );
+    expect(root.querySelectorAll(".recent-ledger > li")).toHaveLength(5);
+    expect(toggle?.getAttribute("aria-expanded")).toBe("false");
+    toggle?.click();
+    fixture.detectChanges();
+    expect(root.querySelectorAll(".recent-ledger > li")).toHaveLength(10);
+    expect(toggle?.getAttribute("aria-expanded")).toBe("true");
+    expect(callsTo("transactions.list")).toHaveLength(1);
+  });
+
   it("offers retry without interpreting transport errors in the component", async () => {
     setupRpc({
       "transactions.list": vi

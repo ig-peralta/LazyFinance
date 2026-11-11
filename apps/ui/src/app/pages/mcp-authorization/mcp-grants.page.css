@@ -1,0 +1,129 @@
+:host {
+  display: block;
+}
+.grants-page {
+  max-width: 1040px;
+}
+.grant-list {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.grant-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 20px 24px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--paper);
+  overflow-wrap: anywhere;
+}
+.grant-status {
+  align-self: start;
+  margin: 0;
+}
+.grant-capabilities,
+.grant-footer,
+.grant-confirmation {
+  grid-column: 1 / -1;
+}
+.grant-mode {
+  margin: 0 0 8px;
+  font-size: var(--text-control);
+  font-weight: 600;
+}
+.grant-permissions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: var(--text-control);
+}
+.grant-permissions li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.grant-permissions app-icon {
+  width: 1rem;
+  height: 1rem;
+  margin-top: 3px;
+  color: var(--accent);
+}
+.grant-inactive .grant-permissions app-icon {
+  color: var(--muted);
+}
+.grant-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.grant-expiry,
+.grant-details,
+.grants-help,
+.confirmation-detail {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-small);
+  line-height: 1.6;
+}
+.grant-details p {
+  margin-top: 8px;
+}
+.grant-card .grant-revoke {
+  background: transparent;
+  color: var(--muted);
+}
+.grant-card .grant-revoke:hover:not(:disabled) {
+  background: var(--danger-soft);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.grant-confirmation {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--warning);
+  border-radius: 12px;
+  background: var(--warning-soft);
+  font-size: var(--text-control);
+}
+.grant-confirmation p {
+  margin: 0;
+}
+.grants-help {
+  margin-top: 20px;
+}
+.grants-help summary {
+  width: fit-content;
+  min-height: 32px;
+  padding-block: 6px;
+  cursor: pointer;
+}
+.grants-help p {
+  max-width: 640px;
+  margin-top: 8px;
+}
+@media (max-width: 540px) {
+  .grant-card {
+    gap: 16px;
+    padding: 18px;
+  }
+  .grant-status {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+  .grant-card > mcp-client-identity {
+    grid-column: 1 / -1;
+  }
+}

@@ -23,7 +23,7 @@
 }
 .connection-empty h3 {
   margin-block: 12px;
-  font-size: 18px;
+  font-size: 1.125rem;
 }
 @media (max-width: 600px) {
   .panel-heading {

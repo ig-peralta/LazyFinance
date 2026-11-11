@@ -10,8 +10,12 @@ import {
 } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { RouterLink } from "@angular/router";
-import { ConfirmIncomeReceiptSchema } from "@lazyfinance/contracts";
+import {
+  ConfirmIncomeReceiptSchema,
+  MonthSchema,
+} from "@lazyfinance/contracts";
 import { formatClp } from "../../../../utils/currency";
+import { formatDateTime } from "../../../../utils/date";
 import { RpcClient } from "../../../core/rpc/rpc-client";
 import { createScopedCommand } from "../../../core/rpc/scoped-command";
 
@@ -22,6 +26,13 @@ import { createScopedCommand } from "../../../core/rpc/scoped-command";
 })
 export class ReceiptEditor {
   readonly transactionId = input.required<string>();
+  readonly month = input<string>();
+  protected readonly movementContext = computed(() => {
+    const parsed = MonthSchema.safeParse(this.month());
+    return parsed.success
+      ? { returnTo: "income", month: parsed.data }
+      : { returnTo: "income" };
+  });
   readonly saved = output<string>();
   readonly cancelled = output<void>();
   private readonly rpc = inject(RpcClient);
@@ -52,10 +63,29 @@ export class ReceiptEditor {
     );
   });
   protected readonly command = createScopedCommand();
+  protected readonly ineligibilityReasons = computed(() => {
+    if (!this.detail.hasValue()) return [];
+    const item = this.detail.value();
+    const reasons: string[] = [];
+    if (item.type !== "credit") reasons.push("Este movimiento no es un abono.");
+    if (item.isInternalMovement === true)
+      reasons.push("Es una transferencia interna.");
+    if (item.isInternalMovement === null)
+      reasons.push("Falta determinar si es una transferencia interna.");
+    if (item.reviewStatus !== "clear")
+      reasons.push("Tiene una revisión pendiente.");
+    if (item.removedAt) reasons.push("El banco retiró este movimiento.");
+    if (item.hasExpenseAdjustments)
+      reasons.push("Tiene vínculos de devolución o reembolso.");
+    if (Date.parse(item.bookedAt) > Date.now())
+      reasons.push("Su fecha de registro aún no llega.");
+    return reasons;
+  });
   protected readonly error = signal<string | null>(null);
   protected readonly clearing = signal(false);
   protected sourceId = "";
   protected readonly money = formatClp;
+  protected readonly time = (value: string) => formatDateTime(new Date(value));
 
   constructor() {
     effect(() => {
@@ -70,7 +100,14 @@ export class ReceiptEditor {
       transactionId: this.transactionId(),
       sourceId: this.sourceId,
     });
-    if (!parsed.success || !this.eligible()) {
+    if (
+      !parsed.success ||
+      !this.eligible() ||
+      this.sources.isLoading() ||
+      this.sources.error() ||
+      !this.sources.hasValue() ||
+      !this.sources.value().some((source) => source.id === this.sourceId)
+    ) {
       this.error.set(
         "Elige una fuente y un abono elegible. La validación final se realiza en el servidor.",
       );

@@ -1,0 +1,64 @@
+.mcp-authorization {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  padding: 24px;
+}
+.authorization-brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  width: 100%;
+  max-width: 1040px;
+  margin-inline: auto;
+}
+.authorization-brand a,
+.authorization-brand > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.authorization-brand a {
+  color: var(--ink);
+  font-size: 1.2rem;
+  font-weight: 650;
+  text-decoration: none;
+}
+.authorization-brand > span {
+  color: var(--muted);
+  font-size: var(--text-small);
+}
+.authorization-mark {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.authorization-main {
+  width: 100%;
+  max-width: 600px;
+  padding-block: 20px;
+  margin: auto;
+}
+@media (max-width: 600px) {
+  .mcp-authorization {
+    padding: 20px 16px;
+  }
+}
+@media (max-height: 740px) {
+  .mcp-authorization {
+    padding: 16px;
+  }
+  .authorization-mark {
+    width: 32px;
+    height: 32px;
+  }
+  .authorization-main {
+    padding-block: 12px;
+  }
+}

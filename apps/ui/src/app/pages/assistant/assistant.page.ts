@@ -6,15 +6,18 @@ import {
   ElementRef,
   effect,
   inject,
+  input,
   resource,
   signal,
+  untracked,
   viewChild,
 } from "@angular/core";
-import { toSignal } from "@angular/core/rxjs-interop";
-import { ActivatedRoute, Router, RouterLink } from "@angular/router";
+import { Router } from "@angular/router";
 import {
   ASSISTANT_MAX_INPUT,
+  type AssistantConsentDecision,
   type AssistantConversation,
+  type AssistantEvent,
   type AssistantTurn,
   type FinancialAction,
 } from "@lazyfinance/contracts";
@@ -22,15 +25,20 @@ import {
   AuthCredentials,
   type VerifiedCredentials,
 } from "../../core/auth/auth-credentials";
-import {
-  initialReadSettled,
-  reportWorkspaceReadiness,
-} from "../../core/rendering/workspace-preparation";
 import { RpcClient, type RpcScope } from "../../core/rpc/rpc-client";
 import { createScopedCommand } from "../../core/rpc/scoped-command";
+import { latestAssistantAction } from "../../features/assistant/assistant-action-state";
+import { AssistantConsentData } from "../../features/assistant/assistant-consent.data";
 import { AssistantStreamClient } from "../../features/assistant/assistant-stream.client";
+import { AssistantVoiceClient } from "../../features/assistant/assistant-voice.client";
+import { voiceProblem } from "../../features/assistant/assistant-voice-problem";
+import { AssistantWorkspace } from "../../features/assistant/assistant-workspace";
 import { Icon } from "../../shared/ui/icon";
+import { AssistantCanvas } from "./canvas/assistant-canvas";
+import { AssistantConsentScreen } from "./consent/assistant-consent-screen";
 import { AssistantReply } from "./reply/assistant-reply";
+import { AssistantVoiceStage } from "./voice/assistant-voice-stage";
+import { AssistantVoiceStart } from "./voice/assistant-voice-start";
 import { AssistantWelcome } from "./welcome/assistant-welcome";
 
 interface LiveTurn {
@@ -41,29 +49,97 @@ interface LiveTurn {
   controller: AbortController;
   status: string;
   error: string | null;
+  nativeVoice?: boolean;
+}
+
+interface RetainedHistory {
+  scope: RpcScope;
+  conversationId: string;
+  turns: AssistantTurn[];
 }
 
 @Component({
   selector: "assistant-page",
-  imports: [RouterLink, Icon, AssistantReply, AssistantWelcome],
+  imports: [
+    Icon,
+    AssistantReply,
+    AssistantWelcome,
+    AssistantConsentScreen,
+    AssistantCanvas,
+    AssistantVoiceStage,
+    AssistantVoiceStart,
+  ],
   templateUrl: "./assistant.page.html",
-  styleUrl: "./assistant.page.css",
+  styleUrls: ["./assistant.page.css", "./assistant-header.css"],
+  host: { "(document:pointerdown)": "dismissOptions($event)" },
+  providers: [AssistantVoiceClient, AssistantConsentData],
 })
 export class AssistantPage {
+  readonly returnFocus = input<HTMLElement>();
+  private voiceStartup: AbortController | undefined;
+  protected readonly voice = inject(AssistantVoiceClient);
+  protected readonly consent = inject(AssistantConsentData);
+  protected readonly voiceDisclosure = signal(false);
+  protected readonly voiceMode = signal(false);
+  private readonly voiceSelection = signal<{
+    scope: RpcScope;
+    id: string;
+  } | null>(null);
+  protected readonly voiceStopping = signal(false);
+  protected readonly voiceClosing = computed(
+    () => this.voiceStopping() || this.voice.stopping(),
+  );
+  private readonly voiceStarting = signal(false);
+  private voiceStopEpoch = 0;
   private readonly rpc = inject(RpcClient);
   private readonly credentials = inject(AuthCredentials);
   private readonly stream = inject(AssistantStreamClient);
-  private readonly router = inject(Router);
-  private readonly route = inject(ActivatedRoute);
-  private readonly query = toSignal(this.route.queryParamMap);
+  protected readonly workspace = inject(AssistantWorkspace);
   private readonly lifetime = new AbortController();
   private readonly liveState = signal<LiveTurn | null>(null);
+  private readonly retainedHistory = signal<RetainedHistory | null>(null);
+  private readonly retainedVoiceHistory = signal<RetainedHistory | null>(null);
   private readonly sending = signal<{ scope: RpcScope } | null>(null);
   private readonly composer =
     viewChild<ElementRef<HTMLTextAreaElement>>("composer");
-  private readonly bottom = viewChild<ElementRef<HTMLElement>>("bottom");
+  private readonly messages = viewChild<ElementRef<HTMLElement>>("messages");
+  private readonly historyClose =
+    viewChild<ElementRef<HTMLButtonElement>>("historyClose");
+  private readonly panel = viewChild<ElementRef<HTMLElement>>("panel");
+  private readonly resultPanel =
+    viewChild<ElementRef<HTMLElement>>("resultPanel");
+  private readonly optionsMenu =
+    viewChild<ElementRef<HTMLDetailsElement>>("optionsMenu");
+  private resultOpener: HTMLElement | null = null;
+  private focusResult = false;
+  private restoreResultFocus = false;
   protected readonly follow = signal(true);
   protected readonly draft = signal("");
+  protected readonly historyOnly = signal(false);
+  protected readonly historyOpen = signal(false);
+  protected readonly optionsOpen = signal(false);
+  protected readonly canvasOpen = signal(false);
+  protected readonly resultSelection = signal<string | undefined>(undefined);
+  private readonly consentReview = signal(false);
+  protected readonly processingAccepted = computed(
+    () => !this.consentReview() && this.consent.allowed(),
+  );
+  protected readonly consentRequired = computed(
+    () =>
+      this.consent.state()?.required ??
+      (this.configuration.hasValue() &&
+        this.configuration.value().enabled &&
+        !this.configuration.value().demonstration),
+  );
+  protected readonly showConsent = computed(
+    () =>
+      this.consentRequired() &&
+      (this.consentReview() ||
+        this.consent.state()?.decision !== "accepted" ||
+        this.consent.readError() ||
+        this.consent.needsCheck()) &&
+      !this.historyOnly(),
+  );
   protected readonly confirmDelete = signal(false);
   protected readonly maxInput = ASSISTANT_MAX_INPUT;
   protected readonly time = (value: string) =>
@@ -76,7 +152,7 @@ export class AssistantPage {
     () => this.credentials.current()?.principal.name?.split(" ")[0] || "",
   );
   protected readonly id = computed(() => {
-    const id = this.query()?.get("conversacion");
+    const id = this.workspace.selection();
     return id &&
       /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
         id,
@@ -85,15 +161,34 @@ export class AssistantPage {
       : undefined;
   });
   protected readonly invalidId = computed(
-    () => !!this.query()?.has("conversacion") && !this.id(),
+    () => !!this.workspace.selection() && !this.id(),
   );
-  protected readonly command = createScopedCommand(() => this.id());
+  private readonly voiceId = computed(() => {
+    const selection = this.voiceSelection();
+    return selection?.scope === this.rpc.authenticatedScope()
+      ? selection?.id
+      : undefined;
+  });
+  private readonly viewId = computed(() =>
+    this.voiceMode() ? this.voiceId() : this.id(),
+  );
+  private readonly revision = signal(0);
+  private readonly commandOwner = computed(() => ({
+    id: this.id(),
+    revision: this.revision(),
+  }));
+  protected readonly command = createScopedCommand(() => this.commandOwner());
   protected readonly configuration = resource({
     params: () => this.rpc.authenticatedScope(),
     loader: ({ params: scope, abortSignal }) =>
       scope.client.assistant.configuration.query(undefined, {
         signal: abortSignal,
       }),
+  });
+  protected readonly voiceConfiguration = resource({
+    params: () => this.credentials.current(),
+    loader: ({ params: owner, abortSignal }) =>
+      this.voice.configuration(owner, abortSignal),
   });
   protected readonly conversations = resource({
     params: () =>
@@ -121,30 +216,113 @@ export class AssistantPage {
         { signal: abortSignal },
       ),
   });
+  protected readonly voiceConversation = resource({
+    params: () => {
+      const scope = this.rpc.authenticatedScope(),
+        id = this.voiceId();
+      return scope && id ? { scope, id } : undefined;
+    },
+    loader: ({ params, abortSignal }) =>
+      params.scope.client.assistant.voiceConversation.query(
+        { id: params.id },
+        { signal: abortSignal },
+      ),
+  });
   protected readonly live = computed(() => {
     const value = this.liveState();
     return value &&
       value.scope === this.rpc.authenticatedScope() &&
-      value.conversationId === this.id()
+      value.conversationId === this.viewId()
       ? value
       : null;
   });
-  protected readonly turns = computed(() => {
+  protected readonly textTurns = computed(() => {
+    const history = this.retainedHistory();
     const saved =
-      this.conversation.hasValue() && this.conversation.value().id === this.id()
-        ? this.conversation.value().turns
+      history &&
+      history.scope === this.rpc.authenticatedScope() &&
+      history.conversationId === this.id()
+        ? history.turns
         : [];
-    const live = this.live();
-    return live
+    const live = this.liveState();
+    return live &&
+      !live.nativeVoice &&
+      live.scope === this.rpc.authenticatedScope() &&
+      live.conversationId === this.id()
       ? [...saved.filter((turn) => turn.id !== live.turn.id), live.turn]
       : saved;
   });
+  protected readonly voiceTurns = computed(() => {
+    const history = this.retainedVoiceHistory();
+    const saved =
+      history &&
+      history.scope === this.rpc.authenticatedScope() &&
+      history.conversationId === this.voiceId()
+        ? history.turns
+        : [];
+    const live = this.liveState();
+    return live?.nativeVoice &&
+      live.scope === this.rpc.authenticatedScope() &&
+      live.conversationId === this.voiceId()
+      ? [...saved.filter((turn) => turn.id !== live.turn.id), live.turn]
+      : saved;
+  });
+  protected readonly turns = computed(() =>
+    this.voiceMode() ? this.voiceTurns() : this.textTurns(),
+  );
+  protected readonly latestVoiceTurn = computed(() => this.voiceTurns().at(-1));
+  protected readonly proposalTurn = computed(() =>
+    this.turns()
+      .filter((turn) => turn.actions.length > 0)
+      .at(-1),
+  );
+  protected readonly proposalCount = computed(
+    () =>
+      new Set(
+        this.turns().flatMap((turn) => turn.actions.map((action) => action.id)),
+      ).size,
+  );
   protected readonly busy = computed(
     () =>
       this.command.pending() ||
-      !!this.live()?.pending ||
+      this.voiceStarting() ||
+      this.voiceClosing() ||
+      (this.liveState()?.scope === this.rpc.authenticatedScope() &&
+        !!this.liveState()?.pending) ||
       this.sending()?.scope === this.rpc.authenticatedScope(),
   );
+  protected readonly newSessionBlocked = computed(
+    () =>
+      this.busy() ||
+      (this.voiceMode() &&
+        this.voiceTurns().some(
+          (turn) =>
+            turn.status === "pending" ||
+            turn.actions.some((action) =>
+              ["proposed", "stale"].includes(action.status),
+            ),
+        )),
+  );
+  protected readonly voiceAwaitingConfirmation = computed(() =>
+    this.voiceTurns().some((turn) => turn.status === "pending"),
+  );
+  protected readonly voiceProblem = computed(() => {
+    if (this.voice.problem()) return this.voice.problem();
+    if (this.voiceConversation.error())
+      return voiceProblem("history_unavailable");
+    if (this.voiceMode() && this.command.error())
+      return voiceProblem("setup_failed");
+    if (
+      !this.voiceClosing() &&
+      !this.live()?.pending &&
+      this.voiceAwaitingConfirmation()
+    )
+      return voiceProblem("turn_unconfirmed");
+    const live = this.live();
+    return live?.nativeVoice && live.error
+      ? voiceProblem("turn_unconfirmed")
+      : null;
+  });
   protected readonly awaitingConfirmation = computed(
     () =>
       !this.live()?.pending &&
@@ -153,22 +331,80 @@ export class AssistantPage {
   protected readonly canSend = computed(
     () =>
       !this.busy() &&
+      this.voice.state() === "off" &&
+      !this.voiceMode() &&
+      !this.voiceDisclosure() &&
+      !this.historyOnly() &&
       !this.invalidId() &&
       this.configuration.hasValue() &&
       this.configuration.value().enabled &&
+      (!this.consentRequired() || this.processingAccepted()) &&
       !this.conversation.isLoading() &&
       !this.conversation.error() &&
+      !this.voiceAwaitingConfirmation() &&
       !this.turns().some((turn) => turn.status === "pending") &&
       this.turns().length < 24 &&
       this.draft().trim().length > 0 &&
       this.draft().trim().length <= this.maxInput,
   );
+  protected readonly canStartVoice = computed(
+    () =>
+      !!this.credentials.current() &&
+      this.voice.supported &&
+      this.voice.state() === "off" &&
+      !this.voice.retryAt() &&
+      !this.busy() &&
+      !this.historyOnly() &&
+      this.processingAccepted() &&
+      !this.voiceConversation.isLoading() &&
+      !this.voiceConversation.error() &&
+      !this.textTurns().some((turn) => turn.status === "pending") &&
+      !this.voiceTurns().some((turn) => turn.status === "pending") &&
+      this.voiceTurns().length < 24 &&
+      this.configuration.hasValue() &&
+      this.configuration.value().enabled &&
+      !this.configuration.value().demonstration &&
+      this.voiceConfiguration.hasValue() &&
+      this.voiceConfiguration.value().enabled,
+  );
 
   constructor() {
+    effect(() => {
+      if (this.voice.closed())
+        untracked(() => {
+          if (this.voiceId()) this.voiceConversation.reload();
+        });
+    });
+    effect(() => {
+      const state = this.voice.state(),
+        live = this.liveState();
+      if (state === "off" && live?.nativeVoice && live.pending) {
+        live.controller.abort();
+        this.liveState.set({
+          ...live,
+          pending: false,
+          error: "No se confirmó la última respuesta de voz.",
+        });
+        untracked(() => this.voiceConversation.reload());
+      }
+    });
     inject(DestroyRef).onDestroy(() => {
+      this.endVoice(true);
       this.lifetime.abort();
       this.liveState()?.controller.abort();
+      this.workspace.onMinimize = undefined;
     });
+    this.workspace.onMinimize = () => this.endVoice();
+    // Navigation may preserve text generation, but never hidden microphone capture.
+    const navigation = inject(Router).events.subscribe(() => this.endVoice());
+    const visibility = () => {
+      if (document.hidden) this.endVoice();
+    };
+    document.addEventListener("visibilitychange", visibility);
+    inject(DestroyRef).onDestroy(() =>
+      document.removeEventListener("visibilitychange", visibility),
+    );
+    inject(DestroyRef).onDestroy(() => navigation.unsubscribe());
     let previous: RpcScope | undefined;
     let previousId: string | undefined;
     effect(() => {
@@ -176,56 +412,610 @@ export class AssistantPage {
         id = this.id(),
         live = this.liveState();
       if (scope !== previous || id !== previousId) {
-        this.draft.set("");
+        const history = untracked(this.retainedHistory);
+        if (
+          history &&
+          (history.scope !== scope || history.conversationId !== id)
+        )
+          this.retainedHistory.set(null);
+        if (scope !== previous || id !== previousId) {
+          this.endVoice(scope !== previous);
+          this.voiceMode.set(false);
+        }
+        if (scope !== previous || previousId !== undefined) this.draft.set("");
+        this.resultSelection.set(undefined);
+        this.historyOpen.set(false);
+        this.optionsOpen.set(false);
+        this.canvasOpen.set(false);
+        this.resultOpener = null;
+        this.focusResult = false;
+        this.restoreResultFocus = false;
         this.confirmDelete.set(false);
+      }
+      if (scope !== previous) {
+        this.voiceSelection.set(null);
+        this.retainedVoiceHistory.set(null);
+        this.consentReview.set(false);
+        this.historyOnly.set(false);
+        this.voiceDisclosure.set(false);
       }
       previous = scope;
       previousId = id;
-      if (live && (live.scope !== scope || live.conversationId !== id)) {
+      if (
+        live &&
+        (live.scope !== scope ||
+          live.conversationId !== (live.nativeVoice ? this.voiceId() : id))
+      ) {
         live.controller.abort();
         this.liveState.set(null);
       }
     });
+    let opened = false;
+    effect(() => {
+      const visible = this.workspace.opened();
+      if (visible && !opened) {
+        this.historyOnly.set(false);
+        untracked(() => this.consent.reload());
+      }
+      opened = visible;
+    });
+    let accepted = false;
+    effect(() => {
+      const state = this.consent.state();
+      if (
+        !this.consent.loading() &&
+        !this.consent.readError() &&
+        state?.required
+      ) {
+        if (accepted && state.decision !== "accepted")
+          untracked(() => this.cancelProcessing());
+        accepted = state.decision === "accepted";
+      }
+    });
+    let anchored: string | undefined;
     afterRenderEffect(() => {
-      const turns = this.turns();
-      if (turns.length && this.follow())
-        this.bottom()?.nativeElement.scrollIntoView?.({ block: "end" });
+      const live = this.live();
+      if (
+        !this.workspace.opened() ||
+        !live?.turn.text ||
+        anchored === live.turn.id
+      )
+        return;
+      anchored = live.turn.id;
+      // Anchor once, never follow token/source/action updates or resize.
+      if (this.follow()) {
+        const messages = this.messages()?.nativeElement;
+        const answer = messages?.querySelector<HTMLElement>(
+          `[data-turn="${live.turn.id}"] .assistant-message`,
+        );
+        // scrollIntoView also scrolls clipped ancestors, moving the composer.
+        if (messages && answer)
+          messages.scrollTop +=
+            answer.getBoundingClientRect().top -
+            messages.getBoundingClientRect().top;
+        this.follow.set(false);
+      }
+    });
+    let wasOpen = false;
+    afterRenderEffect(() => {
+      if (this.historyOpen() && this.workspace.opened())
+        this.historyClose()?.nativeElement.focus();
+    });
+    afterRenderEffect(() => {
+      if (!this.voiceDisclosure()) return;
+      const messages = this.messages()?.nativeElement;
+      messages
+        ?.querySelector<HTMLElement>(".voice-start h3")
+        ?.focus({ preventScroll: true });
+      if (messages) messages.scrollTop = 0;
+    });
+    afterRenderEffect(() => {
+      const open = this.canvasOpen(),
+        panel = this.resultPanel();
+      if (open && panel && this.focusResult) {
+        this.focusResult = false;
+        untracked(() => panel.nativeElement.focus());
+      } else if (!open && this.restoreResultFocus) {
+        this.restoreResultFocus = false;
+        untracked(() => {
+          const fallback = !this.voiceMode()
+            ? this.composer()?.nativeElement
+            : (this.panel()?.nativeElement.querySelector<HTMLButtonElement>(
+                ".voice-session-controls button:not([disabled])",
+              ) ??
+              this.panel()?.nativeElement.querySelector<HTMLButtonElement>(
+                ".assistant-modes button[aria-pressed='true']:not([disabled])",
+              ) ??
+              this.panel()?.nativeElement);
+          (this.resultOpener?.isConnected &&
+          !this.resultOpener.closest("[hidden]")
+            ? this.resultOpener
+            : fallback
+          )?.focus();
+          this.resultOpener = null;
+        });
+      }
+    });
+    afterRenderEffect(() => {
+      this.workspace.focusRequest();
+      this.configuration.hasValue();
+      this.showConsent();
+      this.historyOnly();
+      if (this.workspace.opened())
+        untracked(() => {
+          if (this.showConsent()) {
+            const heading =
+              this.panel()?.nativeElement.querySelector<HTMLElement>(
+                "#assistant-consent-title",
+              );
+            (heading ?? this.panel()?.nativeElement)?.focus();
+            return;
+          }
+          if (this.historyOpen()) {
+            this.historyClose()?.nativeElement.focus();
+            return;
+          }
+          const composer = this.composer()?.nativeElement;
+          if (
+            composer &&
+            !composer.disabled &&
+            !composer.closest("[hidden]") &&
+            getComputedStyle(composer).visibility !== "hidden"
+          )
+            composer.focus();
+          else
+            (
+              this.resultPanel()?.nativeElement ?? this.panel()?.nativeElement
+            )?.focus();
+        });
+      else if (wasOpen)
+        untracked(() => this.workspace.restoreFocus(this.returnFocus()));
+      wasOpen = this.workspace.opened();
+    });
+    afterRenderEffect(() => {
+      if (this.workspace.opened() && this.workspace.modal()) {
+        const panel = this.panel()?.nativeElement;
+        if (panel && !panel.contains(document.activeElement)) panel.focus();
+      }
     });
     effect(() => {
-      const live = this.live();
-      const saved = this.conversation.hasValue()
-        ? this.conversation
-            .value()
-            .turns.find((turn) => turn.id === live?.turn.id)
-        : undefined;
-      if (
-        live &&
-        !live.pending &&
-        live.turn.status === "pending" &&
-        saved &&
-        saved.status !== "pending"
-      )
-        this.liveState.set({ ...live, turn: saved });
+      const scope = this.rpc.authenticatedScope(),
+        id = this.id();
+      if (!scope || !id || !this.conversation.hasValue()) return;
+      const conversation = this.conversation.value();
+      if (conversation.id !== id) return;
+      // Resources have no value while reloading. Keep accepted turns in this
+      // owner/selection's memory so delayed reads cannot erase proposals.
+      untracked(() => {
+        this.retainTurns(scope, id, conversation.turns);
+        const live = this.live();
+        const saved = this.retainedHistory()?.turns.find(
+          (turn) => turn.id === live?.turn.id,
+        );
+        if (live && !live.pending && saved && saved.status !== "pending")
+          this.liveState.set({ ...live, turn: saved });
+      });
     });
-    reportWorkspaceReadiness(
-      () =>
-        initialReadSettled(this.configuration) &&
-        (!this.configuration.hasValue() ||
-          (initialReadSettled(this.conversations) &&
-            (!this.id() || initialReadSettled(this.conversation)))),
+    effect(() => {
+      const scope = this.rpc.authenticatedScope(),
+        id = this.voiceId();
+      if (!scope || !id || !this.voiceConversation.hasValue()) return;
+      const conversation = this.voiceConversation.value();
+      if (conversation.id !== id) return;
+      untracked(() => {
+        this.retainTurns(scope, id, conversation.turns);
+        const live = this.liveState();
+        const saved = this.retainedVoiceHistory()?.turns.find(
+          (turn) => turn.id === live?.turn.id,
+        );
+        if (
+          live?.scope === scope &&
+          live.nativeVoice &&
+          !live.pending &&
+          saved &&
+          saved.status !== "pending"
+        )
+          this.liveState.set({ ...live, turn: saved, error: null });
+      });
+    });
+  }
+
+  private retainTurns(
+    scope: RpcScope,
+    conversationId: string,
+    incoming: AssistantTurn[],
+  ) {
+    const target =
+      conversationId === this.voiceId()
+        ? this.retainedVoiceHistory
+        : this.retainedHistory;
+    const previous = target();
+    const turns = new Map(
+      previous?.scope === scope && previous.conversationId === conversationId
+        ? previous.turns.map((turn) => [turn.id, turn] as const)
+        : [],
     );
+    for (const turn of incoming) {
+      const current = turns.get(turn.id);
+      // A request started before completion must not downgrade its streamed receipt.
+      if (
+        !current ||
+        current.status === "pending" ||
+        turn.status !== "pending"
+      ) {
+        const actions = new Map(
+          current?.actions.map((action) => [action.id, action]) ?? [],
+        );
+        for (const action of turn.actions) {
+          const previous = actions.get(action.id);
+          actions.set(
+            action.id,
+            previous ? latestAssistantAction(previous, action) : action,
+          );
+        }
+        turns.set(turn.id, { ...turn, actions: [...actions.values()] });
+      }
+    }
+    target.set({
+      scope,
+      conversationId,
+      turns: [...turns.values()],
+    });
   }
 
   protected newConversation() {
-    if (!this.busy()) {
+    if (!this.newSessionBlocked()) {
+      if (this.voiceMode()) {
+        this.endVoice(true);
+        this.liveState.set(null);
+        this.voiceMode.set(true);
+        this.voiceDisclosure.set(true);
+        this.canvasOpen.set(false);
+        this.resultSelection.set(undefined);
+        return;
+      }
+      this.endVoice();
+      this.historyOpen.set(false);
+      this.optionsOpen.set(false);
+      this.canvasOpen.set(false);
       this.liveState.set(null);
       this.confirmDelete.set(false);
       this.draft.set("");
-      void this.router.navigate([], {
-        relativeTo: this.route,
-        queryParams: {},
+      this.workspace.selection.set(undefined);
+    }
+  }
+
+  protected select(id: string) {
+    if (!this.busy()) {
+      this.endVoice();
+      this.voiceMode.set(false);
+      this.workspace.selection.set(id);
+      this.closeHistory();
+      this.resultSelection.set(undefined);
+    }
+  }
+
+  protected closeHistory() {
+    this.historyOpen.set(false);
+    this.panel()
+      ?.nativeElement.querySelector<HTMLButtonElement>(
+        '[aria-controls="assistant-history"]',
+      )
+      ?.focus();
+  }
+
+  protected toggleHistory() {
+    this.optionsOpen.set(false);
+    this.canvasOpen.set(false);
+    if (this.showConsent()) {
+      this.viewHistory();
+      return;
+    }
+    this.historyOpen.update((open) => !open);
+  }
+
+  protected toggleOptions(event: Event) {
+    if (!(event.target instanceof HTMLDetailsElement)) return;
+    this.optionsOpen.set(event.target.open);
+    if (event.target.open) {
+      this.historyOpen.set(false);
+      this.canvasOpen.set(false);
+    }
+  }
+
+  protected dismissOptions(event: Event) {
+    if (
+      this.optionsOpen() &&
+      event.target instanceof Node &&
+      !this.optionsMenu()?.nativeElement.contains(event.target)
+    )
+      this.optionsOpen.set(false);
+  }
+
+  protected showResult(id: string, focus = true) {
+    this.resultOpener =
+      focus && document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    this.focusResult = focus;
+    this.restoreResultFocus = false;
+    this.historyOpen.set(false);
+    this.optionsOpen.set(false);
+    this.resultSelection.set(id);
+    this.canvasOpen.set(true);
+  }
+
+  protected closeResults() {
+    this.focusResult = false;
+    this.restoreResultFocus = true;
+    this.canvasOpen.set(false);
+  }
+
+  protected escape(event: Event) {
+    if (this.optionsOpen()) {
+      this.optionsOpen.set(false);
+      this.panel()
+        ?.nativeElement.querySelector<HTMLElement>(
+          ".assistant-options > summary",
+        )
+        ?.focus();
+    } else if (this.historyOpen()) this.closeHistory();
+    else if (this.canvasOpen()) this.closeResults();
+    else if (!this.workspace.home()) this.workspace.minimize();
+    event.stopPropagation();
+  }
+
+  private cancelProcessing() {
+    this.revision.update((value) => value + 1);
+    this.endVoice();
+    this.stop();
+    this.sending.set(null);
+    const live = this.live();
+    if (live)
+      this.liveState.set({
+        ...live,
+        pending: false,
+        error:
+          "El procesamiento se detuvo. Consulta el historial para comprobar lo que alcanzó a guardarse antes de volver a enviar.",
+      });
+  }
+
+  protected async decideConsent(decision: AssistantConsentDecision) {
+    if (!this.consent.canDecide()) return;
+    const owner = this.credentials.current(),
+      opening = this.workspace.focusRequest();
+    if (decision === "refused") {
+      this.consentReview.set(true);
+      this.cancelProcessing();
+    }
+    const confirmed = await this.consent.decide(decision);
+    if (!confirmed || this.credentials.current() !== owner) return;
+    this.consentReview.set(false);
+    this.historyOnly.set(false);
+    if (
+      decision === "refused" &&
+      !this.workspace.home() &&
+      this.workspace.focusRequest() === opening
+    )
+      this.workspace.minimize();
+  }
+
+  protected viewHistory() {
+    this.cancelProcessing();
+    this.voiceMode.set(false);
+    this.canvasOpen.set(false);
+    this.historyOnly.set(true);
+    this.historyOpen.set(true);
+  }
+
+  protected requestConsent() {
+    this.historyOnly.set(false);
+  }
+
+  protected async startVoice() {
+    const owner = this.credentials.current();
+    const scope = this.rpc.authenticatedScope();
+    if (!owner || !scope || !this.canStartVoice()) return;
+    this.endVoice();
+    // This generation begins before history creation, not just before getUserMedia.
+    const startup = new AbortController();
+    this.voiceStartup = startup;
+    const selection = this.workspace.selection();
+    const current = () =>
+      this.voiceStartup === startup &&
+      !startup.signal.aborted &&
+      !this.lifetime.signal.aborted &&
+      !owner.signal.aborted &&
+      this.credentials.current() === owner &&
+      this.processingAccepted() &&
+      !document.hidden &&
+      this.workspace.opened() &&
+      this.workspace.selection() === selection;
+    owner.signal.addEventListener("abort", () => this.endVoice(true), {
+      once: true,
+      signal: startup.signal,
+    });
+    if (!current()) {
+      this.endVoice();
+      return;
+    }
+    this.voiceDisclosure.set(true);
+    this.voiceMode.set(true);
+    this.voiceStarting.set(true);
+    try {
+      let id = this.voiceId();
+      if (!id) {
+        await this.command.run(
+          (scope, signal) =>
+            scope.client.assistant.createConversation.mutate(
+              { mode: "voice" },
+              {
+                signal: AbortSignal.any([signal, startup.signal]),
+              },
+            ),
+          (chat) => {
+            if (!current()) return;
+            this.voiceSelection.set({ scope, id: chat.id });
+          },
+          "Conversación creada.",
+        );
+        id = this.voiceId();
+      }
+      if (!current()) return;
+      if (!id) {
+        this.voiceDisclosure.set(false);
+        return;
+      }
+      this.voiceDisclosure.set(false);
+      this.liveState.update((live) =>
+        live?.nativeVoice ? { ...live, error: null } : live,
+      );
+      await this.voice.start(
+        owner,
+        id,
+        (event) => {
+          if (current()) this.receiveVoice(event);
+        },
+        () => {},
+        startup.signal,
+      );
+      if (!current() && this.voiceStartup === startup) this.endVoice();
+    } finally {
+      if (this.voiceStartup === startup) this.voiceStarting.set(false);
+    }
+  }
+
+  protected cancelVoiceStart() {
+    this.endVoice();
+    this.voiceMode.set(false);
+    this.workspace.focusRequest.update((value) => value + 1);
+  }
+
+  protected openVoiceMode() {
+    if (this.busy()) return;
+    this.voiceMode.set(true);
+    this.canvasOpen.set(false);
+    this.historyOpen.set(false);
+    this.confirmDelete.set(false);
+    if (!this.voiceId()) this.voiceDisclosure.set(true);
+  }
+
+  private receiveVoice(event: AssistantEvent) {
+    const scope = this.rpc.authenticatedScope(),
+      conversationId = this.voiceId();
+    if (!scope || !conversationId) return;
+    if (event.type === "turn")
+      this.liveState.set({
+        scope,
+        conversationId,
+        turn: event.turn,
+        pending: true,
+        controller: new AbortController(),
+        status: "Consultando tus datos…",
+        error: null,
+        nativeVoice: true,
+      });
+    const live = this.live();
+    if (!live) return;
+    if (event.type === "source") {
+      this.liveState.set({
+        ...live,
+        turn: {
+          ...live.turn,
+          sources: [
+            ...live.turn.sources.filter(
+              (source) => source.id !== event.source.id,
+            ),
+            event.source,
+          ],
+        },
+      });
+      if (!this.canvasOpen()) this.resultSelection.set(live.turn.id);
+    }
+    if (event.type === "action") {
+      this.liveState.set({
+        ...live,
+        turn: {
+          ...live.turn,
+          actions: [
+            ...live.turn.actions.filter(
+              (action) => action.id !== event.action.id,
+            ),
+            event.action,
+          ],
+        },
+      });
+      if (!this.canvasOpen()) this.showResult(live.turn.id, false);
+    }
+    if (event.type === "action_updated") {
+      this.updateAction(event.action);
+      if (!this.canvasOpen() && event.action.turnId)
+        this.showResult(event.action.turnId, false);
+    }
+    if (event.type === "status")
+      this.liveState.set({ ...live, status: event.text });
+    if (event.type === "done") {
+      this.retainTurns(scope, conversationId, [event.turn]);
+      this.liveState.set({ ...live, turn: event.turn, pending: false });
+      this.voiceConversation.reload();
+    }
+    if (event.type === "error")
+      this.liveState.set({ ...live, pending: false, error: event.message });
+  }
+
+  protected endVoice(clearState = false) {
+    const active = this.voice.state() !== "off",
+      scope = this.rpc.authenticatedScope(),
+      id = this.voiceId();
+    const ended = this.voice.end(clearState);
+    this.voiceStartup?.abort();
+    this.voiceStartup = undefined;
+    this.voiceStarting.set(false);
+    this.voiceDisclosure.set(false);
+    if (active) {
+      const epoch = ++this.voiceStopEpoch;
+      this.voiceStopping.set(true);
+      const live = this.liveState();
+      if (live?.nativeVoice && live.scope === scope && id) {
+        this.retainTurns(scope, id, [live.turn]);
+        if (live.pending) this.liveState.set({ ...live, pending: false });
+      }
+      void ended.then(() => {
+        if (epoch === this.voiceStopEpoch) this.voiceStopping.set(false);
+        if (
+          this.rpc.authenticatedScope() === scope &&
+          this.voiceId() === id &&
+          !this.lifetime.signal.aborted
+        )
+          this.voiceConversation.reload();
       });
     }
+    if (clearState) {
+      this.voiceMode.set(false);
+      this.voiceSelection.set(null);
+      this.retainedVoiceHistory.set(null);
+    }
+  }
+
+  protected continueText() {
+    if (!this.voiceMode() && !this.voiceDisclosure()) return;
+    this.endVoice();
+    this.voiceMode.set(false);
+    this.canvasOpen.set(false);
+    this.workspace.focusRequest.update((value) => value + 1);
+  }
+
+  protected close() {
+    this.revision.update((value) => value + 1);
+    this.stop();
+    this.endVoice(true);
+    this.sending.set(null);
+    this.liveState.set(null);
+    this.draft.set("");
+    this.confirmDelete.set(false);
+    this.voiceDisclosure.set(false);
+    this.workspace.selection.set(undefined);
+    this.workspace.minimize();
   }
 
   protected suggest(question: string) {
@@ -249,6 +1039,31 @@ export class AssistantPage {
     }
   }
 
+  protected containFocus(event: KeyboardEvent) {
+    if (event.key !== "Tab" || !this.workspace.modal()) return;
+    const panel = this.panel()?.nativeElement;
+    const elements = [
+      ...(panel?.querySelectorAll<HTMLElement>(
+        "button:not([disabled]),a[href],input:not([disabled]),textarea:not([disabled]),select:not([disabled]),summary,[tabindex='0']",
+      ) ?? []),
+    ].filter(
+      (element) =>
+        element.getClientRects().length > 0 &&
+        getComputedStyle(element).visibility !== "hidden" &&
+        !element.closest("[inert]"),
+    );
+    const target = event.shiftKey ? elements.at(-1) : elements[0];
+    const boundary = event.shiftKey ? elements[0] : elements.at(-1);
+    if (
+      !elements.length ||
+      document.activeElement === boundary ||
+      document.activeElement === panel
+    ) {
+      event.preventDefault();
+      (target ?? panel)?.focus();
+    }
+  }
+
   protected scroll(event: Event) {
     const element = event.target;
     if (element instanceof HTMLElement)
@@ -259,23 +1074,61 @@ export class AssistantPage {
 
   protected jump() {
     this.follow.set(true);
-    this.bottom()?.nativeElement.scrollIntoView?.({ block: "end" });
+    const messages = this.messages()?.nativeElement;
+    if (messages) messages.scrollTop = messages.scrollHeight;
   }
 
   protected stop() {
+    // Conversation creation is a separate, possibly committed command. Stop its
+    // continuation even before a streamed turn/controller exists.
+    if (this.sending() && !this.live()?.pending)
+      this.revision.update((value) => value + 1);
     this.live()?.controller.abort();
   }
 
   protected refresh() {
     if (!this.busy()) {
+      this.voice.clearProblem();
+      this.command.clear();
       this.liveState.set(null);
       this.conversation.reload();
+      this.voiceConversation.reload();
       this.conversations.reload();
       this.configuration.reload();
+      this.voiceConfiguration.reload();
+      this.consent.reload();
     }
   }
 
   protected actionChanged(action: FinancialAction) {
+    if (action.conversationId !== this.viewId()) return;
+    this.updateAction(action);
+    if (this.voiceMode()) this.voiceConversation.reload();
+    else this.conversation.reload();
+  }
+
+  private updateAction(action: FinancialAction) {
+    if (action.conversationId !== this.viewId()) return;
+    const target = this.voiceMode()
+      ? this.retainedVoiceHistory
+      : this.retainedHistory;
+    target.update((history) =>
+      history &&
+      history.scope === this.rpc.authenticatedScope() &&
+      history.conversationId === action.conversationId
+        ? {
+            ...history,
+            turns: history.turns.map((turn) => ({
+              ...turn,
+              actions: turn.actions.map((value) =>
+                value.id === action.id
+                  ? latestAssistantAction(value, action)
+                  : value,
+              ),
+            })),
+          }
+        : history,
+    );
     const live = this.live();
     if (live?.turn.actions.some((value) => value.id === action.id))
       this.liveState.set({
@@ -283,17 +1136,19 @@ export class AssistantPage {
         turn: {
           ...live.turn,
           actions: live.turn.actions.map((value) =>
-            value.id === action.id ? action : value,
+            value.id === action.id
+              ? latestAssistantAction(value, action)
+              : value,
           ),
         },
       });
-    this.conversation.reload();
   }
 
   protected async send() {
     const owner = this.credentials.current(),
       scope = this.rpc.authenticatedScope();
     if (!owner || !scope || !this.canSend()) return;
+    this.voice.interrupt();
     const text = this.draft().trim();
     const operation = { scope };
     this.sending.set(operation);
@@ -309,6 +1164,7 @@ export class AssistantPage {
     scope: RpcScope,
     text: string,
   ) {
+    const revision = this.revision();
     let id = this.id();
     if (!id) {
       let created: AssistantConversation | undefined;
@@ -326,22 +1182,27 @@ export class AssistantPage {
         !confirmed ||
         !created ||
         owner.signal.aborted ||
+        this.revision() !== revision ||
         this.lifetime.signal.aborted
       )
         return;
       id = created.id;
-      const navigated = await this.router.navigate([], {
-        relativeTo: this.route,
-        queryParams: { conversacion: id },
-      });
+      this.workspace.selection.set(id);
       if (
-        !navigated ||
         this.id() !== id ||
         this.credentials.current() !== owner ||
+        this.revision() !== revision ||
         this.lifetime.signal.aborted
       )
         return;
     }
+    if (
+      this.revision() !== revision ||
+      !this.configuration.hasValue() ||
+      !this.configuration.value().enabled ||
+      (this.consentRequired() && !this.processingAccepted())
+    )
+      return;
     const execution: LiveTurn = {
       scope,
       conversationId: id,
@@ -360,11 +1221,13 @@ export class AssistantPage {
       error: null,
     };
     this.liveState.set(execution);
+    this.resultSelection.set(undefined);
     this.draft.set("");
     this.follow.set(true);
     const current = () =>
       this.rpc.authenticatedScope() === scope &&
       this.id() === id &&
+      this.revision() === revision &&
       !this.lifetime.signal.aborted &&
       this.liveState()?.controller === execution.controller;
     const update = (change: Partial<LiveTurn>) => {
@@ -390,6 +1253,7 @@ export class AssistantPage {
                   ? "Respuesta guardada."
                   : "Preparando la consulta…",
             });
+          if (event.type === "done") this.retainTurns(scope, id, [event.turn]);
           if (event.type === "delta")
             update({
               turn: { ...live.turn, text: live.turn.text + event.text },
@@ -419,24 +1283,30 @@ export class AssistantPage {
                 ],
               },
             });
+          if (event.type === "action_updated") this.updateAction(event.action);
           if (event.type === "status") update({ status: event.text });
-          if (event.type === "error") update({ error: event.message });
+          if (event.type === "error") {
+            this.endVoice();
+            update({
+              error:
+                "No pudimos completar una respuesta confirmada. Consulta el historial antes de volver a enviar.",
+            });
+          }
         },
       );
-    } catch (error) {
+    } catch {
+      if (current()) this.endVoice();
       update({
         error: execution.controller.signal.aborted
           ? "Generación detenida. Consulta el estado para confirmar lo que alcanzó a guardarse."
-          : error instanceof Error
-            ? error.message
-            : "No pudimos confirmar la respuesta. Revisa el historial.",
+          : "No pudimos confirmar la respuesta. Revisa el historial antes de volver a enviar.",
       });
     } finally {
       update({ pending: false });
       if (current()) {
         this.conversation.reload();
         this.conversations.reload();
-        this.composer()?.nativeElement.focus();
+        if (this.workspace.opened()) this.composer()?.nativeElement.focus();
       }
     }
   }
@@ -451,10 +1321,7 @@ export class AssistantPage {
         this.confirmDelete.set(false);
         this.liveState.set(null);
         this.conversations.reload();
-        void this.router.navigate([], {
-          relativeTo: this.route,
-          queryParams: {},
-        });
+        this.workspace.selection.set(undefined);
       },
       "Conversación eliminada.",
     );

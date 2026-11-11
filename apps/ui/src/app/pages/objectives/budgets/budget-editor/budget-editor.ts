@@ -15,6 +15,7 @@ import {
 import { createScopedCommand } from "../../../../core/rpc/scoped-command";
 import { ObjectiveFieldsView } from "../../forms/objective-fields";
 import { objectiveFields, objectiveInput } from "../../forms/objective-form";
+import { budgetEditPolicy } from "../budget-edit-policy";
 
 @Component({
   selector: "budget-editor",
@@ -25,31 +26,10 @@ export class BudgetEditor {
   readonly detail = input<BudgetDetail | null>(null);
   readonly saved = output<BudgetDetail>();
   readonly cancelled = output<void>();
-  protected readonly definition = computed(
-    () => this.detail()?.pending ?? this.detail()?.effective ?? null,
-  );
-  protected readonly started = computed(() => {
-    const definition = this.detail()?.effective ?? this.detail()?.pending;
-    return (
-      !!definition?.startDate && Date.parse(definition.startDate) <= Date.now()
-    );
-  });
-  protected readonly unsupported = computed(() => {
-    const value = this.definition();
-    return (
-      !!value &&
-      (value.kind !== "time_based" ||
-        (value.isRecurring &&
-          value.period !== "monthly" &&
-          value.period !== "yearly"))
-    );
-  });
-  protected readonly locked = computed(
-    () =>
-      !!this.detail()?.archivedAt ||
-      this.unsupported() ||
-      (this.started() && !this.definition()?.isRecurring),
-  );
+  protected readonly policy = computed(() => budgetEditPolicy(this.detail()));
+  protected readonly definition = computed(() => this.policy().definition);
+  protected readonly started = computed(() => this.policy().started);
+  protected readonly locked = computed(() => this.policy().locked);
   protected fields = objectiveFields();
   protected readonly command = createScopedCommand();
   protected readonly error = signal<string | null>(null);
