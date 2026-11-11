@@ -40,19 +40,26 @@ public RPC, assistant reads and MCP account reads.
 - Root API runner through signed public/private RPC and a **fresh disposable
   PostgreSQL database**: **521 passed, 5 conditional skips**, 81 files. Command:
   `pnpm test:integration --maxWorkers=2` with the disposable owner URL supplied.
+  After the planner fix, the same **521 passed / 5 skipped** on the accumulated
+  multi-owner database without increasing test deadlines.
 - Persistence PostgreSQL boundary: **44 passed**, including quota fairness,
   controlled owner/scheduler locking, replacement-claim late failures and mode
   backoff/RLS isolation. Persistence unit suite: **69 passed**.
 - Full UI suite: **460 passed** before two additional continuation regressions;
   the final focused banking/accounts/onboarding run passed **72 tests**.
+  With connected-app integration and those regressions, **470 passed** across
+  58 UI files after rebuilding shared contracts.
 - Workspace build/typecheck, formatting/lint, architecture and RPC drift passed.
   The banking surface is **82 public / 103 private procedures**.
 - [Chromium banking smoke](banking-browser-validation.md): **27 checks**, 21 axe
   scans and six heading-order scans, no reported violations or external requests.
 
-An accumulated fixture database exposed a 15-second workflow timeout; fresh
-database runs passed. This is recorded rather than treating a clean-fixture run
-as a load/scaling benchmark. Build retains initial-bundle, assistant-style and
+An accumulated fixture database exposed a pre-existing aggregate planner/JIT
+problem: roughly 3.85 seconds of compilation per monthly summary, without lock
+waits. A redundant trusted-owner account join/filter retained RLS and exact
+results while reducing the inspected plan from cost 1,290,913 to 1,082 and about
+seven milliseconds. This diagnosis is not a maximum-size/load benchmark.
+Build retains initial-bundle, assistant-style and
 contracts CommonJS warnings; lint retains nonfatal diagnostics.
 
 ## Remaining operational gates
