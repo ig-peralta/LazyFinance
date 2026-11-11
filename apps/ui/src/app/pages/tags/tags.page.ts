@@ -13,6 +13,13 @@ import { TagEditor } from "./tag-editor";
   imports: [Icon, EditorDrawer, TagEditor],
   providers: [TagsData],
   templateUrl: "./tags.page.html",
+  styles: `
+    .record-identity > .tag-swatch {
+      width: 1rem;
+      height: 1rem;
+      margin: 0;
+    }
+  `,
 })
 export class TagsPage {
   protected readonly data = inject(TagsData);
@@ -23,6 +30,8 @@ export class TagsPage {
   protected readonly archiving = signal<TagSummary | null>(null);
   protected readonly search = signal("");
   protected readonly needsCheck = signal(false);
+  protected readonly swatch = (color: string | null) =>
+    color && /^#[0-9a-f]{6}$/i.test(color) ? color : "#b5c1aa";
   protected readonly items = computed(() =>
     (this.data.tags.hasValue() ? this.data.tags.value() : []).filter((tag) =>
       tag.name

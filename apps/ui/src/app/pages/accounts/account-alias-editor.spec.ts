@@ -58,6 +58,9 @@ describe("owned account alias editor", () => {
   ])("creates or updates alias %j with trimmed input and emits saved without refreshing accounts", async (initial) => {
     const storage = vi.spyOn(Storage.prototype, "setItem");
     const { mock, fixture, root } = await render({}, owned(initial));
+    expect(
+      root.querySelector('.form-actions button[type="submit"]'),
+    ).not.toBeNull();
     const saved = vi.fn();
     fixture.componentInstance.saved.subscribe(saved);
     expect(mock.calls).toEqual([]);

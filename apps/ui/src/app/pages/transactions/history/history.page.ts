@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from "@angular/common";
 import {
   Component,
   computed,
@@ -32,7 +33,7 @@ import {
 
 @Component({
   selector: "history-page",
-  imports: [FormsModule, RouterLink, Icon],
+  imports: [FormsModule, RouterLink, Icon, NgTemplateOutlet],
   providers: [HistoryData, AccountsData, TagsData],
   templateUrl: "./history.page.html",
 })

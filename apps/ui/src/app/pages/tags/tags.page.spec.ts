@@ -49,6 +49,11 @@ describe("owned tag management", () => {
       root.querySelector<HTMLElement>(".tag-swatch")?.style.backgroundColor,
     ).toBe("rgb(34, 170, 119)");
     expect(root.querySelector("form")).toBeNull();
+    expect(root.querySelectorAll(".record-row .record-icon")).toHaveLength(0);
+    expect(
+      root.querySelector('.danger-actions [aria-label="Archivar Comida"]'),
+    ).not.toBeNull();
+    expect(mock.callsTo("tags.archive")).toHaveLength(0);
     [...root.querySelectorAll("button")]
       .find((button) => button.textContent?.includes("Nueva etiqueta"))
       ?.click();
@@ -111,6 +116,23 @@ describe("owned tag management", () => {
     await revisited.whenStable();
     revisited.detectChanges();
     expect(revisited.nativeElement.textContent).toContain("Viajes");
+  });
+
+  it("uses only validated hex colors for catalog swatches", async () => {
+    setupRpc({
+      "tags.list": () => [
+        { ...tag, color: "url(https://example.invalid/color)" },
+      ],
+    });
+    const fixture = TestBed.createComponent(TagsPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement;
+    expect(
+      root.querySelector<HTMLElement>(".tag-swatch")?.style.backgroundColor,
+    ).toBe("rgb(181, 193, 170)");
+    expect(root.textContent).not.toContain("Color personalizado");
   });
 
   it("prevents duplicate writes, cancels obsolete ownership and clears drafts/notices for the next user", async () => {

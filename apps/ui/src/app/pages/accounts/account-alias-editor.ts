@@ -27,9 +27,9 @@ import { createScopedCommand } from "../../core/rpc/scoped-command";
       @if (command.error()) { <p class="notice danger" role="alert">{{ command.error() }}</p> }
       @if (uncertain()) {
         <p class="notice warning">El cambio puede haberse guardado. Consulta las cuentas antes de volver a editar; no repetimos el cambio.</p>
-        <button class="button" type="button" (click)="reconcile.emit()">Cerrar y consultar cuentas guardadas</button>
+        <div class="form-actions"><button class="button" type="button" (click)="reconcile.emit()">Cerrar y consultar cuentas guardadas</button></div>
       } @else {
-        <div class="button-row">
+        <div class="form-actions">
           <button class="button primary" type="submit" [disabled]="command.pending()">{{ command.pending() ? 'Guardando…' : 'Guardar nombre' }}</button>
           <button class="button" type="button" [disabled]="command.pending() || !account().alias" (click)="save(true)">Quitar nombre personal</button>
         </div>

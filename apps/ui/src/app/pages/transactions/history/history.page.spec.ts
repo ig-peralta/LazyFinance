@@ -72,6 +72,58 @@ describe("owned history workspace", () => {
     return { mock, harness, root, event, settle, open, field, apply };
   }
 
+  it("offers pagination before and after results without duplicate IDs and discloses cursor limitations", async () => {
+    const { root } = await setup();
+    const pagers = root.querySelectorAll("nav.pagination");
+    expect(pagers).toHaveLength(2);
+    expect(pagers[0]?.getAttribute("aria-label")).not.toBe(
+      pagers[1]?.getAttribute("aria-label"),
+    );
+    expect(
+      pagers[0]?.nextElementSibling?.classList.contains("desktop-ledger"),
+    ).toBe(true);
+    const paginationDetails = root.querySelector("details");
+    expect(paginationDetails?.open).toBe(false);
+    expect(paginationDetails?.textContent).toContain("no sumes páginas");
+    const ids = [...root.querySelectorAll("[id]")].map((element) => element.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("keeps manual no-tag, unreviewed and automatic classifications distinct in both ledger layouts", async () => {
+    const { root } = await setup("/movimientos", {
+      "transactions.list": () =>
+        transactionPage([
+          {
+            ...movement,
+            id: "00000000-0000-4000-8000-000000000061",
+            tag: null,
+            tagDecisionOrigin: "manual",
+          },
+          {
+            ...movement,
+            id: "00000000-0000-4000-8000-000000000062",
+            tag: null,
+            tagDecisionOrigin: "unreviewed",
+          },
+          {
+            ...movement,
+            id: "00000000-0000-4000-8000-000000000063",
+            tag,
+            tagDecisionOrigin: "rule",
+          },
+        ]),
+    });
+    for (const selector of [".desktop-ledger tbody tr", ".mobile-ledger li"]) {
+      const rows = root.querySelectorAll(selector);
+      expect(rows[0]?.textContent).toContain("Sin etiqueta");
+      expect(rows[0]?.textContent).toContain("Tu decisión");
+      expect(rows[1]?.textContent).toContain("Sin etiqueta");
+      expect(rows[1]?.textContent).toContain("Sin revisar");
+      expect(rows[2]?.textContent).toContain(tag.name);
+      expect(rows[2]?.textContent).toContain("Regla automática");
+    }
+  });
+
   it("binds validated URL filters to cursor pages, resets pagination on filtering and opens owned source detail", async () => {
     const mock = setupRpc({
       "transactions.list": (input) =>

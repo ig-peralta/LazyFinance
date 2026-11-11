@@ -51,4 +51,52 @@ describe("concise movement disclosure", () => {
       "internal=unknown",
     );
   });
+
+  it("reacts to bounded budget and income return context without rereading movement facts", async () => {
+    const mock = setupRpc();
+    mock.navigate.mockRestore();
+    const router = TestBed.inject(Router);
+    router.resetConfig([
+      { path: "movimientos/:id", component: TransactionPage },
+    ]);
+    const budget = "00000000-0000-4000-8000-000000000051";
+    const revision = "00000000-0000-4000-8000-000000000052";
+    const path = `/movimientos/${transactionDetail.id}`;
+    const harness = await RouterTestingHarness.create(
+      `${path}?returnTo=budget-evidence&budget=${budget}&revision=${revision}&month=2026-11&asOf=2026-11-11T12:00:00.000Z&adjustmentsAsOf=2026-11-11T12:00:00.000Z&reported=15000.00&merchant=omit`,
+    );
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    const root: HTMLElement = harness.fixture.nativeElement;
+    const back = () => {
+      const href = root.querySelector("a.page-back")?.getAttribute("href");
+      if (!href) throw new Error("Missing movement return link");
+      return new URL(href, "https://lazyfinance.invalid");
+    };
+    expect(back().pathname).toBe(`/presupuestos/${budget}/movimientos`);
+    expect(back().searchParams.get("revision")).toBe(revision);
+    expect(back().searchParams.get("month")).toBe("2026-11");
+    expect(back().searchParams.get("asOf")).toBe("2026-11-11T12:00:00.000Z");
+    expect(back().searchParams.get("adjustmentsAsOf")).toBe(
+      "2026-11-11T12:00:00.000Z",
+    );
+    expect(back().searchParams.get("reported")).toBe("15000.00");
+    expect(back().searchParams.has("merchant")).toBe(false);
+    const reads = mock.callsTo("transactions.detail").length;
+
+    await harness.navigateByUrl(
+      `${path}?returnTo=income&month=2026-10&merchant=omit`,
+    );
+    harness.detectChanges();
+    expect(back().pathname).toBe("/ingresos");
+    expect(back().search).toBe("?month=2026-10");
+    expect(mock.callsTo("transactions.detail")).toHaveLength(reads);
+
+    await harness.navigateByUrl(
+      `${path}?returnTo=https://example.invalid&budget=${budget}`,
+    );
+    harness.detectChanges();
+    expect(back().pathname).toBe("/movimientos");
+    expect(back().search).toBe("");
+  });
 });
