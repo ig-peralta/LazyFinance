@@ -81,6 +81,7 @@ export const tag = {
 } satisfies RpcOutput<"tags.create">;
 
 export const account = (name: string): RpcOutput<"accounts.list">[number] => ({
+  trackingStatus: null,
   id: name,
   alias: name,
   type: "checking",

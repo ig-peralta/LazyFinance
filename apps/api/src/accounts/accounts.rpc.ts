@@ -1,5 +1,11 @@
-import { AccountsResultSchema, RpcEmptySchema } from "@lazyfinance/contracts";
-import { Ctx, Query, Router } from "nestjs-trpc";
+import {
+  AccountListItemSchema,
+  AccountsResultSchema,
+  RpcEmptySchema,
+  type SetAccountAlias,
+  SetAccountAliasSchema,
+} from "@lazyfinance/contracts";
+import { Ctx, Input, Mutation, Query, Router } from "nestjs-trpc";
 import { type ApiRequestContext, rpcUser } from "../rpc/context";
 import { AccountsService } from "./accounts.service";
 
@@ -14,5 +20,14 @@ export class AccountsRpc {
   })
   list(@Ctx() ctx: ApiRequestContext) {
     return this.service.getActiveForUser(rpcUser(ctx));
+  }
+
+  @Mutation({
+    input: SetAccountAliasSchema,
+    output: AccountListItemSchema,
+    meta: { auth: "user" },
+  })
+  setAlias(@Ctx() ctx: ApiRequestContext, @Input() input: SetAccountAlias) {
+    return this.service.setAlias(rpcUser(ctx), input);
   }
 }

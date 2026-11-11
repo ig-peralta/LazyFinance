@@ -14,7 +14,9 @@ export function bankingSyncStatus(
     state?.leaseExpiresAt && Date.parse(state.leaseExpiresAt) > now,
   );
   const deferred = Boolean(
-    state?.retryAfter && Date.parse(state.retryAfter) > now,
+    (state?.retryAfter && Date.parse(state.retryAfter) > now) ||
+      (facts.tracking?.selection.readRetryAfter &&
+        Date.parse(facts.tracking.selection.readRetryAfter) > now),
   );
   const accounts = facts.accounts.map<BankingSyncStatus["accounts"][number]>(
     (account) => {
@@ -45,6 +47,13 @@ export function bankingSyncStatus(
   for (const account of accounts) counts[account.freshness]++;
   return {
     connectionId: connection.id,
+    automation: facts.tracking?.automation ?? {
+      enrolled: false,
+      selectedAccounts: accounts.length,
+      nextAttemptAt: null,
+      failureCount: 0,
+      pauseReason: null,
+    },
     asOf: asOf.toISOString(),
     lifecycle: connection.status,
     disconnectedAt: connection.disconnectedAt,
@@ -71,6 +80,9 @@ export function bankingSyncStatus(
     canRefresh:
       connection.status === "active" &&
       !connection.disconnectedAt &&
+      (!facts.tracking ||
+        (facts.tracking.selection.confirmedAt !== null &&
+          facts.tracking.selection.accountIds.length > 0)) &&
       !running &&
       !deferred,
     freshness: {

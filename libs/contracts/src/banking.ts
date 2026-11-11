@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { BankingAutomationSchema } from "./banking-selection";
 
 export const BankingModeSchema = z.enum(["test", "live"]);
 export const BankingHolderSchema = z.enum(["individual", "business"]);
@@ -30,6 +31,7 @@ export const BankingConfigurationSchema = z.discriminatedUnion("enabled", [
     enabled: z.literal(true),
     publicKey: z.string(),
     mode: BankingModeSchema,
+    automaticSyncEnabled: z.boolean(),
   }),
 ]);
 
@@ -85,7 +87,13 @@ export const BankingSyncIncompleteSchema = z.discriminatedUnion("status", [
   z.object({ status: z.literal("retry_later"), retryAfter: z.iso.datetime() }),
   z.object({
     status: z.literal("failed"),
-    reason: z.enum(["retryable", "expired", "revoked", "invalid_data"]),
+    reason: z.enum([
+      "retryable",
+      "expired",
+      "revoked",
+      "invalid_data",
+      "account_unavailable",
+    ]),
     retryAfter: z.iso.datetime().nullable(),
   }),
 ]);
@@ -103,6 +111,7 @@ const freshness = z.enum(["fresh", "stale", "unknown"]);
 
 export const BankingSyncStatusSchema = z.object({
   connectionId: z.uuid(),
+  automation: BankingAutomationSchema,
   asOf: z.iso.datetime(),
   lifecycle: BankingStatusSchema,
   disconnectedAt: z.iso.datetime().nullable(),
@@ -117,7 +126,13 @@ export const BankingSyncStatusSchema = z.object({
   failure: z
     .object({
       at: z.iso.datetime(),
-      reason: z.enum(["retryable", "expired", "revoked", "invalid_data"]),
+      reason: z.enum([
+        "retryable",
+        "expired",
+        "revoked",
+        "invalid_data",
+        "account_unavailable",
+      ]),
       retryAfter: z.iso.datetime().nullable(),
     })
     .nullable(),

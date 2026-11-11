@@ -22,7 +22,7 @@ const consent = McpConsentSchema.parse({
   redirectUri: "http://127.0.0.1:43219/callback",
   resource: "http://api.test/mcp",
   scopes: ["finance:read", "offline_access"],
-  expiresAt: "2026-11-09T15:00:00.000Z",
+  expiresAt: "2099-11-09T15:00:00.000Z",
 });
 
 function setup(
@@ -138,6 +138,19 @@ describe("owned external-client consent and obsolete interaction results", () =>
     });
   });
 
+  it("keeps expired consent readable but never submits a decision", async () => {
+    const f = setup({
+      read: async () =>
+        Response.json({ ...consent, expiresAt: "2020-01-01T00:00:00.000Z" }),
+    });
+    await render(f.fixture);
+    expect(f.root.textContent).toContain("Solicitud vencida");
+    expect(button(f.root, "Autorizar solo lectura").disabled).toBe(true);
+    expect(button(f.root, "No autorizar y regresar").disabled).toBe(true);
+    button(f.root, "Autorizar solo lectura").click();
+    expect(f.fetch).toHaveBeenCalledTimes(1);
+  });
+
   it("defaults requested write permissions off and submits only the capabilities explicitly selected", async () => {
     const f = setup({
       read: async () =>
@@ -167,6 +180,32 @@ describe("owned external-client consent and obsolete interaction results", () =>
       approve: true,
       scopes: ["finance:tags:write"],
     });
+  });
+
+  it("clears optional write selections when the accepted account changes", async () => {
+    const f = setup({
+      read: async () =>
+        Response.json({
+          ...consent,
+          scopes: ["finance:read", "finance:tags:write"],
+        }),
+    });
+    await render(f.fixture);
+    f.root.querySelector<HTMLInputElement>('input[type="checkbox"]')?.click();
+    await render(f.fixture);
+    expect(
+      f.root.querySelector<HTMLInputElement>('input[type="checkbox"]')?.checked,
+    ).toBe(true);
+    f.credentials.accept(
+      { ...principal, userId: "owner-b", email: "bob@example.test" },
+      "bob",
+    );
+    await render(f.fixture);
+    expect(
+      f.root.querySelector<HTMLInputElement>('input[type="checkbox"]')?.checked,
+    ).toBe(false);
+    expect(f.root.textContent).not.toContain(principal.email);
+    expect(f.navigate).not.toHaveBeenCalled();
   });
 
   it("denies only on an explicit action and never automatically replays a failed decision", async () => {

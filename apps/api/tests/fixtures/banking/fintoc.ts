@@ -1,7 +1,21 @@
 import type { BankingConnection } from "@lazyfinance/contracts";
 import type { ProviderLinkSecret } from "@lazyfinance/contracts/internal";
 import type { FintocLink } from "../../../src/banking/fintoc/client/fintoc-client";
+import type { FintocRequestAdmission } from "../../../src/banking/fintoc/client/fintoc-request-admission";
 import { testEnvironment } from "../environment";
+
+/** Transport tests isolate admission; dedicated admission/RPC tests exercise quotas. */
+export function fintocAdmission(): FintocRequestAdmission {
+  const stub: Pick<FintocRequestAdmission, "acquire" | "release" | "defer"> = {
+    acquire: async () => ({
+      id: "00000000-0000-4000-8000-000000000001",
+      expiresAt: new Date(Date.now() + 25_000).toISOString(),
+    }),
+    release: async () => {},
+    defer: async () => {},
+  };
+  return stub as FintocRequestAdmission;
+}
 
 export const fintocEnvironment = () =>
   testEnvironment({

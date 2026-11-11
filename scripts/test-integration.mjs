@@ -65,16 +65,20 @@ try {
       throw new Error("Persistence exited before readiness");
     }),
   ]);
-  const tests = spawn("pnpm", ["--filter", "api", "test"], {
-    stdio: "inherit",
-    env: {
-      ...process.env,
-      TEST_PERSISTENCE_RPC_URL: message.url,
-      TEST_PERSISTENCE_RPC_PRIVATE_KEY: privateKey
-        .export({ type: "pkcs8", format: "pem" })
-        .toString(),
+  const tests = spawn(
+    "pnpm",
+    ["--filter", "api", "run", "test", ...process.argv.slice(2)],
+    {
+      stdio: "inherit",
+      env: {
+        ...process.env,
+        TEST_PERSISTENCE_RPC_URL: message.url,
+        TEST_PERSISTENCE_RPC_PRIVATE_KEY: privateKey
+          .export({ type: "pkcs8", format: "pem" })
+          .toString(),
+      },
     },
-  });
+  );
   const [code] = await once(tests, "exit");
   process.exitCode = code ?? 1;
 } finally {

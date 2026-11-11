@@ -15,9 +15,13 @@ export interface ProviderSyncStateTable {
     | "expired"
     | "revoked"
     | "invalid_data"
+    | "account_unavailable"
     | null;
   retryAfter: Date | null;
   leaseExpiresAt: Date | null;
+  credentialVersion: number | null;
+  selectionVersion: number | null;
+  claimId: string | null;
 }
 
 export type ProviderSyncStateTables = {

@@ -10,7 +10,7 @@ guide describes their source of truth and change workflow, not a REST API. See
 | --- | --- | --- |
 | `@lazyfinance/contracts` | Public Zod schemas and inferred domain/input/output types | UI, API, persistence |
 | `@lazyfinance/contracts/internal` | Private stored facts and named command schemas | API and persistence only |
-| `@lazyfinance/contracts/context` | Strict user/bootstrap/OAuth-purpose service contexts | Server-side authentication/transport |
+| `@lazyfinance/contracts/context` | Strict user/bootstrap/OAuth/scheduler/transport-purpose service contexts | Server-side authentication/transport |
 | `@lazyfinance/rpc-api` | Type-only `ApiRouter` facade | UI and server-side tests/clients |
 | `@lazyfinance/rpc-persistence` | Type-only `PersistenceRouter` facade | API and private-boundary tests |
 | `@lazyfinance/rpc-auth` | Node-only JWT signing/verification | API and persistence, never UI |
@@ -44,7 +44,7 @@ inferred Promises; there is no cross-app source import or HTTP/Observable adapte
 ## Public surface
 
 The [generated public router](../../libs/rpc-api/src/generated/server.ts) currently
-contains **78 procedures**. Prefix each method below with its router name.
+contains **82 procedures**. Prefix each method below with its router name.
 
 | Router | Methods | Responsibility |
 | --- | --- | --- |
@@ -53,8 +53,8 @@ contains **78 procedures**. Prefix each method below with its router name.
 | `assistant` | `configuration`, `conversations`, `conversation`, `createConversation`, `deleteConversation` | First-party authenticated configuration and server-owned chat history |
 | `financialActions` | `get`, `approve`, `revise`, `cancel` | Owned saved proposals; approval accepts only the exact ID/version, never caller-supplied execution payloads |
 | `mcpAccess` | `configuration`, `grants`, `revoke` | First-party authenticated external-client settings; no token issuance through RPC |
-| `accounts` | `list` | Active accounts, balances and freshness |
-| `banking` | `configuration`, `connections`, `createLinkIntent`, `completeLink`, `checkConnection`, `disconnect`, `importInitial`, `refresh`, `syncStatus` | Owned lifecycle, bounded snapshot import/refresh and readonly sync/source-freshness reporting; no forced/scheduled bank refresh |
+| `accounts` | `list`, `setAlias` | Retained accounts, balances, tracking state and personal display names |
+| `banking` | `configuration`, `connections`, `createLinkIntent`, `completeLink`, `checkConnection`, `disconnect`, `accountSelection`, `discoverAccounts`, `selectAccounts`, `importInitial`, `refresh`, `syncStatus` | Owned authorization, explicit versioned selection, available-data imports and readonly automation/source-freshness status; no forced bank refresh |
 | `transactions` | `recent`, `list`, `detail`, `setInternalMovement`, `expenseAdjustments`, `setExpenseAdjustment`, `removeExpenseAdjustment` | History, owned source/classification detail, internal-status corrections and purchase-attributed recoveries |
 | `objectives` | `list`, `progress`, `budgetContributions`, `budget`, `budgetHistory`, `createBudget`, `updateBudget`, `archiveBudget`, `savingsGoal`, `savingsGoalHistory`, `createSavingsGoal`, `updateSavingsGoal`, `archiveSavingsGoal`, `savingsProgress`, `savingsContributions` | Revisioned management/history, spending and savings progress/evidence |
 | `summaries` | `monthly`, `comparison`, `spendingContributions` | Financial summary, equivalent-period comparison and purchase-level spending evidence |
@@ -99,7 +99,7 @@ raw JSON panels; no model-authored URLs are trusted.
 ## Private surface
 
 The [generated private router](../../libs/rpc-persistence/src/generated/server.ts)
-currently contains **94 procedures**. They expose owned facts and authoritative
+currently contains **103 procedures**. They expose owned facts and authoritative
 commands rather than copying public screen calculations into persistence.
 
 | Router | Methods |
@@ -110,7 +110,7 @@ commands rather than copying public screen calculations into persistence.
 | `financialActions` | `get`, `preview`, `prepare`, `revise`, `apply`, `cancel`, `execute` (user context only; atomic ledger/domain commands) |
 | `mcpGrants` | `list`, `bind`, `revoke` (user context) |
 | `mcpArtifacts` | `find`, `save`, `consume`, `destroy`, `identity`, `revoke` (dedicated OAuth purpose only) |
-| `accounts` | `listActive` |
+| `accounts` | `listActive`, `setAlias` |
 | `transactions` | `recent`, `list`, `detail`, `setInternalMovement`, `aggregates`, `taggedAggregates`, `spendingEvidence`, `expenseAdjustments`, `setExpenseAdjustment`, `removeExpenseAdjustment` |
 | `objectives` | `list` (effective definitions/nested tags), `forPeriod` (optional owned ID selection), `spending` (revision-pinned sums/windows), `budgetEvidence`, `budget`, `budgetHistory`, `createBudget`, `updateBudget`, `archiveBudget`, `savingsGoal`, `savingsGoalHistory`, `createSavingsGoal`, `updateSavingsGoal`, `archiveSavingsGoal`, `savingsFacts`, `savingsEvidence` |
 | `income` | `sources`, `source`, `createSource`, `updateSource`, `archiveSource`, `expectedFacts`, `receipts`, `facts` |
@@ -120,11 +120,18 @@ commands rather than copying public screen calculations into persistence.
 | `tagRules` | `list`, `create`, `replace`, `archive`, `facts`, `manual`, `reset`, `candidates`, `commit` |
 | `providerSync` | `begin`, `status`, `facts`, `commit`, `failure`, `review` |
 | `providerLinks` | `list`, `connection`, `createIntent`, `claim`, `complete`, `fail`, `status`, `beginDisconnect`, `finishDisconnect` |
+| `providerSelection` | `get`, `discover`, `select`, `deferDiscovery` (user context) |
+| `providerScheduler` | `claim` (dedicated banking-scheduler purpose only) |
+| `providerRequests` | `acquire`, `release`, `defer` (dedicated banking-transport purpose only) |
 
-Every private procedure uses user context except `identity.resolve` and the six
-`mcpArtifacts` procedures. Bootstrap may only resolve identity; `mcp-authorization`
+Every private procedure uses user context except `identity.resolve`, the six
+`mcpArtifacts` procedures, `providerScheduler` and `providerRequests`. Bootstrap may only resolve identity; `mcp-authorization`
 may only call the explicitly allowlisted OAuth procedures and has no financial
-or user-assertion authority. User contexts cannot call either privileged purpose.
+or user-assertion authority. Scheduler context can only claim operational work;
+transport context can only admit/release requests and retain provider-mode backoff.
+Neither can read credentials, financial records or identity mappings, change
+selection or call another purpose's procedures. User contexts cannot call these
+privileged-purpose procedures.
 `GET /health` is liveness, not a database/admin RPC. Provider synchronization is an
 API-internal workflow; these procedures are not public bank-linking endpoints.
 `providerLinks` stores owner-bound intents, encrypted credentials and versioned
@@ -132,16 +139,26 @@ lifecycle commands. Its secret projection is private-only; public `banking` outp
 contains no link tokens/ciphertext/provider payloads. See the
 [linking contract and recovery rules](../../apps/api/src/banking/linking/README.md).
 
-`banking.importInitial({ id })` and `banking.refresh({ id })` import reported accounts
+`banking.accountSelection({ id })` reads stored minimal discovery/selection without
+provider calls. `discoverAccounts({ id })` explicitly reads bounded account metadata,
+not financial history, and never enrolls or imports. `selectAccounts` accepts an
+unchanged selection/discovery version and one unique account-ID set, plus explicit
+automatic enrollment intent. Unknown, foreign and unsupported accounts are rejected.
+Only confirmed selected accounts can be imported; new accounts remain unselected.
+An empty set pauses future imports without hiding or deleting retained history.
+Selection/lifecycle changes invalidate old runs. Discovery and synchronization
+share durable waiting periods, provider admission and read-volume budgets.
+
+`banking.importInitial({ id })` and `banking.refresh({ id })` import selected accounts
 and movements from the owned connection's first-link Santiago day through today.
 The local `createdAt` anchors both commands and is unchanged by same-identity relink.
 No historical date override is accepted; pre-link backfill is unavailable. Booking
 precision is day-level, so same-day movements can precede the exact linking time.
 Completion returns the requested tracked window and a bounded mapping/exclusion
 report, not raw payloads or private checkpoints. It does not cause a bank refresh. `providerSync.begin`
-accepts `expectedCredentialVersion`, required for Fintoc: a mismatched snapshot
+accepts `expectedCredentialVersion` and `expectedSelectionVersion`, required for Fintoc: a mismatched snapshot
 rejects before attempt metadata/provider calls. Begin returns stored state plus
-`acquired`; a live five-minute lease or future provider backoff coalesces/defers
+`acquired`; a live five-minute lease or future provider/application backoff coalesces/defers
 without another fetch. The public outcome is `in_progress`/`retry_later` or the
 completed/failed/superseded result. `syncStatus` is readonly and reports stored
 attempt/lifecycle facts independently of 24-hour bank-source freshness. Private
@@ -159,7 +176,23 @@ Select the projection actually needed: declarations/expectations, receipt facts,
 classification-only aggregates, joined tag aggregates, or a complete snapshot.
 Do not reintroduce table-shaped reads for the API to join or aggregate itself.
 
+`accounts.setAlias({ id, alias })` changes only an owned display label. Labels are
+NFC-normalized, trimmed and limited to 1–80 characters without controls or bidi
+overrides. Explicit `null` restores the default name; blank text is not a clear
+command. Synchronization/relink preserves aliases and never uses them as provider
+identity. `AccountListItem` adds nullable `trackingStatus` (`tracked`, `paused`,
+`disconnected`) to the financial summary; retained accounts remain visible with
+their last-known facts. Assistant/MCP account reads preserve the same tracking
+metadata rather than presenting paused balances as live.
+
 ## Wire semantics and transport
+
+`mcpAccess.grants` includes the approved exact `redirectUri` when recorded. It is
+nullable (and optional for rolling wire compatibility); older grants show an
+explicit unrecorded callback, never a guessed client origin. The private
+`mcpGrants.bind` accepts this field from the cookie-bound server interaction, not
+from a browser identity claim. Migration 031 adds it without replacing grants.
+No procedure, OAuth scope or authority is added.
 
 `onboarding.state()` returns `active` with a null completion time when no owned
 record exists; reads do not create records. `onboarding.finish({ status })` accepts

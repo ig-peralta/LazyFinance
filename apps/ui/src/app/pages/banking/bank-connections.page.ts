@@ -8,7 +8,8 @@ import {
   signal,
   viewChild,
 } from "@angular/core";
-import { RouterLink } from "@angular/router";
+import { toSignal } from "@angular/core/rxjs-interop";
+import { ActivatedRoute, RouterLink } from "@angular/router";
 import type { BankingConnection } from "@lazyfinance/contracts";
 import { reportWorkspaceReadiness } from "../../core/rendering/workspace-preparation";
 import { RpcClient, type RpcScope } from "../../core/rpc/rpc-client";
@@ -36,6 +37,10 @@ export class BankConnectionsPage {
   protected readonly data = inject(BankingData);
   private readonly rpc = inject(RpcClient);
   private readonly injector = inject(Injector);
+  private readonly routeParams = toSignal(inject(ActivatedRoute).queryParamMap);
+  protected readonly fromOnboarding = computed(
+    () => this.routeParams()?.get("from") === "onboarding",
+  );
   protected readonly command = createScopedCommand();
   private readonly flow = signal<LinkFlow | null>(null);
   private readonly syncSelection = signal<{
@@ -127,7 +132,7 @@ export class BankConnectionsPage {
     this.flow.set(null);
     this.noticeState.set({
       scope: flow.scope,
-      message: `Autorización de ${connection.institution.name} guardada. Usa Importar datos disponibles para traer saldos y movimientos desde el día de vinculación, sin historial de días anteriores; autorizar no los importa automáticamente.`,
+      message: `Autorización de ${connection.institution.name} guardada. Consulta sus cuentas, elige cuáles seguir y confirma la primera importación. Autorizar por sí solo no importa tus datos.`,
     });
     this.syncSelection.set({ scope: flow.scope, id: connection.id });
     this.data.connections.reload();
