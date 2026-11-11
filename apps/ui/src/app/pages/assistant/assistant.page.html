@@ -123,19 +123,36 @@
 
       <div class="voice-controls" aria-label="Conversación por voz">
         @if (!voice.supported) { <p>La voz no está disponible en este navegador. Puedes continuar por texto.</p> }
+        @else if (voiceConfiguration.isLoading()) { <p role="status">Comprobando la disponibilidad de voz…</p> }
+        @else if (voiceConfiguration.error()) {
+          <p role="alert">No pudimos comprobar la disponibilidad de voz. No se inició el micrófono.</p>
+          <button type="button" class="text-link" (click)="voiceConfiguration.reload()">Volver a comprobar voz</button>
+        }
         @else if (voiceConfiguration.hasValue() && voiceConfiguration.value().enabled) {
           @if (voice.state() === 'off') {
-            <button type="button" class="button small" [disabled]="busy() || !processingAccepted()" (click)="voiceDisclosure.set(!voiceDisclosure())">Conversar por voz</button>
+            <button type="button" class="button small" [disabled]="busy()" [attr.aria-expanded]="voiceDisclosure()" aria-controls="assistant-voice-start" (click)="voiceDisclosure.set(!voiceDisclosure())">Conversar por voz</button>
           } @else {
             <p role="status">{{ voice.state() === 'connecting' ? 'Conectando micrófono…' : voice.state() === 'muted' ? 'Micrófono silenciado' : 'Micrófono activo · escuchando' }}</p>
             <button type="button" class="button small" [disabled]="voice.state() === 'connecting'" [attr.aria-pressed]="voice.state() === 'muted'" (click)="voice.mute()">{{ voice.state() === 'muted' ? 'Activar micrófono' : 'Silenciar' }}</button>
             <button type="button" class="button small" (click)="endVoice()">Terminar voz</button>
           }
           @if (voiceDisclosure()) {
-            <p>Al iniciar, tu audio y las respuestas escritas se procesan en OpenAI. Puede generar costes. La voz termina al minimizar, navegar o dejar esta pestaña. Máximo cinco minutos. No grabamos audio; la retención del proveedor es independiente. La voz puede equivocarse: revisa el texto y las referencias. Decir «sí» no aprueba cambios.</p>
-            <button type="button" class="button small" (click)="startVoice()">Entiendo, iniciar micrófono</button>
-            <button type="button" class="button small" (click)="endVoice()">Cancelar voz</button>
+            <section id="assistant-voice-start" class="voice-start" aria-label="Privacidad y confirmación para iniciar voz">
+              <p>Al iniciar, tu audio y las respuestas escritas se procesan en OpenAI. Puede generar costes. No grabamos audio; la retención del proveedor es independiente.</p>
+              @if (configuration.hasValue() && configuration.value().enabled && !configuration.value().demonstration) {
+                <p>Para responder, tus preguntas transcritas, contexto reciente y datos consultados se comparten con {{ configuration.value().provider }} ({{ configuration.value().model }}). No se envían credenciales bancarias.</p>
+                <label class="voice-processing-consent"><input type="checkbox" [checked]="processingAccepted()" (change)="acceptProcessing($event)"> Entiendo el procesamiento externo de mi voz y mis preguntas.</label>
+              }
+              @if (!processingAccepted()) { <p class="field-hint">Confirma el procesamiento externo para habilitar el inicio del micrófono.</p> }
+              <p>Máximo cinco minutos. La voz termina al minimizar, navegar o dejar esta pestaña. Revisa el texto y las referencias: decir «sí» no aprueba cambios.</p>
+              <button type="button" class="button small" [disabled]="!canStartVoice()" (click)="startVoice()">Entiendo, iniciar micrófono</button>
+              <button type="button" class="button small" (click)="endVoice()">Cancelar voz</button>
+            </section>
           }
+        }
+        @else if (voiceConfiguration.hasValue()) {
+          <p>La voz está deshabilitada en el servidor. Si acabas de configurarla o reiniciarlo, vuelve a comprobar su disponibilidad.</p>
+          <button type="button" class="text-link" (click)="voiceConfiguration.reload()">Volver a comprobar voz</button>
         }
         @if (voice.error()) { <p role="alert">{{ voice.error() }}</p> }
         @if (voiceFallback()) { <p role="status">{{ voiceFallback() }}</p> }

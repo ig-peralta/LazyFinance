@@ -266,6 +266,10 @@ capture. Voice also ends on minimize, hidden tab, device loss and session change
 late permission/events cannot revive capture or adopt another owner's transcript.
 Completed voice questions use the same turn stream and approvals; partial/audio
 transcripts remain in memory. See the [voice privacy/lifetime contract](assistant-live-voice.md).
+Voice disclosure entry is not gated by an unrelated disabled control: its inline
+processing acknowledgment shares the session consent value, and only the explicit
+microphone-start control can initiate capture. Availability loading/error/disabled
+states remain visible and have a readonly retry; refresh includes that resource.
 References are separate financial cards projected from validated stored results,
 not raw JSON or model-authored markup. They retain uncertainty/cutoff disclosures,
 show at most four rows with a preview notice, and use service totals rather than

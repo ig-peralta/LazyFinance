@@ -57,6 +57,15 @@ conversation replacement, hidden tab, device loss, logout, credential replacemen
 and component destruction end voice. Minimize retains only in-memory text state
 and may retain text generation; Stop generation is a separate control.
 
+**Conversar por voz** opens the disclosure even before session processing consent
+is acknowledged. The inline acknowledgment and text acknowledgment share the
+same in-memory session value. Only **Entiendo, iniciar micrófono** can begin
+startup, guarded by owner, supported browser, valid selection, idle state,
+acknowledgment and enabled non-demo text/voice configurations. Opening the
+disclosure never creates a conversation or requests capture. Failed/disabled
+availability offers an explicit **Volver a comprobar voz** read; ordinary chat
+refresh also reloads voice availability without replaying a start.
+
 Startup has a cancellable generation before conversation creation: cancel, consent
 withdrawal, navigation, minimize (even followed by reopen), hidden tabs, owner change
 and teardown invalidate it before any microphone request. Every asynchronous startup

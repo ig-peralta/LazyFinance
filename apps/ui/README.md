@@ -111,7 +111,12 @@ Native references start collapsed, retain per-answer expansion and keep approval
 cards separate. The desktop non-modal panel becomes modal with inert background
 and focus containment on narrow screens; both support Escape and safe areas.
 Optional live WebRTC voice is disabled by default and requires separate start/privacy
-confirmation. Minimize/navigation/hidden tabs end capture. See the
+confirmation. **Conversar por voz** opens that disclosure without a hidden consent
+prerequisite. Its inline processing acknowledgment enables only the explicit
+**Entiendo, iniciar micrófono** control; opening or canceling requests no capture.
+Loading, failed and disabled availability are shown beside voice controls, with
+**Volver a comprobar voz** for an explicit read after configuration changes.
+Minimize/navigation/hidden tabs end capture. See the
 [voice contract and unverified live gates](../../docs/technical/assistant-live-voice.md).
 
 `/asistente` provides financial questions, explicit suggestions, streamed replies,

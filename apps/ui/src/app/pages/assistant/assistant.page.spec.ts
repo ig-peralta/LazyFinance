@@ -56,6 +56,7 @@ function setup(
   overrides: RpcHandlers = {},
   selected: string | null = chat.id,
   voiceEnabled = false,
+  voiceAvailability?: AssistantVoiceClient["configuration"],
 ) {
   const microphone = vi.fn<() => Promise<MediaStream>>(async () => {
     throw new Error("Unexpected microphone access");
@@ -118,9 +119,11 @@ function setup(
       });
     });
   const fixture = TestBed.createComponent(AssistantPage);
-  vi.spyOn(AssistantVoiceClient.prototype, "configuration").mockResolvedValue({
-    enabled: voiceEnabled,
-  });
+  const voiceRead = vi
+    .spyOn(AssistantVoiceClient.prototype, "configuration")
+    .mockImplementation(
+      voiceAvailability ?? (async () => ({ enabled: voiceEnabled })),
+    );
   fixture.detectChanges();
   const workspace = TestBed.inject(AssistantWorkspace);
   query.subscribe((params) =>
@@ -134,6 +137,7 @@ function setup(
     stream,
     workspace,
     microphone,
+    voiceRead,
     fixture,
     root: fixture.nativeElement as HTMLElement,
   };
@@ -167,6 +171,96 @@ describe("first-party chat page lifetimes and confirmed history", () => {
   afterEach(() => {
     TestBed.resetTestingModule();
     vi.restoreAllMocks();
+  });
+
+  it("opens voice consent without a hidden prerequisite and starts only after acknowledgment and explicit confirmation", async () => {
+    const f = setup(
+      {
+        "assistant.configuration": () => ({
+          ...configuration,
+          demonstration: false,
+          provider: "openai",
+          model: "configured-text-model",
+        }),
+      },
+      chat.id,
+      true,
+    );
+    const start = vi
+      .spyOn(AssistantVoiceClient.prototype, "start")
+      .mockResolvedValue();
+    await render(f.fixture);
+    const textConsent = f.root.querySelector<HTMLInputElement>(
+      ".processing-consent input",
+    );
+    expect(textConsent?.checked).toBe(false);
+    expect(button(f.root, "Conversar por voz").disabled).toBe(false);
+    button(f.root, "Conversar por voz").click();
+    await render(f.fixture);
+    const disclosure = f.root.querySelector(".voice-start");
+    expect(disclosure?.textContent).toContain("configured-text-model");
+    expect(button(f.root, "Entiendo, iniciar micrófono").disabled).toBe(true);
+    expect(start).not.toHaveBeenCalled();
+    expect(f.microphone).not.toHaveBeenCalled();
+    expect(f.callsTo("assistant.createConversation")).toHaveLength(0);
+    button(f.root, "Cancelar voz").click();
+    await render(f.fixture);
+    expect(f.root.querySelector(".voice-start")).toBeNull();
+    expect(textConsent?.checked).toBe(false);
+    button(f.root, "Conversar por voz").click();
+    await render(f.fixture);
+    const voiceConsent = f.root.querySelector<HTMLInputElement>(
+      ".voice-processing-consent input",
+    );
+    if (!voiceConsent) throw new Error("Missing inline voice acknowledgement");
+    voiceConsent.click();
+    await render(f.fixture);
+    expect(textConsent?.checked).toBe(true);
+    expect(button(f.root, "Entiendo, iniciar micrófono").disabled).toBe(false);
+    expect(start).not.toHaveBeenCalled();
+    button(f.root, "Entiendo, iniciar micrófono").click();
+    await render(f.fixture);
+    expect(start).toHaveBeenCalledOnce();
+    expect(f.stream).not.toHaveBeenCalled();
+    expect(f.microphone).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "disabled",
+    "failed",
+  ])("explicitly rechecks %s voice availability without remounting, capture or replay", async (initial) => {
+    const availability = vi.fn<AssistantVoiceClient["configuration"]>();
+    if (initial === "disabled")
+      availability.mockResolvedValueOnce({ enabled: false });
+    else availability.mockRejectedValueOnce(new Error("Unavailable"));
+    availability.mockResolvedValue({ enabled: true });
+    const f = setup(
+      {
+        "assistant.configuration": () => ({
+          ...configuration,
+          demonstration: false,
+          provider: "openai",
+          model: "configured-text-model",
+        }),
+      },
+      chat.id,
+      true,
+      availability,
+    );
+    await render(f.fixture);
+    expect(availability).toHaveBeenCalledOnce();
+    expect(f.root.textContent).toContain(
+      initial === "disabled"
+        ? "La voz está deshabilitada en el servidor"
+        : "No pudimos comprobar la disponibilidad de voz",
+    );
+    button(f.root, "Volver a comprobar voz").click();
+    await render(f.fixture);
+    expect(availability).toHaveBeenCalledTimes(2);
+    expect(button(f.root, "Conversar por voz").disabled).toBe(false);
+    expect(f.callsTo("assistant.createConversation")).toHaveLength(0);
+    expect(f.microphone).not.toHaveBeenCalled();
+    expect(f.stream).not.toHaveBeenCalled();
   });
 
   it.each([

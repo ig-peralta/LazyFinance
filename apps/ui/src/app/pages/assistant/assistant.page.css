@@ -220,7 +220,8 @@ h1 {
 .processing-disclosure {
   background: var(--raised);
 }
-.processing-consent {
+.processing-consent,
+.voice-processing-consent {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -236,6 +237,10 @@ h1 {
 }
 .voice-controls button {
   margin-right: 6px;
+}
+.voice-start {
+  max-height: 45dvh;
+  overflow-y: auto;
 }
 .stream-error,
 .assistant-unavailable,

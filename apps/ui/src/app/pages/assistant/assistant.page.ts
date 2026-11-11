@@ -181,6 +181,20 @@ export class AssistantPage {
       this.draft().trim().length > 0 &&
       this.draft().trim().length <= this.maxInput,
   );
+  protected readonly canStartVoice = computed(
+    () =>
+      !!this.credentials.current() &&
+      this.voice.supported &&
+      this.voice.state() === "off" &&
+      !this.busy() &&
+      !this.invalidId() &&
+      this.processingAccepted() &&
+      this.configuration.hasValue() &&
+      this.configuration.value().enabled &&
+      !this.configuration.value().demonstration &&
+      this.voiceConfiguration.hasValue() &&
+      this.voiceConfiguration.value().enabled,
+  );
 
   constructor() {
     inject(DestroyRef).onDestroy(() => {
@@ -308,15 +322,7 @@ export class AssistantPage {
 
   protected async startVoice() {
     const owner = this.credentials.current();
-    if (
-      !owner ||
-      this.busy() ||
-      this.invalidId() ||
-      !this.processingAccepted() ||
-      !this.voiceConfiguration.hasValue() ||
-      !this.voiceConfiguration.value().enabled
-    )
-      return;
+    if (!owner || !this.canStartVoice()) return;
     this.endVoice();
     // This generation begins before history creation, not just before getUserMedia.
     const startup = new AbortController();
@@ -470,6 +476,7 @@ export class AssistantPage {
       this.conversation.reload();
       this.conversations.reload();
       this.configuration.reload();
+      this.voiceConfiguration.reload();
     }
   }
 
