@@ -1,4 +1,11 @@
-import { Component, computed, inject, resource, signal } from "@angular/core";
+import {
+  Component,
+  computed,
+  DestroyRef,
+  inject,
+  resource,
+  signal,
+} from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
 import { ActivatedRoute, RouterLink } from "@angular/router";
 import {
@@ -14,6 +21,7 @@ import {
   reportWorkspaceReadiness,
 } from "../../core/rendering/workspace-preparation";
 import { createScopedCommand } from "../../core/rpc/scoped-command";
+import { McpClientIdentity } from "../../features/mcp-authorization/client-identity";
 import {
   MCP_AUTH_NAVIGATE,
   OAuthInteractionClient,
@@ -21,10 +29,21 @@ import {
 
 @Component({
   selector: "mcp-consent-page",
-  imports: [RouterLink],
+  imports: [RouterLink, McpClientIdentity],
   templateUrl: "./mcp-consent.page.html",
 })
 export class McpConsentPage {
+  private readonly now = signal(Date.now());
+  protected readonly expired = computed(() => {
+    const request = this.consent();
+    return !!request && Date.parse(request.expiresAt) <= this.now();
+  });
+  protected readonly time = (value: string) =>
+    new Intl.DateTimeFormat("es-CL", {
+      timeZone: "America/Santiago",
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(value));
   protected readonly credentials = inject(AuthCredentials);
   private readonly interaction = inject(OAuthInteractionClient);
   private readonly navigate = inject(MCP_AUTH_NAVIGATE);
@@ -97,6 +116,7 @@ export class McpConsentPage {
   protected readonly canDecide = computed(
     () =>
       !!this.consent() &&
+      !this.expired() &&
       !this.preview.isLoading() &&
       !this.preview.error() &&
       !this.command.pending() &&
@@ -104,6 +124,8 @@ export class McpConsentPage {
   );
 
   constructor() {
+    const clock = setInterval(() => this.now.set(Date.now()), 1000);
+    inject(DestroyRef).onDestroy(() => clearInterval(clock));
     reportWorkspaceReadiness(
       () => !this.id() || initialReadSettled(this.preview),
     );

@@ -32,6 +32,7 @@ import { z } from "zod";
 import { AppModule } from "../../src/app.module";
 import { createDatabase } from "../../src/database/connection";
 import { DatabaseModule } from "../../src/database/database.module";
+import { up as addGrantCallback } from "../../src/database/migrations/identity/202611110031-mcp-grant-callback";
 import { MultiMigrationProvider, migrate } from "../../src/database/migrator";
 import {
   assertRuntimeRole,
@@ -1163,6 +1164,7 @@ describe.skipIf(!ownerUrl)(
         user.mcpGrants.bind.mutate({ ...input, clientId: "foreign-client" }),
       ).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
       const grant = await user.mcpGrants.bind.mutate(input);
+      expect(grant.redirectUri).toBeNull();
       expect((await state.mcpArtifacts.identity.query({ id }))?.userId).toBe(a);
       expect(
         (await other.mcpGrants.list.query()).some((row) => row.id === id),
@@ -1279,6 +1281,31 @@ describe.skipIf(!ownerUrl)(
           key: hash(randomUUID()),
         }),
       ).toEqual({ saved: false });
+    });
+
+    it("adds callback history without rewriting retained grant facts", async () => {
+      // Probe the previous shape in a rolled-back transaction on this disposable
+      // database; never downgrade the actual migration ledger.
+      const rollback = new Error("rollback migration probe");
+      await expect(
+        owner.transaction().execute(async (tx) => {
+          await sql`alter table identity.mcp_grant drop column redirect_uri`.execute(
+            tx,
+          );
+          const before = await sql<
+            Record<string, unknown>
+          >`select * from identity.mcp_grant order by id`.execute(tx);
+          expect(before.rows.length).toBeGreaterThan(0);
+          await addGrantCallback(tx);
+          const after = await sql<
+            Record<string, unknown>
+          >`select * from identity.mcp_grant order by id`.execute(tx);
+          expect(after.rows).toEqual(
+            before.rows.map((row) => ({ ...row, redirect_uri: null })),
+          );
+          throw rollback;
+        }),
+      ).rejects.toBe(rollback);
     });
 
     it("rolls back failed OAuth writes, enforces expiry and refuses a destructive migration rollback", async () => {

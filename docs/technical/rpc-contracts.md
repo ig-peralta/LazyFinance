@@ -187,6 +187,13 @@ metadata rather than presenting paused balances as live.
 
 ## Wire semantics and transport
 
+`mcpAccess.grants` includes the approved exact `redirectUri` when recorded. It is
+nullable (and optional for rolling wire compatibility); older grants show an
+explicit unrecorded callback, never a guessed client origin. The private
+`mcpGrants.bind` accepts this field from the cookie-bound server interaction, not
+from a browser identity claim. Migration 031 adds it without replacing grants.
+No procedure, OAuth scope or authority is added.
+
 `onboarding.state()` returns `active` with a null completion time when no owned
 record exists; reads do not create records. `onboarding.finish({ status })` accepts
 only `skipped` or `completed`. Completion retains its first server-generated

@@ -18,8 +18,9 @@
     </p>
   }
   @if (consent(); as request) {
-    <h2 class="section-title">{{ request.clientName }}</h2>
-    <p class="record-meta">Identificador de la aplicación: {{ request.clientId }}</p>
+    <mcp-client-identity [clientId]="request.clientId" [name]="request.clientName" [redirectUri]="request.redirectUri" />
+    <p class="field-hint">Esta solicitud vence el {{ time(request.expiresAt) }} (Santiago).</p>
+    @if (expired()) { <p class="notice warning" role="status">Solicitud vencida. Inicia una conexión nueva desde la aplicación; esta solicitud ya no puede autorizarse.</p> }
     <p class="notice">
       Estás autorizando la cuenta <strong>{{ credentials.current()?.principal?.email }}</strong>.
       Si no es tu cuenta, cierra sesión antes de continuar.
@@ -31,16 +32,16 @@
     @if (localCallback()) {
       <p class="notice warning">Esta aplicación usa un destino local en tu equipo. Comprueba que iniciaste la conexión en una aplicación de confianza.</p>
     }
-    <h3 class="record-title" style="margin-top:24px">Permisos de solo lectura</h3>
+    <h3 class="record-title" style="margin-top:24px">1. Lectura requerida <code>finance:read</code></h3>
     <ul class="record-meta" style="padding-left:20px;margin-block:16px">
       <li>Consultar saldos y movimientos guardados.</li>
       <li>Consultar gastos, ingresos, presupuestos y metas con sus períodos y limitaciones.</li>
       <li>La lectura no permite editar tus datos, conectar bancos, confirmar ingresos ni mover dinero.</li>
     </ul>
     @if (requestedWrites().length) {
-      <fieldset class="notice warning" style="margin-block:20px"><legend>Permisos de cambio opcionales</legend>
+      <fieldset class="notice warning" style="margin-block:20px"><legend>2. Cambios opcionales · desactivados por defecto</legend>
         <p>Activa solo los cambios que quieras delegar a esta aplicación. Podrá ejecutarlos sin los botones de aprobación del chat de LazyFinance. La aplicación externa decide si pide confirmación en su interfaz.</p>
-        @for (scope of requestedWrites(); track scope) { <label style="display:flex;gap:10px;margin-block:12px;align-items:flex-start"><input type="checkbox" [checked]="selectedWrites().includes(scope)" [disabled]="!canDecide()" (change)="toggleWrite(scope)" />{{ permissionLabel(scope) }}</label> }
+        @for (scope of requestedWrites(); track scope) { <label style="display:flex;gap:10px;margin-block:12px;align-items:flex-start"><input type="checkbox" [checked]="selectedWrites().includes(scope)" [disabled]="!canDecide()" (change)="toggleWrite(scope)" /><span>{{ permissionLabel(scope) }}<br /><code>{{ scope }}</code></span></label> }
         <p>Ninguno de estos permisos permite mover dinero, confirmar ingresos, cambiar hechos bancarios ni crear reglas automáticas.</p>
       </fieldset>
     }

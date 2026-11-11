@@ -2,6 +2,7 @@ import {
   afterNextRender,
   Component,
   computed,
+  DestroyRef,
   ElementRef,
   Injector,
   inject,
@@ -20,12 +21,33 @@ import {
 } from "../../core/rendering/workspace-preparation";
 import { RpcClient, type RpcScope } from "../../core/rpc/rpc-client";
 import { createScopedCommand } from "../../core/rpc/scoped-command";
+import { McpClientIdentity } from "../../features/mcp-authorization/client-identity";
 
 @Component({
   selector: "mcp-grants-page",
+  imports: [McpClientIdentity],
   templateUrl: "./mcp-grants.page.html",
 })
 export class McpGrantsPage {
+  private readonly now = signal(Date.now());
+  protected readonly status = (grant: McpGrant) =>
+    grant.revokedAt
+      ? "Revocado"
+      : Date.parse(grant.expiresAt) <= this.now()
+        ? "Vencido"
+        : "Vigente";
+  protected readonly permissionLabel = (scope: string) => {
+    const parsed = FinancialWriteScopeSchema.safeParse(scope);
+    return parsed.success
+      ? MCP_PERMISSION_LABELS[parsed.data]
+      : scope === "finance:read"
+        ? "Consultar información financiera guardada"
+        : scope === "offline_access"
+          ? "Renovar el acceso dentro de su vigencia"
+          : scope === "openid"
+            ? "Identificador de cuenta para esta conexión"
+            : "Permiso no reconocido";
+  };
   protected readonly writes = (grant: McpGrant) =>
     grant.scopes.flatMap((scope) => {
       const value = FinancialWriteScopeSchema.safeParse(scope);
@@ -38,6 +60,11 @@ export class McpGrantsPage {
   private readonly heading = viewChild<ElementRef<HTMLElement>>("heading");
   private opener: HTMLElement | null = null;
   protected readonly command = createScopedCommand();
+  private readonly readVersion = signal(0);
+  private readonly uncertain = signal<{
+    scope: RpcScope;
+    version: number;
+  } | null>(null);
   private readonly selection = signal<{ scope: RpcScope; id: string } | null>(
     null,
   );
@@ -47,9 +74,26 @@ export class McpGrantsPage {
       : undefined,
   );
   protected readonly grants = resource({
-    params: () => this.rpc.authenticatedScope(),
-    loader: ({ params: scope, abortSignal }) =>
-      scope.client.mcpAccess.grants.query(undefined, { signal: abortSignal }),
+    params: () => {
+      const scope = this.rpc.authenticatedScope();
+      return scope ? { scope, version: this.readVersion() } : undefined;
+    },
+    loader: async ({ params: { scope, version }, abortSignal }) => {
+      const grants = await scope.client.mcpAccess.grants.query(undefined, {
+        signal: abortSignal,
+      });
+      const uncertain = this.uncertain();
+      if (
+        !abortSignal.aborted &&
+        scope === this.rpc.authenticatedScope() &&
+        uncertain?.scope === scope &&
+        version > uncertain.version
+      ) {
+        this.uncertain.set(null);
+        this.command.clear();
+      }
+      return grants;
+    },
     defaultValue: [],
   });
   protected readonly configuration = resource({
@@ -67,6 +111,8 @@ export class McpGrantsPage {
     }).format(new Date(value));
 
   constructor() {
+    const clock = setInterval(() => this.now.set(Date.now()), 30_000);
+    inject(DestroyRef).onDestroy(() => clearInterval(clock));
     reportWorkspaceReadiness(
       () =>
         initialReadSettled(this.grants) &&
@@ -108,7 +154,8 @@ export class McpGrantsPage {
   protected reload() {
     if (this.command.pending()) return;
     this.selection.set(null);
-    this.command.clear();
+    this.now.set(Date.now());
+    this.readVersion.update((version) => version + 1);
     this.grants.reload();
     this.configuration.reload();
   }
@@ -121,7 +168,7 @@ export class McpGrantsPage {
     )
       return;
     const scope = this.rpc.authenticatedScope();
-    await this.command.run(
+    const confirmed = await this.command.run(
       (scope, signal) =>
         scope.client.mcpAccess.revoke.mutate({ id }, { signal }),
       () => {
@@ -138,5 +185,12 @@ export class McpGrantsPage {
       },
       "Acceso revocado. Las próximas consultas de esta conexión serán rechazadas.",
     );
+    if (
+      !confirmed &&
+      scope &&
+      scope === this.rpc.authenticatedScope() &&
+      !scope.signal.aborted
+    )
+      this.uncertain.set({ scope, version: this.readVersion() });
   }
 }
