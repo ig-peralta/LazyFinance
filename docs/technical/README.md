@@ -11,17 +11,18 @@ target is not evidence of a delivered capability.
 | Guide | Read it for |
 | --- | --- |
 | [Architecture](architecture.md) | Runtime/dependency boundaries, responsibility split and product scope |
-| [Implemented ER and 4+1 views](../diagrams/README.md) | Editable PlantUML and rendered PNGs: ER, logical, development, process, planned physical and scenarios views; deployment pending |
+| [Implemented ER and 4+1 views](../diagrams/README.md) | Dated Stage B PlantUML/PNG baseline: ER, logical, development, process, planned physical and scenarios views; deployment pending |
 | [Private RPC, transactions and RLS](persistence-security.md) | Signed contexts, bootstrap, roles/grants, related ownership, rollback, atomic commands and limits |
-| [Implemented database model and ERD](database-model.md) | All 28 application tables, actual relationships/keys, financial representation and migrations |
-| [RPC contracts and clients](rpc-contracts.md) | Public/private exports, 78/94 procedure inventories, MCP, code generation and wire semantics |
+| [Implemented database model and ERD](database-model.md) | All 32 application tables, actual relationships/keys, financial representation, migrations and diagram baseline limits |
+| [RPC contracts and clients](rpc-contracts.md) | Public/private exports, 82/103 procedure inventories, MCP, code generation and wire semantics |
 | [First-party financial assistant](financial-assistant.md) | Provider-neutral models, grounded reads, explicit action approval, durable receipts, streaming, privacy, limits and evaluation gates |
+| [Live voice contract](assistant-live-voice.md) | Opt-in WebRTC, processing disclosure, microphone/session lifetimes, client-policy limits and live release gates |
 | [External MCP authorization](mcp-authorization.md) | Standards-first OAuth, client interoperability/evidence, independent grants, consent, revocation and operations |
 | [Persistence read pattern](persistence-reads.md) | Purpose-shaped joins/aggregates, bounded projections, cardinality, snapshots and review checklist |
 | [UI/session/rendering lifetimes](ui-data-lifecycle.md) | Accepted credentials, candidate verification, cancellation, page resources, command/read races and public-only hydration |
 | [Provider-neutral identity](identity.md) | Provider/issuer/subject namespaces, internal principals, verifier selection, provisioning and session boundaries |
 | [Tag decisions and rules](../../apps/api/src/transactions/tagging/README.md) | Manual no-tag versus reset, matching, approved automation and atomic decision/event writes |
-| [Banking connector and ingestion](../../apps/api/src/banking/README.md) | Provider normalization, prepared sync, preserved user decisions, tombstones and review |
+| [Banking connector and ingestion](../../apps/api/src/banking/README.md) | Explicit selection, isolated/headless scheduling, shared prepared sync, preserved history and truthful source freshness |
 
 ## Setup, development and verification
 
@@ -42,10 +43,12 @@ target is not evidence of a delivered capability.
 
 - [Non-functional requirements](../product/non-functional-requirements.md):
   quality targets, not proof of production readiness or maximum-size load tests.
-- [Diagram inventory](../diagrams/README.md): implemented ER/4+1 sources and PNGs,
-  with actual use cases, components and focused message sequences. The physical
+- [Diagram inventory](../diagrams/README.md): dated Stage B ER/4+1 sources and PNGs,
+  with that baseline's use cases, components and focused message sequences. The physical
   view is planned configuration, not deployment evidence.
-- [Latest backlog](../planning/snapshots/backlog-2026-11-09.md) and
+- [Stage C delivery evidence](../planning/stage-c/experience-delivery.md) records
+  the integrated feature checks and remaining release gates. The dated
+  [November 9 backlog](../planning/snapshots/backlog-2026-11-09.md) and
   [Stage B closure](../planning/stage-b/closure.md): completed development-stage
   inventory, evidence and accepted carryovers. The [earlier checkpoint](../planning/snapshots/backlog-2026-11-02.md)
   and [Stage A closure](../planning/stage-a/closure.md) retain their original

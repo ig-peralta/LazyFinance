@@ -69,11 +69,12 @@ and minimize/close must restore focus to a still-connected invoker or a stable
 workspace fallback. The binding deliberately leaves focus to that existing host.
 
 The binding ignores consumed events, Ctrl/Meta/Alt chords, repeats, IME,
-inputs/textareas/selects/contenteditable/textboxes, native modal dialogs, custom
-dialog roles and the open appearance popover. The host must not leave a hidden
-`role="dialog"` node mounted when minimized, or it would intentionally block
-global shortcuts. `?` may require Shift on the user's layout; Shift alone is not
-rejected. No browser/OS Ctrl/Meta chord is overridden.
+inputs/textareas/selects/contenteditable/textboxes, native modal dialogs, visible
+modal/custom dialog roles and the open appearance popover. The integrated binding
+explicitly permits hidden persistent dialogs and the visible non-modal assistant,
+so restoring/focusing the existing host remains possible. `?` may require Shift on
+the user's layout; Shift alone is not rejected. No browser/OS Ctrl/Meta chord is
+overridden.
 
 Mount the host **inside `.workspace`** so it inherits `--ink`, `--muted`, `--paper`,
 `--raised`, `--canvas`, `--line`, `--accent`, `--accent-soft`, `--danger`,

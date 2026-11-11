@@ -4,7 +4,7 @@
 
 ## Product vision
 
-LazyFinance helps people understand their finances and make better decisions without reconciling account balances and transaction lists by hand. The first-party conversational agent (text first, voice later) and visual dashboard are its own ways to experience the product. Its longer-term opportunity is an **interoperable financial capability layer**: a user-scoped financial core that can serve LazyFinance's interfaces and, with appropriate authorization, other compatible agents and applications through MCP.
+LazyFinance helps people understand their finances and make better decisions without reconciling account balances and transaction lists by hand. The first-party conversational agent (text and opt-in voice, with separate live-validation gates) and visual dashboard are its own ways to experience the product. Its longer-term opportunity is an **interoperable financial capability layer**: a user-scoped financial core that can serve LazyFinance's interfaces and, with appropriate authorization, other compatible agents and applications through MCP.
 
 Personal finance analysis is the starting point, not the limit of the product. We want a trustworthy financial foundation from which to grow into richer analysis, new ways to interact, additional data sources and potentially other financial capabilities. The architecture should make these directions possible without presenting unvalidated use cases as release commitments.
 

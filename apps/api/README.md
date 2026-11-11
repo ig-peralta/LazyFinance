@@ -3,9 +3,10 @@
 NestJS financial workflow service exposing public tRPC at `/trpc` and scoped
 MCP at `/mcp`. Ordinary HTTP also serves OAuth discovery/protocol/browser interaction
 and the public `GET /` listening check. The first-party assistant streams bearer-only
-NDJSON at `POST /assistant/turns`; configuration/history use tRPC. Business REST
-controllers have been retired. Angular otherwise uses vanilla tRPC clients apart
-from the cookie-bound OAuth interaction.
+NDJSON at `POST /assistant/turns`; text configuration/history use tRPC. Opt-in voice
+uses authenticated HTTP for WebRTC setup/termination. Business REST controllers
+have been retired. Angular otherwise uses vanilla tRPC clients apart from the
+cookie-bound OAuth interaction.
 
 Technical references: [architecture](../../docs/technical/architecture.md),
 [provider-neutral identity](../../docs/technical/identity.md),
@@ -45,15 +46,23 @@ ignored `apps/api/.env`, and configure:
 | `FIREBASE_PROJECT_ID` | Required in Firebase mode. |
 | `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` | Optional paired Admin credentials. |
 | `FINTOC_PUBLIC_KEY`, `FINTOC_SECRET_KEY`, `FINTOC_TOKEN_ENCRYPTION_KEY` | Optional matched-mode Movements keys plus a separate 32-byte hex token-encryption key; API-only. |
+| `BANKING_AUTOMATIC_SYNC_ENABLED` | Default `false`; enables bounded available-data scheduling for explicitly selected/enrolled connections, not bank-forced refresh. |
 | `MCP_OAUTH_ISSUER`, `MCP_OAUTH_UI_ORIGIN`, `MCP_OAUTH_STATE_KEY`, `MCP_OAUTH_JWKS` | Optional all-or-none external MCP OAuth; canonical origins and independent stable API-only state/signing secrets (`pnpm mcp:keys`). |
 | `MCP_OAUTH_TRUST_PROXY` | Default `false`; enable only behind a trusted TLS edge replacing forwarded headers. |
 | `ASSISTANT_PROVIDER` | Default `disabled`; `openai`, `anthropic`, `google`, `openai-compatible`, or explicit offline development `demo`. |
 | `ASSISTANT_MODEL`, `ASSISTANT_API_KEY`, `ASSISTANT_BASE_URL` | Explicit model/provider credentials; compatible endpoint URL only. See the provider-neutral assistant guide. |
+| `ASSISTANT_VOICE_ENABLED` | Default `false`; opt-in live voice requires configured non-demo text generation and single-API-replica operation. |
+| `ASSISTANT_VOICE_MODEL`, `ASSISTANT_VOICE_API_KEY` | Explicit Realtime audio model and dedicated server-only provider key/project spend controls; independent of text-provider credentials. |
 
 The API needs the private RPC URL/signing key, not database configuration.
 App-local dotenv files are not the root Compose `.env`.
 The authenticated `banking` RPC supports owner-bound Fintoc linking, access checks,
-relink, disconnect, `importInitial`, repeatable `refresh` and readonly `syncStatus`.
+relink, disconnect, provider-free `accountSelection`, explicit `discoverAccounts`,
+versioned `selectAccounts`, `importInitial`, repeatable `refresh` and readonly
+`syncStatus`. Authorization/discovery alone never imports financial data. Only
+confirmed selected accounts import; new accounts remain unselected. Empty selection
+pauses imports while retaining history, aliases and user decisions. `accounts.setAlias`
+changes an owned display label without changing bank identity or source facts.
 Refresh pulls the latest available Fintoc snapshot, not a forced bank update.
 Movements start at the connection's first-link day in Santiago, with no pre-link
 backfill; balances are reported independently. Refresh/relink does not reset that
@@ -63,6 +72,14 @@ the stored-balance page; authorization/access checks never import implicitly.
 See the [linking contract](src/banking/linking/README.md) for Widget/credential
 handling and the [first-import guide](src/banking/fintoc/README.md) for conservative
 financial mappings, supported products and atomic import limits.
+
+The API timer and `pnpm --filter api worker:banking` headless entry compose the same
+isolated synchronization engine; the latter runs after a build without public HTTP,
+Firebase, MCP, assistant modules or a database pool. Durable signed scheduler/transport
+purposes own claims/admission, not financial interpretation. Automation defaults off;
+enabled work shares leases, quotas/backoff and atomic ingestion with manual imports.
+See the [banking boundary](src/banking/README.md) for exact bounds, recovery and
+future-service extraction constraints.
 
 `pnpm --filter api dev` starts watch mode. `build`, `typecheck` and `test` are also
 available. Public auth procedures are `auth.config` and `auth.loginMock`; all
@@ -79,8 +96,10 @@ and confirmed revocation; OAuth credentials cannot call first-party management R
 MCP now exposes fourteen financial/supporting reads plus action preview/direct
 execution. New write scopes require explicit consent and default off; existing
 read grants remain read-only. Existing-record changes pin a preview fingerprint,
-and a stable request UUID prevents duplicate execution. Apply migrations through
-029 only to a separately authorized target and follow the [setup/security/client matrix](../../docs/technical/mcp-authorization.md).
+and a stable request UUID prevents duplicate execution. Apply all checked-in
+migrations only to a separately authorized target and follow the [setup/security/client matrix](../../docs/technical/mcp-authorization.md).
+Migration 031 additively retains approved grant callbacks; old grants do not receive
+invented identity metadata.
 Official SDK 2.4.0 verification does not claim live ChatGPT, Claude or OpenCode support.
 
 The [first-party financial assistant](../../docs/technical/financial-assistant.md)
@@ -93,6 +112,20 @@ decisions share an atomic executor with separately scoped MCP writes. Conversati
 deleting chat does not undo finance. Provider keys remain API-only. It defaults disabled, with
 live provider/model quality and operational cost/privacy review still separate
 release gates.
+
+Voice uses `GET /assistant/voice/configuration`, `POST /assistant/voice/sessions`
+and `POST /assistant/voice/end`, under the existing bearer/origin assistant boundary.
+The API exchanges the SDP offer and owns opaque owner-bound termination; provider
+keys/ephemeral credentials are never returned to the browser. The normal UI submits
+completed transcripts through the same saved, grounded text pipeline and requests
+audio for confirmed replies. It cannot approve financial changes by speech.
+
+Voice admission/hangup recovery are memory-only and currently require **one API
+replica** plus dedicated provider spend controls. Modified own clients can request
+ungrounded provider audio; client rendering policy is not a server-enforced sandbox.
+Written answers and exact action cards remain authoritative. Real microphone/browser
+compatibility, fidelity, remote termination and latency/cost need separate validation.
+See the [live voice contract](../../docs/technical/assistant-live-voice.md).
 
 ## Contracts and checks
 

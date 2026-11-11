@@ -450,6 +450,10 @@ warnings. No live model or bank request was made.
 
 ### Persistent assistant and controlled voice validation — 2026-11-11
 
+The following records the assistant branch before the other Stage C features were
+integrated. The [combined delivery record](../planning/stage-c/experience-delivery.md)
+owns final integrated test counts, browser evidence and RPC inventories.
+
 The shell now retains one deferred-loaded assistant instance across authenticated
 navigation. Controlled UI coverage checks real route navigation without remount/
 refetch/resend, in-flight minimize/reopen, focus return, narrow-screen inertness,

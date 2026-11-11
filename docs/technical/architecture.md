@@ -195,7 +195,14 @@ ownership checks. Server-owned history lives in `assistant.conversation`, with
 independent `assistant.action` receipts that survive chat deletion. Model calls
 never run inside SQL transactions.
 Generation is bounded, cancellable and lease/nonce protected. It defaults disabled;
-live model quality remains a separate verification gate. External
+live model quality remains a separate verification gate. One deferred UI host
+preserves authenticated text state across navigation/minimization. Optional WebRTC
+voice uses an authenticated API SDP/termination bridge with server-only credentials;
+normal-client transcripts and answers use the same saved-turn pipeline. Exact
+financial approval remains independently server-validated. Client-controlled audio
+rendering is not a grounding sandbox; memory-only voice admission/recovery requires
+one API replica and separate provider spend controls. See the [live voice contract](assistant-live-voice.md).
+External
 client compatibility evidence is recorded in the [OAuth matrix](mcp-authorization.md#compatibility-and-verification-matrix), not inferred from documentation alone.
 
 ## Isolated banking synchronization and scheduling
@@ -236,8 +243,9 @@ normalization/financial logic. Review a separate signing authority, credential
 distribution and private networking first; the present trusted API signer can
 assert users. Enrollment, access, worker activity, last successful import and
 source freshness remain distinct. Live entitlement/cost/billing, real bank
-freshness, manual/browser acceptance and the current regression run are not
-verified by this architectural description.
+freshness and production operation are not verified by this architectural
+description; executed local checks and browser limits live in the
+[delivery record](../planning/stage-c/experience-delivery.md).
 
 ## Operations
 

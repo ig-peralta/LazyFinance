@@ -40,6 +40,7 @@ delivery forecast. Linear owns their live values.
 
 | Document | Responsibility |
 | --- | --- |
+| [Integrated experience delivery](experience-delivery.md) | Four requested feature workstreams, PR stack, executed combined verification and remaining release gates; not Stage C closure |
 | [Scope and planning record](planning.md) | All 18 feedback items, required/optional selection, dependencies, decisions and exclusions |
 | [Selected-account synchronization policy](banking-sync-policy.md) | LAZ-89 decision and implemented selection/consent, isolated portable execution, background authority and recovery; live enablement remains gated |
 | [Banking delivery](banking-delivery.md) and [browser verification](banking-browser-validation.md) | LAZ-74 implementation traceability, executed local checks and explicit unverified operational limits |

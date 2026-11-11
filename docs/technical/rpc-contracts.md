@@ -102,8 +102,8 @@ Optional bearer-only voice HTTP endpoints use shared strict public schemas:
 `POST /assistant/voice/end` accepts only an opaque local session ID. Origin,
 conversation ownership and admission are checked server-side. SDP negotiation
 exposes no provider key, owner selector, financial tools or execution authority.
-These are not tRPC procedures: public/private inventories stay 78/94 and no new
-migration is needed. See the [voice contract and live-validation gates](assistant-live-voice.md).
+These are not tRPC procedures: the combined public/private inventories remain
+82/103, and voice itself needs no migration. See the [voice contract and live-validation gates](assistant-live-voice.md).
 
 ## Private surface
 
