@@ -129,17 +129,23 @@
           } @else {
             <p role="status">{{ voice.state() === 'connecting' ? 'Conectando micrófono…' : voice.state() === 'muted' ? 'Micrófono silenciado' : 'Micrófono activo · escuchando' }}</p>
             <button type="button" class="button small" [disabled]="voice.state() === 'connecting'" [attr.aria-pressed]="voice.state() === 'muted'" (click)="voice.mute()">{{ voice.state() === 'muted' ? 'Activar micrófono' : 'Silenciar' }}</button>
-            <button type="button" class="button small" (click)="voice.end()">Terminar voz</button>
+            <button type="button" class="button small" (click)="endVoice()">Terminar voz</button>
           }
           @if (voiceDisclosure()) {
             <p>Al iniciar, tu audio y las respuestas escritas se procesan en OpenAI. Puede generar costes. La voz termina al minimizar, navegar o dejar esta pestaña. Máximo cinco minutos. No grabamos audio; la retención del proveedor es independiente. La voz puede equivocarse: revisa el texto y las referencias. Decir «sí» no aprueba cambios.</p>
             <button type="button" class="button small" (click)="startVoice()">Entiendo, iniciar micrófono</button>
-            <button type="button" class="button small" (click)="voiceDisclosure.set(false)">Cancelar voz</button>
+            <button type="button" class="button small" (click)="endVoice()">Cancelar voz</button>
           }
         }
         @if (voice.error()) { <p role="alert">{{ voice.error() }}</p> }
         @if (voiceFallback()) { <p role="status">{{ voiceFallback() }}</p> }
         @if (voice.inputTranscript()) { <p><strong>Transcripción de tu voz:</strong> {{ voice.inputTranscript() }}</p> }
+        @if (voice.inputTranscripts().length) {
+          <details><summary>Transcripciones recibidas · {{ voice.inputTranscripts().length }}</summary>
+            <p>Recibidas en orden de habla. Una interrupción no confirma su envío ni guardado: revisa el historial antes de volver a preguntar.</p>
+            <ul>@for (item of voice.inputTranscripts(); track item.id) { <li>{{ item.text }} <button type="button" class="text-link" (click)="suggest(item.text)">Usar como borrador</button></li> }</ul>
+          </details>
+        }
         @if (voice.outputTranscript()) { <p><strong>Transcripción del audio:</strong> {{ voice.outputTranscript() }}</p> }
         @if (voice.playbackBlocked()) { <button type="button" class="button small" (click)="voice.play()">Reproducir audio</button> }
       </div>

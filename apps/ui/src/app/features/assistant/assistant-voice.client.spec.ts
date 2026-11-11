@@ -101,6 +101,99 @@ describe("continuous live voice media and session lifetimes", () => {
     vi.useRealTimers();
   });
 
+  it("delivers delayed/out-of-order completions in speech order without dropping an earlier question", async () => {
+    const f = setup();
+    await f.start();
+    f.channel.onopen?.();
+    f.event({ type: "input_audio_buffer.speech_started", item_id: "a" });
+    f.event({ type: "input_audio_buffer.speech_started", item_id: "b" });
+    f.event({
+      type: "conversation.item.input_audio_transcription.completed",
+      item_id: "b",
+      transcript: "Segunda pregunta",
+    });
+    expect(f.transcript).not.toHaveBeenCalled();
+    expect(f.voice.inputTranscripts().map((item) => item.text)).toEqual([
+      "Segunda pregunta",
+    ]);
+    f.event({
+      type: "conversation.item.input_audio_transcription.completed",
+      item_id: "a",
+      transcript: "Primera pregunta",
+    });
+    expect(f.transcript.mock.calls.map(([text]) => text)).toEqual([
+      "Primera pregunta",
+      "Segunda pregunta",
+    ]);
+    expect(f.voice.inputTranscripts().map((item) => item.text)).toEqual([
+      "Primera pregunta",
+      "Segunda pregunta",
+    ]);
+    f.event({
+      type: "conversation.item.input_audio_transcription.completed",
+      item_id: "a",
+      transcript: "Duplicada",
+    });
+    expect(f.transcript).toHaveBeenCalledTimes(2);
+  });
+
+  it("retains completed questions for explicit reconciliation when delivery ends/interruption blocks the conversation", async () => {
+    const f = setup();
+    await f.start();
+    f.channel.onopen?.();
+    f.event({ type: "input_audio_buffer.speech_started", item_id: "a" });
+    f.event({ type: "input_audio_buffer.speech_started", item_id: "b" });
+    f.event({
+      type: "conversation.item.input_audio_transcription.completed",
+      item_id: "b",
+      transcript: "Segunda pendiente",
+    });
+    f.transcript.mockImplementationOnce(() => f.voice.end());
+    f.event({
+      type: "conversation.item.input_audio_transcription.completed",
+      item_id: "a",
+      transcript: "Primera interrumpida",
+    });
+    expect(f.transcript).toHaveBeenCalledTimes(1);
+    expect(f.voice.inputTranscripts().map((item) => item.text)).toEqual([
+      "Primera interrumpida",
+      "Segunda pendiente",
+    ]);
+    f.credentials.clear();
+    // A detached run no longer owns an abort listener; component owner clearing
+    // invokes end(true), as does component destruction.
+    f.voice.end(true);
+    expect(f.voice.inputTranscripts()).toEqual([]);
+  });
+
+  it("invalidates pending transcription items on mute and bounds the collection", async () => {
+    const f = setup();
+    await f.start();
+    f.channel.onopen?.();
+    f.event({ type: "input_audio_buffer.speech_started", item_id: "a" });
+    f.event({ type: "input_audio_buffer.speech_started", item_id: "b" });
+    f.voice.mute();
+    f.voice.mute();
+    f.event({
+      type: "conversation.item.input_audio_transcription.completed",
+      item_id: "a",
+      transcript: "Obsoleta",
+    });
+    f.event({
+      type: "conversation.item.input_audio_transcription.completed",
+      item_id: "b",
+      transcript: "Obsoleta",
+    });
+    expect(f.transcript).not.toHaveBeenCalled();
+    for (let index = 2; index <= 24; index++)
+      f.event({
+        type: "input_audio_buffer.speech_started",
+        item_id: `item-${index}`,
+      });
+    expect(f.voice.state()).toBe("off");
+    expect(f.track.stop).toHaveBeenCalledOnce();
+  });
+
   it("does not capture until Start, streams a microphone track and handles completed transcripts once", async () => {
     const f = setup();
     expect(f.media.microphone).not.toHaveBeenCalled();
@@ -214,6 +307,36 @@ describe("continuous live voice media and session lifetimes", () => {
     f.media.microphone.mockReturnValueOnce(permission.promise);
     const started = f.start();
     f.voice.end();
+    permission.resolve(f.microphone);
+    await started;
+    expect(f.track.stop).toHaveBeenCalledOnce();
+    expect(f.peer.addTrack).not.toHaveBeenCalled();
+    expect(f.request).not.toHaveBeenCalled();
+  });
+
+  it("honors the pre-existing startup cancellation signal before and during microphone permission", async () => {
+    const f = setup();
+    const cancelled = new AbortController();
+    cancelled.abort();
+    await f.voice.start(
+      f.owner,
+      "00000000-0000-4000-8000-000000000001",
+      f.transcript,
+      f.interrupt,
+      cancelled.signal,
+    );
+    expect(f.media.microphone).not.toHaveBeenCalled();
+    const permission = deferred<typeof f.microphone>();
+    f.media.microphone.mockReturnValueOnce(permission.promise);
+    const startup = new AbortController();
+    const started = f.voice.start(
+      f.owner,
+      "00000000-0000-4000-8000-000000000001",
+      f.transcript,
+      f.interrupt,
+      startup.signal,
+    );
+    startup.abort();
     permission.resolve(f.microphone);
     await started;
     expect(f.track.stop).toHaveBeenCalledOnce();

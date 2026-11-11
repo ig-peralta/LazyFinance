@@ -34,7 +34,10 @@ evidence, privacy, stop/response/browser targets, single-replica/cost bounds and
 unverified live gates. Explicit start, mute/end, barge-in, in-memory input/audio
 transcripts and text fallback use the same grounded saved-turn pipeline. Minimize,
 navigation and hidden tabs end capture, not text history. Audio has no approval
-or execution capability. No live provider call is part of deterministic validation.
+or execution capability. The normal client's grounded read-aloud behavior is not
+a server-enforced restriction on a modified browser's provider data channel; see
+the voice contract's explicit rendering and shutdown/recovery limitations.
+No live provider call is part of deterministic validation.
 
 ## Provider-neutral configuration
 
@@ -479,3 +482,41 @@ remain **unverified live gates**, not implied by mocked media or passing builds.
 Voice stays disabled by default, single-replica only, and needs separate live/cost
 authorization plus dedicated project spend controls before enabling. No customer
 financial context was disclosed, and no environment file or development database was changed.
+
+### Independent-review race fixes — 2026-11-11
+
+The voice startup lifetime now begins before awaiting conversation creation.
+Controlled regressions cover Cancel, acknowledgement withdrawal, navigation,
+minimize/reopen, hidden tabs, owner removal and destruction during that deferred
+write, plus an accepted-start control. None of the cancelled paths requests a
+microphone. The same signal also invalidates permission/transport setup in the
+media client; a late permission result is stopped without adopting its tracks.
+
+Provider shutdown now enters a draining state, rejects new starts, retains in-flight
+initialization leases and terminates late remote call IDs. Drain waiting is bounded
+to 20 seconds with at most three five-second hangup attempts per session/generation.
+Unconfirmed remote IDs are retained in memory with an operator warning rather than
+silently erased. Tests cover initialization/shutdown races, failed hangup and later
+recovery, and a provider response arriving after the drain deadline. Redirects are
+rejected and SDP decoding cancels the stream beyond 64,000 bytes.
+
+Asynchronous voice transcripts use bounded pending items and speech-start ordering.
+Out-of-order completions are retained immediately in a memory-only review list;
+blocked/interrupted delivery offers explicit draft preparation after checking
+history, not silent dropping or replay. Mute/end invalidate pending delivery and
+late events. Owner/conversation changes and Close clear retained transcripts.
+
+The voice contract now explicitly distinguishes normal-client grounded read-aloud
+behavior from server authority: a modified own browser can control its provider
+data channel and request ungrounded audio/override output settings. It receives no
+first-party financial execution authority. Prompt interpolation is not a fidelity
+guarantee; the saved written reply and independently validated exact approval remain
+authoritative. Memory-only admission/recovery is not a crash-durable or hard-cost
+budget. Shutdown failures/process exit may still require provider lifetime/project
+spend controls; no stronger provider-side rendering permission is claimed.
+
+After these fixes, 463 full UI tests, 343 API unit tests and both isolated voice
+HTTP tests passed. Workspace build/typecheck, formatting/lint, architecture and
+RPC drift checks passed with the previously disclosed warnings. No live provider,
+browser microphone, real database or new browser/device/latency/cost validation
+was authorized or performed. Voice remains disabled by default.

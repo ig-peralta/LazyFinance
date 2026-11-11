@@ -16,7 +16,10 @@ import {
   setupRpc,
 } from "../../../testing/rpc";
 import { AssistantStreamClient } from "../../features/assistant/assistant-stream.client";
-import { AssistantVoiceClient } from "../../features/assistant/assistant-voice.client";
+import {
+  AssistantVoiceClient,
+  VOICE_MEDIA,
+} from "../../features/assistant/assistant-voice.client";
 import { AssistantWorkspace } from "../../features/assistant/assistant-workspace";
 import { AssistantPage } from "./assistant.page";
 
@@ -49,7 +52,14 @@ function turn(input: AssistantSend): AssistantTurn {
   };
 }
 
-function setup(overrides: RpcHandlers = {}, selected: string | null = chat.id) {
+function setup(
+  overrides: RpcHandlers = {},
+  selected: string | null = chat.id,
+  voiceEnabled = false,
+) {
+  const microphone = vi.fn<() => Promise<MediaStream>>(async () => {
+    throw new Error("Unexpected microphone access");
+  });
   const query = new BehaviorSubject(
     convertToParamMap(selected ? { conversacion: selected } : {}),
   );
@@ -65,6 +75,19 @@ function setup(overrides: RpcHandlers = {}, selected: string | null = chat.id) {
     "browser",
     true,
     [
+      {
+        provide: VOICE_MEDIA,
+        useValue: {
+          supported: () => voiceEnabled,
+          microphone,
+          peer: () => {
+            throw new Error("Unexpected peer creation");
+          },
+          audio: () => {
+            throw new Error("Unexpected audio creation");
+          },
+        },
+      },
       {
         provide: ActivatedRoute,
         useValue: {
@@ -96,7 +119,7 @@ function setup(overrides: RpcHandlers = {}, selected: string | null = chat.id) {
     });
   const fixture = TestBed.createComponent(AssistantPage);
   vi.spyOn(AssistantVoiceClient.prototype, "configuration").mockResolvedValue({
-    enabled: false,
+    enabled: voiceEnabled,
   });
   fixture.detectChanges();
   const workspace = TestBed.inject(AssistantWorkspace);
@@ -110,6 +133,7 @@ function setup(overrides: RpcHandlers = {}, selected: string | null = chat.id) {
     navigate,
     stream,
     workspace,
+    microphone,
     fixture,
     root: fixture.nativeElement as HTMLElement,
   };
@@ -143,6 +167,79 @@ describe("first-party chat page lifetimes and confirmed history", () => {
   afterEach(() => {
     TestBed.resetTestingModule();
     vi.restoreAllMocks();
+  });
+
+  it.each([
+    "cancel",
+    "acknowledgement",
+    "navigation",
+    "minimize-reopen",
+    "hidden",
+    "owner",
+    "destroy",
+    "accepted",
+  ])("honors %s during deferred voice conversation creation", async (reason) => {
+    const created = deferred<AssistantConversation>();
+    const f = setup(
+      {
+        "assistant.configuration": () => ({
+          ...configuration,
+          demonstration: false,
+          provider: "openai",
+          model: "configured",
+        }),
+        "assistant.createConversation": () => created.promise,
+      },
+      null,
+      true,
+    );
+    const start = vi
+      .spyOn(AssistantVoiceClient.prototype, "start")
+      .mockResolvedValue();
+    await render(f.fixture);
+    const consent = f.root.querySelector<HTMLInputElement>(
+      ".processing-consent input",
+    );
+    if (!consent) throw new Error("Missing acknowledgement");
+    consent.checked = true;
+    consent.dispatchEvent(new Event("change"));
+    f.fixture.detectChanges();
+    button(f.root, "Conversar por voz").click();
+    f.fixture.detectChanges();
+    button(f.root, "Entiendo, iniciar micrófono").click();
+    await vi.waitFor(() =>
+      expect(f.callsTo("assistant.createConversation")).toHaveLength(1),
+    );
+    if (reason === "cancel") button(f.root, "Cancelar voz").click();
+    if (reason === "acknowledgement") {
+      consent.checked = false;
+      consent.dispatchEvent(new Event("change"));
+    }
+    if (reason === "minimize-reopen") {
+      f.workspace.minimize();
+      f.workspace.open();
+    }
+    if (reason === "navigation") {
+      const router = TestBed.inject(Router);
+      vi.mocked(router.navigateByUrl).mockRestore();
+      await router.navigateByUrl("/");
+    }
+    if (reason === "hidden") {
+      vi.spyOn(document, "hidden", "get").mockReturnValue(true);
+      document.dispatchEvent(new Event("visibilitychange"));
+    }
+    if (reason === "owner") f.credentials.clear();
+    if (reason === "destroy") f.fixture.destroy();
+    else f.fixture.detectChanges();
+    created.resolve(chat);
+    if (reason !== "destroy") await render(f.fixture);
+    else await Promise.resolve();
+    expect(start).toHaveBeenCalledTimes(reason === "accepted" ? 1 : 0);
+    expect(f.microphone).not.toHaveBeenCalled();
+    expect(f.stream).not.toHaveBeenCalled();
+    expect(f.workspace.selection()).toBe(
+      reason === "accepted" ? chat.id : undefined,
+    );
   });
 
   it("keeps suggestions explicit, supports Shift+Enter and prevents duplicate creation or sends across navigation", async () => {

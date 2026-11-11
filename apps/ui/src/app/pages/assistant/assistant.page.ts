@@ -50,6 +50,7 @@ interface LiveTurn {
   providers: [AssistantVoiceClient],
 })
 export class AssistantPage {
+  private voiceStartup: AbortController | undefined;
   protected readonly voice = inject(AssistantVoiceClient);
   protected readonly voiceDisclosure = signal(false);
   protected readonly voiceFallback = signal("");
@@ -181,13 +182,21 @@ export class AssistantPage {
 
   constructor() {
     inject(DestroyRef).onDestroy(() => {
+      this.endVoice(true);
       this.lifetime.abort();
       this.liveState()?.controller.abort();
       this.workspace.onMinimize = undefined;
     });
-    this.workspace.onMinimize = () => this.voice.end();
+    this.workspace.onMinimize = () => this.endVoice();
     // Navigation may preserve text generation, but never hidden microphone capture.
-    const navigation = inject(Router).events.subscribe(() => this.voice.end());
+    const navigation = inject(Router).events.subscribe(() => this.endVoice());
+    const visibility = () => {
+      if (document.hidden) this.endVoice();
+    };
+    document.addEventListener("visibilitychange", visibility);
+    inject(DestroyRef).onDestroy(() =>
+      document.removeEventListener("visibilitychange", visibility),
+    );
     inject(DestroyRef).onDestroy(() => navigation.unsubscribe());
     let previous: RpcScope | undefined;
     let previousId: string | undefined;
@@ -196,8 +205,7 @@ export class AssistantPage {
         id = this.id(),
         live = this.liveState();
       if (scope !== previous || id !== previousId) {
-        if (scope !== previous || previousId !== undefined)
-          this.voice.end(true);
+        if (scope !== previous || previousId !== undefined) this.endVoice(true);
         this.draft.set("");
         this.confirmDelete.set(false);
       }
@@ -287,7 +295,7 @@ export class AssistantPage {
     if (event.target instanceof HTMLInputElement) {
       this.processingAccepted.set(event.target.checked);
       if (!event.target.checked) {
-        this.voice.end();
+        this.endVoice();
         this.stop();
       }
     }
@@ -304,44 +312,81 @@ export class AssistantPage {
       !this.voiceConfiguration.value().enabled
     )
       return;
+    this.endVoice();
+    // This generation begins before history creation, not just before getUserMedia.
+    const startup = new AbortController();
+    this.voiceStartup = startup;
+    let selection = this.workspace.selection();
+    const current = () =>
+      this.voiceStartup === startup &&
+      !startup.signal.aborted &&
+      !this.lifetime.signal.aborted &&
+      !owner.signal.aborted &&
+      this.credentials.current() === owner &&
+      this.processingAccepted() &&
+      !document.hidden &&
+      this.workspace.opened() &&
+      this.workspace.selection() === selection;
+    owner.signal.addEventListener("abort", () => this.endVoice(true), {
+      once: true,
+      signal: startup.signal,
+    });
+    if (!current()) {
+      this.endVoice();
+      return;
+    }
+    this.voiceDisclosure.set(true);
     let id = this.id();
     if (!id) {
       await this.command.run(
         (scope, signal) =>
           scope.client.assistant.createConversation.mutate(undefined, {
-            signal,
+            signal: AbortSignal.any([signal, startup.signal]),
           }),
-        (chat) => this.workspace.selection.set(chat.id),
+        (chat) => {
+          if (!current()) return;
+          selection = chat.id;
+          this.workspace.selection.set(chat.id);
+        },
         "Conversación creada.",
       );
       id = this.id();
     }
-    if (!id || this.credentials.current() !== owner || !this.workspace.opened())
-      return;
+    if (!id || !current()) return;
     this.voiceDisclosure.set(false);
     this.voiceFallback.set("");
     await this.voice.start(
       owner,
       id,
       (text) => {
+        if (!current()) return;
         this.draft.set(text);
         // An interrupted/unconfirmed previous turn is reconciled explicitly, never replayed.
         if (this.canSend()) void this.send();
         else {
-          this.voice.end();
+          this.endVoice();
           this.voiceFallback.set(
             "Tu transcripción quedó en el borrador. Revisa el estado de la conversación y envíala por texto cuando esté lista.",
           );
         }
       },
       () => this.stop(),
+      startup.signal,
     );
+    if (!current() && this.voiceStartup === startup) this.endVoice();
+  }
+
+  protected endVoice(clearTranscripts = false) {
+    this.voiceStartup?.abort();
+    this.voiceStartup = undefined;
+    this.voiceDisclosure.set(false);
+    this.voice.end(clearTranscripts);
   }
 
   protected close() {
     this.revision.update((value) => value + 1);
     this.stop();
-    this.voice.end(true);
+    this.endVoice(true);
     this.sending.set(null);
     this.liveState.set(null);
     this.draft.set("");
@@ -568,7 +613,7 @@ export class AssistantPage {
             });
           if (event.type === "status") update({ status: event.text });
           if (event.type === "error") {
-            this.voice.end();
+            this.endVoice();
             update({
               error:
                 "No pudimos completar una respuesta confirmada. Consulta el historial antes de volver a enviar.",
@@ -577,7 +622,7 @@ export class AssistantPage {
         },
       );
     } catch {
-      if (current()) this.voice.end();
+      if (current()) this.endVoice();
       update({
         error: execution.controller.signal.aborted
           ? "Generación detenida. Consulta el estado para confirmar lo que alcanzó a guardarse."

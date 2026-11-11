@@ -58,6 +58,7 @@ interface VoiceRun {
   idle?: ReturnType<typeof setTimeout>;
   seen: Set<string>;
   inputId?: string;
+  inputs: Map<string, { order: number; partial: string; text?: string }>;
   outputToken?: string;
   outputId?: string;
   responding?: boolean;
@@ -75,6 +76,9 @@ export class AssistantVoiceClient {
   readonly state = signal<"off" | "connecting" | "listening" | "muted">("off");
   readonly error = signal("");
   readonly inputTranscript = signal("");
+  readonly inputTranscripts = signal<
+    { id: string; order: number; text: string }[]
+  >([]);
   readonly outputTranscript = signal("");
   readonly playbackBlocked = signal(false);
   readonly supported = this.media.supported();
@@ -112,10 +116,19 @@ export class AssistantVoiceClient {
     conversationId: string,
     transcript: (text: string) => void,
     interrupt: () => void,
+    startupSignal?: AbortSignal,
   ) {
-    if (this.run || !this.supported || owner.signal.aborted) return;
+    if (
+      this.run ||
+      !this.supported ||
+      owner.signal.aborted ||
+      startupSignal?.aborted ||
+      document.hidden
+    )
+      return;
     this.error.set("");
     this.inputTranscript.set("");
+    this.inputTranscripts.set([]);
     this.outputTranscript.set("");
     this.playbackBlocked.set(false);
     this.state.set("connecting");
@@ -128,6 +141,7 @@ export class AssistantVoiceClient {
         peer: this.media.peer(),
         audio,
         seen: new Set(),
+        inputs: new Map(),
       };
     } catch {
       this.state.set("off");
@@ -140,6 +154,8 @@ export class AssistantVoiceClient {
     const current = () =>
       this.run === run &&
       !run.controller.signal.aborted &&
+      !startupSignal?.aborted &&
+      !document.hidden &&
       !owner.signal.aborted;
     const fail = () => {
       if (!current()) return;
@@ -149,6 +165,10 @@ export class AssistantVoiceClient {
       );
     };
     owner.signal.addEventListener("abort", () => this.end(true), {
+      once: true,
+      signal: run.controller.signal,
+    });
+    startupSignal?.addEventListener("abort", () => this.end(), {
       once: true,
       signal: run.controller.signal,
     });
@@ -229,6 +249,16 @@ export class AssistantVoiceClient {
           }
           if (this.state() === "muted") return;
           if (event.type === "input_audio_buffer.speech_started") {
+            if (!event.item_id || run.seen.has(event.item_id)) return;
+            if (run.seen.size >= 24) {
+              fail();
+              return;
+            }
+            run.seen.add(event.item_id);
+            run.inputs.set(event.item_id, {
+              order: run.seen.size,
+              partial: "",
+            });
             activity();
             this.interrupt();
             interrupt();
@@ -238,29 +268,55 @@ export class AssistantVoiceClient {
           if (
             event.type ===
               "conversation.item.input_audio_transcription.delta" &&
-            run.inputId &&
-            event.item_id === run.inputId &&
+            event.item_id &&
+            run.inputs.has(event.item_id) &&
             event.delta
-          )
-            this.inputTranscript.update((text) =>
-              (text + event.delta).slice(0, 2000),
-            );
+          ) {
+            const item = run.inputs.get(event.item_id);
+            if (item) {
+              item.partial = (item.partial + event.delta).slice(0, 2000);
+              if (event.item_id === run.inputId)
+                this.inputTranscript.set(item.partial);
+            }
+          }
           if (
             event.type ===
               "conversation.item.input_audio_transcription.completed" &&
             event.transcript &&
             event.item_id &&
-            event.item_id === run.inputId &&
-            !run.seen.has(event.item_id)
+            run.inputs.has(event.item_id)
           ) {
-            if (run.seen.size >= 24 || event.transcript.length > 2000) {
+            if (event.transcript.length > 2000) {
               fail();
               return;
             }
-            run.seen.add(event.item_id);
+            const item = run.inputs.get(event.item_id);
+            if (!item || item.text !== undefined) return;
+            item.text = event.transcript;
             activity();
-            this.inputTranscript.set(event.transcript);
-            transcript(event.transcript);
+            // Record every completed item immediately, including later items
+            // waiting for an earlier asynchronous transcription to settle.
+            this.inputTranscripts.update((items) =>
+              [
+                ...items,
+                {
+                  id: event.item_id ?? "",
+                  order: item.order,
+                  text: event.transcript ?? "",
+                },
+              ].sort((a, b) => a.order - b.order),
+            );
+            const ready: string[] = [];
+            for (const [id, pending] of run.inputs) {
+              if (pending.text === undefined) break;
+              ready.push(pending.text);
+              run.inputs.delete(id);
+            }
+            for (const text of ready) {
+              if (!current()) break;
+              this.inputTranscript.set(text);
+              transcript(text);
+            }
           }
           if (
             event.type === "response.created" &&
@@ -357,6 +413,7 @@ export class AssistantVoiceClient {
     if (!this.run || this.state() === "connecting") return;
     const muted = this.state() !== "muted";
     this.run.inputId = undefined;
+    this.run.inputs.clear();
     for (const track of this.run.microphone?.getTracks() ?? [])
       track.enabled = !muted;
     this.interrupt();
@@ -387,6 +444,7 @@ export class AssistantVoiceClient {
     if (clearTranscripts) {
       this.error.set("");
       this.inputTranscript.set("");
+      this.inputTranscripts.set([]);
       this.outputTranscript.set("");
     }
     if (!run) return;
