@@ -20,16 +20,19 @@ import {
 import { filter, map } from "rxjs";
 import { AuthCredentials } from "../../core/auth/auth-credentials";
 import { SessionService } from "../../core/auth/session.service";
+import { AssistantWorkspace } from "../../features/assistant/assistant-workspace";
 import { OnboardingData } from "../../features/onboarding/onboarding.data";
+import { AssistantPage } from "../../pages/assistant/assistant.page";
 import { Icon } from "../../shared/ui/icon";
 import { workspaceLocation, workspaceNavigation } from "./workspace-navigation";
 
 @Component({
   selector: "app-shell",
-  imports: [RouterLink, RouterOutlet, NgTemplateOutlet, Icon],
+  imports: [RouterLink, RouterOutlet, NgTemplateOutlet, Icon, AssistantPage],
   templateUrl: "./app-shell.html",
 })
 export class AppShell {
+  protected readonly assistantWorkspace = inject(AssistantWorkspace);
   protected readonly session = inject(SessionService);
   private readonly router = inject(Router);
   private readonly credentials = inject(AuthCredentials);
@@ -70,6 +73,7 @@ export class AppShell {
   constructor() {
     effect(() => {
       this.url();
+      this.assistantWorkspace.opened();
       // Programmatic navigation/back/forward must dismiss the native modal too.
       untracked(() => this.closeMenu());
     });

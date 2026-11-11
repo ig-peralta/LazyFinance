@@ -83,6 +83,20 @@ connections/financial facts. Reads/commands are scope-cancelled, obsolete result
 cannot navigate or expire a newer login, and uncertain decisions are not replayed.
 See [OAuth browser/site configuration and compatibility](../../docs/technical/mcp-authorization.md).
 
+The shell provides one persistent, minimizable theme-token-aligned assistant.
+`/asistente` opens the existing panel; explicit conversation deep links select
+server-owned history. First open loads it once; authenticated navigation preserves
+in-memory text state without resend. Minimize retains it, while Close panel clears
+the draft/selection and stops work without deleting saved history. Separate Delete
+still requires confirmation. Owner/credential replacement clears private state.
+New answers anchor once at their beginning; later tokens never force scrolling.
+Native references start collapsed, retain per-answer expansion and keep approval
+cards separate. The desktop non-modal panel becomes modal with inert background
+and focus containment on narrow screens; both support Escape and safe areas.
+Optional live WebRTC voice is disabled by default and requires separate start/privacy
+confirmation. Minimize/navigation/hidden tabs end capture. See the
+[voice contract and unverified live gates](../../docs/technical/assistant-live-voice.md).
+
 `/asistente` provides financial questions, explicit suggestions, streamed replies,
 Stop, server-owned history, separate financial reference cards, copy and confirmed
 chat deletion. Cards replace raw JSON with formatted amounts, periods, uncertainty

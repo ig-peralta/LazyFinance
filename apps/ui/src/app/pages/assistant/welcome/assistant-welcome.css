@@ -6,12 +6,12 @@
   margin: 25px auto 32px;
 }
 .welcome-spark {
-  color: #6ee7b7;
+  color: var(--accent);
   width: 44px;
   height: 44px;
   border-radius: 15px;
-  background: #6ee7b70b;
-  border: 1px solid #6ee7b720;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
   display: grid;
   place-items: center;
   margin-bottom: 26px;
@@ -23,21 +23,21 @@
 .welcome-kicker {
   font-size: 9px;
   letter-spacing: 2px;
-  color: #90ad9d;
+  color: var(--muted);
 }
 .chat-welcome h2 {
   font-size: clamp(29px, 3.5vw, 44px);
   line-height: 1.18;
   letter-spacing: -1.6px;
   font-weight: 500;
-  color: #e4eee7;
+  color: var(--ink);
   margin: 16px 0;
 }
 .chat-welcome h2 > span {
-  color: #6ee7b7;
+  color: var(--accent);
 }
 .chat-welcome > p {
-  color: #96ab9e;
+  color: var(--muted);
   font-size: 13px;
   line-height: 1.9;
   max-width: 490px;
@@ -55,34 +55,34 @@
   gap: 9px 12px;
   text-align: left;
   padding: 19px 18px 19px 16px;
-  background: #ffffff02;
-  border: 1px solid #ffffff10;
+  background: var(--raised);
+  border: 1px solid var(--line);
   border-radius: 14px;
-  color: #b3c8ba;
+  color: var(--ink);
   cursor: pointer;
   transition:
     background 0.15s,
     border-color 0.15s;
 }
 .suggestion:hover {
-  background: #6ee7b707;
-  border-color: #6ee7b744;
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
 }
 .suggestion > app-icon {
-  color: #80c9a5;
+  color: var(--accent);
   width: 18px;
   height: 18px;
 }
 .suggestion strong {
   font-size: 12px;
   font-weight: 500;
-  color: #d1e3d8;
+  color: var(--ink);
 }
 .suggestion > span {
   grid-column: 2;
   font-size: 10px;
   line-height: 1.7;
-  color: #8fa89a;
+  color: var(--muted);
   padding-right: 12px;
 }
 .suggestion .suggestion-arrow {
@@ -91,14 +91,14 @@
   bottom: 14px;
   width: 13px;
   height: 13px;
-  color: #6ee7b7;
+  color: var(--accent);
 }
 .chat-welcome > .welcome-note {
   display: flex;
   gap: 8px;
   align-items: center;
   font-size: 10px;
-  color: #7c9586;
+  color: var(--muted);
   margin-top: 20px;
 }
 .welcome-note app-icon {
@@ -106,7 +106,7 @@
   height: 13px;
 }
 button:focus-visible {
-  outline: 2px solid #a7f3d0;
+  outline: 2px solid var(--accent);
   outline-offset: 4px;
 }
 button:disabled {

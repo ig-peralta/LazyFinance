@@ -1,4 +1,5 @@
-<section class="assistant" aria-labelledby="assistant-title">
+<button type="button" class="assistant-launcher button" [hidden]="workspace.opened()" (click)="workspace.open()">Abrir asistente</button>
+<section #panel tabindex="-1" class="assistant" role="dialog" [attr.aria-modal]="workspace.modal()" aria-labelledby="assistant-title" [hidden]="!workspace.opened()" (keydown)="containFocus($event)" (keydown.escape)="workspace.minimize(); $event.stopPropagation()">
   <header class="assistant-heading">
     <div class="assistant-brand">
       <span class="assistant-mark"><app-icon name="spark" /></span>
@@ -7,7 +8,7 @@
         <h1 id="assistant-title">Una conversación. Más claridad<span class="accent-text">.</span></h1>
       </div>
     </div>
-    <span class="readonly"><span></span> Cambios con tu aprobación</span>
+    <div class="button-row"><button type="button" class="button small" (click)="workspace.minimize()">Minimizar</button><button type="button" class="button small" (click)="close()">Cerrar panel</button></div>
   </header>
 
   <div class="chat-layout">
@@ -27,13 +28,13 @@
       }
       <nav aria-label="Elegir conversación">
         @for (chat of history(); track chat.id) {
-          <a routerLink="/asistente" [queryParams]="{ conversacion: chat.id }"
-            [class.selected]="id() === chat.id" [attr.aria-current]="id() === chat.id ? 'page' : null">
+          <button type="button" [disabled]="busy()" (click)="select(chat.id)"
+            [class.selected]="id() === chat.id" [attr.aria-pressed]="id() === chat.id">
             <app-icon name="activity" />
             <span>{{ chat.title }}
               <small>{{ chat.turnCount }} {{ chat.turnCount === 1 ? 'mensaje' : 'mensajes' }} · {{ time(chat.updatedAt) }}</small>
             </span>
-          </a>
+          </button>
         }
       </nav>
       <div class="history-privacy">
@@ -63,7 +64,13 @@
         </div>
       }
 
-      <div class="chat-messages" (scroll)="scroll($event)">
+      @if (configuration.hasValue() && configuration.value().enabled && !configuration.value().demonstration) {
+        <details class="processing-disclosure"><summary>Privacidad y procesamiento externo · antes de enviar</summary>
+          <p>Al enviar, compartes el mensaje, contexto reciente y datos consultados con {{ configuration.value().provider }} ({{ configuration.value().model }}). No se envían credenciales bancarias. La retención del proveedor es independiente del historial de LazyFinance.</p>
+        </details>
+        <label class="processing-consent"><input type="checkbox" [checked]="processingAccepted()" (change)="acceptProcessing($event)"> Entiendo el procesamiento externo para esta sesión.</label>
+      }
+      <div #messages class="chat-messages" (scroll)="scroll($event)">
         @if (configuration.isLoading()) {
           <p class="notice" role="status">Preparando tu asistente…</p>
         } @else if (configuration.error()) {
@@ -84,7 +91,7 @@
         }
         <div class="turns" role="log" aria-label="Mensajes de la conversación" aria-live="off">
           @for (turn of turns(); track turn.id) {
-            <assistant-reply [turn]="turn" [busy]="busy()" (askAgain)="suggest($event)" (actionChanged)="actionChanged($event)" />
+            <assistant-reply [attr.data-turn]="turn.id" [turn]="turn" [busy]="busy()" (askAgain)="suggest($event)" (actionChanged)="actionChanged($event)" />
           }
         </div>
         <div #bottom class="chat-bottom" aria-hidden="true"></div>
@@ -114,6 +121,28 @@
         <div class="demo-notice">MODO DEMOSTRACIÓN · Sin modelo externo. Solo consultas predefinidas; no interpreta preguntas complejas.</div>
       }
 
+      <div class="voice-controls" aria-label="Conversación por voz">
+        @if (!voice.supported) { <p>La voz no está disponible en este navegador. Puedes continuar por texto.</p> }
+        @else if (voiceConfiguration.hasValue() && voiceConfiguration.value().enabled) {
+          @if (voice.state() === 'off') {
+            <button type="button" class="button small" [disabled]="busy() || !processingAccepted()" (click)="voiceDisclosure.set(!voiceDisclosure())">Conversar por voz</button>
+          } @else {
+            <p role="status">{{ voice.state() === 'connecting' ? 'Conectando micrófono…' : voice.state() === 'muted' ? 'Micrófono silenciado' : 'Micrófono activo · escuchando' }}</p>
+            <button type="button" class="button small" [disabled]="voice.state() === 'connecting'" [attr.aria-pressed]="voice.state() === 'muted'" (click)="voice.mute()">{{ voice.state() === 'muted' ? 'Activar micrófono' : 'Silenciar' }}</button>
+            <button type="button" class="button small" (click)="voice.end()">Terminar voz</button>
+          }
+          @if (voiceDisclosure()) {
+            <p>Al iniciar, tu audio y las respuestas escritas se procesan en OpenAI. Puede generar costes. La voz termina al minimizar, navegar o dejar esta pestaña. Máximo cinco minutos. No grabamos audio; la retención del proveedor es independiente. La voz puede equivocarse: revisa el texto y las referencias. Decir «sí» no aprueba cambios.</p>
+            <button type="button" class="button small" (click)="startVoice()">Entiendo, iniciar micrófono</button>
+            <button type="button" class="button small" (click)="voiceDisclosure.set(false)">Cancelar voz</button>
+          }
+        }
+        @if (voice.error()) { <p role="alert">{{ voice.error() }}</p> }
+        @if (voiceFallback()) { <p role="status">{{ voiceFallback() }}</p> }
+        @if (voice.inputTranscript()) { <p><strong>Transcripción de tu voz:</strong> {{ voice.inputTranscript() }}</p> }
+        @if (voice.outputTranscript()) { <p><strong>Transcripción del audio:</strong> {{ voice.outputTranscript() }}</p> }
+        @if (voice.playbackBlocked()) { <button type="button" class="button small" (click)="voice.play()">Reproducir audio</button> }
+      </div>
       <form class="chat-composer" (submit)="$event.preventDefault(); send()">
         <label class="sr-only" for="assistant-message">Tu pregunta financiera</label>
         <div class="composer-box">
@@ -131,9 +160,6 @@
           </div>
         </div>
         <p id="composer-help" class="composer-help">Enter para enviar · Shift + Enter para una nueva línea. La IA puede equivocarse: revisa las fuentes.</p>
-        @if (configuration.hasValue() && configuration.value().enabled && !configuration.value().demonstration) {
-          <p class="provider-disclosure">Al enviar, compartes el mensaje, contexto reciente y datos consultados con {{ configuration.value().provider }} ({{ configuration.value().model }}). No se envían credenciales bancarias.</p>
-        }
       </form>
     </div>
   </div>

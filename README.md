@@ -1,6 +1,6 @@
 # LazyFinance
 
-LazyFinance helps people understand their finances without manually reconciling balances and transactions. Its own conversational agent (text first, voice later) and dashboard are the initial experiences built on a shared financial core. MCP opens another path: authorized agents could use permitted financial context in workflows people already know, combining it with their own capabilities. Provider-neutral data access leaves room for more sources, financial services and audiences as those uses are validated.
+LazyFinance helps people understand their finances without manually reconciling balances and transactions. Its persistent conversational assistant (text plus a disabled-by-default live voice adapter) and dashboard share a financial core. MCP opens another path: authorized agents could use permitted financial context in workflows people already know, combining it with their own capabilities. Provider-neutral data access leaves room for more sources, financial services and audiences as those uses are validated.
 
 LazyFinance is a pnpm/Turborepo monorepo with an Angular app, a NestJS API, and a private NestJS/Kysely persistence service. Browser calls use public tRPC and a dedicated assistant stream; internal service calls use signed private tRPC. MCP remains available over Streamable HTTP.
 
@@ -100,6 +100,7 @@ reading order and distinction between implementation, evidence and targets.
 | [Provider-neutral identity](docs/technical/identity.md) | External provider/issuer/subject mapping, internal principals and current provider-selection limits |
 | [External MCP authorization](docs/technical/mcp-authorization.md) | OAuth, independent grants, consent/revocation, setup and verified-versus-reviewed client compatibility |
 | [First-party financial assistant](docs/technical/financial-assistant.md) | Provider-neutral configuration, grounded reads, explicit action approval, durable receipts, streaming, privacy and evaluation gates |
+| [Live voice contract](docs/technical/assistant-live-voice.md) | WebRTC capability evidence, explicit capture/privacy, single-replica limits and unverified live release gates |
 | [UI/session/rendering lifetimes](docs/technical/ui-data-lifecycle.md) | Verified scopes, resources, cancellation, command/read ordering and public-only hydration |
 | [Technical manual](docs/technical/technical-manual.md) | Installation, environment/credential separation, Compose, operation and troubleshooting |
 | [Development and verification](docs/technical/development-workflow.md) | Build/tooling/DI conventions and serverless, HTTP, DB and live-provider verification tiers |

@@ -16,6 +16,8 @@ import {
   setupRpc,
 } from "../../../testing/rpc";
 import { AssistantStreamClient } from "../../features/assistant/assistant-stream.client";
+import { AssistantVoiceClient } from "../../features/assistant/assistant-voice.client";
+import { AssistantWorkspace } from "../../features/assistant/assistant-workspace";
 import { AssistantPage } from "./assistant.page";
 
 const chat: AssistantConversation = {
@@ -93,11 +95,21 @@ function setup(overrides: RpcHandlers = {}, selected: string | null = chat.id) {
       });
     });
   const fixture = TestBed.createComponent(AssistantPage);
+  vi.spyOn(AssistantVoiceClient.prototype, "configuration").mockResolvedValue({
+    enabled: false,
+  });
+  fixture.detectChanges();
+  const workspace = TestBed.inject(AssistantWorkspace);
+  query.subscribe((params) =>
+    workspace.selection.set(params.get("conversacion") ?? undefined),
+  );
+  workspace.open();
   return {
     ...mock,
     query,
     navigate,
     stream,
+    workspace,
     fixture,
     root: fixture.nativeElement as HTMLElement,
   };
@@ -299,7 +311,145 @@ describe("first-party chat page lifetimes and confirmed history", () => {
       id: chat.id,
     });
     expect(f.stream).not.toHaveBeenCalled();
-    expect(f.query.value.has("conversacion")).toBe(false);
+    expect(f.workspace.selection()).toBeUndefined();
+  });
+
+  it("retains draft, selection and existing generation across minimize/open without resend", async () => {
+    const f = setup();
+    await render(f.fixture);
+    compose(f, "Un borrador privado");
+    const id = f.workspace.selection();
+    f.workspace.minimize();
+    await render(f.fixture);
+    f.workspace.open();
+    await render(f.fixture);
+    expect(f.root.querySelector("textarea")?.value).toBe("Un borrador privado");
+    expect(f.workspace.selection()).toBe(id);
+    expect(f.stream).not.toHaveBeenCalled();
+    button(f.root, "Enviar pregunta").click();
+    await render(f.fixture);
+    f.workspace.minimize();
+    f.workspace.open();
+    await render(f.fixture);
+    expect(f.stream).toHaveBeenCalledOnce();
+    expect(f.root.textContent).toContain("Una respuesta guardada.");
+  });
+
+  it("cancels a pending conversation creation on Close without sending its late question", async () => {
+    const created = deferred<AssistantConversation>();
+    const f = setup(
+      { "assistant.createConversation": () => created.promise },
+      null,
+    );
+    await render(f.fixture);
+    compose(f);
+    button(f.root, "Enviar pregunta").click();
+    await vi.waitFor(() =>
+      expect(f.callsTo("assistant.createConversation")).toHaveLength(1),
+    );
+    button(f.root, "Cerrar panel").click();
+    f.fixture.detectChanges();
+    created.resolve(chat);
+    await render(f.fixture);
+    expect(f.stream).not.toHaveBeenCalled();
+    expect(f.workspace.selection()).toBeUndefined();
+    expect(f.root.querySelector("textarea")?.value).toBe("");
+    expect(f.workspace.opened()).toBe(false);
+  });
+
+  it("keeps an in-flight text stream alive while minimized without replay on reopen", async () => {
+    const finish = deferred<void>();
+    const f = setup();
+    f.stream.mockImplementationOnce(async (_owner, input, _signal, receive) => {
+      receive({ type: "turn", turn: turn(input) });
+      await finish.promise;
+      receive({
+        type: "done",
+        turn: {
+          ...turn(input),
+          status: "complete",
+          text: "Respuesta recibida mientras estaba minimizado",
+        },
+      });
+    });
+    await render(f.fixture);
+    compose(f);
+    button(f.root, "Enviar pregunta").click();
+    await vi.waitFor(() => expect(f.stream).toHaveBeenCalledOnce());
+    f.workspace.minimize();
+    await render(f.fixture);
+    expect(f.stream.mock.calls[0][2].aborted).toBe(false);
+    finish.resolve();
+    await render(f.fixture);
+    f.workspace.open();
+    await render(f.fixture);
+    expect(f.root.textContent).toContain(
+      "Respuesta recibida mientras estaba minimizado",
+    );
+    expect(f.stream).toHaveBeenCalledOnce();
+  });
+
+  it("requires separate before-processing acknowledgement and keeps provider identity outside the conversation", async () => {
+    const f = setup({
+      "assistant.configuration": () => ({
+        ...configuration,
+        provider: "openai",
+        model: "configured-model",
+        demonstration: false,
+      }),
+    });
+    await render(f.fixture);
+    compose(f);
+    expect(button(f.root, "Enviar pregunta").disabled).toBe(true);
+    const disclosure = f.root.querySelector(".processing-disclosure");
+    expect(disclosure?.textContent).toContain("configured-model");
+    expect(f.root.querySelector(".chat-messages")?.textContent).not.toContain(
+      "configured-model",
+    );
+    const consent = f.root.querySelector<HTMLInputElement>(
+      ".processing-consent input",
+    );
+    if (!consent) throw new Error("Missing separate consent");
+    consent.checked = true;
+    consent.dispatchEvent(new Event("change"));
+    f.fixture.detectChanges();
+    button(f.root, "Enviar pregunta").click();
+    await render(f.fixture);
+    expect(f.stream).toHaveBeenCalledOnce();
+  });
+
+  it("anchors a new answer once and never follows deltas or source updates", async () => {
+    const finish = deferred<void>();
+    const f = setup();
+    let receive: ((event: AssistantEvent) => void) | undefined;
+    f.stream.mockImplementationOnce(
+      async (_owner, input, _signal, callback) => {
+        receive = callback;
+        callback({ type: "turn", turn: turn(input) });
+        await finish.promise;
+      },
+    );
+    await render(f.fixture);
+    const scroll = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value: scroll,
+    });
+    compose(f);
+    button(f.root, "Enviar pregunta").click();
+    await render(f.fixture);
+    receive?.({ type: "delta", text: "Inicio" });
+    await render(f.fixture);
+    expect(scroll).toHaveBeenCalledOnce();
+    receive?.({ type: "delta", text: " Continuación extensa" });
+    await render(f.fixture);
+    f.workspace.minimize();
+    f.workspace.open();
+    await render(f.fixture);
+    expect(scroll).toHaveBeenCalledOnce();
+    expect(f.root.textContent).toContain("Ir al último mensaje");
+    finish.resolve();
+    await render(f.fixture);
   });
 
   it("distinguishes disabled, failed-history and invalid-link states without sending a question", async () => {

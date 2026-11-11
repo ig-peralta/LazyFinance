@@ -15,6 +15,13 @@ Capability evidence consulted 2026-11-10 (documentation, not a live test):
 - [Realtime conversations](https://developers.openai.com/api/docs/guides/realtime-conversations): server VAD with automatic responses disabled, input transcription, out-of-band audio responses, response cancellation and output-buffer clearing.
 - [Call hangup](https://developers.openai.com/api/reference/resources/realtime/subresources/calls/methods/hangup): server-side termination.
 
+Additional API-reference review on 2026-11-11 confirmed
+[`RealtimeSessionCreateRequest`](https://developers.openai.com/api/reference/resources/realtime/subresources/client_secrets/methods/create)
+supports the selected `gpt-4o-mini-transcribe` input transcription, Spanish language
+hint, `marin` voice and numeric `max_output_tokens`. Both VAD automatic-response
+and automatic-interruption flags are false: application cancellation handles
+out-of-band replies. No ephemeral-secret endpoint is used by this implementation.
+
 Voice is an audio front end to the existing financial assistant, not a second
 financial agent. Completed input transcripts enter the same authenticated turn
 pipeline and saved history. Only confirmed, complete grounded replies are read

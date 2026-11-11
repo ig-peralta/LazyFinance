@@ -95,4 +95,25 @@ describe("conversational replies with separate financial reference cards", () =>
       ).toBe("Saldo consultado");
     }
   });
+
+  it("collapses trusted references by default and retains the user's expansion through streaming updates", () => {
+    const f = setup();
+    const disclosure = f.root.querySelector("details");
+    expect(disclosure?.open).toBe(false);
+    expect(disclosure?.querySelector("summary")?.textContent).toContain(
+      "Referencias financieras · 1 consulta",
+    );
+    if (!disclosure) throw new Error("Missing native disclosure");
+    disclosure.open = true;
+    f.fixture.componentRef.setInput("turn", {
+      ...assistantReply,
+      text: "Texto actualizado",
+      sources: [assistantSource(), assistantSource({ id: "F2" })],
+    });
+    f.fixture.detectChanges();
+    expect(f.root.querySelector("details")).toBe(disclosure);
+    expect(disclosure.open).toBe(true);
+    expect(disclosure.querySelectorAll("assistant-reference")).toHaveLength(2);
+    expect(disclosure.querySelector("assistant-action-card")).toBeNull();
+  });
 });
