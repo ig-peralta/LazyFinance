@@ -1,13 +1,13 @@
-<header class="page-heading">
+<header class="page-header">
   <div>
     <p class="eyebrow">MI CUENTA · ACCESO EXTERNO</p>
     <h1 #heading tabindex="-1">Aplicaciones conectadas</h1>
-    <p class="subtitle">Controla qué aplicaciones pueden consultar o cambiar tu información financiera.</p>
+    <p class="page-description">Revisa los permisos de cada aplicación y revoca los accesos que ya no uses.</p>
   </div>
   <button class="button" type="button" [disabled]="command.pending() || grants.isLoading()" (click)="reload()">Consultar accesos</button>
 </header>
-<p class="notice">Cada conexión conserva los permisos que aprobaste. Los accesos anteriores de solo lectura no reciben permisos de cambio automáticamente. Revocar no desconecta bancos, revierte cambios financieros ni cierra otras aplicaciones. Cerrar sesión en LazyFinance no revoca estos permisos.</p>
-<p class="field-hint">Revocar bloquea nuevas consultas y renovaciones. No borra copias de información ya recibidas por la aplicación ni necesariamente interrumpe una consulta que ya estaba en curso. Fechas en Santiago.</p>
+<p class="field-hint">Cerrar sesión en LazyFinance no revoca estos permisos. Fechas en Santiago.</p>
+<details class="section-disclosure"><summary>Cómo funcionan estos accesos</summary><p class="record-meta">Cada conexión conserva los permisos que aprobaste. Los accesos anteriores de solo lectura no reciben permisos de cambio automáticamente. Revocar no desconecta bancos, revierte cambios financieros ni cierra otras aplicaciones.</p><p class="record-meta">Revocar bloquea nuevas consultas y renovaciones. No borra copias de información ya recibidas por la aplicación ni necesariamente interrumpe una consulta que ya estaba en curso.</p></details>
 @if (configuration.hasValue() && !configuration.value().enabled) {
   <p class="notice warning">Las nuevas conexiones externas no están habilitadas. Puedes seguir revocando los permisos guardados.</p>
 }
@@ -23,8 +23,8 @@
   <p class="notice danger" role="alert">No pudimos consultar tus accesos. Esto no confirma que estén revocados o que no haya aplicaciones conectadas.</p>
 } @else if (!grants.value().length) {
   <div class="empty-state">
-    <h2>No hay permisos guardados para mostrar</h2>
-    <p>Conecta desde una aplicación compatible con MCP y confirma sus permisos en LazyFinance. No necesitas compartir tu contraseña ni un token de Firebase.</p>
+    <h2>Aún no tienes aplicaciones conectadas</h2>
+    <p>Inicia la conexión desde una aplicación compatible con MCP y revisa aquí sus permisos antes de autorizarla. Nunca compartas tu contraseña ni un token de acceso.</p>
   </div>
 } @else {
   <ul class="record-list" aria-label="Permisos de aplicaciones externas">
@@ -44,16 +44,17 @@
           <p class="notice">Acceso revocado el {{ time(grant.revokedAt) }}.</p>
         } @else {
           @if (status(grant) === 'Vencido') { <p class="field-hint">Este permiso venció y no autoriza nuevas consultas. Puedes revocarlo también para cerrar esta conexión.</p> }
-          <button class="button small" type="button" [disabled]="command.pending() || !!command.error() || grants.isLoading()"
-            [attr.aria-label]="'Revocar acceso de ' + grant.clientName" (click)="select(grant, $event)">Revocar acceso</button>
+          <div class="danger-actions"><button class="button small danger" type="button" [disabled]="command.pending() || !!command.error() || grants.isLoading()"
+            [attr.aria-label]="'Revocar acceso de ' + grant.clientName" (click)="select(grant, $event)">Revocar acceso</button></div>
         }
         @if (selected() === grant.id) {
           <div class="notice warning" role="group" [attr.aria-label]="'Confirmar revocación de ' + grant.clientName" (keydown.escape)="cancel(); $event.stopPropagation()">
             <strong>¿Revocar el acceso de {{ grant.clientName }}?</strong>
             <p>Esta conexión tendrá que solicitar una nueva autorización para consultar tus datos.</p>
             <p>Solo se revoca este acceso: <strong>{{ grant.clientId }}</strong>. No se borran datos ni se desconectan bancos.</p>
+            <p>Bloquea nuevas consultas y renovaciones, pero no borra copias ya recibidas ni necesariamente detiene consultas en curso. Los cambios financieros anteriores se conservan.</p>
             <div class="button-row">
-              <button class="button small" type="button" [disabled]="command.pending() || !!command.error()" (click)="revoke(grant.id)">
+              <button class="button small danger" type="button" [disabled]="command.pending() || !!command.error()" (click)="revoke(grant.id)">
                 {{ command.pending() ? 'Esperando confirmación…' : 'Confirmar revocación' }}
               </button>
               <button #cancelRevoke class="button small" type="button" [disabled]="command.pending()" (click)="cancel()">Cancelar</button>

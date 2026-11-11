@@ -54,6 +54,9 @@ export class BankSyncPanel {
     () => this.observations() >= 12,
   );
   protected readonly selectorPending = signal(false);
+  protected readonly selectorUncertain = signal(false);
+  protected readonly managementOpen = signal(false);
+  protected readonly managementMounted = signal(false);
   private readonly attempt = signal<{
     scope: RpcScope;
     id: string;
@@ -118,10 +121,44 @@ export class BankSyncPanel {
       !this.locked() &&
       !this.command.pending() &&
       !this.selectorPending() &&
+      !this.selectorUncertain() &&
       !this.status.isLoading() &&
       !this.needsReconciliation() &&
       !!this.snapshot()?.canRefresh,
   );
+  protected readonly syncDisabledReason = computed(() => {
+    if (this.canSync()) return null;
+    if (!this.enabled())
+      return "La configuración disponible no permite sincronizar esta conexión.";
+    if (this.locked())
+      return "Termina o cancela la otra acción de esta conexión.";
+    if (this.command.pending())
+      return "Esperando confirmación de la sincronización solicitada.";
+    if (this.selectorPending())
+      return "Esperando confirmación de la selección de cuentas.";
+    if (this.selectorUncertain())
+      return "Abre Administrar cuentas y consulta la selección guardada antes de sincronizar.";
+    if (this.needsReconciliation())
+      return "Consulta el estado para comprobar el resultado antes de otro intento.";
+    if (this.status.isLoading())
+      return "Consultando el estado guardado antes de habilitar la sincronización.";
+    const state = this.snapshot();
+    if (!state)
+      return "Consulta el estado para comprobar si puedes sincronizar.";
+    if (state.disconnectedAt)
+      return "La conexión está desconectada; el historial guardado se conserva.";
+    if (state.lifecycle !== "active")
+      return "Revincula el mismo banco y titular para recuperar el acceso.";
+    if (state.activity === "in_progress")
+      return "Ya hay una sincronización en curso. Consulta el estado para seguirla.";
+    if (state.automation.pauseReason === "selection_required")
+      return "Abre Administrar cuentas y confirma qué cuentas quieres seguir.";
+    if (state.failure?.retryAfter)
+      return `Consulta de nuevo el estado después de ${this.time(state.failure.retryAfter)} · Santiago.`;
+    if (state.automation.pauseReason)
+      return this.pause(state.automation.pauseReason);
+    return "El estado guardado aún no permite sincronizar. Consulta el estado antes de continuar.";
+  });
   protected readonly title = computed(() => {
     const state = this.snapshot();
     if (!state) return "Estado de sincronización";
@@ -181,6 +218,16 @@ export class BankSyncPanel {
       this.rpc.authenticatedScope();
       this.connection().id;
       this.observations.set(0);
+      this.managementOpen.set(false);
+      this.managementMounted.set(false);
+      this.selectorPending.set(false);
+      this.selectorUncertain.set(false);
+    });
+    effect(() => {
+      if (this.snapshot()?.automation.pauseReason === "selection_required") {
+        this.managementMounted.set(true);
+        this.managementOpen.set(true);
+      }
     });
     effect(() =>
       this.pendingChange.emit(this.command.pending() || this.selectorPending()),
@@ -225,6 +272,13 @@ export class BankSyncPanel {
 
   protected readStatus() {
     this.readVersion.update((version) => version + 1);
+  }
+
+  protected toggleManagement(event: Event) {
+    const open = (event.target as HTMLDetailsElement).open;
+    this.managementOpen.set(open);
+    // Keep the selector's command/reconciliation owner alive when collapsed.
+    if (open) this.managementMounted.set(true);
   }
 
   protected selectionConfirmed(selection: BankingSelection) {

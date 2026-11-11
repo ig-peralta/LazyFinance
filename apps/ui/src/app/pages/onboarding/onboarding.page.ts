@@ -48,7 +48,7 @@ export class OnboardingPage {
     {
       title: "Conoce tus cuentas",
       description:
-        "Autoriza tu banco, elige las cuentas que quieres seguir y confirma su primera importación. Mi cuenta → Conexiones bancarias conserva el mismo recorrido para después.",
+        "Conecta un banco, elige las cuentas y confirma su primera importación.",
       path: "/conexiones-bancarias",
       queryParams: { from: "onboarding" },
       icon: "bank" as const,
@@ -63,6 +63,7 @@ export class OnboardingPage {
       description:
         "Declara una fuente y su calendario. Planificar no confirma ingresos recibidos.",
       path: "/ingresos/fuentes",
+      queryParams: { from: "onboarding" },
       icon: "income" as const,
       loading: this.sources.isLoading(),
       error: !!this.sources.error(),
@@ -73,9 +74,9 @@ export class OnboardingPage {
     },
     {
       title: "Elige un límite que te ayude",
-      description:
-        "Crea un presupuesto de gasto con etiquetas. Puedes organizar las etiquetas primero.",
+      description: "Define cuánto quieres gastar y qué etiquetas incluir.",
       path: "/presupuestos-y-metas",
+      queryParams: { from: "onboarding" },
       icon: "wallet" as const,
       loading: this.objectives.isLoading(),
       error: !!this.objectives.error(),
@@ -87,8 +88,9 @@ export class OnboardingPage {
     {
       title: "Ponle nombre a una meta",
       description:
-        "Define tu objetivo de ahorro. Solo los registros seleccionados medirán su asignación.",
+        "Define un objetivo de ahorro y los registros que medirán su avance.",
       path: "/metas",
+      queryParams: { from: "onboarding" },
       icon: "target" as const,
       loading: this.objectives.isLoading(),
       error: !!this.objectives.error(),

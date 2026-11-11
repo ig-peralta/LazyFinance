@@ -23,6 +23,7 @@ export class BankAccountSelector {
   readonly automaticEnabled = input(false);
   readonly confirmed = output<BankingSelection>();
   readonly pendingChange = output<boolean>();
+  readonly reconciliationChange = output<boolean>();
   private readonly rpc = inject(RpcClient);
   private readonly read = signal(0);
   protected readonly command = createScopedCommand(() => this.connectionId());
@@ -118,6 +119,7 @@ export class BankAccountSelector {
 
   constructor() {
     effect(() => this.pendingChange.emit(this.command.pending()));
+    effect(() => this.reconciliationChange.emit(this.needsReconciliation()));
   }
 
   protected reload() {

@@ -68,6 +68,15 @@ describe("optional account-persisted onboarding", () => {
         ?.textContent,
     ).toContain("Conectar banco");
     expect(root.textContent).toContain("Mi cuenta → Conexiones bancarias");
+    for (const path of [
+      "/ingresos/fuentes",
+      "/presupuestos-y-metas",
+      "/metas",
+    ]) {
+      expect(
+        root.querySelector(`a[href="${path}?from=onboarding"]`),
+      ).not.toBeNull();
+    }
     expect(root.textContent).toContain(
       "Planificar no confirma ingresos recibidos.",
     );
@@ -124,7 +133,14 @@ describe("optional account-persisted onboarding", () => {
     const root: HTMLElement = fixture.nativeElement;
     expect(root.textContent).toContain("No comprobado");
     expect(root.textContent).toContain("Un error no significa");
-    const finish = button(root, "Listo, ir al resumen");
+    const finish = button(root, "Terminar guía");
+    expect(finish.getAttribute("aria-describedby")).toBe("finish-guide-help");
+    expect(root.querySelector("#finish-guide-help")?.textContent).toContain(
+      "definitivamente",
+    );
+    expect(root.querySelector("#finish-guide-help")?.textContent).toContain(
+      "No significa",
+    );
     finish.click();
     finish.click();
     fixture.detectChanges();
@@ -150,7 +166,7 @@ describe("optional account-persisted onboarding", () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    button(fixture.nativeElement, "Listo, ir al resumen").click();
+    button(fixture.nativeElement, "Terminar guía").click();
     await fixture.whenStable();
     fixture.detectChanges();
     expect(TestBed.inject(OnboardingData).status()).toBe("active");
@@ -168,7 +184,7 @@ describe("optional account-persisted onboarding", () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    button(fixture.nativeElement, "Listo, ir al resumen").click();
+    button(fixture.nativeElement, "Terminar guía").click();
     await vi.waitFor(() =>
       expect(mock.callsTo("onboarding.finish")).toHaveLength(1),
     );

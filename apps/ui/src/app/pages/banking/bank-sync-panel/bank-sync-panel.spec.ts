@@ -99,11 +99,154 @@ function button(root: HTMLElement, text: string) {
   return value;
 }
 
+function management(root: HTMLElement, open = true) {
+  const details = [...root.querySelectorAll("details")].find(
+    (item) =>
+      item.querySelector("summary")?.textContent === "Administrar cuentas",
+  );
+  if (!details) throw new Error("Missing account management disclosure");
+  details.open = open;
+  const event = root.ownerDocument.createEvent("Event");
+  event.initEvent("toggle", false, false);
+  details.dispatchEvent(event);
+  return details;
+}
+
 describe("explicit owned snapshot import, refresh and read reconciliation", () => {
   afterEach(() => {
     TestBed.resetTestingModule();
     vi.useRealTimers();
     vi.restoreAllMocks();
+  });
+
+  it("leads with saved status and mounts a readonly selector only when management opens", async () => {
+    const f = setup({}, imported());
+    await render(f.fixture);
+    expect(f.callsTo("banking.accountSelection")).toHaveLength(0);
+    expect(f.root.querySelector("bank-account-selector")).toBeNull();
+    expect(
+      [...f.root.querySelectorAll("details")].every((item) => !item.open),
+    ).toBe(true);
+    const details = management(f.root);
+    await render(f.fixture);
+    expect(f.callsTo("banking.accountSelection")).toHaveLength(1);
+    expect(
+      f.root.querySelector(".sync-summary")?.compareDocumentPosition(details),
+    ).toBe(4);
+    management(f.root, false);
+    await render(f.fixture);
+    management(f.root);
+    await render(f.fixture);
+    expect(f.callsTo("banking.accountSelection")).toHaveLength(1);
+    for (const procedure of [
+      "banking.discoverAccounts",
+      "banking.selectAccounts",
+      "banking.importInitial",
+      "banking.refresh",
+    ] as const)
+      expect(f.callsTo(procedure)).toHaveLength(0);
+  });
+
+  it("associates a truthful disabled reason without deriving eligibility from account counts", async () => {
+    const f = setup({}, imported({ canRefresh: false }));
+    await render(f.fixture);
+    const action = button(f.root, "Actualizar datos disponibles");
+    expect(action.disabled).toBe(true);
+    const reason = action.getAttribute("aria-describedby");
+    expect(reason).toBeTruthy();
+    expect(f.root.querySelector(`[id="${reason}"]`)?.textContent).toContain(
+      "estado guardado aún no permite",
+    );
+    f.setState(imported({ canRefresh: true }));
+    button(f.root, "Consultar estado").click();
+    await render(f.fixture);
+    expect(action.disabled).toBe(false);
+    expect(action.getAttribute("aria-describedby")).toBeNull();
+    f.fixture.componentRef.setInput("enabled", false);
+    await render(f.fixture);
+    expect(action.disabled).toBe(true);
+    expect(
+      f.root.querySelector(`[id="${action.getAttribute("aria-describedby")}"]`)
+        ?.textContent,
+    ).toContain("configuración disponible");
+    expect(f.callsTo("banking.refresh")).toHaveLength(0);
+  });
+
+  it.each([
+    "confirmed",
+    "ambiguous",
+  ])("retains a %s selection command and its reconciliation lock while management is collapsed", async (outcome) => {
+    const selected = bankingSelection({
+      discoveryVersion: 1,
+      accountIds: ["acc_checking"],
+      accounts: [
+        {
+          externalId: "acc_checking",
+          name: "Cuenta corriente",
+          currency: "CLP",
+          numberSuffix: "1234",
+          unavailableReason: null,
+        },
+      ],
+    });
+    const pending = deferred<RpcOutput<"banking.selectAccounts"> | Response>();
+    const f = setup(
+      {
+        "banking.accountSelection": () => selected,
+        "banking.selectAccounts": () => pending.promise,
+      },
+      imported(),
+    );
+    await render(f.fixture);
+    management(f.root);
+    await render(f.fixture);
+    const selector = f.root.querySelector("bank-account-selector");
+    button(f.root, "Confirmar e importar selección").click();
+    await vi.waitFor(() =>
+      expect(f.callsTo("banking.selectAccounts")).toHaveLength(1),
+    );
+    expect(button(f.root, "Actualizar datos disponibles").disabled).toBe(true);
+    const signal = f.callsTo("banking.selectAccounts")[0].options?.signal;
+    management(f.root, false);
+    f.fixture.detectChanges();
+    expect(f.root.querySelector("bank-account-selector")).toBe(selector);
+    expect(signal?.aborted).toBe(false);
+    pending.resolve(
+      outcome === "confirmed"
+        ? { ...selected, version: 1, confirmedAt: "2026-11-08T18:01:00.000Z" }
+        : rpcFailure(),
+    );
+    await render(f.fixture);
+    management(f.root);
+    await render(f.fixture);
+    expect(f.callsTo("banking.accountSelection")).toHaveLength(1);
+    expect(f.callsTo("banking.selectAccounts")).toHaveLength(1);
+    expect(f.callsTo("banking.importInitial")).toHaveLength(0);
+    expect(f.callsTo("banking.refresh")).toHaveLength(
+      outcome === "confirmed" ? 1 : 0,
+    );
+    if (outcome === "ambiguous") {
+      const update = button(f.root, "Actualizar datos disponibles");
+      expect(update.disabled).toBe(true);
+      expect(update.getAttribute("aria-describedby")).toBeTruthy();
+      button(f.root, "Consultar estado").click();
+      await render(f.fixture);
+      expect(update.disabled).toBe(true);
+      expect(button(f.root, "Confirmar e importar selección").disabled).toBe(
+        true,
+      );
+      expect(f.root.textContent).toContain(
+        "No repetimos solicitudes inciertas",
+      );
+      button(f.root, "Consultar selección guardada").click();
+      await render(f.fixture);
+      expect(f.callsTo("banking.accountSelection")).toHaveLength(2);
+      expect(button(f.root, "Confirmar e importar selección").disabled).toBe(
+        false,
+      );
+      expect(update.disabled).toBe(false);
+      expect(f.callsTo("banking.refresh")).toHaveLength(0);
+    }
   });
 
   it("continues confirmed versioned selection into exactly one first import, never from discovery alone", async () => {
@@ -126,9 +269,17 @@ describe("explicit owned snapshot import, refresh and read reconciliation", () =
         "banking.accountSelection": () => selected,
         "banking.selectAccounts": () => confirmation.promise,
       },
-      bankingSyncStatus({ canRefresh: false }),
+      bankingSyncStatus({
+        canRefresh: false,
+        automation: {
+          ...bankingSyncStatus().automation,
+          pauseReason: "selection_required",
+        },
+      }),
     );
     await render(f.fixture);
+    expect(f.root.querySelector("details")?.open).toBe(true);
+    expect(f.callsTo("banking.discoverAccounts")).toHaveLength(0);
     expect(f.callsTo("banking.importInitial")).toHaveLength(0);
     const choice = f.root.querySelector<HTMLInputElement>(
       'input[type="checkbox"]',
@@ -188,6 +339,8 @@ describe("explicit owned snapshot import, refresh and read reconciliation", () =
       },
       bankingSyncStatus({ canRefresh: false }),
     );
+    await render(f.fixture);
+    management(f.root);
     await render(f.fixture);
     button(f.root, "Confirmar e importar selección").click();
     await render(f.fixture);

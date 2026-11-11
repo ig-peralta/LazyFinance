@@ -67,6 +67,13 @@ describe("owned external-client access management", () => {
   it("lists confirmed grants without writes and revokes only after explicit confirmation", async () => {
     const f = setup();
     await render(f.fixture);
+    expect(f.root.querySelector(".page-header h1")?.textContent).toBe(
+      "Aplicaciones conectadas",
+    );
+    const explanation = f.root.querySelector("details");
+    expect(explanation?.open).toBe(false);
+    if (explanation) explanation.open = true;
+    await render(f.fixture);
     expect(f.root.textContent).toContain("Cliente externo");
     expect(f.root.textContent).toContain(grant.redirectUri);
     expect(f.root.textContent).toContain("finance:read");
@@ -74,6 +81,9 @@ describe("owned external-client access management", () => {
     expect(f.callsTo("mcpAccess.revoke")).toHaveLength(0);
     button(f.root, "Revocar acceso").click();
     await render(f.fixture);
+    const confirmation = f.root.querySelector('[role="group"]');
+    expect(confirmation?.textContent).toContain(grant.clientId);
+    expect(confirmation?.textContent).toContain("no borra copias ya recibidas");
     button(f.root, "Cancelar").click();
     await render(f.fixture);
     expect(f.callsTo("mcpAccess.revoke")).toHaveLength(0);
@@ -115,7 +125,9 @@ describe("owned external-client access management", () => {
     f.handlers["mcpAccess.grants"] = () => [];
     button(f.root, "Consultar accesos").click();
     await render(f.fixture);
-    expect(f.root.textContent).toContain("No hay permisos guardados");
+    expect(f.root.textContent).toContain(
+      "Aún no tienes aplicaciones conectadas",
+    );
   });
 
   it("keeps revoke locked after a failed reconciliation and unlocks only after a successful explicit later read", async () => {
@@ -153,7 +165,9 @@ describe("owned external-client access management", () => {
     button(f.root, "Consultar accesos").click();
     await render(f.fixture);
     expect(f.root.textContent).toContain("No pudimos consultar tus accesos");
-    expect(f.root.textContent).not.toContain("No hay permisos guardados");
+    expect(f.root.textContent).not.toContain(
+      "Aún no tienes aplicaciones conectadas",
+    );
   });
 
   it("discards an old owner's pending revocation and data after credentials change", async () => {

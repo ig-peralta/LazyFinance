@@ -85,6 +85,13 @@ describe("SecurityPage", () => {
 
   it("shows both connected methods without offering unlink or account merging", () => {
     const { root } = setup("both");
+    expect(root.querySelector(".page-header h1")?.textContent).toBe(
+      "Acceso y seguridad",
+    );
+    expect(root.textContent).toContain(
+      "Correo de la cuenta: person@example.com",
+    );
+    expect(root.textContent).not.toContain("Cuenta de Firebase");
     expect(
       root.querySelector('[data-testid="google-connected"]'),
     ).not.toBeNull();
@@ -99,6 +106,8 @@ describe("SecurityPage", () => {
 
   it("clears new passwords before submitting the same-account linking command", async () => {
     const { fixture, root, session } = setup();
+    expect(root.querySelectorAll("form")).toHaveLength(1);
+    expect(root.querySelector("form .form-grid .field input")).not.toBeNull();
     const password = root.querySelector("#new-password") as HTMLInputElement;
     const confirmation = root.querySelector(
       "#confirm-password",

@@ -12,11 +12,11 @@
 }
 
 h4 {
-  font-size: 18px;
+  font-size: 1.125rem;
 }
 
 h5 {
-  font-size: 15px;
+  font-size: 1rem;
 }
 
 .sync-actions {
@@ -43,7 +43,7 @@ h5 {
 
 .sync-report {
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--text-control);
   line-height: 1.7;
 }
 
@@ -56,12 +56,12 @@ h5 {
 
 .sync-facts dt {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--text-small);
 }
 
 .sync-facts dd {
   margin-top: 6px;
-  font-size: 14px;
+  font-size: var(--text-body);
 }
 
 .sync-accounts {
@@ -75,7 +75,7 @@ h5 {
 .sync-accounts li {
   padding-top: 16px;
   border-top: 1px solid var(--line);
-  font-size: 13px;
+  font-size: var(--text-control);
   line-height: 1.7;
 }
 
