@@ -65,8 +65,13 @@ the native audio item drives generation. A dedicated stage shows listening,
 querying and responding, **Silenciar** and **Terminar voz**. Subtitles are
 removed pending redesign. A large central entry promotes voice in empty chats
 without bypassing the explicit start disclosure.
-**Texto / Voz** selects separate views. Voice owns a separate conversation ID;
-its messages never enter the text transcript, history list or text-model context.
+The compact **Texto / Voz** segmented switch shares the assistant header with
+icon-only history/new/options actions; it adds no separate toolbar row. Its
+selected segment uses the neutral surface palette, not a primary-action fill.
+On narrow panels the title remains available to assistive technology while the
+switch and actions stay on one line. **Texto / Voz** selects separate views.
+Voice owns a separate conversation ID; its messages never enter the text
+transcript, history list or text-model context.
 Ending capture keeps voice proposals and query results available in the voice view,
 without showing transcriptions. Returning to text ends capture and restores the
 original selected text conversation and draft. Returning to the retained voice view

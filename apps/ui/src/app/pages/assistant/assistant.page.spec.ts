@@ -209,6 +209,39 @@ function compose(f: ReturnType<typeof setup>, text = "¿Mis saldos?") {
 }
 
 describe("first-party chat page lifetimes and confirmed history", () => {
+  it("keeps the mode switch in the header without another toolbar row or implicit microphone start", async () => {
+    const f = setup(
+      { "assistant.configuration": () => externalConfiguration },
+      chat.id,
+      true,
+    );
+    await render(f.fixture);
+    const modes = f.root.querySelector(
+      '.assistant-heading [aria-label="Modo del asistente"]',
+    );
+    expect(modes?.getAttribute("role")).toBe("group");
+    expect(f.root.querySelector(".assistant > .assistant-modes")).toBeNull();
+    expect(modes?.querySelectorAll("button")).toHaveLength(2);
+    expect(button(f.root, "Texto").getAttribute("aria-pressed")).toBe("true");
+    expect(button(f.root, "Voz").getAttribute("aria-pressed")).toBe("false");
+    expect(button(f.root, "Historial").title).toBe("Historial de texto");
+    compose(f, "Un borrador sin enviar");
+    button(f.root, "Voz").click();
+    await render(f.fixture);
+    expect(button(f.root, "Voz").getAttribute("aria-pressed")).toBe("true");
+    expect(button(f.root, "Texto").getAttribute("aria-pressed")).toBe("false");
+    expect(f.root.querySelector("assistant-voice-start")).not.toBeNull();
+    expect(f.microphone).not.toHaveBeenCalled();
+    expect(f.callsTo("assistant.createConversation")).toHaveLength(0);
+    button(f.root, "Texto").click();
+    await render(f.fixture);
+    expect(f.root.querySelector("textarea")?.value).toBe(
+      "Un borrador sin enviar",
+    );
+    expect(f.workspace.selection()).toBe(chat.id);
+    expect(f.stream).not.toHaveBeenCalled();
+  });
+
   it("keeps proposals inline and opens source details only on request without duplicating approval controls", async () => {
     let action = assistantAction();
     const saved = () => ({

@@ -69,7 +69,7 @@ interface RetainedHistory {
     AssistantVoiceStart,
   ],
   templateUrl: "./assistant.page.html",
-  styleUrl: "./assistant.page.css",
+  styleUrls: ["./assistant.page.css", "./assistant-header.css"],
   host: { "(document:pointerdown)": "dismissOptions($event)" },
   providers: [AssistantVoiceClient, AssistantConsentData],
 })

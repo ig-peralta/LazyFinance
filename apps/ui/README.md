@@ -120,11 +120,16 @@ Proposals stay inline, while **Ver consultas** opens source details on request.
 Privacy, availability and deletion are grouped under one options disclosure.
 `/dashboard` preserves the complete dashboard. The shell provides one persistent
 theme-token-aligned assistant, inline at home and docked
-beside other pages. Text remains the default; history opens in a drawer. Native
+beside other pages. A compact, neutral **Texto / Voz** segmented switch lives in
+the header beside icon-only history/new/options actions, without another toolbar
+row. Narrow panels retain accessible title text while keeping controls on one line.
+Text remains the default; history opens in a drawer. Native
 voice uses a distinct stage and server-run tools, not transcript-to-text/read-aloud.
-Switching back to text stops capture and retains the draft, conversation and results.
-Confirmed receipts enter both modes' next server context; verbal agreement is never
-approval. See the [assistant guide](../../docs/technical/financial-assistant.md).
+Switching back to text stops capture and restores the original text draft and
+conversation. Voice records stay in the database, outside text history/context;
+their proposal/query review remains in the separate voice view after capture ends.
+Confirmed receipts enter their own conversation's next server context; verbal
+agreement is never approval. See the [assistant guide](../../docs/technical/financial-assistant.md).
 Outside home, **Asistente · ?** in the top bar (accessible name **Abrir asistente · ?**)
 exposes the actual keyboard shortcut without a floating button covering page
 actions. It restores/focuses that instance without resending, respects editable
@@ -162,7 +167,8 @@ confirmation. After saved processing acceptance, **Conversar por voz** opens its
 disclosure without a repeated checkbox. Only **Entiendo, iniciar micrófono** can
 request capture; accepting account consent, opening or canceling requests none.
 New conversations promote voice with a larger central entry. Visible subtitles
-are removed for now; server transcription still supports history and completion.
+are removed for now; server transcription supports the separate voice session's
+context and completion, not visible text history.
 Loading, failed and disabled availability are shown under assistant options, with
 **Volver a comprobar voz** for an explicit read after configuration changes.
 Minimize/navigation/hidden tabs end capture. See the

@@ -1,8 +1,14 @@
 <section #panel id="financial-assistant-panel" tabindex="-1" class="assistant" [class.home-assistant]="workspace.home()" [class.canvas-active]="canvasOpen()" [attr.role]="workspace.modal() ? 'dialog' : 'region'" [attr.aria-modal]="workspace.modal() ? true : null" aria-labelledby="assistant-title" [hidden]="!workspace.opened()" (keydown)="containFocus($event)" (keydown.escape)="escape($event)">
   <header class="assistant-heading">
     <div class="assistant-brand"><app-icon name="spark" />@if (workspace.home()) { <h1 id="assistant-title">Tu asistente</h1> } @else { <h2 id="assistant-title">Tu asistente</h2> }</div>
+    @if (!showConsent()) {
+      <div class="assistant-modes" role="group" aria-label="Modo del asistente">
+        <button type="button" [attr.aria-pressed]="!voiceMode()" (click)="continueText()"><app-icon name="message" />Texto</button>
+        <button type="button" [attr.aria-pressed]="voiceMode()" [disabled]="busy() || !voice.supported || !voiceConfiguration.hasValue() || !voiceConfiguration.value().enabled" (click)="openVoiceMode()"><app-icon name="microphone" />Voz</button>
+      </div>
+    }
     <div class="assistant-heading-actions">
-      <button type="button" class="assistant-toolbar-button" [attr.aria-expanded]="historyOpen()" aria-controls="assistant-history" (click)="toggleHistory()">Historial</button>
+      <button type="button" class="assistant-toolbar-button" aria-label="Historial" title="Historial de texto" [attr.aria-expanded]="historyOpen()" aria-controls="assistant-history" (click)="toggleHistory()"><app-icon name="history" /></button>
       @if (!showConsent()) { <button type="button" class="assistant-toolbar-button" [attr.aria-label]="voiceMode() ? 'Nueva sesión de voz' : 'Nueva conversación'" [title]="voiceMode() ? 'Nueva sesión de voz: resuelve primero las solicitudes pendientes' : 'Nueva conversación'" [disabled]="newSessionBlocked()" (click)="newConversation()"><app-icon name="plus" /></button> }
       <details #optionsMenu class="assistant-options" [open]="optionsOpen()" (toggle)="toggleOptions($event)">
         <summary aria-label="Opciones del asistente" title="Opciones del asistente"><app-icon name="more" /></summary>
@@ -28,7 +34,6 @@
   @if (showConsent()) {
     <assistant-consent-screen [state]="consent.state()" [loading]="consent.loading()" [pending]="consent.pending()" [failed]="consent.readError() || consent.saveError()" [needsCheck]="consent.needsCheck()" [canDecide]="consent.canDecide()" (accepted)="decideConsent('accepted')" (refused)="decideConsent('refused')" (checked)="consent.check()" (history)="viewHistory()" />
   } @else {
-    <nav class="assistant-modes" aria-label="Modo del asistente"><button type="button" class="assistant-toolbar-button" [attr.aria-pressed]="!voiceMode()" (click)="continueText()">Texto</button><button type="button" class="assistant-toolbar-button" [attr.aria-pressed]="voiceMode()" [disabled]="busy() || !voice.supported || !voiceConfiguration.hasValue() || !voiceConfiguration.value().enabled" (click)="openVoiceMode()">Voz</button></nav>
     @if (voiceMode() && !voiceDisclosure()) { <div class="voice-session-controls" role="group" aria-label="Controles de voz"><span>{{ voice.state() === 'off' ? 'Sesión finalizada' : 'Voz activa' }}</span><div class="button-row">@if (voice.state() !== 'off') { <button type="button" class="button small" [disabled]="voice.state() === 'connecting'" [attr.aria-pressed]="voice.state() === 'muted'" (click)="voice.mute()">{{ voice.state() === 'muted' ? 'Activar micrófono' : 'Silenciar' }}</button><button type="button" class="button soft small" (click)="endVoice()">Terminar voz</button> }</div></div> }
     <div class="chat-layout">
       <aside id="assistant-history" class="chat-history" aria-label="Conversaciones guardadas" [hidden]="!historyOpen()">

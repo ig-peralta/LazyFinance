@@ -29,103 +29,6 @@
   height: auto;
   min-height: 0;
 }
-.assistant-heading {
-  position: relative;
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 20px;
-  border-bottom: 1px solid var(--line);
-}
-.assistant-brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-.assistant-brand > app-icon {
-  width: 18px;
-  height: 18px;
-  color: var(--accent);
-}
-.assistant-brand :is(h1, h2) {
-  font-size: 1rem;
-  font-weight: 500;
-  line-height: 1.4;
-  letter-spacing: -0.02em;
-  margin: 0;
-}
-.assistant-heading-actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-}
-.assistant-toolbar-button,
-.assistant-options > summary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px;
-  min-width: 40px;
-  min-height: 40px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--muted);
-  font: inherit;
-  font-size: var(--text-small);
-  cursor: pointer;
-  list-style: none;
-}
-.assistant-toolbar-button app-icon,
-.assistant-options app-icon {
-  width: 18px;
-  height: 18px;
-}
-.assistant-options > summary::-webkit-details-marker {
-  display: none;
-}
-.assistant-toolbar-button:hover,
-.assistant-options > summary:hover {
-  color: var(--ink);
-  background: var(--raised);
-}
-.assistant-options-content {
-  position: absolute;
-  z-index: 20;
-  top: calc(100% + 4px);
-  right: 12px;
-  display: grid;
-  gap: 12px;
-  width: min(360px, calc(100vw - 58px));
-  max-height: 55dvh;
-  overflow: auto;
-  padding: 18px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--paper);
-  box-shadow: 0 12px 32px #0002;
-  font-size: var(--text-small);
-  line-height: 1.6;
-}
-.assistant-options-content p {
-  margin: 0;
-  color: var(--muted);
-}
-.assistant-options-content .text-link {
-  justify-self: start;
-  text-align: left;
-}
-.processing-disclosure p {
-  margin: 10px 0;
-}
-.processing-disclosure summary {
-  cursor: pointer;
-}
 .chat-layout {
   position: relative;
   display: grid;
@@ -431,14 +334,6 @@
   color: var(--muted);
   flex-shrink: 0;
 }
-.assistant-modes {
-  display: flex;
-  padding: 0 16px;
-}
-.assistant-modes button[aria-pressed="true"] {
-  color: var(--accent);
-  background: var(--accent-soft);
-}
 .voice-session-controls > span {
   color: var(--accent);
 }
@@ -469,23 +364,6 @@
     border-radius: 0;
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
-  }
-  .assistant-heading {
-    padding: 8px 12px;
-    gap: 6px;
-  }
-  .assistant-brand {
-    gap: 6px;
-  }
-  .assistant-brand > app-icon {
-    display: none;
-  }
-  .assistant-toolbar-button {
-    min-width: 36px;
-    padding: 8px 6px;
-  }
-  .assistant-heading-actions {
-    gap: 0;
   }
   .chat-messages {
     padding: 20px 16px 8px;
