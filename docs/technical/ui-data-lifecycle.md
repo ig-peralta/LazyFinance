@@ -123,8 +123,9 @@ Empty data, loading and failure are distinct states, even where a resource has
 an empty-array default. Use `hasValue()` before accessing a resource that has no
 default or is in an error state.
 
-The activity resource requests `transactions.list` with `{ limit: 10 }` and renders
-only that first page. It deliberately does not follow `pageInfo.nextCursor`,
+The activity resource requests `transactions.list` with `{ limit: 10 }`. Its compact
+view renders five rows; expansion reveals the rest of that same loaded page without
+a request. It deliberately does not follow `pageInfo.nextCursor`,
 accumulate pages or expose pagination controls. The full history page owns a separate
 URL-filtered cursor trail. Its scope cancellation,
 retry and confirmed-decision overlay apply to the page's items unchanged.
@@ -212,6 +213,21 @@ Savings evidence compares the returned goal version with its measurement; change
 versions require a fresh read. The dashboard measures only one featured goal;
 lists do not issue an unbounded per-goal measurement/suggestion fan-out on entry.
 
+### Bounded workflow navigation
+
+Budget and income month selections react to validated URL query parameters before
+their first visible resource read. Invalid values fall back to the current/default
+month; budget selection also rejects future months. Navigation restores selection,
+not a private editor draft or a cross-page financial cache.
+
+`core/navigation/return-context.ts` accepts only fixed movement-detail return kinds:
+`budget-evidence` validates the budget/revision UUIDs, month and ISO observation
+cutoffs; `income` accepts only a valid optional month. No return URL is accepted.
+Unknown/invalid kinds fall back to `/movimientos` without carrying their parameters.
+Ordinary ledger entry preserves only its known filter keys. Evidence emits returned
+cutoffs and returns to progress with its selected month, not a cursor snapshot or
+ledger-filter approximation. All destinations still perform owned reads normally.
+
 Optional setup progress is derived from owned account/source/objective reads.
 `OnboardingData` is a deliberate application/render-local exception for small
 non-financial account metadata shared by the shell, dashboard hint and guide;
@@ -232,10 +248,16 @@ resource to the confirmed result cancels an older read so it cannot restore a
 prompt. Ambiguous failures remain unconfirmed and offer an explicit state check,
 not automatic mutation replay. Completion closes the optional guide, not a claim
 that optional financial steps or bank import are complete.
+Setup destinations use only the fixed `from=onboarding` return to `/comenzar`.
 
 ## Financial assistant lifetime
 
 The shell mounts `AssistantPage` once on first open, outside the route outlet.
+Its persistent top-bar control remains mounted before and after deferred loading;
+there is no passive floating launcher over financial actions. The shell passes
+that element as the focus-return fallback when the original invoker is unavailable.
+Before deferred code mounts, the shell owns loading/error cancellation focus and
+returns it to that control after removing background inertness.
 `AssistantWorkspace.open()/minimize()/toggle()` restores/focuses that same instance
 without sending or reloading a turn. `/asistente` is an entry/deep-link component,
 not a second chat host. Minimize keeps the text draft/selection/generation in memory;
@@ -336,6 +358,13 @@ Its credential/ID/read-version resource calls readonly `banking.syncStatus` and
 forwards cancellation. Unopened panels issue no status calls, and settings entry
 does not fan out requests for every connection/account. The returned owned account
 IDs provide movement links, while values remain in the separate stored-balance page.
+Within the panel, **Administrar cuentas** mounts selection only when explicitly
+opened or required by saved status. Once mounted, collapsing retains that same
+command/reconciliation owner; it must not unlock or replay an uncertain selection.
+The selector emits pending and reconciliation state separately. An unresolved
+selection blocks the panel's import command even when collapsed and when a status
+read reports `canRefresh`; only the selector's successful later selection read
+releases that selection lock.
 
 The panel's scoped `BankAccountSelector` reads stored selection separately and
 performs discovery only after an explicit action. A versioned account-ID set and

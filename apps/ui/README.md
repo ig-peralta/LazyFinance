@@ -44,8 +44,11 @@ readiness. Other UI hosting only needs equivalent static fallback/caching.
 ## Authenticated workspace
 
 The authenticated workspace offers system/light/dark themes and three text sizes
-under **Apariencia** in the top bar. Shared semantic tokens also reach dialogs,
-PrimeNG controls and assistant content inside the workspace. Only allowlisted
+under **Apariencia** in the top bar. The menu closes on Escape, outside pointer or
+keyboard departure; Escape and its close button return focus to the trigger.
+Shared rem-based typography scales task links, help and controls together, rather
+than applying a separate enlarged-text override layer. Semantic tokens also reach
+dialogs, PrimeNG controls and assistant content inside the workspace. Only allowlisted
 device presentation values (theme, text size and compact navigation) enter the
 `lazyfinance-workspace-preferences` localStorage key; financial data, identity,
 messages and drafts never enter it. Invalid/blocked storage falls back safely.
@@ -57,6 +60,7 @@ tags), **Planificación** (budgets, savings, income and sources), and **Mi cuent
 Bank connection settings stay reachable regardless of whether setup is active,
 skipped or completed. Direct contextual links appear above the page, wrap rather
 than scroll, and retain the active destination on detail routes.
+Pages do not repeat those destinations in a second set of route tabs.
 The sidebar has no internal scrolling or expandable lists. Narrow or short
 viewports replace it with a compact native modal menu, including a two-column
 layout on short screens, focus containment and Escape handling. A skip link and
@@ -64,6 +68,7 @@ keyboard-visible focus remain available.
 Desktop users can explicitly toggle **Navegación compacta**. Destination and
 logout labels remain available by accessible name and hover/keyboard tooltip;
 the mobile/short-screen modal retains full labels regardless of that preference.
+The compact-navigation control is desktop-only; mobile has one menu trigger.
 
 Financial editors are opened explicitly instead of occupying a permanent page
 column: tags, budget/savings creation and adjustments, income sources and dated
@@ -96,11 +101,13 @@ a retry click. Scoped styles inherit text/theme tokens without changing the shel
 See [OAuth browser/site configuration and compatibility](../../docs/technical/mcp-authorization.md).
 
 The shell provides one persistent, minimizable theme-token-aligned assistant.
-**Abrir asistente · ?** exposes the actual keyboard shortcut. It restores/focuses
-that instance without resending, respects editable fields and real modals, and is
+**Asistente · ?** in the top bar (accessible name **Abrir asistente · ?**) exposes
+the actual keyboard shortcut without a floating button covering page actions. It
+restores/focuses that instance without resending, respects editable fields and real modals, and is
 bound only within the accepted authenticated shell lifetime.
-Minimize returns focus to the connected invoker, or to the visible persistent
-launcher if deferred mounting/navigation removed or hid that invoker.
+Minimize returns focus to the connected invoker, or to the same persistent header
+control if navigation removed or hid that invoker. Deferred loading never replaces it.
+Loading/error cancellation also restores the control before the assistant code is ready.
 `/asistente` opens the existing panel; explicit conversation deep links select
 server-owned history. First open loads it once; authenticated navigation preserves
 in-memory text state without resend. Minimize retains it, while Close panel clears
@@ -139,8 +146,10 @@ committed finance or deletes durable receipts. MCP consent delegates separately
 selected capabilities without these chat buttons. See [configuration, limits, privacy and evaluation](../../docs/technical/financial-assistant.md).
 
 The dashboard leads with selected-month net spending, received income and the
-full-month income plan, followed by workflow shortcuts, spending analysis,
-planning, stored account balances and recent activity. Balances are not added
+full-month income plan, followed by workflow shortcuts, stored account balances,
+a compact activity preview, spending analysis and planning. The preview shows five
+of the ten loaded movements; expansion reveals the rest without another read.
+Income/budget shortcuts retain the selected month. Balances are not added
 across different account types or confused with income/available cash. Financial
 display formats decimal strings through bigint cents, retaining nonzero cents
 and large values without floating-point rounding. Income cards distinguish
@@ -176,6 +185,10 @@ discards that draft and restores focus. Catalog failures preserve selected IDs,
 and owner changes clear unsubmitted drafts.
 `/movimientos/:id` reads owned source and
 classification detail without changing the original banking facts.
+Its back link accepts only fixed, validated budget-evidence or income context,
+never an arbitrary return URL. Budget evidence preserves revision, month and
+observation cutoffs; income restores its selected month without reopening a draft.
+Ordinary ledger links retain only allowlisted ledger filters.
 The detail view supports explicit tag/no-tag/reset and nullable internal-status
 corrections. A saved command reloads detail; history, summaries and budget pages
 refetch on navigation rather than sharing a stale application-wide cache. Removed
@@ -203,6 +216,9 @@ amounts, received confirmations, unclassified credits and recovered expenses.
 Its paginated external-credit browser opens one owned detail to validate facts;
 confirmation/reassignment and explicit clearing preserve booked amounts/dates.
 Retained links remain clearable even when current facts no longer count as income.
+Income month selection is URL-readable, and abono review precedes the detailed
+planning lists. Receipt confirmation explains the actual ineligibility facts; an
+empty source catalog links to source creation without enabling an unfillable form.
 
 `/presupuestos-y-metas` creates spending budgets and shows backend net progress;
 `/presupuestos/:id` separates effective/pending revisions, paginated history and
@@ -215,6 +231,10 @@ month and observation cutoffs. Its complete backend totals (not page sums)
 separate original purchases, refunds, reimbursements and net spending. Continuation
 retains returned cutoffs, explains current-fact drift and never claims complete
 bank coverage. Changed revisions require reopening the current progress selection.
+The overview is progress-first, with active/future configurations behind a native
+disclosure and a URL-readable month. Fixed-budget locks are explained before edit
+entry; revision history controls expose their expanded state. Evidence returns to
+the same progress month. Monetary strings stay unbroken while rows can stack.
 
 `/metas` creates selected-tag lifetime/monthly/yearly/fixed savings targets;
 `/metas/:id` provides owned detail, immutable configuration history and expected-
@@ -258,6 +278,13 @@ failure, retry timing, conflicts, source freshness and retained history bounds.
 Its per-account movement links use the returned owned account IDs. Balances still
 belong to `/cuentas`; no client-side balance reconstruction or connection guessing
 is added to the public account-summary projection.
+Saved status leads the panel. **Administrar cuentas** mounts selection on demand,
+or opens automatically when a selection is required. Collapsing keeps its command
+and uncertain-outcome reconciliation lifetime; expansion does not discover accounts
+or import. Disabled import controls have an associated factual explanation.
+An uncertain selection also locks import while management is collapsed. Only a
+successful **Consultar selección guardada** read clears that lock; a synchronization
+status read alone does not resolve which accounts were saved.
 
 Authorization opens the same panel from settings or optional onboarding; neither
 path imports implicitly. **Consultar cuentas disponibles** explicitly discovers

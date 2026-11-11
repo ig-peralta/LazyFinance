@@ -16,6 +16,10 @@ stops generation, ends voice and clears the in-memory selection/draft; it does n
 delete saved history. Delete requires its separate confirmation and never undoes
 financial changes. Logout, credential replacement and owner changes clear private
 state and invalidate late results.
+The persistent top-bar **Asistente · ?** control opens that same instance without
+covering page actions. It also supplies focus recovery after route entry. Welcome
+suggestions only prepare a draft, and the welcome copy distinguishes no money
+movement from changes that require explicit saved-action approval.
 
 Replies anchor at the beginning of the new answer once, not on each token/source/
 action update. Deliberate scrolling and restored history are not auto-followed;
