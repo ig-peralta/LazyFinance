@@ -15,16 +15,16 @@
         <li>
           <div class="record-row"><div class="record-identity"><span class="record-icon"><app-icon name="income" /></span><div><h3 class="record-title">{{ source.name }}</h3><p class="record-meta">{{ schedule(source) }}</p></div></div><span class="badge" [class.neutral]="!!source.archivedAt">{{ source.archivedAt ? 'Archivada' : 'Activa' }}</span></div>
           <p class="record-meta" style="margin-top:12px"><span class="money">{{ source.expectedAmount === null ? 'Monto por definir' : money(source.expectedAmount) + ' por pago' }}</span> · {{ source.amountKind === 'fixed' ? 'Fijo' : 'Variable / estimado' }}<br>{{ source.startDate }} → {{ source.endDate || 'sin fecha final' }}</p>
-          <div class="row-actions">
-            <button type="button" class="button small" [disabled]="command.pending()" (click)="edit(source)">{{ source.archivedAt ? 'Ver declaración' : 'Editar fuente' }}</button>
-            @if (source.regularity === 'irregular') { <button type="button" class="button small soft" [attr.aria-expanded]="planningId() === source.id" [attr.aria-controls]="'source-planning-' + source.id" (click)="planningId.set(planningId() === source.id ? null : source.id)">{{ planningId() === source.id ? 'Ocultar pagos esperados' : 'Planificar pagos' }}</button> }
+          <div class="record-actions">
+            <button type="button" class="button record-action" [attr.aria-label]="(source.archivedAt ? 'Ver declaración de ' : 'Editar fuente ') + source.name" [disabled]="command.pending()" (click)="edit(source)"><app-icon [name]="source.archivedAt ? 'info' : 'edit'" /> {{ source.archivedAt ? 'Ver declaración' : 'Editar fuente' }}</button>
+            @if (source.regularity === 'irregular') { <button type="button" class="button record-action" [attr.aria-expanded]="planningId() === source.id" [attr.aria-controls]="'source-planning-' + source.id" (click)="planningId.set(planningId() === source.id ? null : source.id)"><app-icon name="calendar" /> {{ planningId() === source.id ? 'Ocultar pagos esperados' : 'Planificar pagos' }}</button> }
+            @if (!source.archivedAt) {
+              <button #archiveTrigger type="button" class="button record-action archive-action" [disabled]="command.pending()" [attr.aria-expanded]="archiving() === source.id" [attr.aria-controls]="'source-archive-' + source.id" [attr.aria-label]="'Archivar ' + source.name" (click)="archiving.set(source.id)"><app-icon name="archive" /> Archivar</button>
+              <div class="record-action-confirmation" [id]="'source-archive-' + source.id" [hidden]="archiving() !== source.id">
+                @if (archiving() === source.id) { <div class="notice warning" role="alert"><strong>¿Archivar {{ source.name }}?</strong><p>Detiene su planificación desde el corte del servidor, conserva el historial y no borra ingresos recibidos. No se podrá editar después.</p><div class="button-row"><button class="button small danger" type="button" [disabled]="command.pending()" (click)="archive()">Confirmar archivo</button><button class="button small" type="button" [disabled]="command.pending()" (click)="archiving.set(null); archiveTrigger.focus()">Cancelar</button></div></div> }
+              </div>
+            }
           </div>
-          @if (!source.archivedAt) {
-            <div class="danger-actions"><button #archiveTrigger type="button" class="button small danger" [disabled]="command.pending()" [attr.aria-expanded]="archiving() === source.id" [attr.aria-controls]="'source-archive-' + source.id" [attr.aria-label]="'Archivar ' + source.name" (click)="archiving.set(source.id)">Archivar</button></div>
-            <div [id]="'source-archive-' + source.id">
-              @if (archiving() === source.id) { <div class="notice warning" role="alert"><strong>¿Archivar {{ source.name }}?</strong><p>Detiene su planificación desde el corte del servidor, conserva el historial y no borra ingresos recibidos. No se podrá editar después.</p><div class="row-actions"><button class="button small danger" type="button" [disabled]="command.pending()" (click)="archive()">Confirmar archivo</button><button class="button small" type="button" [disabled]="command.pending()" (click)="archiving.set(null); archiveTrigger.focus()">Cancelar</button></div></div> }
-            </div>
-          }
           @if (source.regularity === 'irregular') {
             <div class="source-planning" [id]="'source-planning-' + source.id">
               @if (planningId() === source.id) { @for (key of [source.id + ':' + source.updatedAt + ':' + source.archivedAt]; track key) { <income-expectations [source]="source" /> } }

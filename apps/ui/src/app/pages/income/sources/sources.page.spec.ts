@@ -243,4 +243,52 @@ describe("income source management", () => {
     expect(root.querySelector("dialog")).toBeNull();
     expect(root.textContent).toContain("Pagos puntuales esperados");
   });
+
+  it("groups named edit and archive actions together and keeps confirmation explicit", async () => {
+    const mock = setupRpc({
+      "income.sources": () => [
+        incomeSource,
+        {
+          ...incomeSource,
+          id: "archived-source",
+          name: "Fuente anterior",
+          archivedAt: "2026-11-08T15:00:00.000Z",
+        },
+      ],
+    });
+    const fixture = TestBed.createComponent(SourcesPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement;
+    const actions = root.querySelector(".record-actions");
+    expect(actions?.querySelector("button")?.getAttribute("aria-label")).toBe(
+      `Editar fuente ${incomeSource.name}`,
+    );
+    const archive = actions?.querySelector<HTMLButtonElement>(
+      `[aria-label="Archivar ${incomeSource.name}"]`,
+    );
+    if (!archive) throw new Error("Missing source archive action");
+    expect(
+      root.querySelector('[aria-label="Archivar Fuente anterior"]'),
+    ).toBeNull();
+    expect(
+      root.querySelector('[aria-label="Ver declaración de Fuente anterior"]'),
+    ).not.toBeNull();
+    archive.click();
+    fixture.detectChanges();
+    expect(archive.getAttribute("aria-expanded")).toBe("true");
+    const confirmation = actions?.querySelector<HTMLElement>(
+      ".record-action-confirmation",
+    );
+    expect(confirmation?.hidden).toBe(false);
+    expect(mock.callsTo("income.archiveSource")).toHaveLength(0);
+    [...(confirmation?.querySelectorAll("button") ?? [])]
+      .find((button) => button.textContent?.trim() === "Cancelar")
+      ?.click();
+    fixture.detectChanges();
+    expect(confirmation?.hidden).toBe(true);
+    expect(archive.getAttribute("aria-expanded")).toBe("false");
+    expect(mock.callsTo("income.archiveSource")).toHaveLength(0);
+  });
 });

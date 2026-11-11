@@ -1243,6 +1243,48 @@ body {
 .workspace .button:hover {
   border-color: var(--accent);
 }
+.record-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+.workspace .button.record-action {
+  min-height: 44px;
+  max-width: 100%;
+  padding: 9px 12px;
+  gap: 8px;
+  border-color: transparent;
+  background: var(--raised);
+  overflow-wrap: anywhere;
+}
+.workspace .button.record-action:hover:not(:disabled) {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+  color: var(--accent);
+}
+.workspace .button.record-action.archive-action {
+  background: transparent;
+  color: var(--muted);
+}
+.workspace .button.record-action.archive-action:hover:not(:disabled) {
+  background: var(--danger-soft);
+  border-color: transparent;
+  color: var(--danger);
+}
+.record-action app-icon {
+  width: 1rem;
+  height: 1rem;
+}
+.record-action-confirmation {
+  flex-basis: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.record-action-confirmation > .notice {
+  margin: 4px 0 0;
+}
 .text-link {
   font-size: var(--text-control);
   font-weight: 550;

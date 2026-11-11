@@ -5,28 +5,32 @@
 @if (command.error()) { <p class="notice danger" role="alert">{{ command.error() }}</p> }
 @if (needsCheck()) { <p class="notice warning">No repitas el archivo sin comprobar su resultado. <button type="button" [disabled]="command.pending()" (click)="checkCatalog()">Comprobar catálogo</button></p> }
 @if (message() || command.success()) { <p class="notice" role="status">{{ message() || command.success() }}</p> }
-@if (archiving(); as tag) {
-  <div class="notice warning" role="alert"><strong>¿Archivar «{{ tag.name }}»?</strong><p>No podrá seleccionarse de nuevo. Sus movimientos, presupuestos y metas conservarán el historial; el nombre seguirá reservado.</p><div class="danger-actions"><button class="button small danger" type="button" [disabled]="command.pending() || needsCheck()" (click)="archive()">Sí, archivar etiqueta</button><button class="button small" type="button" [disabled]="command.pending()" (click)="archiving.set(null)">Cancelar</button></div></div>
-}
-<div class="stack">
-  <section class="panel">
-    <div class="panel-heading"><div><h2>Tu colección</h2><p class="panel-subtitle">Etiquetas activas, listas para dar claridad.</p></div><div class="button-row"><span class="badge neutral">{{ data.tags.hasValue() ? data.tags.value().length : '—' }} etiquetas</span><button class="icon-button" type="button" aria-label="Recargar etiquetas" [disabled]="data.tags.isLoading()" (click)="data.tags.reload()"><app-icon name="refresh" /></button></div></div>
-    <label class="field"><span class="sr-only">Buscar etiquetas</span><input #searchInput type="search" placeholder="Buscar una etiqueta…" [value]="search()" (input)="search.set(searchInput.value)" /></label>
-    @if (data.tags.isLoading()) { <p role="status" class="notice">Cargando tus etiquetas…</p> }
-    @else if (data.tags.error()) { <div class="notice danger" role="alert">No pudimos cargar tus etiquetas. <button type="button" (click)="data.tags.reload()">Reintentar</button></div> }
-    @else if (!items().length) { <div class="empty-state"><span class="empty-icon"><app-icon name="tag" /></span><h3>{{ search() ? 'No encontramos esa etiqueta' : 'Tu organización empieza aquí' }}</h3><p>{{ search() ? 'Prueba con otro nombre o borra la búsqueda.' : 'Crea tu primera etiqueta: hogar, cafés, viajes… Lo que tenga sentido para ti.' }}</p></div> }
-    @else {
-      <ul class="record-list">
-        @for (tag of items(); track tag.id) {
-          <li class="record-row">
-            <div class="record-identity"><span class="tag-swatch" [style.backgroundColor]="swatch(tag.color)" aria-hidden="true"></span><h3 class="record-title">{{ tag.name }}</h3></div>
-            <div class="row-actions"><button class="button small" type="button" [attr.aria-label]="'Editar ' + tag.name" [disabled]="command.pending()" (click)="edit(tag)">Editar</button><div class="danger-actions"><button class="button small danger" type="button" [attr.aria-label]="'Archivar ' + tag.name" [disabled]="command.pending()" (click)="archiving.set(tag)">Archivar</button></div></div>
-          </li>
-        }
-      </ul>
-    }
-  </section>
-</div>
+<section class="panel" aria-labelledby="tag-collection-title">
+  <div class="panel-heading collection-heading"><div><div class="collection-title"><h2 id="tag-collection-title">Tu colección</h2><span class="badge neutral">{{ data.tags.hasValue() ? data.tags.value().length : '—' }} {{ data.tags.hasValue() && data.tags.value().length === 1 ? 'etiqueta' : 'etiquetas' }}</span></div><p class="panel-subtitle">Etiquetas activas, listas para dar claridad.</p></div><button class="icon-button" type="button" aria-label="Recargar etiquetas" [disabled]="data.tags.isLoading()" (click)="data.tags.reload()"><app-icon name="refresh" /></button></div>
+  <div class="catalog-toolbar">
+    <label class="catalog-search"><app-icon name="search" /><span class="sr-only">Buscar etiquetas</span><input #searchInput type="search" placeholder="Buscar una etiqueta…" [value]="search()" (input)="search.set(searchInput.value)" /></label>
+    <p class="catalog-results" role="status" aria-live="polite" aria-atomic="true" [hidden]="!search() || data.tags.isLoading() || !!data.tags.error()">{{ items().length }} {{ items().length === 1 ? 'resultado' : 'resultados' }}</p>
+  </div>
+  @if (data.tags.isLoading()) { <p role="status" class="notice">Cargando tus etiquetas…</p> }
+  @else if (data.tags.error()) { <div class="notice danger" role="alert">No pudimos cargar tus etiquetas. <button type="button" (click)="data.tags.reload()">Reintentar</button></div> }
+  @else if (!items().length) { <div class="empty-state"><span class="empty-icon"><app-icon name="tag" /></span><h3>{{ search() ? 'No encontramos esa etiqueta' : 'Tu organización empieza aquí' }}</h3><p>{{ search() ? 'Prueba con otro nombre o borra la búsqueda.' : 'Crea tu primera etiqueta: hogar, cafés, viajes… Lo que tenga sentido para ti.' }}</p>@if (search()) { <button class="text-link" type="button" (click)="search.set(''); searchInput.focus()">Limpiar búsqueda</button> }</div> }
+  @else {
+    <ul class="tag-grid" aria-label="Etiquetas activas">
+      @for (tag of items(); track tag.id) {
+        <li class="tag-card">
+          <div class="tag-card-heading"><span class="tag-color" aria-hidden="true"><span class="tag-swatch" [style.backgroundColor]="swatch(tag.color)"></span></span><h3>{{ tag.name }}</h3></div>
+          <div class="record-actions">
+            <button class="button record-action" type="button" [attr.aria-label]="'Editar ' + tag.name" [disabled]="command.pending()" (click)="edit(tag)"><app-icon name="edit" /> Editar</button>
+            <button #archiveTrigger class="button record-action archive-action" type="button" [attr.aria-label]="'Archivar ' + tag.name" [attr.aria-expanded]="archiving()?.id === tag.id" [attr.aria-controls]="'tag-archive-' + tag.id" [disabled]="command.pending()" (click)="archiving.set(tag)"><app-icon name="archive" /> Archivar</button>
+            <div class="record-action-confirmation" [id]="'tag-archive-' + tag.id" [hidden]="archiving()?.id !== tag.id">
+              @if (archiving()?.id === tag.id) { <div class="notice warning" role="alert"><strong>¿Archivar «{{ tag.name }}»?</strong><p>No podrá seleccionarse de nuevo. Sus movimientos, presupuestos y metas conservarán el historial; el nombre seguirá reservado.</p><div class="button-row"><button class="button small danger" type="button" [disabled]="command.pending() || needsCheck()" (click)="archive()">Sí, archivar etiqueta</button><button class="button small" type="button" [disabled]="command.pending()" (click)="archiving.set(null); archiveTrigger.focus()">Cancelar</button></div></div> }
+            </div>
+          </div>
+        </li>
+      }
+    </ul>
+  }
+</section>
 @if (editorOpen()) {
   <editor-drawer [title]="editing() ? 'Editar etiqueta' : 'Nueva etiqueta'" eyebrow="CADA COSA EN SU LUGAR" (dismissed)="reset()">
     <tag-editor [tag]="editing()" (saved)="saved($event)" (cancelled)="reset()" />

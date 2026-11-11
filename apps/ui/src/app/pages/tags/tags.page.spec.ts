@@ -49,9 +49,9 @@ describe("owned tag management", () => {
       root.querySelector<HTMLElement>(".tag-swatch")?.style.backgroundColor,
     ).toBe("rgb(34, 170, 119)");
     expect(root.querySelector("form")).toBeNull();
-    expect(root.querySelectorAll(".record-row .record-icon")).toHaveLength(0);
+    expect(root.querySelectorAll(".tag-card")).toHaveLength(1);
     expect(
-      root.querySelector('.danger-actions [aria-label="Archivar Comida"]'),
+      root.querySelector('.record-actions [aria-label="Archivar Comida"]'),
     ).not.toBeNull();
     expect(mock.callsTo("tags.archive")).toHaveLength(0);
     [...root.querySelectorAll("button")]
@@ -133,6 +133,77 @@ describe("owned tag management", () => {
       root.querySelector<HTMLElement>(".tag-swatch")?.style.backgroundColor,
     ).toBe("rgb(181, 193, 170)");
     expect(root.textContent).not.toContain("Color personalizado");
+  });
+
+  it("filters the card collection locally and clears an empty search without writes", async () => {
+    const mock = setupRpc({
+      "tags.list": () => [tag, { ...tag, id: "second-tag", name: "Viajes" }],
+    });
+    const fixture = TestBed.createComponent(TagsPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement;
+    const input = root.querySelector<HTMLInputElement>('input[type="search"]');
+    if (!input) throw new Error("Missing tag search");
+    expect(root.querySelectorAll(".tag-card")).toHaveLength(2);
+    input.value = "VIA";
+    input.dispatchEvent(eventsIn(root)("input"));
+    fixture.detectChanges();
+    expect(root.querySelectorAll(".tag-card")).toHaveLength(1);
+    expect(root.querySelector(".tag-card h3")?.textContent).toBe("Viajes");
+    expect(root.querySelector(".catalog-results")?.textContent).toContain(
+      "1 resultado",
+    );
+    input.value = "No existe";
+    input.dispatchEvent(eventsIn(root)("input"));
+    fixture.detectChanges();
+    expect(root.querySelectorAll(".tag-card")).toHaveLength(0);
+    expect(root.querySelector(".catalog-results")?.textContent).toContain(
+      "0 resultados",
+    );
+    [...root.querySelectorAll("button")]
+      .find((button) => button.textContent?.trim() === "Limpiar búsqueda")
+      ?.click();
+    fixture.detectChanges();
+    expect(input.value).toBe("");
+    expect(root.querySelectorAll(".tag-card")).toHaveLength(2);
+    expect(mock.callsTo("tags.list")).toHaveLength(1);
+    expect(mock.callsTo("tags.update")).toHaveLength(0);
+    expect(mock.callsTo("tags.archive")).toHaveLength(0);
+  });
+
+  it("keeps archive confirmation on the chosen card and cancels without writing", async () => {
+    const mock = setupRpc({
+      "tags.list": () => [tag, { ...tag, id: "second-tag", name: "Viajes" }],
+    });
+    const fixture = TestBed.createComponent(TagsPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement;
+    const trigger = root.querySelector<HTMLButtonElement>(
+      '[aria-label="Archivar Comida"]',
+    );
+    if (!trigger) throw new Error("Missing tag archive action");
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    trigger.click();
+    fixture.detectChanges();
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    const confirmation = root.querySelector<HTMLElement>(
+      `[id="${trigger.getAttribute("aria-controls")}"]`,
+    );
+    expect(confirmation?.hidden).toBe(false);
+    expect(
+      confirmation?.closest(".tag-card")?.querySelector("h3")?.textContent,
+    ).toBe("Comida");
+    [...(confirmation?.querySelectorAll("button") ?? [])]
+      .find((button) => button.textContent?.trim() === "Cancelar")
+      ?.click();
+    fixture.detectChanges();
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(confirmation?.hidden).toBe(true);
+    expect(mock.callsTo("tags.archive")).toHaveLength(0);
   });
 
   it("prevents duplicate writes, cancels obsolete ownership and clears drafts/notices for the next user", async () => {

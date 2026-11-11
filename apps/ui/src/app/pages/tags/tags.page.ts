@@ -13,13 +13,7 @@ import { TagEditor } from "./tag-editor";
   imports: [Icon, EditorDrawer, TagEditor],
   providers: [TagsData],
   templateUrl: "./tags.page.html",
-  styles: `
-    .record-identity > .tag-swatch {
-      width: 1rem;
-      height: 1rem;
-      margin: 0;
-    }
-  `,
+  styleUrl: "./tags.page.css",
 })
 export class TagsPage {
   protected readonly data = inject(TagsData);

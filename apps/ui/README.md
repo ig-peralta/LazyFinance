@@ -176,7 +176,10 @@ are unchanged. Chart colors are a presentation palette, not edits to tag colors.
 
 `/etiquetas` manages the active owned catalog: create, rename/recolor and explicit
 archive confirmation. Archived names remain reserved and historical references are
-retained. Its resource is page-owned; commands reject duplicate submissions and
+retained. A bounded search field filters compact color/name cards locally, with
+nearby edit/archive actions and inline archive confirmation. Tags and income
+sources share a wrapping action bar: edit is emphasized, archive remains quiet
+until its separate confirmation. The tag resource is page-owned; commands reject duplicate submissions and
 discard obsolete owner/component results. Form drafts are cleared on owner changes
 and no financial record is cached in browser storage or hydration transfer state.
 Catalog editing does not assign movements or create rules. Known duplicate names
