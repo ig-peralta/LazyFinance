@@ -114,7 +114,7 @@
             </p>
             <p class="mt-1 text-sm text-muted-color">{{ session.user()?.email }}</p>
             <div class="mt-7 flex flex-wrap items-center gap-5">
-              <a routerLink="/dashboard" class="text-sm font-semibold text-primary">Ir al panel</a>
+              <a routerLink="/asistente" class="text-sm font-semibold text-primary">Ir a mi espacio</a>
               @if (provider() === 'firebase') {
                 <a routerLink="/seguridad" class="text-sm font-semibold text-primary">Métodos de acceso</a>
               }

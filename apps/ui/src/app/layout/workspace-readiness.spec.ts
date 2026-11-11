@@ -107,6 +107,7 @@ describe("workspace pages' initial visible-read contracts", () => {
   });
 
   it.each([
+    ["/asistente", "summaries.monthly"],
     ["/dashboard", "summaries.monthly"],
     ["/dashboard", "summaries.comparison"],
     ["/dashboard", "accounts.list"],
@@ -268,7 +269,7 @@ describe("workspace pages' initial visible-read contracts", () => {
       "summaries.monthly": () => read.promise,
     });
     await f.settle(1_100);
-    expect(f.router.url).toBe("/dashboard");
+    expect(f.router.url).toBe("/asistente");
     expect(f.root.querySelector("workspace-loading")).not.toBeNull();
     read.resolve(rpcFailure());
     await f.settle();

@@ -197,6 +197,110 @@ function compose(f: ReturnType<typeof setup>, text = "¿Mis saldos?") {
 }
 
 describe("first-party chat page lifetimes and confirmed history", () => {
+  it("releases local busy state after native transport failure and allows explicit history reconciliation without replay", async () => {
+    let saved: AssistantTurn[] = [];
+    const f = setup(
+      {
+        "assistant.configuration": () => externalConfiguration,
+        "assistant.conversation": () => ({
+          ...chat,
+          turns: saved,
+          turnCount: saved.length,
+        }),
+      },
+      chat.id,
+      true,
+    );
+    let receive: Parameters<AssistantVoiceClient["start"]>[2] | undefined;
+    const voice = f.fixture.debugElement.injector.get(AssistantVoiceClient);
+    vi.spyOn(voice, "start").mockImplementation(
+      async (_owner, _id, handler) => {
+        receive = handler;
+        voice.state.set("listening");
+      },
+    );
+    await render(f.fixture);
+    button(f.root, "Conversar por voz").click();
+    await render(f.fixture);
+    button(f.root, "Entiendo, iniciar micrófono").click();
+    await render(f.fixture);
+    const pending = turn({
+      conversationId: chat.id,
+      requestId: "00000000-0000-4000-8000-000000000002",
+      text: "Consulta por voz",
+    });
+    receive?.({ type: "turn", turn: pending });
+    await render(f.fixture);
+    voice.state.set("off");
+    await render(f.fixture);
+    expect(f.root.textContent).toContain("La voz terminó");
+    expect(button(f.root, "Consultar estado").disabled).toBe(false);
+    saved = [
+      {
+        ...pending,
+        status: "interrupted",
+        voice: { question: "Audio interrumpido" },
+      },
+    ];
+    button(f.root, "Consultar estado").click();
+    await render(f.fixture);
+    expect(f.root.textContent).toContain("Audio interrumpido");
+    compose(f, "Una nueva pregunta explícita");
+    expect(button(f.root, "Enviar pregunta").disabled).toBe(false);
+    expect(f.stream).not.toHaveBeenCalled();
+  });
+  it("receives native voice turns without sending captions through text chat, then restores the draft", async () => {
+    const f = setup(
+      { "assistant.configuration": () => externalConfiguration },
+      chat.id,
+      true,
+    );
+    let receive: Parameters<AssistantVoiceClient["start"]>[2] | undefined;
+    const voice = f.fixture.debugElement.injector.get(AssistantVoiceClient);
+    vi.spyOn(voice, "start").mockImplementation(
+      async (_owner, _id, handler) => {
+        receive = handler;
+        voice.state.set("listening");
+      },
+    );
+    await render(f.fixture);
+    compose(f, "Mi borrador detallado");
+    button(f.root, "Conversar por voz").click();
+    await render(f.fixture);
+    button(f.root, "Entiendo, iniciar micrófono").click();
+    await render(f.fixture);
+    expect(f.root.querySelector(".voice-stage")).not.toBeNull();
+    expect(
+      f.root.querySelector<HTMLFormElement>(".chat-composer")?.hidden,
+    ).toBe(true);
+    const native = {
+      ...turn({
+        conversationId: chat.id,
+        requestId: "00000000-0000-4000-8000-000000000002",
+        text: "Consulta por voz",
+      }),
+      voice: { question: "¿Y el mes anterior?" },
+    };
+    receive?.({ type: "turn", turn: native });
+    receive?.({ type: "delta", text: "Revisemos un período comparable." });
+    receive?.({
+      type: "done",
+      turn: {
+        ...native,
+        text: "Revisemos un período comparable.",
+        status: "complete",
+      },
+    });
+    await render(f.fixture);
+    expect(f.stream).not.toHaveBeenCalled();
+    button(f.root, "Continuar por texto").click();
+    await render(f.fixture);
+    expect(f.root.querySelector("textarea")?.value).toBe(
+      "Mi borrador detallado",
+    );
+    expect(f.root.textContent).toContain("¿Y el mes anterior?");
+    expect(f.root.querySelector(".voice-stage")).toBeNull();
+  });
   afterEach(() => {
     TestBed.resetTestingModule();
     vi.restoreAllMocks();
@@ -241,7 +345,7 @@ describe("first-party chat page lifetimes and confirmed history", () => {
     button(f.root, "Conversar por voz").click();
     await render(f.fixture);
     expect(f.root.querySelector(".voice-start")?.textContent).toContain(
-      "configured-text-model",
+      "sin enviar cada transcripción al modelo de texto",
     );
     expect(f.root.querySelector(".voice-processing-consent")).toBeNull();
     expect(button(f.root, "Entiendo, iniciar micrófono").disabled).toBe(false);

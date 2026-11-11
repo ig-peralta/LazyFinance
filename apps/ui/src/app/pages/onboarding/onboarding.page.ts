@@ -120,7 +120,7 @@ export class OnboardingPage {
       this.onboarding.state.reload();
     effect(() => {
       if (this.onboarding.status() === "completed")
-        void this.router.navigateByUrl("/dashboard", { replaceUrl: true });
+        void this.router.navigateByUrl("/asistente", { replaceUrl: true });
     });
   }
 
@@ -132,7 +132,7 @@ export class OnboardingPage {
         // Setting the resource cancels any older read before it can restore a hint.
         this.onboarding.state.set(state);
         if (state.status !== "completed")
-          void this.router.navigateByUrl("/dashboard");
+          void this.router.navigateByUrl("/asistente");
       },
     );
   }

@@ -1,5 +1,5 @@
 import type { MonthlySummary } from "@lazyfinance/contracts";
-import { moneyCents } from "../../../../utils/currency";
+import { moneyCents } from "../../../utils/currency";
 
 const palette = ["#34d399", "#38bdf8", "#a78bfa", "#fbbf24", "#fb7185"];
 const percent = new Intl.NumberFormat("es-CL", { maximumFractionDigits: 1 });
@@ -9,7 +9,9 @@ function decimal(cents: bigint): string {
 }
 
 /** Exact net amounts first; only bounded SVG coordinates/percentages use Number. */
-export function spendingDistribution(data: MonthlySummary) {
+export function spendingDistribution(
+  data: Pick<MonthlySummary, "spending" | "tags">,
+) {
   const tags = data.tags
     .map((tag) => ({ ...tag, cents: moneyCents(tag.amount) }))
     .sort(

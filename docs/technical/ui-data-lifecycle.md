@@ -269,7 +269,9 @@ Before deferred code mounts, the shell owns loading/error cancellation focus and
 returns it to that control after removing background inertness.
 `AssistantWorkspace.open()/minimize()/toggle()` restores/focuses that same instance
 without sending or reloading a turn. `/asistente` is an entry/deep-link component,
-not a second chat host. Minimize keeps the text draft/selection/generation in memory;
+not a second chat host. It owns only the ordinary scoped snapshot above the
+inline conversation; summary loading is independent of consent/model availability.
+The same instance docks beside other pages. Minimize keeps the text draft/selection/generation in memory;
 Close panel clears them and stops generation without deleting server history.
 Full reload discards private browser state and reads saved history through the API.
 Owner/credential changes clear private state; no chat cache/storage is introduced.
@@ -278,13 +280,14 @@ decisions, never a browser-stored permission. Missing/refused/outdated decisions
 show a dedicated entry screen. Reopening checks saved consent while retaining an
 already-authorized composer, selection, focus and expanded references; new sends
 wait for that check. Confirmed acceptance opens chat but never sends or starts
-voice. Refusal minimizes; history-only entry still permits owned reading/deletion.
+voice. Refusal minimizes a docked panel, not the home snapshot; history-only entry
+still permits owned reading/deletion.
 An uncertain save blocks local processing until an explicit causal state read;
 ordinary reopening or stale reads cannot reconcile it. Withdrawal immediately
 invalidates deferred creation and local text/voice, without claiming server rollback
 or remote cancellation on other devices.
-The desktop non-modal dialog leaves financial navigation available. Narrow screens
-use a full-screen modal dialog state with inert background and Tab containment;
+The inline/docked region leaves financial navigation available. Narrow screens
+outside home use a full-screen modal with inert background and Tab containment;
 both support Escape, focus return and safe areas. First-answer anchoring occurs
 once; later streamed updates, history and native reference expansion preserve the
 reading position. An explicit jump control is separate from automatic anchoring.
@@ -305,14 +308,20 @@ data and drafts are not stored in cookies, browser storage or transfer state.
 Ordinary authenticated route navigation retains text work, but ends live microphone
 capture. Voice also ends on minimize, hidden tab, device loss and session changes;
 late permission/events cannot revive capture or adopt another owner's transcript.
-Completed voice questions use the same turn stream and approvals; partial/audio
-transcripts remain in memory. See the [voice privacy/lifetime contract](assistant-live-voice.md).
+Native voice turns use a separate authenticated observation stream, server-executed
+tools and the same saved-turn leases and approvals. Transcription never invokes
+the text stream, and completed text answers never trigger literal read-aloud.
+The optional `turn.voice.question` stores the readable input alongside the
+immutable lease question; shared history uses it for follow-ups. Partial captions
+remain in memory. Voice/text handoff stops capture and preserves the draft and
+canvas. Ending an in-flight turn reconciles history rather than replaying it.
+See the [voice privacy/lifetime contract](assistant-live-voice.md).
 After saved processing acceptance, voice has no repeated consent checkbox. Only
 the separate explicit microphone-start control can initiate capture. Availability loading/error/disabled
 states remain visible and have a readonly retry; refresh includes that resource.
 References are separate financial cards projected from validated stored results,
 not raw JSON or model-authored markup. They retain uncertainty/cutoff disclosures,
-show at most four rows with a preview notice, and use service totals rather than
+show at most four rows in reply previews and up to 100 in the results canvas, and use service totals rather than
 page sums. Trusted links open the relevant section or owned detail; budget evidence
 retains the revision, month and observation cutoffs. Current sources explicitly use
 null for section-level targets; all turns include their action array. Missing fields
@@ -327,6 +336,10 @@ results. After ambiguous responses the card blocks further writes and offers an
 explicit action-status read, never an automatic mutation retry. Confirmed outcomes
 reload chat snapshots from the ledger and link to saved results. Deleting chat or
 stopping a stream does not undo financial changes or delete durable receipts.
+The next server turn receives fresh, bounded action outcomes independently of the
+recent-message window, never a browser assertion of success. Canvas selection is
+memory-only and is cleared on owner/conversation changes; ordinary source observations
+retain their query timestamp and are not silently relabelled as current data.
 
 Model-generated HTML/links/images are inactive. The small Markdown presentation
 component prefixes its unencapsulated styles with its own host tag so sanitized

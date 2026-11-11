@@ -54,7 +54,7 @@ device presentation values (theme, text size and compact navigation) enter the
 messages and drafts never enter it. Invalid/blocked storage falls back safely.
 The public landing and login retain their existing system-aware theme.
 
-Navigation includes **Asistente**, **Resumen**, **Mi dinero** (movements, accounts,
+Navigation includes **Inicio**, **Resumen completo**, **Mi dinero** (movements, accounts,
 tags), **Planificación** (budgets, savings, income and sources), and **Mi cuenta**
 (access/security, connected applications, bank connections, plus a resume link only for skipped setup).
 Bank connection settings stay reachable regardless of whether setup is active,
@@ -111,7 +111,15 @@ Failed revocation remains locked until a successful explicit later read, not mer
 a retry click. Scoped styles inherit text/theme tokens without changing the shell.
 See [OAuth browser/site configuration and compatibility](../../docs/technical/mcp-authorization.md).
 
-The shell provides one persistent, minimizable theme-token-aligned assistant.
+The assistant-first home at `/asistente` keeps an ordinary month-selectable financial
+snapshot above text chat and a results canvas, without requiring AI consent/model
+calls for the snapshot. `/dashboard` preserves the complete dashboard. The shell
+provides one persistent theme-token-aligned assistant, inline at home and docked
+beside other pages. Text remains the default; history opens in a drawer. Native
+voice uses a distinct stage and server-run tools, not transcript-to-text/read-aloud.
+Switching back to text stops capture and retains the draft, conversation and results.
+Confirmed receipts enter both modes' next server context; verbal agreement is never
+approval. See the [assistant guide](../../docs/technical/financial-assistant.md).
 **Asistente · ?** in the top bar (accessible name **Abrir asistente · ?**) exposes
 the actual keyboard shortcut without a floating button covering page actions. It
 restores/focuses that instance without resending, respects editable fields and real modals, and is
@@ -126,11 +134,13 @@ the draft/selection and stops work without deleting saved history. Separate Dele
 still requires confirmation. Owner/credential replacement clears private state.
 New answers anchor once at their beginning; later tokens never force scrolling.
 Native references start collapsed, retain per-answer expansion and keep approval
-cards separate. The desktop non-modal panel becomes modal with inert background
-and focus containment on narrow screens; both support Escape and safe areas.
+cards separate. Outside home, the desktop dock becomes modal with inert background
+and focus containment on narrow screens; the inline home remains ordinary page
+content. Escape dismisses the history drawer or an outside-home dock.
 Processing consent is saved on the account through authenticated RPC, not browser
 storage. New/refused/outdated consent opens a dedicated screen; accepted consent
-survives reload/sign-out/devices. **Ahora no** saves refusal and minimizes;
+survives reload/sign-out/devices. **Ahora no** saves refusal and minimizes a dock;
+the home snapshot and consent/history entry remain available without processing.
 **Ver historial sin IA** keeps saved chats readable/deletable without new processing.
 Reopening checks permission without remounting an accepted chat. Failed/uncertain
 saves require an explicit state check, never automatic mutation replay.

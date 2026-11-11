@@ -17,6 +17,7 @@ import {
   ASSISTANT_MAX_INPUT,
   type AssistantConsentDecision,
   type AssistantConversation,
+  type AssistantEvent,
   type AssistantTurn,
   type FinancialAction,
 } from "@lazyfinance/contracts";
@@ -27,11 +28,11 @@ import {
 import { RpcClient, type RpcScope } from "../../core/rpc/rpc-client";
 import { createScopedCommand } from "../../core/rpc/scoped-command";
 import { AssistantConsentData } from "../../features/assistant/assistant-consent.data";
-import { assistantReplyText } from "../../features/assistant/assistant-reply-text";
 import { AssistantStreamClient } from "../../features/assistant/assistant-stream.client";
 import { AssistantVoiceClient } from "../../features/assistant/assistant-voice.client";
 import { AssistantWorkspace } from "../../features/assistant/assistant-workspace";
 import { Icon } from "../../shared/ui/icon";
+import { AssistantCanvas } from "./canvas/assistant-canvas";
 import { AssistantConsentScreen } from "./consent/assistant-consent-screen";
 import { AssistantReply } from "./reply/assistant-reply";
 import { AssistantWelcome } from "./welcome/assistant-welcome";
@@ -44,11 +45,18 @@ interface LiveTurn {
   controller: AbortController;
   status: string;
   error: string | null;
+  nativeVoice?: boolean;
 }
 
 @Component({
   selector: "assistant-page",
-  imports: [Icon, AssistantReply, AssistantWelcome, AssistantConsentScreen],
+  imports: [
+    Icon,
+    AssistantReply,
+    AssistantWelcome,
+    AssistantConsentScreen,
+    AssistantCanvas,
+  ],
   templateUrl: "./assistant.page.html",
   styleUrl: "./assistant.page.css",
   providers: [AssistantVoiceClient, AssistantConsentData],
@@ -60,6 +68,18 @@ export class AssistantPage {
   protected readonly consent = inject(AssistantConsentData);
   protected readonly voiceDisclosure = signal(false);
   protected readonly voiceFallback = signal("");
+  protected readonly captions = signal(false);
+  protected readonly voiceLabel = computed(() =>
+    this.voice.state() === "connecting"
+      ? "Conectando…"
+      : this.voice.state() === "querying"
+        ? "Consultando tus datos"
+        : this.voice.state() === "responding"
+          ? "Respondiendo"
+          : this.voice.state() === "muted"
+            ? "Micrófono silenciado"
+            : "Te escucho",
+  );
   private readonly rpc = inject(RpcClient);
   private readonly credentials = inject(AuthCredentials);
   private readonly stream = inject(AssistantStreamClient);
@@ -75,6 +95,9 @@ export class AssistantPage {
   protected readonly follow = signal(true);
   protected readonly draft = signal("");
   protected readonly historyOnly = signal(false);
+  protected readonly historyOpen = signal(false);
+  protected readonly canvasOpen = signal(false);
+  protected readonly resultSelection = signal<string | undefined>(undefined);
   private readonly consentReview = signal(false);
   protected readonly processingAccepted = computed(
     () => !this.consentReview() && this.consent.allowed(),
@@ -194,6 +217,7 @@ export class AssistantPage {
   protected readonly canSend = computed(
     () =>
       !this.busy() &&
+      this.voice.state() === "off" &&
       !this.historyOnly() &&
       !this.invalidId() &&
       this.configuration.hasValue() &&
@@ -215,6 +239,10 @@ export class AssistantPage {
       !this.historyOnly() &&
       !this.invalidId() &&
       this.processingAccepted() &&
+      !this.conversation.isLoading() &&
+      !this.conversation.error() &&
+      !this.awaitingConfirmation() &&
+      this.turns().length < 24 &&
       this.configuration.hasValue() &&
       this.configuration.value().enabled &&
       !this.configuration.value().demonstration &&
@@ -223,6 +251,20 @@ export class AssistantPage {
   );
 
   constructor() {
+    effect(() => {
+      const state = this.voice.state(),
+        live = this.liveState();
+      if (state === "off" && live?.nativeVoice && live.pending) {
+        live.controller.abort();
+        this.liveState.set({
+          ...live,
+          pending: false,
+          error:
+            "La voz terminó. Consulta el historial para confirmar lo que alcanzó a guardarse; no se reenviará la pregunta.",
+        });
+        untracked(() => this.conversation.reload());
+      }
+    });
     inject(DestroyRef).onDestroy(() => {
       this.endVoice(true);
       this.lifetime.abort();
@@ -248,7 +290,10 @@ export class AssistantPage {
         live = this.liveState();
       if (scope !== previous || id !== previousId) {
         if (scope !== previous || previousId !== undefined) this.endVoice(true);
-        this.draft.set("");
+        if (scope !== previous || previousId !== undefined) this.draft.set("");
+        this.resultSelection.set(undefined);
+        this.historyOpen.set(false);
+        this.canvasOpen.set(false);
         this.confirmDelete.set(false);
       }
       if (scope !== previous) {
@@ -356,6 +401,7 @@ export class AssistantPage {
 
   protected newConversation() {
     if (!this.busy()) {
+      this.endVoice();
       this.liveState.set(null);
       this.confirmDelete.set(false);
       this.draft.set("");
@@ -364,7 +410,26 @@ export class AssistantPage {
   }
 
   protected select(id: string) {
-    if (!this.busy()) this.workspace.selection.set(id);
+    if (!this.busy()) {
+      this.endVoice();
+      this.workspace.selection.set(id);
+      this.closeHistory();
+      this.resultSelection.set(undefined);
+    }
+  }
+
+  protected closeHistory() {
+    this.historyOpen.set(false);
+    this.panel()
+      ?.nativeElement.querySelector<HTMLButtonElement>(
+        '[aria-controls="assistant-history"]',
+      )
+      ?.focus();
+  }
+
+  protected showResult(id: string) {
+    this.resultSelection.set(id);
+    this.canvasOpen.set(true);
   }
 
   private cancelProcessing() {
@@ -394,13 +459,18 @@ export class AssistantPage {
     if (!confirmed || this.credentials.current() !== owner) return;
     this.consentReview.set(false);
     this.historyOnly.set(false);
-    if (decision === "refused" && this.workspace.focusRequest() === opening)
+    if (
+      decision === "refused" &&
+      !this.workspace.home() &&
+      this.workspace.focusRequest() === opening
+    )
       this.workspace.minimize();
   }
 
   protected viewHistory() {
     this.cancelProcessing();
     this.historyOnly.set(true);
+    this.historyOpen.set(true);
   }
 
   protected requestConsent() {
@@ -456,29 +526,104 @@ export class AssistantPage {
     await this.voice.start(
       owner,
       id,
-      (text) => {
-        if (!current()) return;
-        this.draft.set(text);
-        // An interrupted/unconfirmed previous turn is reconciled explicitly, never replayed.
-        if (this.canSend()) void this.send();
-        else {
-          this.endVoice();
-          this.voiceFallback.set(
-            "Tu transcripción quedó en el borrador. Revisa el estado de la conversación y envíala por texto cuando esté lista.",
-          );
-        }
+      (event) => {
+        if (current()) this.receiveVoice(event);
       },
-      () => this.stop(),
+      () => {},
       startup.signal,
     );
     if (!current() && this.voiceStartup === startup) this.endVoice();
   }
 
+  private receiveVoice(event: AssistantEvent) {
+    const scope = this.rpc.authenticatedScope(),
+      conversationId = this.id();
+    if (!scope || !conversationId) return;
+    if (event.type === "turn")
+      this.liveState.set({
+        scope,
+        conversationId,
+        turn: event.turn,
+        pending: true,
+        controller: new AbortController(),
+        status: "Consultando tus datos…",
+        error: null,
+        nativeVoice: true,
+      });
+    const live = this.live();
+    if (!live) return;
+    if (event.type === "delta")
+      this.liveState.set({
+        ...live,
+        turn: { ...live.turn, text: live.turn.text + event.text },
+      });
+    if (event.type === "source") {
+      this.liveState.set({
+        ...live,
+        turn: {
+          ...live.turn,
+          sources: [
+            ...live.turn.sources.filter(
+              (source) => source.id !== event.source.id,
+            ),
+            event.source,
+          ],
+        },
+      });
+      this.resultSelection.set(live.turn.id);
+    }
+    if (event.type === "action") {
+      this.liveState.set({
+        ...live,
+        turn: {
+          ...live.turn,
+          actions: [
+            ...live.turn.actions.filter(
+              (action) => action.id !== event.action.id,
+            ),
+            event.action,
+          ],
+        },
+      });
+      this.showResult(live.turn.id);
+    }
+    if (event.type === "status")
+      this.liveState.set({ ...live, status: event.text });
+    if (event.type === "done") {
+      this.liveState.set({ ...live, turn: event.turn, pending: false });
+      this.conversation.reload();
+      this.conversations.reload();
+    }
+    if (event.type === "error")
+      this.liveState.set({ ...live, pending: false, error: event.message });
+  }
+
   protected endVoice(clearTranscripts = false) {
+    const active = this.voice.state() !== "off",
+      scope = this.rpc.authenticatedScope(),
+      id = this.id();
+    const ended = this.voice.end(clearTranscripts);
     this.voiceStartup?.abort();
     this.voiceStartup = undefined;
     this.voiceDisclosure.set(false);
-    this.voice.end(clearTranscripts);
+    if (active) {
+      const live = this.live();
+      if (live?.pending) this.liveState.set({ ...live, pending: false });
+      void ended.then(() => {
+        if (
+          this.rpc.authenticatedScope() === scope &&
+          this.id() === id &&
+          !this.lifetime.signal.aborted
+        )
+          this.conversation.reload();
+      });
+    }
+  }
+
+  protected continueText() {
+    this.endVoice();
+    this.canvasOpen.set(false);
+    this.workspace.focusRequest.update((value) => value + 1);
   }
 
   protected close() {
@@ -569,6 +714,7 @@ export class AssistantPage {
   }
 
   protected actionChanged(action: FinancialAction) {
+    if (action.conversationId !== this.id()) return;
     const live = this.live();
     if (live?.turn.actions.some((value) => value.id === action.id))
       this.liveState.set({
@@ -660,6 +806,7 @@ export class AssistantPage {
       error: null,
     };
     this.liveState.set(execution);
+    this.resultSelection.set(undefined);
     this.draft.set("");
     this.follow.set(true);
     const current = () =>
@@ -683,8 +830,6 @@ export class AssistantPage {
           if (!current()) return;
           const live = this.liveState();
           if (!live) return;
-          if (event.type === "done" && event.turn.status === "complete")
-            this.voice.speak(assistantReplyText(event.turn.text));
           if (event.type === "turn" || event.type === "done")
             update({
               turn: event.turn,

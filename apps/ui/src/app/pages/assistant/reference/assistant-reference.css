@@ -261,3 +261,41 @@ a:focus-visible {
     width: 100%;
   }
 }
+:host .assistant-chart {
+  display: grid;
+  grid-template-columns: minmax(100px, 150px) minmax(0, 1fr);
+  gap: 16px;
+  margin: 16px 0;
+  align-items: center;
+}
+.assistant-chart svg {
+  width: 100%;
+}
+.assistant-chart figcaption {
+  font-size: var(--text-caption);
+  color: var(--muted);
+}
+.assistant-chart figcaption div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0;
+}
+.assistant-chart i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.assistant-chart strong {
+  margin-left: auto;
+}
+@media (max-width: 400px) {
+  :host .assistant-chart {
+    grid-template-columns: 1fr;
+  }
+  .assistant-chart svg {
+    max-width: 150px;
+    margin: auto;
+  }
+}

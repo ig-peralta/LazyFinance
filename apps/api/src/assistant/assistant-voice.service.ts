@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import type { AssistantVoiceEvent } from "@lazyfinance/contracts";
 import {
   ForbiddenException,
   HttpException,
@@ -10,11 +11,18 @@ import {
 } from "@nestjs/common";
 import { EnvironmentService } from "../environment/environment.service";
 import { AssistantService } from "./assistant.service";
+import {
+  AssistantVoiceRuntime,
+  type RealtimeConversation,
+} from "./assistant-voice-runtime";
 
 export const VOICE_FETCH = Symbol("VOICE_FETCH");
 const duration = 300_000;
 interface VoiceLease {
   owner: string;
+  conversationId: string;
+  runtime?: RealtimeConversation;
+  observing?: boolean;
   call?: string;
   timer?: ReturnType<typeof setTimeout>;
   initializing: boolean;
@@ -38,6 +46,7 @@ export class AssistantVoiceService implements OnModuleDestroy {
     private readonly environment: EnvironmentService,
     private readonly assistant: AssistantService,
     @Inject(VOICE_FETCH) private readonly request: typeof fetch,
+    private readonly runtime: AssistantVoiceRuntime,
   ) {}
 
   configuration() {
@@ -81,6 +90,7 @@ export class AssistantVoiceService implements OnModuleDestroy {
     const id = randomUUID();
     const lease: VoiceLease = {
       owner,
+      conversationId: input.conversationId,
       initializing: true,
       stopRequested: false,
     };
@@ -94,7 +104,7 @@ export class AssistantVoiceService implements OnModuleDestroy {
         type: "realtime",
         model: this.environment.get("ASSISTANT_VOICE_MODEL"),
         instructions:
-          "Eres la voz de LazyFinance. Lee solamente el texto suministrado, sin añadir afirmaciones, nombres de proveedor ni acciones. Nunca ejecutes ni apruebes cambios.",
+          "Espera la configuración del servidor. No respondas ni ejecutes acciones antes de recibirla.",
         tools: [],
         max_output_tokens: 1024,
         audio: {
@@ -103,7 +113,7 @@ export class AssistantVoiceService implements OnModuleDestroy {
             turn_detection: {
               type: "server_vad",
               create_response: false,
-              interrupt_response: false,
+              interrupt_response: true,
             },
           },
           output: { voice: "marin" },
@@ -167,6 +177,13 @@ export class AssistantVoiceService implements OnModuleDestroy {
         lease.stopRequested
       )
         throw new Error("Invalid or obsolete voice session");
+      lease.runtime = await this.runtime.connect(
+        owner,
+        lease.conversationId,
+        call,
+      );
+      if (signal.aborted || lease.stopRequested || this.draining)
+        throw new Error("Voice initialization cancelled");
       return { id, sdp, expiresAt: new Date(now + duration).toISOString() };
     } catch {
       lease.initializing = false;
@@ -185,6 +202,7 @@ export class AssistantVoiceService implements OnModuleDestroy {
     clearTimeout(lease.timer);
     // Keep the lease until its in-flight initialization supplies the remote ID.
     if (lease.initializing) return;
+    const closing = lease.runtime?.close();
     if (!lease.call) {
       this.sessions.delete(id);
       return;
@@ -199,7 +217,7 @@ export class AssistantVoiceService implements OnModuleDestroy {
         if ((lease.drainAttempts ?? 0) >= 3) return;
         lease.drainAttempts = (lease.drainAttempts ?? 0) + 1;
       }
-      if (await this.hangup(id, lease)) return;
+      if (await this.hangup(id, lease)) return closing;
     }
     if (!this.draining) {
       clearTimeout(lease.timer);
@@ -210,6 +228,30 @@ export class AssistantVoiceService implements OnModuleDestroy {
     }
     // Unconfirmed remote IDs remain in memory for a subsequent drain/recovery
     // attempt. There is intentionally no claim of crash-durable recovery.
+  }
+
+  async listen(
+    owner: string,
+    id: string,
+    signal: AbortSignal,
+    emit: (event: AssistantVoiceEvent) => Promise<void>,
+  ) {
+    const lease = this.sessions.get(id);
+    if (
+      !lease ||
+      lease.owner !== owner ||
+      !lease.runtime ||
+      lease.stopRequested ||
+      lease.observing
+    )
+      throw new ForbiddenException();
+    lease.observing = true;
+    try {
+      await this.assistant.requireConsent(owner);
+      await lease.runtime.listen(signal, emit);
+    } finally {
+      await this.end(owner, id);
+    }
   }
 
   private async hangup(id: string, lease: VoiceLease): Promise<boolean> {

@@ -1,6 +1,8 @@
 # First-party financial assistant
 
-The shell owns one persistent, minimizable assistant; `/asistente` opens it and
+The assistant-first home is `/asistente`, the default destination after sign-in.
+The shell owns one persistent assistant, inline at home and docked beside other
+financial pages (a modal on narrow screens outside home).
 `?conversacion=<UUID>` explicitly selects saved history. It reads the same financial
 services as the dashboard and MCP. It can prepare budget/savings-goal creation,
 tag management and individual movement-tag decisions. Preparing changes no
@@ -21,6 +23,18 @@ covering page actions. It also supplies focus recovery after route entry. Welcom
 suggestions only prepare a draft, and the welcome copy distinguishes no money
 movement from changes that require explicit saved-action approval.
 
+Home keeps a compact, month-selectable snapshot above the conversation. It uses
+the ordinary scoped monthly summary, not model calls, so it remains available
+without AI consent or a configured model. **Resumen completo** preserves the
+existing dashboard at `/dashboard`; all manual financial pages remain reachable.
+Text is the default: typed questions, streamed answers, follow-ups and history.
+History opens in a drawer instead of a permanent third column. The results canvas
+shows validated source observations and the exact approval cards, with older
+results selectable. On narrow/docked layouts, **Conversación / Resultados** switch
+the visible pane. Sources remain expandable in their original replies. Spending
+charts reuse the dashboard's exact distribution policy; widgets never render
+model-authored HTML or independently reconstruct financial totals.
+
 Replies anchor at the beginning of the new answer once, not on each token/source/
 action update. Deliberate scrolling and restored history are not auto-followed;
 the explicit jump control reveals the latest content. Native reference disclosures
@@ -35,11 +49,15 @@ It needs separate API-only `ASSISTANT_VOICE_ENABLED=true`,
 `ASSISTANT_VOICE_MODEL` and `ASSISTANT_VOICE_API_KEY`, plus a configured non-demo
 text assistant. The [voice contract](assistant-live-voice.md) records provider/API
 evidence, privacy, stop/response/browser targets, single-replica/cost bounds and
-unverified live gates. Explicit start, mute/end, barge-in, in-memory input/audio
-transcripts and text fallback use the same grounded saved-turn pipeline. Minimize,
+unverified live gates. Native audio turns use a server-side Realtime control
+connection and the same bounded financial tools and history leases as text, not
+transcription → text request → read-aloud. Captions support reading/history;
+the native audio item drives generation. A dedicated stage shows listening,
+querying and responding, optional captions and persistent mute/end/text controls.
+Switching back to text preserves the draft, conversation and results. Minimize,
 navigation and hidden tabs end capture, not text history. Audio has no approval
-or execution capability. The normal client's grounded read-aloud behavior is not
-a server-enforced restriction on a modified browser's provider data channel; see
+or execution capability. Server-run tools are not a server-enforced restriction
+on a modified browser's provider rendering commands; see
 the voice contract's explicit rendering and shutdown/recovery limitations.
 No live provider call is part of deterministic validation.
 
@@ -85,7 +103,8 @@ Existing banking/OAuth/RPC keys are unrelated and must not be reused.
 Opening the configured non-demo assistant shows a dedicated consent screen when
 the decision is missing, refused or no longer matches the processing policy.
 **Permitir y abrir asistente** saves acceptance; **Ahora no** saves refusal and
-minimizes the panel. Refusal shows the screen again on the next open. Acceptance
+minimizes a docked panel; at home the financial snapshot and consent/history
+entry remain available. Refusal shows the screen again on the next open. Acceptance
 survives reload, sign-out and other devices without another checkbox. It never
 sends a question, creates a conversation or starts microphone capture by itself.
 **Ver historial sin IA** allows reading/deleting saved chats without new model
@@ -143,6 +162,17 @@ allow follow-up questions but do not prove current execution. Historical answers
 provide conversational context, not current financial truth; the prompt requires fresh reads for personal
 financial claims. Each model step receives system instructions separately from
 untrusted questions, merchant descriptions, tag names and tool data.
+
+Every new text/native voice turn also receives a separate **fresh proposal-state
+context** from persistence's owned ledger projection, including proposals outside
+the last eight completed exchanges. It is bounded to 24 outcomes / 16,000
+characters and includes the saved version, exact revised request, status and
+applied results. This is not a browser-supplied “approved” flag or an artificial
+user message. Only `applied` with results proves the recorded action outcome;
+proposed/cancelled/stale/expired and uncertain transport outcomes do not. A receipt
+does not prove that the created resource has remained unchanged. The next response
+can acknowledge what was actually approved without repeating the proposal; fresh
+financial reads still establish current balances and resource state.
 
 The runtime offers the eleven financial reads plus the owned tag catalog, filtered
 movement browsing and movement detail. It can prepare proposals and read their
@@ -208,6 +238,10 @@ after a committed approval reports the applied outcome, not an undo. Ambiguous
 responses require an explicit status read; the UI never automatically retries a
 mutation. Approval makes no additional model call. `consultar_estado_accion` is
 restricted to the current conversation, and only `applied` proves execution.
+Confirmed receipts also appear in the originating reply and survive reloading
+that conversation. Text and voice get the same authoritative outcome context on
+their next exchange, including user-edited approvals. There is no speculative
+spoken success notification or automatic replay after an uncertain approval.
 
 Migration **029** adds owner-scoped `assistant.action`, independently of chat JSON.
 It retains immutable ownership/origin/idempotency metadata, normalized commands,

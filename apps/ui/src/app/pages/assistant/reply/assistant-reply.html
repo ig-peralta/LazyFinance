@@ -1,5 +1,5 @@
 <article class="chat-turn">
-  <div class="user-message"><span class="message-author">TÚ</span><p>{{ turn().question }}</p></div>
+  <div class="user-message"><span class="message-author">{{ turn().voice ? 'TÚ · VOZ' : 'TÚ' }}</span><p>{{ turn().voice?.question ?? turn().question }}</p></div>
   <div class="assistant-message">
     <span class="reply-avatar" aria-hidden="true"><app-icon name="spark" /></span>
     <div class="reply-content">
@@ -9,9 +9,11 @@
       @if (!turn().text && turn().status === 'pending') { <div class="typing" aria-label="Consultando tus datos"><i></i><i></i><i></i></div> }
       @if (text()) { <assistant-markdown class="reply-markdown" [text]="text()" /> }
       @if (turn().status === 'failed' || turn().status === 'interrupted') { <p class="incomplete-note">Esta respuesta no se completó. No tomes sus afirmaciones como un resultado confirmado.</p> }
-      @for (action of turn().actions; track action.id) {
+      @if (canvas() && (turn().actions.length || turn().sources.length)) { <div class="reply-actions"><button type="button" (click)="showResult.emit(turn().id)">{{ turn().actions.length ? 'Revisar propuesta y resultados' : 'Ver en pantalla' }} ↗</button></div> }
+      @if (canvas()) { @for (action of turn().actions; track action.id) { @if (action.status === 'applied' && action.results.length) { <p class="action-receipt" role="status"><app-icon name="check" /> Resultado confirmado: @for (result of action.results; track result.id) { <span>{{ result.title }}{{ $last ? '.' : ',' }}</span> } Disponible para las próximas respuestas.</p> } } }
+      @if (!canvas()) { @for (action of turn().actions; track action.id) {
         <assistant-action-card [action]="action" [confirmedTurn]="turn().status === 'complete'" [busy]="busy()" (changed)="actionChanged.emit($event)" />
-      }
+      } }
       @if (turn().sources.length) {
         <details class="reply-sources">
           <summary class="sources-heading">Referencias financieras · {{ turn().sources.length }} {{ turn().sources.length === 1 ? 'consulta' : 'consultas' }}</summary>

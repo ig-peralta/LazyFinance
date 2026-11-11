@@ -1,5 +1,7 @@
+import { once } from "node:events";
 import {
   AssistantVoiceEndSchema,
+  AssistantVoiceEventSchema,
   AssistantVoiceOfferSchema,
   AssistantVoiceSessionSchema,
 } from "@lazyfinance/contracts";
@@ -63,5 +65,50 @@ export class AssistantVoiceHttp {
     res.set("Cache-Control", "private, no-store");
     await this.voice.end(req.principal.userId, parsed.data.id);
     return { requested: true };
+  }
+
+  @Post("events")
+  async events(
+    @Body() body: unknown,
+    @Req() req: AuthenticatedRequest,
+    @Res() res: Response,
+  ) {
+    const parsed = AssistantVoiceEndSchema.safeParse(body);
+    if (!parsed.success) throw new BadRequestException("Invalid voice session");
+    const lifetime = new AbortController();
+    const close = () => lifetime.abort();
+    res.on("close", close);
+    const signal = AbortSignal.any([
+      lifetime.signal,
+      AbortSignal.timeout(305_000),
+    ]);
+    try {
+      await this.voice.listen(
+        req.principal.userId,
+        parsed.data.id,
+        signal,
+        async (event) => {
+          signal.throwIfAborted();
+          if (!res.headersSent) {
+            res.status(200).set({
+              "Content-Type": "application/x-ndjson; charset=utf-8",
+              "Cache-Control": "private, no-store",
+              "X-Content-Type-Options": "nosniff",
+              "X-Accel-Buffering": "no",
+            });
+            res.flushHeaders();
+          }
+          if (
+            !res.write(
+              `${JSON.stringify(AssistantVoiceEventSchema.parse(event))}\n`,
+            )
+          )
+            await once(res, "drain", { signal });
+        },
+      );
+    } finally {
+      res.off("close", close);
+      if (res.headersSent && !res.destroyed) res.end();
+    }
   }
 }

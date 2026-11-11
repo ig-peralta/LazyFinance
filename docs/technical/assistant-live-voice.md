@@ -1,144 +1,153 @@
-# Live voice contract (LAZ-95)
+# Native conversational voice (LAZ-95)
 
-## Selected design and capability evidence
+## Transport and authority
 
-Use OpenAI Realtime's unified WebRTC interface: authenticated API exchanges an
-SDP offer at `POST /v1/realtime/calls`; browser media tracks carry continuous
-bidirectional audio and the data channel carries VAD/transcription/cancellation.
-No API key or ephemeral provider credential reaches the browser. The API binds
-the opaque local session to the verified owner and an allowlisted browser origin.
-This is not recording upload, browser speech recognition or browser speech synthesis.
+The API exchanges an SDP offer at OpenAI Realtime's unified
+`POST /v1/realtime/calls`. WebRTC carries continuous bidirectional audio; a
+server-side WebSocket attaches to the returned call ID. No provider key or
+ephemeral credential reaches the browser. Sessions are bound to the authenticated
+owner, an owned conversation and an allowlisted browser origin.
 
-Capability evidence consulted 2026-11-10 (documentation, not a live test):
+Capability documentation reviewed 2026-11-11, **not live-provider evidence**:
 
-- [WebRTC unified interface](https://developers.openai.com/api/docs/guides/voice-webrtc?api=realtime): multipart SDP/session exchange, remote audio tracks and data channel.
-- [Realtime conversations](https://developers.openai.com/api/docs/guides/realtime-conversations): server VAD with automatic responses disabled, input transcription, out-of-band audio responses, response cancellation and output-buffer clearing.
-- [Call hangup](https://developers.openai.com/api/reference/resources/realtime/subresources/calls/methods/hangup): server-side termination.
+- [Unified WebRTC](https://developers.openai.com/api/docs/guides/voice-webrtc?api=realtime).
+- [Realtime server controls](https://developers.openai.com/api/docs/guides/voice-server-controls): the Realtime sideband uses `wss://api.openai.com/v1/realtime?call_id=…`, authenticated by the server.
+- [Realtime conversations](https://developers.openai.com/api/docs/guides/realtime-conversations): audio input, VAD commits, manual response creation, tools, transcript events and cancellation.
+- [Call hangup](https://developers.openai.com/api/reference/resources/realtime/subresources/calls/methods/hangup).
 
-Additional API-reference review on 2026-11-11 confirmed
-[`RealtimeSessionCreateRequest`](https://developers.openai.com/api/reference/resources/realtime/subresources/client_secrets/methods/create)
-supports the selected `gpt-4o-mini-transcribe` input transcription, Spanish language
-hint, `marin` voice and numeric `max_output_tokens`. Both VAD automatic-response
-and automatic-interruption flags are false: application cancellation handles
-out-of-band replies. No ephemeral-secret endpoint is used by this implementation.
+This replaces the previous transcription → ordinary text request → literal
+read-aloud adapter. VAD keeps `create_response:false` so the **server** acquires
+a history lease before requesting a response to the committed **audio item**.
+Transcription is not the model input or the generation trigger. Automatic
+interruption is enabled; local output mute/clear and server cancellation also
+invalidate the old response immediately.
 
-In the normal first-party UI, voice is an audio front end to the existing financial
-assistant, not a second financial agent. Completed input transcripts enter the same
-authenticated turn pipeline and saved history. That client requests speech only
-for confirmed, complete grounded replies, using an out-of-band response with empty
-conversation context and no tools.
-The normal client sends no raw financial tool JSON to the audio renderer. Audio is model-generated
-and may mispronounce or depart from the supplied text: the saved written answer,
-references, uncertainty and exact approval cards remain authoritative. No voice
-event or spoken agreement calls approval/execution. Do not release without checking
-spoken/text fidelity on synthetic fixtures.
+The API waits for sideband configuration acknowledgement before returning usable
+SDP. It seeds bounded saved text/voice history, installs the same financial reads,
+proposal preparation and action-status tools, and gives each turn short,
+speech-specific instructions. Financial tools execute only on the sideband using
+the verified owner, never browser-supplied tool results. `AssistantTurnTools`
+shares validation, result-size budgets, ownership and financial semantics with
+text. There is no approval/execution/cancellation tool for the model.
 
-**Rendering is client policy, not a server-enforced grounding sandbox.** The browser
-owns the provider data channel. A modified own client can send `response.create`
-or change session instructions and request ungrounded audio independently of the
-saved-turn pipeline. No provider setting used here prevents those client commands.
-It can also override application-requested output settings. Neither the data
-channel nor provider output has first-party financial tool credentials, ownership
-authority or an approval endpoint: exact saved-action approval stays independently
-authenticated and server-validated. Strong rendering enforcement would require a
-different server-controlled media/event transport, not a prompt or an invented
-provider permission. Interpolated read-aloud instructions do not guarantee fidelity;
-the written answer and references remain authoritative.
+`POST /assistant/voice/events` accepts only the opaque session ID. Its authenticated,
+no-store NDJSON stream carries validated sources, proposals, captions, turn
+completion and listening/querying/responding states. Browser data-channel events
+are used for local captions/playback/interruption, not financial authority. A
+second observer is rejected; stream loss ends the session, with no reconnect or
+tool replay. Foreign IDs neither read nor terminate another owner's session.
 
-## Controls, privacy and lifetime
+## Shared conversation, results and approvals
 
-Account-persisted processing consent precedes external text processing. A separate voice
-start confirms that microphone audio and completed answer text go to OpenAI,
-including during silence; paid processing may occur. No automatic microphone
-request, reconnect, transcript replay or automatic retry. Start requests permission;
-mute disables audio tracks and clears pending input; End stops tracks immediately,
-closes transport and requests owner-bound server hangup. Minimize, navigation,
-conversation replacement, hidden tab, device loss, logout, credential replacement
-and component destruction end voice. Minimize retains only in-memory text state
-and may retain text generation; Stop generation is a separate control.
+The server claims/finishes the same 90-second conversation leases as text.
+Native voice uses an immutable `Consulta por voz` lease question and optional
+`turn.voice.question` for its readable transcription. Shared model history and
+the UI use the readable question. Completion requires a transcript, a completed
+provider response and the shared evidence check. Missing captions, failures or
+interruption never become a confirmed answer. No audio is stored.
 
-First-time/refused consent shows a dedicated assistant entry screen. After current
-acceptance is confirmed, **Conversar por voz** opens the voice disclosure without
-another session checkbox. Only **Entiendo, iniciar micrófono** can begin startup,
-guarded by owner, supported browser, valid selection, idle state, current saved
-consent and enabled non-demo text/voice configurations. Opening the
-disclosure never creates a conversation or requests capture. Failed/disabled
-availability offers an explicit **Volver a comprobar voz** read; ordinary chat
-refresh also reloads voice availability without replaying a start.
+Tools update the same results canvas used by text. Spoken replies favor one or
+two natural sentences; exact figures, dates, review states, charts and proposal
+fields remain visible. Correction/barge-in cancels the old generation and
+discards late tool results without ending a healthy session. Already-started
+proposal preparation may have committed: it is retained as unapproved, never
+replayed, and an interrupted turn cannot authorize it.
 
-Startup has a cancellable generation before conversation creation: cancel, consent
-withdrawal, navigation, minimize (even followed by reopen), hidden tabs, owner change
-and teardown invalidate it before any microphone request. Every asynchronous startup
-boundary checks that same generation, consent, visibility and accepted owner.
-The server also checks current account consent before new voice admission/provider
-requests. Withdrawal stops local capture/text immediately, including when its save
-is uncertain; it blocks new admissions after commit, not already-admitted remote
-audio on every device. See [account consent and reconciliation](financial-assistant.md#account-processing-consent).
+Each native turn refreshes authoritative action outcomes from the ledger-backed
+conversation projection. This includes edited approvals and older proposals
+outside recent-message context. Only `applied` with results proves an action
+outcome. Spoken “yes”, a changed card, cancelled/stale/expired proposals or uncertain
+transport results are not execution evidence. Visual ID/version approval stays
+independently authenticated and server-validated. Approval makes no extra model
+call; the next exchange can acknowledge the confirmed outcome.
 
-Input partials and actual spoken-output transcripts are visible in memory. Completed
-questions and authoritative replies use existing server chat retention/deletion;
-audio is not recorded/stored by LazyFinance. No chat, draft, audio, SDP or voice
-transcript enters browser storage, logs or hydration. Provider retention is separate:
-operators must review their project terms/data controls before enabling. Chat deletion
-does not promise deletion from provider systems/backups or delete financial receipts.
+**Direct WebRTC is not a rendering sandbox.** A modified own browser can change
+provider instructions or request its own audio. It has no server financial tool
+credentials or approval authority. The normal client gates playback by the current
+audio item's response metadata, but this is not a server media guardrail. A native
+model can also misuse valid evidence or speak before a final validation failure.
+Written receipts, source observations and incomplete-answer warnings remain
+authoritative. Strong pre-playback grounding would require buffered/server-owned
+media and claim validation, not prompts alone. Live spoken-number/grounding
+evaluation remains a release gate.
 
-Up to 24 speech items are tracked by provider item ID. Asynchronous completions
-are delivered to the ordinary question path in speech-start order, not completion
-arrival order. Every completed transcript is also retained in a bounded in-memory
-review list immediately; if an earlier item never completes or the conversation
-is interrupted/busy, the user can explicitly prepare a draft after inspecting saved
-history. These items are not automatically replayed. Mute invalidates pending
-items; End invalidates delivery and late events. Owner/conversation changes and
-Close clear retained transcripts.
+## Interaction, consent and privacy
 
-## Bounds and targets
+Text stays the default and is fully supported. Voice has a dedicated stage,
+restrained decorative waveform, optional captions and persistent **Silenciar /
+Terminar voz / Continuar por texto** controls, including while viewing results.
+The waveform illustrates state, not measured microphone amplitude. Returning to
+text stops capture without clearing the draft, selected conversation or results.
+History is a drawer, not competing transcript blocks. On ending a pending turn,
+history must confirm its outcome before another text question can be sent.
 
-Default disabled. Enable only with explicit API-only voice flag, dedicated provider
-key and model; text generation must also be configured (not offline demo).
-Initial deployment supports **one API replica**: admission is process-local,
-one session per owner, four globally, three starts per owner/hour, five minutes
-per session including mute. Server hangup timer bounds a disconnected browser;
-60-second idle client timeout and 15-second setup deadline. No seamless reconnect.
-The normal client requests a default maximum of 1,024 audio output tokens/response;
-this is not a hard security limit against modified browser commands. These bounds are not a currency quota;
-set a dedicated project spend limit/alert before deployment. Restart loses local
-leases; provider's own maximum session lifetime remains the ultimate failure bound.
-Distributed durable admission/hangup recovery is a prerequisite for multiple replicas.
+Account processing consent precedes provider work. A separate explicit microphone
+start discloses that OpenAI receives audio, recent conversation and consulted
+financial context; silence can still incur processing/cost. Opening the disclosure
+never requests capture. No browser speech recognition/synthesis, upload-recording
+workflow, automatic microphone activation, reconnect or transcription replay.
 
-Graceful shutdown marks the service draining and refuses new starts, including
-those still awaiting ownership reads. Initialization leases remain tracked until
-the remote call ID arrives; draining/stop-requested late calls are terminated, never
-returned as usable sessions. Shutdown waits at most 20 seconds and makes at most
-three five-second hangup attempts per known session in that drain generation. Unconfirmed known remote IDs are
-retained in memory for further recovery attempts, with an operator warning; cleanup
-callbacks still run if a delayed response arrives while the process remains alive.
-There is **no durable lease store**. Process kill/crash/restart, a lost initialization
-response without a call ID, unresolved hangup or process exit after the drain deadline
-can leave remote processing unconfirmed. The provider-documented maximum session
-lifetime and project spend controls remain the fallback, not an application hard
-budget or guaranteed five-minute termination. SDP and hangup requests reject HTTP
-redirects; SDP is decoded with a 64,000-byte stream limit and cancelled on excess.
+Startup has a cancellation generation before conversation creation. Cancellation,
+withdrawal, navigation, minimize/reopen, hidden tabs, owner changes and destruction
+invalidate that same generation at each asynchronous boundary. Mute disables tracks,
+clears pending input and silences output. End stops tracks immediately, closes
+transport and requests server hangup. Navigation, hidden tabs, device loss, logout,
+credential replacement and conversation replacement end voice. Text generation
+may survive ordinary navigation, never hidden microphone capture.
 
-Targets (not measured SLAs): local track stop/output mute within 100 ms of End or
-barge-in dispatch; provider output clear/cancel under 500 ms; speech-end to completed
-transcript under 2 s; confirmed written reply to first audio under 2 s. Financial
-generation/read latency is measured separately (existing 65-second turn bound).
-Barge-in immediately silences obsolete audio, cancels pending text generation,
-and never silently resends a question whose save status is uncertain. The next
-transcript is retained for explicit text reconciliation if the old turn is busy.
+The server checks accepted consent at admission, observation attachment, native
+turn admission and tool execution. Withdrawal immediately stops local work and
+blocks new admitted work after commit; it does not retract provider disclosures or
+guarantee cross-device termination of already-admitted audio.
 
-## Browser/device release matrix and validation
+Partials and playback captions stay in bounded memory. Completed readable exchanges
+use existing chat retention/deletion. No audio, draft, SDP or transcript enters
+browser storage, hydration or application logs. Provider retention is separate.
+Deleting chat does not undo finance or delete independent receipts. Review provider
+project data controls before enabling.
 
-Targets: current and previous desktop Chrome/Edge on Windows/macOS/Linux, Chrome
-Android and Safari iOS/macOS with HTTPS/localhost, getUserMedia, WebRTC and data
-channels. Firefox is best-effort pending device/audio validation. Unsupported,
-denied permission, device loss, autoplay rejection, network/provider failure and
-timeouts retain text fallback. No browser is claimed live-verified by unit tests.
+## Bounds, failure handling and release gates
 
-Controlled tests must cover duplex tracks/events, permission races, cleanup,
-late callbacks, mute, barge-in, session/owner replacement, errors and exact approval
-isolation. Live matrix, audio/text fidelity, latency, project usage/cost and remote
-hangup checks require **separate authorization**, synthetic owners and a recorded
-provider/model/browser/date. No live request or real financial disclosure is
-authorized by implementing this adapter. Until that evidence exists the adapter
-stays disabled by default; implementation is not a production readiness claim.
+Default disabled. API-only `ASSISTANT_VOICE_ENABLED`, dedicated key/model and a
+configured non-demo text assistant are required. Initial deployment is **one API
+replica**: process-local admission allows one session per owner, four globally,
+three starts per owner/hour and five minutes per session, including mute. Both
+client and server have 60-second idle bounds. Setup has a 15-second browser deadline;
+sideband connection/configuration also has bounded deadlines. A native turn has a
+65-second deadline, at most eight read/status calls and four proposals. Source
+budgets match text: 24 KB each / 64 KB per turn. Queued events, speech items, output
+length and observation-stream bytes are bounded. Excesses fail closed.
+
+Default provider output is 1,024 tokens per response. This is not a security/currency
+quota against modified browser commands. Use a dedicated project spend limit and
+alerts. Distributed durable admission and hangup recovery are required before
+multiple replicas.
+
+Initialization remains tracked until the provider supplies its call ID; stopped,
+draining or aborted late calls are hung up. Remote hangup is requested independently
+of pending history finalization. Graceful shutdown refuses new starts, waits at
+most 20 seconds and makes at most three five-second hangup attempts per known call
+in a drain generation. Unconfirmed IDs remain in memory with an operator warning.
+There is **no crash-durable lease store**. A lost initialization response, crash,
+unconfirmed hangup or exit after the deadline can leave remote processing
+unconfirmed. Provider lifetime and project controls remain the fallback, not a
+guaranteed application five-minute cost cap. HTTP redirects are rejected and SDP
+is decoded with a 64,000-byte stream limit.
+
+Targets, not measured SLAs: local output mute/track stop within 100 ms of a control
+or barge-in; remote cancellation under 500 ms; speech-end to first relevant audio
+under two seconds when no financial lookup is needed. Measure lookup response,
+spoken-number accuracy and interruption fidelity separately.
+
+Deterministic tests cover native-audio response triggering before transcription,
+owned tool execution, late evidence, interruption/correction, caption completion,
+duplicate calls, approval isolation, HTTP ownership and media cleanup. Mocked browser
+checks do not capture a real microphone or invoke a live model. Current/previous
+Chrome/Edge, Android Chrome and Safari iOS/macOS remain the target live matrix;
+Firefox is best-effort pending device validation. Denied permissions, autoplay,
+network/provider failure and timeouts retain text fallback.
+
+Live provider/model/browser fidelity, latency, project usage/cost and actual remote
+shutdown require **separate authorization**, synthetic owners and recorded evidence.
+Implementation does not authorize real financial disclosures, microphone capture
+or mutations and does not establish production readiness.

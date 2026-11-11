@@ -5,12 +5,8 @@ import {
   ASSISTANT_MAX_TURNS,
   AssistantConfigurationSchema,
   type AssistantEvent,
-  AssistantReadNameSchema,
   type AssistantSend,
-  type AssistantSource,
-  AssistantSourceSchema,
   type AssistantTurn,
-  type FinancialAction,
 } from "@lazyfinance/contracts";
 import {
   HttpException,
@@ -22,8 +18,13 @@ import { ActionsService } from "../actions/actions.service";
 import { EnvironmentService } from "../environment/environment.service";
 import { PersistenceClient } from "../persistence/persistence.client";
 import { AssistantConsentService } from "./assistant-consent.service";
-import { assistantHistory, assistantInstructions } from "./assistant-policy";
+import {
+  assistantActionContext,
+  assistantHistory,
+  assistantInstructions,
+} from "./assistant-policy";
 import { ASSISTANT_RUNTIME, type AssistantRuntime } from "./assistant-runtime";
+import { AssistantTurnTools } from "./assistant-turn-tools";
 import { FinancialReads } from "./financial-reads";
 
 @Injectable()
@@ -90,115 +91,38 @@ export class AssistantService {
         else await emit({ type: "done", turn });
         return;
       }
-      const sources: AssistantSource[] = [];
-      const actions: FinancialAction[] = [];
-      let observedReceipt = false;
-      let proposals = 0;
-      let sourceBytes = 0;
-      let calls = 0;
       let text = "";
       let failed = false;
       const generation = new AbortController();
       const generationSignal = AbortSignal.any([signal, generation.signal]);
+      const tools = new AssistantTurnTools(
+        userId,
+        input.conversationId,
+        turn.id,
+        this.reads,
+        this.actions,
+        generationSignal,
+        emit,
+      );
+      tools.observedReceipt = started.conversation.turns.some((saved) =>
+        saved.actions.some(
+          (action) => action.status === "applied" && action.results.length > 0,
+        ),
+      );
       try {
         await emit({ type: "turn", turn });
         const outcome = await this.runtime.run({
-          instructions: assistantInstructions(),
+          instructions:
+            assistantInstructions() +
+            assistantActionContext(started.conversation.turns),
           messages: [
             ...assistantHistory(started.conversation.turns),
             { role: "user", content: input.text },
           ],
           signal: generationSignal,
-          read: async (name, raw) => {
-            generationSignal.throwIfAborted();
-            const ordinal = ++calls;
-            if (ordinal > 8) throw new Error("Tool budget exhausted");
-            const validName = AssistantReadNameSchema.parse(name);
-            const definition = this.reads.tools[validName];
-            await emit({
-              type: "status",
-              text: `Consultando ${definition.title.toLowerCase()}…`,
-            });
-            let data: AssistantSource["data"] = null;
-            let status: AssistantSource["status"] = "available";
-            let note =
-              "Datos guardados de LazyFinance. La hora de consulta no equivale a la última actualización bancaria. Revisa los períodos, cortes, estimaciones y cobertura del resultado.";
-            let period: string | null = null;
-            let recordId: string | null = null;
-            try {
-              // Validation happens before execution; userId is closed over, never accepted from the model.
-              const args = definition.inputSchema.parse(raw);
-              if (
-                typeof args === "object" &&
-                args &&
-                "month" in args &&
-                typeof args.month === "string"
-              )
-                period = args.month;
-              data = await definition.execute(userId, args);
-              generationSignal.throwIfAborted();
-              if (
-                args &&
-                typeof args === "object" &&
-                "id" in args &&
-                typeof args.id === "string"
-              )
-                recordId = args.id;
-              const bytes = Buffer.byteLength(JSON.stringify(data));
-              if (bytes > 24_000 || sourceBytes + bytes > 64_000) {
-                status = "limited";
-                data = null;
-                note =
-                  "El resultado supera el límite del asistente. Acota la consulta o abre la sección original; no es un resultado completo ni equivale a cero.";
-              } else sourceBytes += bytes;
-            } catch {
-              generationSignal.throwIfAborted();
-              status = "unavailable";
-              data = null;
-              note =
-                "No se pudo consultar esta fuente con esos parámetros. Puede faltar información o acceso al registro. No asumas importes cero ni inventes datos.";
-            }
-            const source = AssistantSourceSchema.parse({
-              id: `F${ordinal}`,
-              tool: validName,
-              title: definition.title,
-              status,
-              queriedAt: new Date().toISOString(),
-              month: period,
-              path: definition.path,
-              recordId,
-              note,
-              data,
-            });
-            sources.push(source);
-            await emit({ type: "source", source });
-            return source;
-          },
-          propose: async (value) => {
-            generationSignal.throwIfAborted();
-            if (++proposals > 4) throw new Error("Proposal budget exhausted");
-            const action = await this.actions.prepare(
-              userId,
-              input.conversationId,
-              turn.id,
-              value,
-            );
-            generationSignal.throwIfAborted();
-            if (!actions.some((existing) => existing.id === action.id))
-              actions.push(action);
-            await emit({ type: "action", action });
-            return action;
-          },
-          actionStatus: async (id) => {
-            generationSignal.throwIfAborted();
-            if (++calls > 8) throw new Error("Tool budget exhausted");
-            const action = await this.actions.get(userId, id);
-            if (action.conversationId !== input.conversationId)
-              throw new Error("Action is not part of this conversation");
-            generationSignal.throwIfAborted();
-            observedReceipt ||= action.status === "applied";
-            return action;
-          },
+          read: (name, raw) => tools.read(name, raw),
+          propose: (value) => tools.propose(value),
+          actionStatus: (id) => tools.actionStatus(id),
           delta: async (delta) => {
             generationSignal.throwIfAborted();
             if (text.length + delta.length > ASSISTANT_MAX_OUTPUT)
@@ -208,23 +132,7 @@ export class AssistantService {
           },
         });
         signal.throwIfAborted();
-        const citations = [...text.matchAll(/\[F(\d+)\]/g)].map(
-          (match) => `F${match[1]}`,
-        );
-        const available = sources.filter(
-          (source) => source.status === "available",
-        );
-        if (
-          !outcome.complete ||
-          !text.trim() ||
-          citations.some(
-            (id) => !available.some((source) => source.id === id),
-          ) ||
-          (!available.length &&
-            !actions.length &&
-            !observedReceipt &&
-            /\d/.test(text.replace(/\[F\d+\]/g, "")))
-        )
+        if (!outcome.complete || !tools.grounded(text))
           throw new Error("Answer is incomplete or lacks consulted evidence");
       } catch {
         failed = !signal.aborted;
@@ -236,8 +144,8 @@ export class AssistantService {
       turn = {
         ...turn,
         text,
-        sources,
-        actions,
+        sources: tools.sources,
+        actions: tools.actions,
         status: signal.aborted ? "interrupted" : failed ? "failed" : "complete",
       };
       // Completion is a separate, lease-checked transaction. It contains no provider call.

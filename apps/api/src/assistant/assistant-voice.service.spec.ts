@@ -5,8 +5,14 @@ import { ENV_SCHEMA } from "../environment/environment.schema";
 import { EnvironmentService } from "../environment/environment.service";
 import { AssistantService } from "./assistant.service";
 import { AssistantVoiceService, VOICE_FETCH } from "./assistant-voice.service";
+import {
+  AssistantVoiceRuntime,
+  type RealtimeConversation,
+} from "./assistant-voice-runtime";
 
 async function setup(enabled = true) {
+  const listen = vi.fn<RealtimeConversation["listen"]>(async () => {});
+  const stop = vi.fn<RealtimeConversation["close"]>(async () => {});
   const get = vi.fn(async (_input: { id: string }) => ({}));
   const conversations = vi.fn((_owner: string) => ({ get: { query: get } }));
   const requireConsent = vi.fn<AssistantService["requireConsent"]>(
@@ -22,6 +28,15 @@ async function setup(enabled = true) {
   const module = await Test.createTestingModule({
     providers: [
       AssistantVoiceService,
+      {
+        provide: AssistantVoiceRuntime,
+        useValue: {
+          connect: vi.fn(async () => ({
+            close: stop,
+            listen,
+          })),
+        },
+      },
       {
         provide: AssistantService,
         useValue: { conversations, requireConsent },
@@ -39,6 +54,8 @@ async function setup(enabled = true) {
   }).compile();
   return {
     voice: module.get(AssistantVoiceService),
+    listen,
+    stop,
     request,
     conversations,
     requireConsent,
@@ -68,6 +85,41 @@ const answer = () =>
   });
 
 describe("voice admission, provider privacy and owner-bound termination", () => {
+  it("rejects foreign and duplicate observers without closing the existing owner's stream", async () => {
+    const f = await setup();
+    const controller = new AbortController();
+    f.listen.mockImplementation(async (signal) => {
+      if (!signal.aborted)
+        await new Promise<void>((resolve) =>
+          signal.addEventListener("abort", () => resolve(), { once: true }),
+        );
+    });
+    try {
+      const session = await f.voice.start("owner", origin, input, signal());
+      await expect(
+        f.voice.listen("foreign", session.id, signal(), async () => {}),
+      ).rejects.toThrow();
+      expect(f.stop).not.toHaveBeenCalled();
+      const observation = f.voice.listen(
+        "owner",
+        session.id,
+        controller.signal,
+        async () => {},
+      );
+      await vi.waitFor(() => expect(f.listen).toHaveBeenCalledOnce());
+      await expect(
+        f.voice.listen("owner", session.id, signal(), async () => {}),
+      ).rejects.toThrow();
+      expect(f.stop).not.toHaveBeenCalled();
+      controller.abort();
+      await observation;
+      expect(f.stop).toHaveBeenCalledOnce();
+      expect(f.request.mock.calls.at(-1)?.[0]).toContain("/hangup");
+    } finally {
+      controller.abort();
+      await f.close();
+    }
+  });
   afterEach(() => vi.useRealTimers());
 
   it("checks consent after the origin gate and before history, admission or provider requests", async () => {
@@ -217,7 +269,7 @@ describe("voice admission, provider privacy and owner-bound termination", () => 
     await f.close();
   });
 
-  it("exchanges real SDP with server-only configuration, no finance tools and no automatic answers", async () => {
+  it("exchanges SDP without automatic answers before the server sideband installs tools", async () => {
     const f = await setup();
     const session = await f.voice.start("owner", origin, input, signal());
     const body = f.request.mock.calls[0][1]?.body;

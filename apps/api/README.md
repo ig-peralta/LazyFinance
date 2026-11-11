@@ -4,7 +4,11 @@ NestJS financial workflow service exposing public tRPC at `/trpc` and scoped
 MCP at `/mcp`. Ordinary HTTP also serves OAuth discovery/protocol/browser interaction
 and the public `GET /` listening check. The first-party assistant streams bearer-only
 NDJSON at `POST /assistant/turns`; text configuration/consent/history use tRPC. Opt-in voice
-uses authenticated HTTP for WebRTC setup/termination. Business REST controllers
+uses authenticated HTTP for WebRTC setup/termination and a server-observation NDJSON
+stream at `POST /assistant/voice/events`. A server-side Realtime WebSocket runs
+native audio turns and the same bounded financial tools/history leases as text;
+transcriptions are captions/records, not ordinary text requests. Both modes refresh
+ledger-backed proposal outcomes, including edited approvals. Business REST controllers
 have been retired. Angular otherwise uses vanilla tRPC clients apart from the
 cookie-bound OAuth interaction.
 

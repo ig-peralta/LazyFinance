@@ -4,6 +4,15 @@ Both HTTP RPC boundaries use NestJS-tRPC routers and vanilla tRPC clients. This
 guide describes their source of truth and change workflow, not a REST API. See
 [private RPC/RLS](persistence-security.md) for authorization and transaction details.
 
+Assistant text retains its strict NDJSON turn endpoint. Native voice additionally
+uses authenticated `POST /assistant/voice/events` with only `{ id }` (opaque owned
+session ID). The response is bounded NDJSON `AssistantVoiceEvent`: existing
+turn/source/action/status/delta/done/error events plus listening/querying/responding
+phases. It is an observation stream, not a browser tool-results endpoint. Voice
+turns may store optional `voice.question` as a readable transcription alongside the
+unchanged lease question. Existing text histories remain valid. No table migration
+or change to approval authority is required by this additive JSON shape.
+
 ## Package boundaries
 
 | Package / export | Contents | Consumers |

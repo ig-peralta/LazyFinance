@@ -852,6 +852,99 @@ body {
   padding: 28px 16px 18px;
   z-index: 30;
 }
+.workspace-stage {
+  min-width: 0;
+}
+.assistant-mount:empty {
+  display: none;
+}
+.assistant-home .workspace-content {
+  padding-bottom: 20px;
+}
+.assistant-home .assistant-mount {
+  padding: 0 32px 32px;
+}
+.assistant-docked .workspace-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 40%);
+  gap: 0;
+  align-items: start;
+}
+.assistant-docked .assistant-mount {
+  position: sticky;
+  top: 16px;
+  padding: 28px 24px 24px 0;
+  min-width: 0;
+}
+.assistant-home-heading {
+  margin-bottom: 22px;
+}
+.assistant-home-heading h1 {
+  font-size: clamp(1.4rem, 2vw, 2rem);
+}
+.financial-snapshot {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+}
+.financial-snapshot > a {
+  padding: 18px 22px;
+  display: grid;
+  gap: 8px;
+  color: var(--ink);
+  text-decoration: none;
+  min-width: 0;
+}
+.financial-snapshot > a + a {
+  border-left: 1px solid var(--line);
+}
+.financial-snapshot span,
+.financial-snapshot small {
+  font-size: var(--text-caption);
+  color: var(--muted);
+  line-height: 1.5;
+}
+.financial-snapshot strong {
+  font-size: clamp(1.3rem, 2vw, 1.8rem);
+  font-weight: 500;
+}
+@media (max-width: 1100px) {
+  .assistant-docked .workspace-stage {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .assistant-docked .assistant-mount {
+    position: static;
+    padding: 0 24px 24px;
+  }
+  .assistant-home .assistant-mount {
+    padding: 0 24px 24px;
+  }
+}
+@media (max-width: 720px) {
+  .assistant-home .assistant-mount {
+    padding: 0 16px 20px;
+  }
+  .financial-snapshot {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .financial-snapshot > a {
+    padding: 14px 16px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+  .financial-snapshot small {
+    grid-column: 1 / -1;
+  }
+  .financial-snapshot > a + a {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+  .assistant-docked .assistant-mount {
+    padding: 0;
+  }
+}
 .workspace-sidebar nav,
 .mobile-drawer nav {
   display: flex;

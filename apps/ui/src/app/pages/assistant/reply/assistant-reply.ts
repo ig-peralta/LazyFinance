@@ -28,6 +28,8 @@ import { AssistantReference } from "../reference/assistant-reference";
 export class AssistantReply {
   readonly turn = input.required<AssistantTurn>();
   readonly busy = input(false);
+  readonly canvas = input(false);
+  readonly showResult = output<string>();
   readonly askAgain = output<string>();
   readonly actionChanged = output<FinancialAction>();
   private readonly lifetime = inject(DestroyRef);

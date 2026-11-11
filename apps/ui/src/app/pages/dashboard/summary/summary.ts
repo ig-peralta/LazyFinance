@@ -2,8 +2,8 @@ import { Component, computed, inject } from "@angular/core";
 import { RouterLink } from "@angular/router";
 import { formatClp } from "../../../../utils/currency";
 import { monthLabel } from "../../../../utils/month";
+import { spendingDistribution } from "../../../features/summaries/spending-distribution";
 import { SummariesData } from "../../../features/summaries/summaries.data";
-import { spendingDistribution } from "./spending-distribution";
 
 @Component({
   selector: "dashboard-summary",

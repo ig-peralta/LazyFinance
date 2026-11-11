@@ -100,9 +100,9 @@ describe("single shell-owned assistant across real route navigation", () => {
     workspace.open();
     fixture.detectChanges();
     await fixture.whenStable();
-    expect(root.querySelector(".workspace-body")?.hasAttribute("inert")).toBe(
-      true,
-    );
+    expect(
+      root.querySelector(".workspace-content")?.hasAttribute("inert"),
+    ).toBe(true);
     expect(
       root
         .querySelector("[role='dialog'].assistant")

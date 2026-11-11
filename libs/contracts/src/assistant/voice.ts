@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { AssistantEventSchema } from "../assistant";
 
 export const AssistantVoiceOfferSchema = z.strictObject({
   conversationId: z.uuid(),
@@ -13,3 +14,11 @@ export const AssistantVoiceEndSchema = z.strictObject({ id: z.uuid() });
 export const AssistantVoiceConfigurationSchema = z.strictObject({
   enabled: z.boolean(),
 });
+export const AssistantVoiceEventSchema = z.union([
+  AssistantEventSchema,
+  z.object({
+    type: z.literal("phase"),
+    state: z.enum(["listening", "querying", "responding"]),
+  }),
+]);
+export type AssistantVoiceEvent = z.infer<typeof AssistantVoiceEventSchema>;

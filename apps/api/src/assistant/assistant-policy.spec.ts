@@ -3,11 +3,16 @@ import {
   AssistantSourceSchema,
   type AssistantTurn,
   AssistantTurnSchema,
+  type FinancialAction,
 } from "@lazyfinance/contracts";
 import { describe, expect, it } from "vitest";
 import { testEnvironment } from "../../tests/fixtures/environment";
 import { ENV_SCHEMA } from "../environment/environment.schema";
-import { assistantHistory, assistantInstructions } from "./assistant-policy";
+import {
+  assistantActionContext,
+  assistantHistory,
+  assistantInstructions,
+} from "./assistant-policy";
 import { assistantModel } from "./assistant-runtime";
 
 const turn = (
@@ -24,6 +29,69 @@ const turn = (
 });
 
 describe("provider-neutral assistant configuration and bounded context", () => {
+  const action = (
+    status: FinancialAction["status"],
+    version = 1,
+  ): FinancialAction => ({
+    id: randomUUID(),
+    version,
+    conversationId: randomUUID(),
+    turnId: randomUUID(),
+    origin: "assistant",
+    request: {
+      kind: "create_tag",
+      tag: { name: `Versión ${version}`, color: null },
+    },
+    context: { tags: [], movement: null },
+    status,
+    createdAt: "2026-11-11T00:00:00.000Z",
+    expiresAt: "2026-11-12T00:00:00.000Z",
+    results:
+      status === "applied"
+        ? [
+            {
+              id: randomUUID(),
+              title: `Versión ${version}`,
+              path: "/etiquetas",
+              outcome: "created",
+            },
+          ]
+        : [],
+  });
+
+  it.each([
+    "applied",
+    "cancelled",
+    "stale",
+    "expired",
+    "proposed",
+  ] as const)("supplies authoritative %s outcomes beyond recent completed messages without inventing execution", (status) => {
+    const proposal = { ...turn("interrupted"), actions: [action(status, 2)] };
+    const turns = [proposal, ...Array.from({ length: 12 }, () => turn())];
+    expect(
+      assistantHistory(turns).some((message) =>
+        message.content.includes(proposal.actions[0].id),
+      ),
+    ).toBe(false);
+    const current = assistantActionContext(turns);
+    expect(current).toContain(proposal.actions[0].id);
+    expect(current).toContain(`"status":"${status}"`);
+    expect(current).toContain('"version":2');
+    expect(current).toContain("Versión 2");
+    expect(current).toContain(
+      status === "applied" ? '"outcome":"created"' : '"results":[]',
+    );
+  });
+
+  it("uses readable voice questions for shared follow-ups and retains the context budget", () => {
+    const voice = {
+      ...turn(),
+      question: "Consulta por voz",
+      voice: { question: "¿Y octubre?" },
+    };
+    expect(assistantHistory([voice])[0].content).toBe("¿Y octubre?");
+    expect(assistantActionContext([])).toBe("");
+  });
   it("requires the current turn and source shapes instead of upgrading earlier development formats", () => {
     const current = turn();
     expect(AssistantTurnSchema.safeParse(current).success).toBe(true);

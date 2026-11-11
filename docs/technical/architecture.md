@@ -201,9 +201,12 @@ permission and never starts capture or sends a question. History remains availab
 without new processing. See [consent policy and withdrawal limits](financial-assistant.md#account-processing-consent).
 Generation is bounded, cancellable and lease/nonce protected. It defaults disabled;
 live model quality remains a separate verification gate. One deferred UI host
-preserves authenticated text state across navigation/minimization. Optional WebRTC
-voice uses an authenticated API SDP/termination bridge with server-only credentials;
-normal-client transcripts and answers use the same saved-turn pipeline. Exact
+preserves authenticated text state across navigation/minimization, inline in the
+assistant-first home and docked beside financial pages. The complete dashboard
+remains independent of AI. Optional WebRTC voice adds a server-side Realtime
+control connection for native audio turns, financial tools and history leases;
+captions never trigger the ordinary text stream. Text and voice both receive
+fresh ledger-backed proposal outcomes, including edited approvals. Exact
 financial approval remains independently server-validated. Client-controlled audio
 rendering is not a grounding sandbox; memory-only voice admission/recovery requires
 one API replica and separate provider spend controls. See the [live voice contract](assistant-live-voice.md).

@@ -19,14 +19,17 @@ export class AssistantWorkspace {
   );
   readonly selection = signal<string | undefined>(undefined);
   readonly focusRequest = signal(0);
+  readonly home = signal(false);
+  private readonly narrow = signal(false);
   readonly modal = signal(false);
   private opener: HTMLElement | null = null;
   onMinimize: (() => void) | undefined;
 
   constructor() {
+    effect(() => this.modal.set(this.narrow() && !this.home()));
     if (typeof window !== "undefined" && window.matchMedia) {
       const media = window.matchMedia("(max-width: 720px)");
-      const update = () => this.modal.set(media.matches);
+      const update = () => this.narrow.set(media.matches);
       update();
       media.addEventListener("change", update);
       inject(DestroyRef).onDestroy(() =>

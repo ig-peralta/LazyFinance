@@ -91,6 +91,11 @@ export class AppShell {
   protected readonly logoutError = signal<string | null>(null);
 
   constructor() {
+    effect(() => {
+      this.assistantWorkspace.home.set(
+        this.url().split(/[?#]/, 1)[0] === "/asistente",
+      );
+    });
     let assistantWasOpen = false;
     afterRenderEffect(() => {
       const opened = this.assistantWorkspace.opened();

@@ -1,22 +1,21 @@
-<section #panel id="financial-assistant-panel" tabindex="-1" class="assistant" role="dialog" [attr.aria-modal]="workspace.modal()" aria-labelledby="assistant-title" [hidden]="!workspace.opened()" (keydown)="containFocus($event)" (keydown.escape)="workspace.minimize(); $event.stopPropagation()">
+<section #panel id="financial-assistant-panel" tabindex="-1" class="assistant" [class.home-assistant]="workspace.home()" [class.canvas-active]="canvasOpen()" [attr.role]="workspace.modal() ? 'dialog' : 'region'" [attr.aria-modal]="workspace.modal() ? true : null" aria-labelledby="assistant-title" [hidden]="!workspace.opened()" (keydown)="containFocus($event)" (keydown.escape)="historyOpen() ? historyOpen.set(false) : !workspace.home() && workspace.minimize(); $event.stopPropagation()">
   <header class="assistant-heading">
     <div class="assistant-brand">
       <span class="assistant-mark"><app-icon name="spark" /></span>
       <div>
-        <h2 id="assistant-title">Asistente financiero</h2>
+        <h2 id="assistant-title">Lazy, tu asistente</h2>
       </div>
     </div>
-    <div class="button-row"><button type="button" class="button small" (click)="workspace.minimize()">Minimizar</button><button type="button" class="icon-button" aria-label="Cerrar panel" title="Cerrar panel y descartar el borrador" (click)="close()"><app-icon name="close" /></button></div>
+    <div class="button-row"><button type="button" class="button small" [attr.aria-expanded]="historyOpen()" aria-controls="assistant-history" (click)="historyOpen.set(!historyOpen())">Historial</button><button type="button" class="icon-button" aria-label="Nueva conversación" title="Nueva conversación" [disabled]="busy()" (click)="newConversation()"><app-icon name="plus" /></button>@if (!workspace.home()) { <button type="button" class="button small" (click)="workspace.minimize()">Minimizar</button><button type="button" class="icon-button" aria-label="Cerrar panel" title="Cerrar panel y descartar el borrador" (click)="close()"><app-icon name="close" /></button> }</div>
   </header>
+  @if (!showConsent()) { <nav class="workspace-mode-tabs" aria-label="Vista del asistente"><button type="button" [attr.aria-pressed]="!canvasOpen()" (click)="canvasOpen.set(false)">Conversación</button><button type="button" [attr.aria-pressed]="canvasOpen()" (click)="canvasOpen.set(true)">Resultados</button></nav> }
+  @if (voice.state() !== 'off') { <div class="voice-session-controls" role="group" aria-label="Controles de voz"><span role="status">{{ voiceLabel() }}</span><div class="button-row"><button type="button" class="button small" [disabled]="voice.state() === 'connecting'" [attr.aria-pressed]="voice.state() === 'muted'" (click)="voice.mute()">{{ voice.state() === 'muted' ? 'Activar micrófono' : 'Silenciar' }}</button><button type="button" class="button small" (click)="continueText()">Terminar voz</button><button type="button" class="button soft small" (click)="continueText()">Continuar por texto</button></div></div> }
 
   @if (showConsent()) {
     <assistant-consent-screen [state]="consent.state()" [loading]="consent.loading()" [pending]="consent.pending()" [failed]="consent.readError() || consent.saveError()" [needsCheck]="consent.needsCheck()" [canDecide]="consent.canDecide()" (accepted)="decideConsent('accepted')" (refused)="decideConsent('refused')" (checked)="consent.check()" (history)="viewHistory()" />
   } @else {
   <div class="chat-layout">
-    <aside class="chat-history" aria-label="Conversaciones guardadas">
-      @if (!historyOnly()) { <button type="button" class="button new-chat" aria-label="Nueva conversación" title="Nueva conversación" [disabled]="busy()" (click)="newConversation()">
-        <app-icon name="plus" /> <span>Nuevo chat</span>
-      </button> }
+    <aside id="assistant-history" class="chat-history" aria-label="Conversaciones guardadas" [hidden]="!historyOpen()"><button type="button" class="button small" (click)="closeHistory()">Cerrar historial</button>
       <p class="history-label">TU HISTORIAL <span>{{ history().length }}/10</span></p>
       @if (conversations.isLoading()) {
         <p class="history-empty" role="status">Consultando conversaciones…</p>
@@ -43,10 +42,7 @@
 
     <div class="chat-surface">
       <div class="chat-toolbar">
-        <div>
-          <span class="assistant-online"></span><strong>Lazy, tu asistente</strong>
-          <span class="chat-toolbar-sub">Contexto financiero, no suposiciones</span>
-        </div>
+        <span class="chat-toolbar-sub">{{ historyOnly() ? 'Historial · sin nuevas consultas a IA' : 'Una conversación, tus datos y tus decisiones' }}</span>
         @if (id()) {
           <button type="button" class="text-link delete-chat" [disabled]="busy()" [attr.aria-expanded]="confirmDelete()" aria-controls="assistant-delete-confirm"
             (click)="confirmDelete.set(!confirmDelete())">Eliminar conversación</button>
@@ -70,7 +66,17 @@
         </details>
         @if (historyOnly()) { <div class="notice"><p>Estás viendo el historial sin enviar datos nuevos a un modelo.</p><button class="button small" type="button" (click)="requestConsent()">Autorizar asistente</button></div> }
       }
-      <div #messages class="chat-messages" (scroll)="scroll($event)">
+      @if (voice.state() !== 'off') {
+        <section class="voice-stage" aria-label="Conversación en vivo">
+          <div class="voice-wave" [class.paused]="voice.state() === 'muted' || voice.state() === 'connecting'" aria-hidden="true">@for (bar of [1,2,3,4,5,6,7,8,9]; track bar) { <i></i> }</div>
+          <h3>{{ voiceLabel() }}</h3>
+          <p>Puedes interrumpirme o corregir el período. Las cifras y propuestas quedan en Resultados; los cambios se aprueban en pantalla.</p>
+          <button type="button" class="text-link" [attr.aria-expanded]="captions()" aria-controls="voice-captions" (click)="captions.set(!captions())">{{ captions() ? 'Ocultar subtítulos' : 'Mostrar subtítulos' }}</button>
+          @if (captions()) { <div id="voice-captions" class="voice-captions"><p>{{ voice.inputTranscript() }}</p><p>{{ voice.outputTranscript() }}</p></div> }
+          @if (voice.playbackBlocked()) { <button type="button" class="button small" (click)="voice.play()">Reproducir audio</button> }
+        </section>
+      }
+      <div #messages class="chat-messages" [hidden]="voice.state() !== 'off'" (scroll)="scroll($event)">
         @if (configuration.isLoading()) {
           <p class="notice" role="status">Preparando tu asistente…</p>
         } @else if (configuration.error()) {
@@ -92,7 +98,7 @@
         @if (historyOnly() && !id()) { <p class="notice">Elige una conversación para leerla o eliminarla. No necesitas autorizar nuevas consultas con IA.</p> }
         <div class="turns" role="log" aria-label="Mensajes de la conversación" aria-live="off">
           @for (turn of turns(); track turn.id) {
-            <assistant-reply [attr.data-turn]="turn.id" [turn]="turn" [busy]="busy()" (askAgain)="suggest($event)" (actionChanged)="actionChanged($event)" />
+            <assistant-reply [attr.data-turn]="turn.id" [turn]="turn" [canvas]="true" [busy]="busy()" (askAgain)="suggest($event)" (showResult)="showResult($event)" (actionChanged)="actionChanged($event)" />
           }
         </div>
         <div #bottom class="chat-bottom" aria-hidden="true"></div>
@@ -123,7 +129,7 @@
       }
 
       @if (!historyOnly()) {
-      <div class="voice-controls" aria-label="Conversación por voz">
+      <div class="voice-controls" role="group" aria-label="Conversación por voz">
         @if (!voice.supported) { <p>La voz no está disponible en este navegador. Puedes continuar por texto.</p> }
         @else if (voiceConfiguration.isLoading()) { <p role="status">Comprobando la disponibilidad de voz…</p> }
         @else if (voiceConfiguration.error()) {
@@ -132,17 +138,13 @@
         }
         @else if (voiceConfiguration.hasValue() && voiceConfiguration.value().enabled) {
           @if (voice.state() === 'off') {
-            <button type="button" class="button small" [disabled]="busy()" [attr.aria-expanded]="voiceDisclosure()" aria-controls="assistant-voice-start" (click)="voiceDisclosure.set(!voiceDisclosure())">Conversar por voz</button>
-          } @else {
-            <p role="status">{{ voice.state() === 'connecting' ? 'Conectando micrófono…' : voice.state() === 'muted' ? 'Micrófono silenciado' : 'Micrófono activo · escuchando' }}</p>
-            <button type="button" class="button small" [disabled]="voice.state() === 'connecting'" [attr.aria-pressed]="voice.state() === 'muted'" (click)="voice.mute()">{{ voice.state() === 'muted' ? 'Activar micrófono' : 'Silenciar' }}</button>
-            <button type="button" class="button small" (click)="endVoice()">Terminar voz</button>
+            <button type="button" class="button small" [disabled]="busy()" [attr.aria-expanded]="voiceDisclosure()" aria-controls="assistant-voice-start" (click)="voiceDisclosure.set(!voiceDisclosure())"><app-icon name="microphone" />Conversar por voz</button>
           }
           @if (voiceDisclosure()) {
             <section id="assistant-voice-start" class="voice-start" aria-label="Privacidad y confirmación para iniciar voz">
-              <p>Al iniciar, tu audio y las respuestas escritas se procesan en OpenAI. Puede generar costes. No grabamos audio; la retención del proveedor es independiente.</p>
+              <p>Al iniciar, tu audio, contexto reciente y datos financieros consultados se procesan en OpenAI para conversar en vivo. Puede generar costes. No guardamos audio; la retención del proveedor es independiente.</p>
               @if (configuration.hasValue() && configuration.value().enabled && !configuration.value().demonstration) {
-                <p>Para responder, tus preguntas transcritas, contexto reciente y datos consultados se comparten con {{ consent.state()?.policy.provider ?? configuration.value().provider }} ({{ consent.state()?.policy.model ?? configuration.value().model }}). No se envían credenciales bancarias.</p>
+                <p>Compartes la misma conversación que usas por texto, sin enviar cada transcripción al modelo de texto. No se envían credenciales bancarias.</p>
               }
               <p>Máximo cinco minutos. La voz termina al minimizar, navegar o dejar esta pestaña. Revisa el texto y las referencias: decir «sí» no aprueba cambios.</p>
               <button type="button" class="button small" [disabled]="!canStartVoice()" (click)="startVoice()">Entiendo, iniciar micrófono</button>
@@ -151,21 +153,12 @@
           }
         }
         @else if (voiceConfiguration.hasValue()) {
-          <div class="voice-availability"><p>La voz está deshabilitada en el servidor.</p><button type="button" class="icon-button" aria-label="Volver a comprobar voz" title="Volver a comprobar voz" (click)="voiceConfiguration.reload()"><app-icon name="refresh" /><span class="sr-only">Volver a comprobar voz</span></button></div>
+          <details class="voice-availability"><summary>Voz no disponible</summary><p>La voz está deshabilitada en el servidor.</p><button type="button" class="text-link" (click)="voiceConfiguration.reload()">Volver a comprobar voz</button></details>
         }
         @if (voice.error()) { <p role="alert">{{ voice.error() }}</p> }
         @if (voiceFallback()) { <p role="status">{{ voiceFallback() }}</p> }
-        @if (voice.inputTranscript()) { <p><strong>Transcripción de tu voz:</strong> {{ voice.inputTranscript() }}</p> }
-        @if (voice.inputTranscripts().length) {
-          <details><summary>Transcripciones recibidas · {{ voice.inputTranscripts().length }}</summary>
-            <p>Recibidas en orden de habla. Una interrupción no confirma su envío ni guardado: revisa el historial antes de volver a preguntar.</p>
-            <ul>@for (item of voice.inputTranscripts(); track item.id) { <li>{{ item.text }} <button type="button" class="text-link" (click)="suggest(item.text)">Usar como borrador</button></li> }</ul>
-          </details>
-        }
-        @if (voice.outputTranscript()) { <p><strong>Transcripción del audio:</strong> {{ voice.outputTranscript() }}</p> }
-        @if (voice.playbackBlocked()) { <button type="button" class="button small" (click)="voice.play()">Reproducir audio</button> }
       </div>
-      <form class="chat-composer" (submit)="$event.preventDefault(); send()">
+      <form class="chat-composer" [hidden]="voice.state() !== 'off'" (submit)="$event.preventDefault(); send()">
         <label class="sr-only" for="assistant-message">Tu pregunta financiera</label>
         <div class="composer-box">
           <textarea #composer id="assistant-message" rows="1" [maxLength]="maxInput" [value]="draft()"
@@ -185,6 +178,7 @@
       </form>
       }
     </div>
+    <assistant-canvas [turns]="turns()" [busy]="busy()" [selection]="resultSelection()" (selected)="resultSelection.set($event)" (actionChanged)="actionChanged($event)" />
   </div>
   }
 </section>

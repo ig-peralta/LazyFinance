@@ -155,7 +155,7 @@ describe("optional account-persisted onboarding", () => {
     fixture.detectChanges();
     expect(TestBed.inject(OnboardingData).status()).toBe("completed");
     expect(root.querySelector("h1")).toBeNull();
-    expect(mock.navigate).toHaveBeenCalledWith("/dashboard", {
+    expect(mock.navigate).toHaveBeenCalledWith("/asistente", {
       replaceUrl: true,
     });
   });
@@ -210,7 +210,7 @@ describe("optional account-persisted onboarding", () => {
     fixture.detectChanges();
     expect(TestBed.inject(OnboardingData).status()).toBe("completed");
     expect(fixture.nativeElement.querySelector("h1")).toBeNull();
-    expect(mock.navigate).toHaveBeenCalledWith("/dashboard", {
+    expect(mock.navigate).toHaveBeenCalledWith("/asistente", {
       replaceUrl: true,
     });
     expect(mock.calls.map((call) => call.procedure)).toEqual([

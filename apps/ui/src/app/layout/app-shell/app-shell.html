@@ -1,7 +1,7 @@
-<div class="workspace" [attr.data-theme]="preferences.value().theme" [attr.data-text-size]="preferences.value().textSize" [class.compact-navigation]="preferences.value().compact">
+<div class="workspace" [attr.data-theme]="preferences.value().theme" [attr.data-text-size]="preferences.value().textSize" [class.compact-navigation]="preferences.value().compact" [class.assistant-home]="assistantWorkspace.home()" [class.assistant-docked]="assistantWorkspace.opened() && !assistantWorkspace.home()">
   <a class="skip-link" href="#workspace-content" [attr.inert]="assistantWorkspace.opened() && assistantWorkspace.modal() ? '' : null" (click)="skipToContent($event)">Saltar al contenido</a>
   <ng-template #navigation>
-    <a routerLink="/dashboard" class="workspace-brand" aria-label="Inicio de LazyFinance" (click)="closeMenu()">
+    <a routerLink="/asistente" class="workspace-brand" aria-label="Inicio de LazyFinance" (click)="closeMenu()">
       <span class="brand-mark"><app-icon name="trend" /></span><span>Lazy<span class="brand-light">Finance</span><span class="brand-dot">.</span></span>
     </a>
     <ul class="workspace-links">
@@ -23,8 +23,8 @@
     <nav aria-label="Navegación principal móvil"><ng-container *ngTemplateOutlet="navigation" /></nav>
   </dialog>
 
-  <div class="workspace-body" [attr.inert]="assistantWorkspace.opened() && assistantWorkspace.modal() ? '' : null">
-    <header class="workspace-topbar">
+  <div class="workspace-body">
+    <header class="workspace-topbar" [attr.inert]="assistantWorkspace.opened() && assistantWorkspace.modal() ? '' : null">
       <div class="topbar-location"><button class="desktop-navigation-toggle" type="button" aria-controls="workspace-sidebar" [attr.aria-expanded]="!preferences.value().compact" [attr.aria-label]="preferences.value().compact ? 'Expandir navegación' : 'Contraer navegación'" [title]="preferences.value().compact ? 'Expandir navegación' : 'Contraer navegación'" (click)="preferences.update({ compact: !preferences.value().compact })"><app-icon name="panel" /></button><button type="button" class="icon-button menu-toggle" aria-controls="mobile-menu" [attr.aria-expanded]="menuOpen()" (click)="toggleMenu()"><app-icon name="menu" /><span class="sr-only">{{ menuOpen() ? 'Cerrar menú' : 'Abrir menú' }}</span></button><span>{{ location().area.label }} <span class="breadcrumb-divider">/</span> <strong>{{ location().destination.label }}</strong></span></div>
       <div class="topbar-right">
         <workspace-appearance />
@@ -32,19 +32,19 @@
       </div>
     </header>
     @if (destinations().length > 1) {
-      <nav class="workspace-subnav" [attr.aria-label]="'Secciones de ' + location().area.label">
+      <nav class="workspace-subnav" [attr.aria-label]="'Secciones de ' + location().area.label" [attr.inert]="assistantWorkspace.opened() && assistantWorkspace.modal() ? '' : null">
         @for (destination of destinations(); track destination.path) {
           <a [routerLink]="destination.path" [class.active]="location().destination === destination" [attr.aria-current]="location().destination === destination ? 'page' : null">{{ destination.path === '/comenzar' ? 'Retomar configuración' : destination.label }}</a>
         }
       </nav>
     }
-    <main #content id="workspace-content" tabindex="-1" class="workspace-content">
+    <div class="workspace-stage">
+    <main #content id="workspace-content" tabindex="-1" class="workspace-content" [attr.inert]="assistantWorkspace.opened() && assistantWorkspace.modal() ? '' : null">
       @if (session.error()) { <div class="notice danger" role="status">{{ session.error() }} <button type="button" class="button secondary" (click)="retrySession()">Reintentar</button></div> }
       @if (logoutError()) { <div class="notice danger" role="alert">{{ logoutError() }}</div> }
       @else { <router-outlet /> }
     </main>
-    <footer class="workspace-footer"><span>Hecho para mirar tus finanzas con calma.</span><span>LazyFinance <span aria-hidden="true">✳</span></span></footer>
-  </div>
+    <div class="assistant-mount">
   @defer (when assistantWorkspace.opened()) {
     <assistant-page #assistantHost [returnFocus]="assistantLauncher" />
   } @loading {
@@ -52,4 +52,8 @@
   } @error {
     @if (assistantWorkspace.opened()) { <div class="notice assistant-load-status"><p role="alert">No pudimos abrir el asistente. <a class="text-link" href="/asistente">Recargar para volver a intentar</a></p><button #assistantPendingCancel type="button" class="button small" (click)="assistantWorkspace.minimize()">Cerrar aviso</button></div> }
   }
+    </div>
+    </div>
+    <footer class="workspace-footer" [attr.inert]="assistantWorkspace.opened() && assistantWorkspace.modal() ? '' : null"><span>Hecho para mirar tus finanzas con calma.</span><span>LazyFinance <span aria-hidden="true">✳</span></span></footer>
+  </div>
 </div>

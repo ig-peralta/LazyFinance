@@ -1,4 +1,4 @@
-@if (onboarding.status() === 'completed') { <p class="notice" role="status">Abriendo tu resumen…</p> }
+@if (onboarding.status() === 'completed') { <p class="notice" role="status">Abriendo tu espacio financiero…</p> }
 @else if (onboarding.state.isLoading()) { <p class="notice" role="status">Consultando tu configuración inicial…</p> }
 @else if (onboarding.state.error()) { <p class="notice danger" role="alert">No pudimos consultar el estado de tu guía. No asumimos que esté pendiente. <button type="button" (click)="onboarding.state.reload()">Reintentar</button></p><a class="text-link" routerLink="/dashboard">Volver al resumen</a> }
 @else if (onboarding.state.hasValue()) {

@@ -219,6 +219,6 @@ export class LoginPage {
     const redirect = this.route.snapshot.queryParamMap.get("redirect");
     return redirect?.startsWith("/") && !redirect.startsWith("//")
       ? redirect
-      : "/dashboard";
+      : "/asistente";
   }
 }

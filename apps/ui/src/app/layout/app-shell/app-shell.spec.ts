@@ -116,8 +116,8 @@ describe("AppShell", () => {
     );
 
     expect(links.map((a) => a.textContent?.trim())).toEqual([
-      "Asistente",
-      "Resumen",
+      "Inicio",
+      "Resumen completo",
       "Mi dinero",
       "Planificación",
       "Mi cuenta",
@@ -211,8 +211,8 @@ describe("AppShell", () => {
       "#mobile-menu .workspace-links a",
     );
     expect([...mobileLinks].map((link) => link.textContent?.trim())).toEqual([
-      "Asistente",
-      "Resumen",
+      "Inicio",
+      "Resumen completo",
       "Mi dinero",
       "Planificación",
       "Mi cuenta",
@@ -266,16 +266,16 @@ describe("AppShell", () => {
       ].find((button) => button.textContent?.trim() === label);
       expect(cancel).toBeDefined();
       expect(document.activeElement).toBe(cancel);
-      expect(root.querySelector(".workspace-body")?.hasAttribute("inert")).toBe(
-        true,
-      );
+      expect(
+        root.querySelector(".workspace-content")?.hasAttribute("inert"),
+      ).toBe(true);
       cancel?.click();
       harness.detectChanges();
       await harness.fixture.whenStable();
       expect(root.querySelector(".assistant-load-status")).toBeNull();
-      expect(root.querySelector(".workspace-body")?.hasAttribute("inert")).toBe(
-        false,
-      );
+      expect(
+        root.querySelector(".workspace-content")?.hasAttribute("inert"),
+      ).toBe(false);
       expect(document.activeElement).toBe(trigger);
     } finally {
       root.remove();

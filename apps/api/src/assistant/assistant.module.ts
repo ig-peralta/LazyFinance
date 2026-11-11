@@ -21,6 +21,11 @@ import {
 } from "./assistant-runtime";
 import { AssistantVoiceHttp } from "./assistant-voice.http";
 import { AssistantVoiceService, VOICE_FETCH } from "./assistant-voice.service";
+import {
+  AssistantVoiceRuntime,
+  VOICE_SOCKET,
+  voiceSocket,
+} from "./assistant-voice-runtime";
 import { FinancialReads } from "./financial-reads";
 
 @Module({
@@ -43,6 +48,8 @@ import { FinancialReads } from "./financial-reads";
     AssistantConsentService,
     AssistantRpc,
     AssistantVoiceService,
+    AssistantVoiceRuntime,
+    { provide: VOICE_SOCKET, useValue: voiceSocket },
     {
       provide: VOICE_FETCH,
       useValue: (...args: Parameters<typeof fetch>) => fetch(...args),

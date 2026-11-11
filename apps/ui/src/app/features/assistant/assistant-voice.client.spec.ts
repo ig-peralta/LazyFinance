@@ -46,16 +46,28 @@ function setup() {
     muted: false,
     srcObject: null,
   };
-  const request = vi.fn<typeof fetch>(
-    async () =>
-      new Response(
-        JSON.stringify({
-          id: "00000000-0000-4000-8000-000000000009",
-          sdp: "v=0\r\nanswer",
-          expiresAt: "2026-11-10T04:05:00.000Z",
-        }),
-        { headers: { "content-type": "application/json" } },
-      ),
+  const request = vi.fn<typeof fetch>(async (url, options) =>
+    String(url).endsWith("/events")
+      ? new Response(
+          new ReadableStream<Uint8Array>({
+            start(controller) {
+              options?.signal?.addEventListener(
+                "abort",
+                () => controller.close(),
+                { once: true },
+              );
+            },
+          }),
+          { headers: { "content-type": "application/x-ndjson" } },
+        )
+      : new Response(
+          JSON.stringify({
+            id: "00000000-0000-4000-8000-000000000009",
+            sdp: "v=0\r\nanswer",
+            expiresAt: "2026-11-10T04:05:00.000Z",
+          }),
+          { headers: { "content-type": "application/json" } },
+        ),
   );
   const f = setupRpc({}, "browser", true, [
     AssistantVoiceClient,
@@ -101,7 +113,7 @@ describe("continuous live voice media and session lifetimes", () => {
     vi.useRealTimers();
   });
 
-  it("delivers delayed/out-of-order completions in speech order without dropping an earlier question", async () => {
+  it("keeps delayed captions in speech order without submitting any transcription as a text turn", async () => {
     const f = setup();
     await f.start();
     f.channel.onopen?.();
@@ -121,10 +133,7 @@ describe("continuous live voice media and session lifetimes", () => {
       item_id: "a",
       transcript: "Primera pregunta",
     });
-    expect(f.transcript.mock.calls.map(([text]) => text)).toEqual([
-      "Primera pregunta",
-      "Segunda pregunta",
-    ]);
+    expect(f.transcript).not.toHaveBeenCalled();
     expect(f.voice.inputTranscripts().map((item) => item.text)).toEqual([
       "Primera pregunta",
       "Segunda pregunta",
@@ -134,7 +143,7 @@ describe("continuous live voice media and session lifetimes", () => {
       item_id: "a",
       transcript: "Duplicada",
     });
-    expect(f.transcript).toHaveBeenCalledTimes(2);
+    expect(f.transcript).not.toHaveBeenCalled();
   });
 
   it("retains completed questions for explicit reconciliation when delivery ends/interruption blocks the conversation", async () => {
@@ -148,13 +157,13 @@ describe("continuous live voice media and session lifetimes", () => {
       item_id: "b",
       transcript: "Segunda pendiente",
     });
-    f.transcript.mockImplementationOnce(() => f.voice.end());
     f.event({
       type: "conversation.item.input_audio_transcription.completed",
       item_id: "a",
       transcript: "Primera interrumpida",
     });
-    expect(f.transcript).toHaveBeenCalledTimes(1);
+    expect(f.transcript).not.toHaveBeenCalled();
+    f.voice.end();
     expect(f.voice.inputTranscripts().map((item) => item.text)).toEqual([
       "Primera interrumpida",
       "Segunda pendiente",
@@ -215,8 +224,8 @@ describe("continuous live voice media and session lifetimes", () => {
       item_id: "i1",
       transcript: "Sí, aprueba",
     });
-    expect(f.transcript).toHaveBeenCalledExactlyOnceWith("Sí, aprueba");
-    expect(f.request).toHaveBeenCalledOnce(); // No financial write or approval request.
+    expect(f.transcript).not.toHaveBeenCalled();
+    expect(f.request).toHaveBeenCalledTimes(2); // SDP and authenticated observations, never approval.
     expect(f.voice.inputTranscript()).toBe("Sí, aprueba");
   });
 
@@ -224,16 +233,11 @@ describe("continuous live voice media and session lifetimes", () => {
     const f = setup();
     await f.start();
     f.channel.onopen?.();
-    f.voice.speak("Respuesta confirmada");
-    const command = JSON.parse(f.channel.send.mock.calls.at(-1)?.[0] ?? "{}");
-    expect(command.response).toMatchObject({
-      conversation: "none",
-      input: [],
-      tools: [],
-    });
+    f.event({ type: "input_audio_buffer.speech_started", item_id: "i0" });
+    f.interrupt.mockClear();
     f.event({
       type: "response.created",
-      response: { id: "r1", metadata: command.response.metadata },
+      response: { id: "r1", metadata: { voiceItem: "i0" } },
     });
     f.event({
       type: "response.output_audio_transcript.delta",
@@ -265,6 +269,31 @@ describe("continuous live voice media and session lifetimes", () => {
       transcript: "Anterior al silencio",
     });
     expect(f.transcript).not.toHaveBeenCalled();
+  });
+
+  it("starts muted and never opens playback for an unassociated or stale native response", async () => {
+    const f = setup();
+    await f.start();
+    f.channel.onopen?.();
+    expect(f.audio.muted).toBe(true);
+    f.event({ type: "response.created", response: { id: "unsolicited" } });
+    expect(f.audio.muted).toBe(true);
+    f.event({ type: "input_audio_buffer.speech_started", item_id: "current" });
+    f.event({
+      type: "response.created",
+      response: { id: "old", metadata: { voiceItem: "previous" } },
+    });
+    expect(f.audio.muted).toBe(true);
+    f.event({
+      type: "response.created",
+      response: { id: "valid", metadata: { voiceItem: "current" } },
+    });
+    expect(f.audio.muted).toBe(false);
+    expect(
+      f.channel.send.mock.calls.some(
+        ([value]) => JSON.parse(value).type === "response.create",
+      ),
+    ).toBe(false);
   });
 
   it.each([

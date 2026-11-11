@@ -173,6 +173,7 @@ const period = (value: string | null) =>
 /** Presentation of validated stored observations only: no new reads, totals or model-authored cards. */
 export function assistantReferenceView(
   source: AssistantSource,
+  expanded = false,
 ): AssistantReferenceView {
   const section = sections[source.tool];
   const view: AssistantReferenceView = {
@@ -477,7 +478,7 @@ export function assistantReferenceView(
     }
   }
 
-  view.preview ||= view.rows.length > 4;
-  view.rows = view.rows.slice(0, 4);
+  view.preview ||= view.rows.length > (expanded ? 100 : 4);
+  view.rows = view.rows.slice(0, expanded ? 100 : 4);
   return view;
 }

@@ -23,6 +23,11 @@ describe("first-party voice HTTP authentication and strict transport", () => {
     }),
   );
   const end = vi.fn(async (_owner: string, _id: string) => {});
+  const listen = vi.fn<AssistantVoiceService["listen"]>(
+    async (_owner, _id, _signal, emit) => {
+      await emit({ type: "phase", state: "listening" });
+    },
+  );
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -42,7 +47,12 @@ describe("first-party voice HTTP authentication and strict transport", () => {
         },
         {
           provide: AssistantVoiceService,
-          useValue: { configuration: () => ({ enabled: false }), start, end },
+          useValue: {
+            configuration: () => ({ enabled: false }),
+            start,
+            end,
+            listen,
+          },
         },
       ],
     }).compile();
@@ -65,8 +75,39 @@ describe("first-party voice HTTP authentication and strict transport", () => {
       .post("/assistant/voice/end")
       .send({})
       .expect(401);
+    await request(app.getHttpServer())
+      .post("/assistant/voice/events")
+      .send({})
+      .expect(401);
     expect(start).not.toHaveBeenCalled();
     expect(end).not.toHaveBeenCalled();
+  });
+
+  it("streams only server-owned observations for the authenticated session and rejects browser tool payloads", async () => {
+    const id = "00000000-0000-4000-8000-000000000009";
+    await request(app.getHttpServer())
+      .post("/assistant/voice/events")
+      .set("authorization", "Bearer accepted")
+      .send({ id, tools: [], result: { status: "applied" } })
+      .expect(400);
+    expect(listen).not.toHaveBeenCalled();
+    const response = await request(app.getHttpServer())
+      .post("/assistant/voice/events")
+      .set("authorization", "Bearer accepted")
+      .send({ id })
+      .expect(200);
+    expect(response.headers["cache-control"]).toBe("private, no-store");
+    expect(response.headers["content-type"]).toContain("application/x-ndjson");
+    expect(JSON.parse(response.text.trim())).toEqual({
+      type: "phase",
+      state: "listening",
+    });
+    expect(listen).toHaveBeenCalledWith(
+      "verified-owner",
+      id,
+      expect.any(AbortSignal),
+      expect.any(Function),
+    );
   });
 
   it("uses the accepted owner and no-store responses, never browser owner/configuration overrides", async () => {

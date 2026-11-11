@@ -59,6 +59,10 @@ export const AssistantTurnSchema = z.object({
   sources: z.array(AssistantSourceSchema).max(8),
   actions: z.array(FinancialActionSchema).max(4),
   createdAt: z.iso.datetime(),
+  // Native audio is the input. This optional transcription is only a readable record.
+  voice: z
+    .object({ question: z.string().min(1).max(ASSISTANT_MAX_INPUT) })
+    .optional(),
 });
 
 export const AssistantConversationSummarySchema = z.object({

@@ -1,6 +1,6 @@
 # LazyFinance
 
-LazyFinance helps people understand their finances without manually reconciling balances and transactions. Its persistent conversational assistant (text plus a disabled-by-default live voice adapter) and dashboard share a financial core. MCP opens another path: authorized agents could use permitted financial context in workflows people already know, combining it with their own capabilities. Provider-neutral data access leaves room for more sources, financial services and audiences as those uses are validated.
+LazyFinance helps people understand their finances without manually reconciling balances and transactions. Its assistant-first home (full text chat plus disabled-by-default native conversational voice) and complete dashboard share a financial core. MCP opens another path: authorized agents could use permitted financial context in workflows people already know, combining it with their own capabilities. Provider-neutral data access leaves room for more sources, financial services and audiences as those uses are validated.
 
 LazyFinance is a pnpm/Turborepo monorepo with an Angular app, a NestJS API, and a private NestJS/Kysely persistence service. Browser calls use public tRPC and a dedicated assistant stream; internal service calls use signed private tRPC. MCP remains available over Streamable HTTP.
 
