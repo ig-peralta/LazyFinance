@@ -24,6 +24,15 @@ export class SourceEditor {
     });
   }
 
+  protected invalid(field: string) {
+    if (!this.error()) return false;
+    const parsed = sourceInput(this.fields);
+    return (
+      !parsed.success &&
+      parsed.error.issues.some((issue) => issue.path[0] === field)
+    );
+  }
+
   protected save() {
     const parsed = sourceInput(this.fields),
       existing = this.source();

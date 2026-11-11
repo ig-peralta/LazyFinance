@@ -6,7 +6,8 @@ import {
   resource,
   signal,
 } from "@angular/core";
-import { RouterLink } from "@angular/router";
+import { toSignal } from "@angular/core/rxjs-interop";
+import { ActivatedRoute, RouterLink } from "@angular/router";
 import type { IncomeSource } from "@lazyfinance/contracts";
 import { formatClp } from "../../../../utils/currency";
 import { AuthCredentials } from "../../../core/auth/auth-credentials";
@@ -25,6 +26,10 @@ import { scheduleLabel } from "./source-form";
   templateUrl: "./sources.page.html",
 })
 export class SourcesPage {
+  private readonly route = inject(ActivatedRoute);
+  protected readonly query = toSignal(this.route.queryParamMap, {
+    initialValue: this.route.snapshot.queryParamMap,
+  });
   private readonly rpc = inject(RpcClient);
   protected readonly sources = resource({
     params: () => this.rpc.authenticatedScope(),
