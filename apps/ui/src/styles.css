@@ -839,7 +839,7 @@ body {
   display: flex;
   gap: 9px;
   align-items: center;
-  font-size: 1.375rem;
+  font-size: 22px;
   font-weight: 700;
   letter-spacing: -0.9px;
   text-decoration: none;
@@ -865,19 +865,12 @@ body {
   width: 22px;
   height: 22px;
 }
-.nav-caption {
-  font-size: var(--text-caption);
-  letter-spacing: 0.16em;
-  font-weight: 650;
-  color: var(--muted);
-  margin: 42px 12px 15px;
-}
 .workspace-links {
   list-style: none;
   display: grid;
   gap: 8px;
   padding: 0;
-  margin: 0;
+  margin: 24px 0 0;
 }
 .workspace-links a {
   display: flex;
@@ -902,17 +895,6 @@ body {
   background: var(--accent-soft);
   border-color: var(--accent-line);
   color: var(--accent);
-}
-.nav-dot {
-  margin-left: auto;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: currentColor;
-  opacity: 0;
-}
-.nav-active .nav-dot {
-  opacity: 1;
 }
 .sidebar-account {
   margin-top: auto;
@@ -2146,16 +2128,12 @@ body:has(.editor-drawer[open]) {
   .mobile-drawer {
     padding: 18px 24px;
   }
-  .mobile-drawer .nav-caption,
   .mobile-drawer .sidebar-person {
     display: none;
   }
   .mobile-drawer .workspace-links {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     margin-top: 20px;
-  }
-  .mobile-drawer .nav-dot {
-    display: none;
   }
   .mobile-drawer .sidebar-account {
     padding-top: 8px;

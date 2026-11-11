@@ -138,9 +138,7 @@ html:has(.workspace[data-text-size="largest"]) {
     margin-left: 84px;
   }
   .compact-navigation .workspace-brand > span:last-child,
-  .compact-navigation .nav-caption,
-  .compact-navigation .sidebar-person,
-  .compact-navigation .workspace-sidebar .nav-dot {
+  .compact-navigation .sidebar-person {
     display: none;
   }
   .compact-navigation .workspace-sidebar .workspace-links {

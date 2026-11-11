@@ -4,10 +4,9 @@
     <a routerLink="/dashboard" class="workspace-brand" aria-label="Inicio de LazyFinance" (click)="closeMenu()">
       <span class="brand-mark"><app-icon name="trend" /></span><span>Lazy<span class="brand-light">Finance</span><span class="brand-dot">.</span></span>
     </a>
-    <p class="nav-caption">TU ESPACIO PERSONAL</p>
     <ul class="workspace-links">
       @for (area of areas; track area.path) {
-        <li><a [routerLink]="area.path" [class.nav-active]="location().area === area" [attr.aria-current]="location().area === area ? 'true' : null" [attr.aria-label]="area.label" [title]="area.label" (click)="closeMenu()"><app-icon [name]="area.icon" /><span class="nav-label">{{ area.label }}</span><span class="nav-dot"></span></a></li>
+        <li><a [routerLink]="area.path" [class.nav-active]="location().area === area" [attr.aria-current]="location().area === area ? 'true' : null" [attr.aria-label]="area.label" [title]="area.label" (click)="closeMenu()"><app-icon [name]="area.icon" /><span class="nav-label">{{ area.label }}</span></a></li>
       }
     </ul>
     <div class="sidebar-account">
