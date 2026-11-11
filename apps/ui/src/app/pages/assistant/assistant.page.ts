@@ -79,6 +79,14 @@ export class AssistantPage {
   protected readonly voice = inject(AssistantVoiceClient);
   protected readonly consent = inject(AssistantConsentData);
   protected readonly voiceDisclosure = signal(false);
+  protected readonly voiceMode = signal(false);
+  private readonly voiceSelection = signal<{
+    scope: RpcScope;
+    id: string;
+  } | null>(null);
+  protected readonly voiceStopping = signal(false);
+  private readonly voiceStarting = signal(false);
+  private voiceStopEpoch = 0;
   protected readonly voiceFallback = signal("");
   private readonly rpc = inject(RpcClient);
   private readonly credentials = inject(AuthCredentials);
@@ -87,6 +95,7 @@ export class AssistantPage {
   private readonly lifetime = new AbortController();
   private readonly liveState = signal<LiveTurn | null>(null);
   private readonly retainedHistory = signal<RetainedHistory | null>(null);
+  private readonly retainedVoiceHistory = signal<RetainedHistory | null>(null);
   private readonly sending = signal<{ scope: RpcScope } | null>(null);
   private readonly composer =
     viewChild<ElementRef<HTMLTextAreaElement>>("composer");
@@ -151,6 +160,15 @@ export class AssistantPage {
   protected readonly invalidId = computed(
     () => !!this.workspace.selection() && !this.id(),
   );
+  private readonly voiceId = computed(() => {
+    const selection = this.voiceSelection();
+    return selection?.scope === this.rpc.authenticatedScope()
+      ? selection?.id
+      : undefined;
+  });
+  private readonly viewId = computed(() =>
+    this.voiceMode() ? this.voiceId() : this.id(),
+  );
   private readonly revision = signal(0);
   private readonly commandOwner = computed(() => ({
     id: this.id(),
@@ -195,15 +213,27 @@ export class AssistantPage {
         { signal: abortSignal },
       ),
   });
+  protected readonly voiceConversation = resource({
+    params: () => {
+      const scope = this.rpc.authenticatedScope(),
+        id = this.voiceId();
+      return scope && id ? { scope, id } : undefined;
+    },
+    loader: ({ params, abortSignal }) =>
+      params.scope.client.assistant.voiceConversation.query(
+        { id: params.id },
+        { signal: abortSignal },
+      ),
+  });
   protected readonly live = computed(() => {
     const value = this.liveState();
     return value &&
       value.scope === this.rpc.authenticatedScope() &&
-      value.conversationId === this.id()
+      value.conversationId === this.viewId()
       ? value
       : null;
   });
-  protected readonly turns = computed(() => {
+  protected readonly textTurns = computed(() => {
     const history = this.retainedHistory();
     const saved =
       history &&
@@ -211,11 +241,33 @@ export class AssistantPage {
       history.conversationId === this.id()
         ? history.turns
         : [];
-    const live = this.live();
-    return live
+    const live = this.liveState();
+    return live &&
+      !live.nativeVoice &&
+      live.scope === this.rpc.authenticatedScope() &&
+      live.conversationId === this.id()
       ? [...saved.filter((turn) => turn.id !== live.turn.id), live.turn]
       : saved;
   });
+  protected readonly voiceTurns = computed(() => {
+    const history = this.retainedVoiceHistory();
+    const saved =
+      history &&
+      history.scope === this.rpc.authenticatedScope() &&
+      history.conversationId === this.voiceId()
+        ? history.turns
+        : [];
+    const live = this.liveState();
+    return live?.nativeVoice &&
+      live.scope === this.rpc.authenticatedScope() &&
+      live.conversationId === this.voiceId()
+      ? [...saved.filter((turn) => turn.id !== live.turn.id), live.turn]
+      : saved;
+  });
+  protected readonly turns = computed(() =>
+    this.voiceMode() ? this.voiceTurns() : this.textTurns(),
+  );
+  protected readonly latestVoiceTurn = computed(() => this.voiceTurns().at(-1));
   protected readonly proposalTurn = computed(() =>
     this.turns()
       .filter((turn) => turn.actions.length > 0)
@@ -230,8 +282,26 @@ export class AssistantPage {
   protected readonly busy = computed(
     () =>
       this.command.pending() ||
-      !!this.live()?.pending ||
+      this.voiceStarting() ||
+      this.voiceStopping() ||
+      (this.liveState()?.scope === this.rpc.authenticatedScope() &&
+        !!this.liveState()?.pending) ||
       this.sending()?.scope === this.rpc.authenticatedScope(),
+  );
+  protected readonly newSessionBlocked = computed(
+    () =>
+      this.busy() ||
+      (this.voiceMode() &&
+        this.voiceTurns().some(
+          (turn) =>
+            turn.status === "pending" ||
+            turn.actions.some((action) =>
+              ["proposed", "stale"].includes(action.status),
+            ),
+        )),
+  );
+  protected readonly voiceAwaitingConfirmation = computed(() =>
+    this.voiceTurns().some((turn) => turn.status === "pending"),
   );
   protected readonly awaitingConfirmation = computed(
     () =>
@@ -242,6 +312,7 @@ export class AssistantPage {
     () =>
       !this.busy() &&
       this.voice.state() === "off" &&
+      !this.voiceMode() &&
       !this.voiceDisclosure() &&
       !this.historyOnly() &&
       !this.invalidId() &&
@@ -250,6 +321,7 @@ export class AssistantPage {
       (!this.consentRequired() || this.processingAccepted()) &&
       !this.conversation.isLoading() &&
       !this.conversation.error() &&
+      !this.voiceAwaitingConfirmation() &&
       !this.turns().some((turn) => turn.status === "pending") &&
       this.turns().length < 24 &&
       this.draft().trim().length > 0 &&
@@ -262,12 +334,12 @@ export class AssistantPage {
       this.voice.state() === "off" &&
       !this.busy() &&
       !this.historyOnly() &&
-      !this.invalidId() &&
       this.processingAccepted() &&
-      !this.conversation.isLoading() &&
-      !this.conversation.error() &&
-      !this.awaitingConfirmation() &&
-      this.turns().length < 24 &&
+      !this.voiceConversation.isLoading() &&
+      !this.voiceConversation.error() &&
+      !this.textTurns().some((turn) => turn.status === "pending") &&
+      !this.voiceTurns().some((turn) => turn.status === "pending") &&
+      this.voiceTurns().length < 24 &&
       this.configuration.hasValue() &&
       this.configuration.value().enabled &&
       !this.configuration.value().demonstration &&
@@ -285,9 +357,9 @@ export class AssistantPage {
           ...live,
           pending: false,
           error:
-            "La voz terminó. Consulta el historial para confirmar lo que alcanzó a guardarse; no se reenviará la pregunta.",
+            "La voz terminó. Consulta las solicitudes de esta sesión para confirmar su estado; no se reenviará la pregunta.",
         });
-        untracked(() => this.conversation.reload());
+        untracked(() => this.voiceConversation.reload());
       }
     });
     inject(DestroyRef).onDestroy(() => {
@@ -320,7 +392,10 @@ export class AssistantPage {
           (history.scope !== scope || history.conversationId !== id)
         )
           this.retainedHistory.set(null);
-        if (scope !== previous || previousId !== undefined) this.endVoice(true);
+        if (scope !== previous || id !== previousId) {
+          this.endVoice(scope !== previous);
+          this.voiceMode.set(false);
+        }
         if (scope !== previous || previousId !== undefined) this.draft.set("");
         this.resultSelection.set(undefined);
         this.historyOpen.set(false);
@@ -332,6 +407,8 @@ export class AssistantPage {
         this.confirmDelete.set(false);
       }
       if (scope !== previous) {
+        this.voiceSelection.set(null);
+        this.retainedVoiceHistory.set(null);
         this.consentReview.set(false);
         this.historyOnly.set(false);
         this.voiceDisclosure.set(false);
@@ -339,7 +416,11 @@ export class AssistantPage {
       }
       previous = scope;
       previousId = id;
-      if (live && (live.scope !== scope || live.conversationId !== id)) {
+      if (
+        live &&
+        (live.scope !== scope ||
+          live.conversationId !== (live.nativeVoice ? this.voiceId() : id))
+      ) {
         live.controller.abort();
         this.liveState.set(null);
       }
@@ -412,13 +493,17 @@ export class AssistantPage {
       } else if (!open && this.restoreResultFocus) {
         this.restoreResultFocus = false;
         untracked(() => {
-          const fallback =
-            this.voice.state() === "off"
-              ? this.composer()?.nativeElement
-              : this.panel()?.nativeElement.querySelector<HTMLButtonElement>(
-                  ".voice-session-controls button:not([disabled])",
-                );
-          (this.resultOpener?.isConnected
+          const fallback = !this.voiceMode()
+            ? this.composer()?.nativeElement
+            : (this.panel()?.nativeElement.querySelector<HTMLButtonElement>(
+                ".voice-session-controls button:not([disabled])",
+              ) ??
+              this.panel()?.nativeElement.querySelector<HTMLButtonElement>(
+                ".assistant-modes button[aria-pressed='true']:not([disabled])",
+              ) ??
+              this.panel()?.nativeElement);
+          (this.resultOpener?.isConnected &&
+          !this.resultOpener.closest("[hidden]")
             ? this.resultOpener
             : fallback
           )?.focus();
@@ -475,7 +560,7 @@ export class AssistantPage {
       const conversation = this.conversation.value();
       if (conversation.id !== id) return;
       // Resources have no value while reloading. Keep accepted turns in this
-      // owner/selection's memory so rapid voice turns cannot erase proposals.
+      // owner/selection's memory so delayed reads cannot erase proposals.
       untracked(() => {
         this.retainTurns(scope, id, conversation.turns);
         const live = this.live();
@@ -486,6 +571,28 @@ export class AssistantPage {
           this.liveState.set({ ...live, turn: saved });
       });
     });
+    effect(() => {
+      const scope = this.rpc.authenticatedScope(),
+        id = this.voiceId();
+      if (!scope || !id || !this.voiceConversation.hasValue()) return;
+      const conversation = this.voiceConversation.value();
+      if (conversation.id !== id) return;
+      untracked(() => {
+        this.retainTurns(scope, id, conversation.turns);
+        const live = this.liveState();
+        const saved = this.retainedVoiceHistory()?.turns.find(
+          (turn) => turn.id === live?.turn.id,
+        );
+        if (
+          live?.scope === scope &&
+          live.nativeVoice &&
+          !live.pending &&
+          saved &&
+          saved.status !== "pending"
+        )
+          this.liveState.set({ ...live, turn: saved });
+      });
+    });
   }
 
   private retainTurns(
@@ -493,7 +600,11 @@ export class AssistantPage {
     conversationId: string,
     incoming: AssistantTurn[],
   ) {
-    const previous = this.retainedHistory();
+    const target =
+      conversationId === this.voiceId()
+        ? this.retainedVoiceHistory
+        : this.retainedHistory;
+    const previous = target();
     const turns = new Map(
       previous?.scope === scope && previous.conversationId === conversationId
         ? previous.turns.map((turn) => [turn.id, turn] as const)
@@ -520,7 +631,7 @@ export class AssistantPage {
         turns.set(turn.id, { ...turn, actions: [...actions.values()] });
       }
     }
-    this.retainedHistory.set({
+    target.set({
       scope,
       conversationId,
       turns: [...turns.values()],
@@ -528,7 +639,16 @@ export class AssistantPage {
   }
 
   protected newConversation() {
-    if (!this.busy()) {
+    if (!this.newSessionBlocked()) {
+      if (this.voiceMode()) {
+        this.endVoice(true);
+        this.liveState.set(null);
+        this.voiceMode.set(true);
+        this.voiceDisclosure.set(true);
+        this.canvasOpen.set(false);
+        this.resultSelection.set(undefined);
+        return;
+      }
       this.endVoice();
       this.historyOpen.set(false);
       this.optionsOpen.set(false);
@@ -543,6 +663,7 @@ export class AssistantPage {
   protected select(id: string) {
     if (!this.busy()) {
       this.endVoice();
+      this.voiceMode.set(false);
       this.workspace.selection.set(id);
       this.closeHistory();
       this.resultSelection.set(undefined);
@@ -656,6 +777,8 @@ export class AssistantPage {
 
   protected viewHistory() {
     this.cancelProcessing();
+    this.voiceMode.set(false);
+    this.canvasOpen.set(false);
     this.historyOnly.set(true);
     this.historyOpen.set(true);
   }
@@ -666,12 +789,13 @@ export class AssistantPage {
 
   protected async startVoice() {
     const owner = this.credentials.current();
-    if (!owner || !this.canStartVoice()) return;
+    const scope = this.rpc.authenticatedScope();
+    if (!owner || !scope || !this.canStartVoice()) return;
     this.endVoice();
     // This generation begins before history creation, not just before getUserMedia.
     const startup = new AbortController();
     this.voiceStartup = startup;
-    let selection = this.workspace.selection();
+    const selection = this.workspace.selection();
     const current = () =>
       this.voiceStartup === startup &&
       !startup.signal.aborted &&
@@ -691,45 +815,63 @@ export class AssistantPage {
       return;
     }
     this.voiceDisclosure.set(true);
-    let id = this.id();
-    if (!id) {
-      await this.command.run(
-        (scope, signal) =>
-          scope.client.assistant.createConversation.mutate(undefined, {
-            signal: AbortSignal.any([signal, startup.signal]),
-          }),
-        (chat) => {
-          if (!current()) return;
-          selection = chat.id;
-          this.workspace.selection.set(chat.id);
+    this.voiceMode.set(true);
+    this.voiceStarting.set(true);
+    try {
+      let id = this.voiceId();
+      if (!id) {
+        await this.command.run(
+          (scope, signal) =>
+            scope.client.assistant.createConversation.mutate(
+              { mode: "voice" },
+              {
+                signal: AbortSignal.any([signal, startup.signal]),
+              },
+            ),
+          (chat) => {
+            if (!current()) return;
+            this.voiceSelection.set({ scope, id: chat.id });
+          },
+          "Conversación creada.",
+        );
+        id = this.voiceId();
+      }
+      if (!id || !current()) return;
+      this.voiceDisclosure.set(false);
+      this.voiceFallback.set("");
+      await this.voice.start(
+        owner,
+        id,
+        (event) => {
+          if (current()) this.receiveVoice(event);
         },
-        "Conversación creada.",
+        () => {},
+        startup.signal,
       );
-      id = this.id();
+      if (!current() && this.voiceStartup === startup) this.endVoice();
+    } finally {
+      if (this.voiceStartup === startup) this.voiceStarting.set(false);
     }
-    if (!id || !current()) return;
-    this.voiceDisclosure.set(false);
-    this.voiceFallback.set("");
-    await this.voice.start(
-      owner,
-      id,
-      (event) => {
-        if (current()) this.receiveVoice(event);
-      },
-      () => {},
-      startup.signal,
-    );
-    if (!current() && this.voiceStartup === startup) this.endVoice();
   }
 
   protected cancelVoiceStart() {
     this.endVoice();
+    this.voiceMode.set(false);
     this.workspace.focusRequest.update((value) => value + 1);
+  }
+
+  protected openVoiceMode() {
+    if (this.busy()) return;
+    this.voiceMode.set(true);
+    this.canvasOpen.set(false);
+    this.historyOpen.set(false);
+    this.confirmDelete.set(false);
+    if (!this.voiceId()) this.voiceDisclosure.set(true);
   }
 
   private receiveVoice(event: AssistantEvent) {
     const scope = this.rpc.authenticatedScope(),
-      conversationId = this.id();
+      conversationId = this.voiceId();
     if (!scope || !conversationId) return;
     if (event.type === "turn")
       this.liveState.set({
@@ -789,8 +931,7 @@ export class AssistantPage {
     if (event.type === "done") {
       this.retainTurns(scope, conversationId, [event.turn]);
       this.liveState.set({ ...live, turn: event.turn, pending: false });
-      this.conversation.reload();
-      this.conversations.reload();
+      this.voiceConversation.reload();
     }
     if (event.type === "error")
       this.liveState.set({ ...live, pending: false, error: event.message });
@@ -799,27 +940,41 @@ export class AssistantPage {
   protected endVoice(clearTranscripts = false) {
     const active = this.voice.state() !== "off",
       scope = this.rpc.authenticatedScope(),
-      id = this.id();
+      id = this.voiceId();
     const ended = this.voice.end(clearTranscripts);
     this.voiceStartup?.abort();
     this.voiceStartup = undefined;
+    this.voiceStarting.set(false);
     this.voiceDisclosure.set(false);
     if (active) {
-      const live = this.live();
-      if (live?.pending) this.liveState.set({ ...live, pending: false });
+      const epoch = ++this.voiceStopEpoch;
+      this.voiceStopping.set(true);
+      const live = this.liveState();
+      if (live?.nativeVoice && live.scope === scope && id) {
+        this.retainTurns(scope, id, [live.turn]);
+        if (live.pending) this.liveState.set({ ...live, pending: false });
+      }
       void ended.then(() => {
+        if (epoch === this.voiceStopEpoch) this.voiceStopping.set(false);
         if (
           this.rpc.authenticatedScope() === scope &&
-          this.id() === id &&
+          this.voiceId() === id &&
           !this.lifetime.signal.aborted
         )
-          this.conversation.reload();
+          this.voiceConversation.reload();
       });
+    }
+    if (clearTranscripts) {
+      this.voiceMode.set(false);
+      this.voiceSelection.set(null);
+      this.retainedVoiceHistory.set(null);
     }
   }
 
   protected continueText() {
+    if (!this.voiceMode() && !this.voiceDisclosure()) return;
     this.endVoice();
+    this.voiceMode.set(false);
     this.canvasOpen.set(false);
     this.workspace.focusRequest.update((value) => value + 1);
   }
@@ -910,6 +1065,7 @@ export class AssistantPage {
     if (!this.busy()) {
       this.liveState.set(null);
       this.conversation.reload();
+      this.voiceConversation.reload();
       this.conversations.reload();
       this.configuration.reload();
       this.voiceConfiguration.reload();
@@ -918,14 +1074,18 @@ export class AssistantPage {
   }
 
   protected actionChanged(action: FinancialAction) {
-    if (action.conversationId !== this.id()) return;
+    if (action.conversationId !== this.viewId()) return;
     this.updateAction(action);
-    this.conversation.reload();
+    if (this.voiceMode()) this.voiceConversation.reload();
+    else this.conversation.reload();
   }
 
   private updateAction(action: FinancialAction) {
-    if (action.conversationId !== this.id()) return;
-    this.retainedHistory.update((history) =>
+    if (action.conversationId !== this.viewId()) return;
+    const target = this.voiceMode()
+      ? this.retainedVoiceHistory
+      : this.retainedHistory;
+    target.update((history) =>
       history &&
       history.scope === this.rpc.authenticatedScope() &&
       history.conversationId === action.conversationId

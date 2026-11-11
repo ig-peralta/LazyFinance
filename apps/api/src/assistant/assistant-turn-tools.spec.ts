@@ -69,6 +69,43 @@ async function setup(current = action()) {
 }
 
 describe("shared text/voice request review authority", () => {
+  it("rejects the observed false preparation claim even after a valid tag read, but allows it after saved preparation", async () => {
+    const f = await setup();
+    const claim =
+      "Listo, preparé una propuesta de presupuesto mensual para Burger King por 150.000 pesos con inicio el próximo mes.";
+    try {
+      f.tools.observeHistory([]);
+      f.tools.sources.push({
+        id: "F1",
+        tool: "consultar_etiquetas",
+        title: "Etiquetas",
+        status: "available",
+        queriedAt: f.current.createdAt,
+        month: null,
+        recordId: null,
+        path: "/etiquetas",
+        note: "Consulta guardada",
+        data: { tags: [] },
+      });
+      expect(f.tools.grounded(claim)).toBe(false);
+      expect(f.tools.grounded("¿Qué etiqueta quieres usar?")).toBe(true);
+      await f.tools.propose(f.current.request);
+      expect(f.tools.grounded(claim)).toBe(true);
+    } finally {
+      await f.close();
+    }
+  });
+
+  it("reveals an existing owned request when its status is queried, without preparing another", async () => {
+    const f = await setup();
+    try {
+      expect(await f.tools.actionStatus(f.current.id)).toEqual(f.current);
+      expect(f.events).toEqual([{ type: "action_updated", action: f.current }]);
+      expect(f.prepare).not.toHaveBeenCalled();
+    } finally {
+      await f.close();
+    }
+  });
   it.each([
     "foreign",
     "applied",

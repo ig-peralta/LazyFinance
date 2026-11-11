@@ -431,6 +431,14 @@
   color: var(--muted);
   flex-shrink: 0;
 }
+.assistant-modes {
+  display: flex;
+  padding: 0 16px;
+}
+.assistant-modes button[aria-pressed="true"] {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
 .voice-session-controls > span {
   color: var(--accent);
 }

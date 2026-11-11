@@ -28,7 +28,7 @@ A single compact monthly strip expands to reveal the month selector and financia
 snapshot. It uses the ordinary scoped monthly summary, not model calls, so it
 remains available without AI consent or a configured model. **Resumen completo** preserves the
 existing dashboard at `/dashboard`; all manual financial pages remain reachable.
-Text is the default: typed questions, streamed answers, follow-ups and history.
+Text is the default: typed questions, streamed answers, follow-ups and text-only history.
 History opens in a drawer. Privacy, voice availability and deletion are under
 **Opciones del asistente** instead of separate toolbar rows. Text proposals and
 their exact approval controls stay inline with the answer. **Ver consultas** opens
@@ -59,15 +59,19 @@ It needs separate API-only `ASSISTANT_VOICE_ENABLED=true`,
 text assistant. The [voice contract](assistant-live-voice.md) records provider/API
 evidence, privacy, stop/response/browser targets, single-replica/cost bounds and
 unverified live gates. Native audio turns use a server-side Realtime control
-connection and the same bounded financial tools and history leases as text, not
-transcription → text request → read-aloud. Internal transcriptions support saved history;
+connection and the same bounded financial tools and lease policy as text, not
+transcription → text request → read-aloud. Internal transcriptions remain in the database;
 the native audio item drives generation. A dedicated stage shows listening,
-querying and responding, **Silenciar** and **Continuar por texto**. Subtitles are
+querying and responding, **Silenciar** and **Terminar voz**. Subtitles are
 removed pending redesign. A large central entry promotes voice in empty chats
 without bypassing the explicit start disclosure.
-Continuing by text also ends voice.
-Switching back to text preserves the draft, conversation and results. Minimize,
-navigation and hidden tabs end capture, not text history. Audio has no approval
+**Texto / Voz** selects separate views. Voice owns a separate conversation ID;
+its messages never enter the text transcript, history list or text-model context.
+Ending capture keeps voice proposals and query results available in the voice view,
+without showing transcriptions. Returning to text ends capture and restores the
+original selected text conversation and draft. Returning to the retained voice view
+does not start the microphone; resuming requires the explicit start disclosure again.
+Minimize, navigation and hidden tabs end capture, not text history. Audio has no approval
 or execution capability. Server-run tools are not a server-enforced restriction
 on a modified browser's provider rendering commands; see
 the voice contract's explicit rendering and shutdown/recovery limitations.
@@ -160,8 +164,8 @@ and external MCP grants remain separate permissions.
 
 ## Request, history and trust boundaries
 
-Seven authenticated tRPC procedures expose configuration, account consent read/
-decision, conversation summaries, one conversation, creation and deletion.
+Eight authenticated tRPC procedures expose configuration, account consent read/
+decision, text conversation summaries, separate owned text/voice reads, creation and deletion.
 Four separate `financialActions` procedures
 read, approve, revise or cancel saved proposals. `POST /assistant/turns` uses the same
 first-party bearer verification, not an MCP OAuth grant or cookies. Its strict
@@ -172,7 +176,8 @@ The API claims the turn through signed private RPC before invoking a model.
 Persistence returns authoritative server history. Recent context contains at most
 eight eligible turns / 32,000 characters: completed user/answer pairs and readable
 user questions from interrupted/failed turns, never their unfinished answers.
-Missing voice-transcript placeholders and pending turns are excluded. Tool payloads and
+Text context excludes all voice turns, including legacy mixed-history placeholders.
+Voice context is local to its separate session. Pending turns are excluded. Tool payloads and
 reasoning are not replayed from old turns. Bounded historical action IDs/statuses
 allow follow-up questions but do not prove current execution. Historical answers
 provide conversational context, not current financial truth; the prompt requires fresh reads for personal
@@ -203,6 +208,8 @@ from credit-card debt, a declared savings target from measured allocations,
 partial-month comparisons from full months, and purchase-attributed recoveries
 from income. Overlapping budgets/goals and evidence pages are not additive.
 Unavailable or oversized evidence is explicit, never an invented zero.
+Text and voice use neutral Spanish without Chilean slang or a deliberate regional
+accent. Santiago dates and CLP remain the financial calendar/currency context.
 
 Each source has an internal `F1`–`F8` identifier, tool, status, query timestamp,
 optional requested month, original bounded JSON and an allowlisted internal section
@@ -216,6 +223,12 @@ Answers use natural prose, without inline source codes, reference lists or JSON.
 The UI shows references separately as financial cards. Available evidence, a
 validated proposal or an observed receipt is required for numeric answers;
 invented/unavailable citations and incomplete model finishes fail the turn.
+A narrow preparation-claim backstop also rejects affirmative “preparé una propuesta”
+claims when no saved request was prepared, revised or observed. A tag lookup alone
+does not prepare a request. Empty action context explicitly reports that no request
+exists; status reads reveal an existing card instead of inventing a proposals page.
+This pattern check is not general semantic verification and cannot retract native
+audio already spoken before validation.
 **These checks do not verify every statement or
 calculation.** A model can still misuse valid evidence; reference cards and the
 incomplete-answer warning remain visible.
@@ -224,7 +237,10 @@ incomplete-answer warning remain visible.
 
 `preparar_accion_financiera` accepts `{ action }` with a typed, bounded command.
 Missing or ambiguous amounts, periods, dates and tag selections require clarification;
-owned reads supply real IDs. Budget/goal proposals may include up to five new tags.
+owned reads supply real IDs. Every budget/goal requires at least one existing or
+new tag; the model's JSON schema exposes nonempty alternatives, not only a runtime
+refinement. No-color is a tag choice, never permission for a tagless objective.
+Budget/goal proposals may include up to five new tags.
 The assistant asks one missing detail at a time, including the color of a new tag
 or an explicit no-color choice. It presents **one request at a time**: "Preparé la
 solicitud… Puedes aceptarla en la tarjeta o decirme qué corregir", rather than
@@ -242,8 +258,10 @@ version and requires fresh approval. Each revision expires after 15 minutes;
 stale/expired proposals must be reviewed again. At most four proposals belong to
 one stored turn; current generation prepares at most one new request per turn.
 `corregir_propuesta_financiera` accepts the same saved ID, current version and full
-corrected request. It changes only a pending proposal, not finance, and cannot
-change action kind, cross conversations or revise an applied/cancelled request.
+corrected request. Text corrects requests in its text conversation; voice corrects
+requests in its separate voice session. Both also support manual **Editar**.
+Correction changes only a pending proposal, not finance, and cannot change action
+kind, cross conversations or revise an applied/cancelled request.
 Unchanged fields/colors survive corrections. Manual **Editar** supports dependent
 tag colors too. Both paths require accepting the new exact version. Active voice
 sessions receive confirmed manual outcomes in server instructions immediately;
@@ -268,8 +286,8 @@ responses require an explicit status read; the UI never automatically retries a
 mutation. Approval makes no additional model call. `consultar_estado_accion` is
 restricted to the current conversation, and only `applied` proves execution.
 Confirmed receipts also appear in the originating reply and survive reloading
-that conversation. Text and voice get the same authoritative outcome context on
-their next exchange, including user-edited approvals. There is no speculative
+that conversation. Both modes get authoritative outcomes from their own
+conversation on their next exchange, including user-edited approvals. There is no speculative
 spoken success notification or automatic replay after an uncertain approval.
 
 Migration **029** adds owner-scoped `assistant.action`, independently of chat JSON.
@@ -294,16 +312,26 @@ the external host controls its own confirmation UX. See [MCP permissions](mcp-au
 Migration **028** creates `assistant.conversation`, separate from `identity` and
 `finance`. It references the immutable internal user and forces owner RLS.
 Runtime has schema USAGE but not CREATE, and can update only title, turns, lease
-and update time—not ID, owner, creation time or expiry. Bootstrap and OAuth-purpose
+and update time—not ID, owner, mode, creation time or expiry. Bootstrap and OAuth-purpose
 contexts have no access. Conversation deletion changes no financial data.
 
 Creation and turn claims share the existing short per-user advisory transaction
-lock. At most ten unexpired conversations exist per owner, and only one answer
-can hold an active lease across that owner's conversations. Each conversation
+lock. At most ten unexpired text conversations and 100 retained voice conversations
+exist per owner, and only one answer can hold an active lease across that owner's
+conversations. Each conversation
 permits up to 24 questions, with an additional cumulative byte budget that can
 require an earlier new conversation. Nonces are unique within a conversation:
 same nonce/question returns the stored turn without another model call; changed
 text conflicts. There is no automatic generation replay.
+
+Migration **033** adds immutable `text`/`voice` mode (default `text`) and an
+owner/mode/update-time index. It backfills nonempty voice-only records using stored
+voice markers/lease questions, without rewriting or deleting transcripts. Empty
+and mixed records remain text; public text reads/context hide their voice turns.
+Public text reads reject voice IDs and the separate `assistant.voiceConversation`
+read rejects text IDs. Turn admission checks the persisted mode before replay or
+lease creation. Retention and independent action receipts are unchanged. Apply the
+additive migration before using the rebuilt API/persistence; no seed/reset is needed.
 
 A claim commits a pending turn and a 90-second lease. Model/network work happens
 outside SQL. Completion is a separate transaction and must match the current

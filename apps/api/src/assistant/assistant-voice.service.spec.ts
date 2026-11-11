@@ -13,7 +13,7 @@ import {
 async function setup(enabled = true, voiceName: "marin" | "cedar" = "marin") {
   const listen = vi.fn<RealtimeConversation["listen"]>(async () => {});
   const stop = vi.fn<RealtimeConversation["close"]>(async () => {});
-  const get = vi.fn(async (_input: { id: string }) => ({}));
+  const get = vi.fn(async (_input: { id: string }) => ({ mode: "voice" }));
   const conversations = vi.fn((_owner: string) => ({ get: { query: get } }));
   const requireConsent = vi.fn<AssistantService["requireConsent"]>(
     async () => {},
@@ -86,6 +86,18 @@ const answer = () =>
   });
 
 describe("voice admission, provider privacy and owner-bound termination", () => {
+  it("rejects a text conversation before provider admission", async () => {
+    const f = await setup();
+    f.get.mockResolvedValue({ mode: "text" });
+    try {
+      await expect(
+        f.voice.start("owner", origin, input, signal()),
+      ).rejects.toThrow("separate voice conversation");
+      expect(f.request).not.toHaveBeenCalled();
+    } finally {
+      await f.close();
+    }
+  });
   it("selects a configured recommended timbre only when starting a new call", async () => {
     expect(ENV_SCHEMA.parse({}).ASSISTANT_VOICE_NAME).toBe("marin");
     expect(

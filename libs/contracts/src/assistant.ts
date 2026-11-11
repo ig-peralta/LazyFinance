@@ -85,9 +85,14 @@ export const AssistantConversationsSchema = z
   .array(AssistantConversationSummarySchema)
   .max(10);
 export const AssistantConversationIdSchema = z.strictObject({ id: z.uuid() });
-// Express normalizes an absent JSON POST body to {}. This empty command permits
-// either representation, but never caller-selected owner/history fields.
-export const CreateAssistantConversationSchema = z.strictObject({}).default({});
+// Express normalizes an absent JSON POST body to {}. Both forms create text by
+// default; only new-session mode is selectable, never owner or history fields.
+export const AssistantConversationModeSchema = z.enum(["text", "voice"]);
+export const CreateAssistantConversationSchema = z
+  .strictObject({
+    mode: AssistantConversationModeSchema.default("text"),
+  })
+  .default({ mode: "text" });
 export const AssistantConfigurationSchema = z.object({
   enabled: z.boolean(),
   provider: z.string().max(100),

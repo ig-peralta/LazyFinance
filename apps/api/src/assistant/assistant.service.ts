@@ -12,6 +12,7 @@ import {
   HttpException,
   Inject,
   Injectable,
+  NotFoundException,
   ServiceUnavailableException,
 } from "@nestjs/common";
 import { ActionsService } from "../actions/actions.service";
@@ -56,6 +57,23 @@ export class AssistantService {
     return this.persistence.user(userId).assistantConversations;
   }
 
+  async conversation(
+    userId: string,
+    id: string,
+    mode: "text" | "voice" = "text",
+  ) {
+    const conversation = await this.conversations(userId).get.query({ id });
+    if (conversation.mode !== mode)
+      throw new NotFoundException("Conversation is unavailable");
+    const turns =
+      mode === "text"
+        ? conversation.turns.filter(
+            (turn) => !turn.voice && turn.question !== "Consulta por voz",
+          )
+        : conversation.turns;
+    return { ...conversation, turns, turnCount: turns.length };
+  }
+
   requireConsent(owner: string) {
     return this.consent.requireAccepted(owner);
   }
@@ -78,7 +96,11 @@ export class AssistantService {
       const lease = randomUUID();
       signal.throwIfAborted();
       const store = this.conversations(userId);
-      const started = await store.begin.mutate({ ...input, lease });
+      const started = await store.begin.mutate({
+        ...input,
+        lease,
+        mode: "text",
+      });
       let turn: AssistantTurn = started.turn;
       if (!started.acquired) {
         await emit({ type: "turn", turn });
@@ -104,15 +126,17 @@ export class AssistantService {
         generationSignal,
         emit,
       );
-      tools.observeHistory(started.conversation.turns);
+      const history = started.conversation.turns.filter(
+        (turn) => !turn.voice && turn.question !== "Consulta por voz",
+      );
+      tools.observeHistory(history);
       try {
         await emit({ type: "turn", turn });
         const outcome = await this.runtime.run({
           instructions:
-            assistantInstructions() +
-            assistantActionContext(started.conversation.turns),
+            assistantInstructions() + assistantActionContext(history),
           messages: [
-            ...assistantHistory(started.conversation.turns),
+            ...assistantHistory(history),
             { role: "user", content: input.text },
           ],
           signal: generationSignal,

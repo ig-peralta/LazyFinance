@@ -3,8 +3,10 @@ import type {
   AssistantTurn,
   FinancialAction,
 } from "@lazyfinance/contracts";
+import type { StoredAssistantConversationSchema } from "@lazyfinance/contracts/internal";
 import { Test } from "@nestjs/testing";
 import { describe, expect, it, vi } from "vitest";
+import type { z } from "zod";
 import { testEnvironment } from "../../tests/fixtures/environment";
 import type { RpcStubs } from "../../tests/fixtures/rpc-stubs";
 import { ActionsService } from "../actions/actions.service";
@@ -16,6 +18,117 @@ import { ASSISTANT_RUNTIME, type AssistantRuntime } from "./assistant-runtime";
 import { FinancialReads } from "./financial-reads";
 
 describe("text consent admission", () => {
+  it("separates mode-specific reads and excludes legacy voice turns from text history and model context", async () => {
+    const conversationId = "00000000-0000-4000-8000-000000000001";
+    const text: AssistantTurn = {
+      id: "00000000-0000-4000-8000-000000000002",
+      question: "Pregunta escrita",
+      text: "Respuesta escrita",
+      status: "complete",
+      sources: [],
+      actions: [],
+      createdAt: "2026-11-11T00:00:00.000Z",
+    };
+    const voice: AssistantTurn = {
+      ...text,
+      id: "00000000-0000-4000-8000-000000000003",
+      question: "Consulta por voz",
+      text: "Respuesta privada de voz",
+      voice: { question: "Pregunta privada de voz" },
+    };
+    let conversation: z.infer<typeof StoredAssistantConversationSchema> = {
+      id: conversationId,
+      mode: "text",
+      title: "Mi chat",
+      createdAt: text.createdAt,
+      updatedAt: text.createdAt,
+      expiresAt: "2026-12-11T00:00:00.000Z",
+      turns: [
+        text,
+        voice,
+        {
+          ...voice,
+          id: "00000000-0000-4000-8000-000000000004",
+          voice: undefined,
+        },
+      ],
+      turnCount: 3,
+    };
+    const turn = {
+      ...text,
+      id: "00000000-0000-4000-8000-000000000005",
+      question: "Hola",
+      status: "pending" as const,
+      text: "",
+    };
+    const begin = vi.fn(async () => ({ acquired: true, conversation, turn }));
+    const store = {
+      get: { query: async () => conversation },
+      begin: { mutate: begin },
+      finish: { mutate: async () => ({ saved: true }) },
+    } satisfies Pick<
+      RpcStubs<ReturnType<AssistantService["conversations"]>>,
+      "get" | "begin" | "finish"
+    >;
+    const run = vi.fn<AssistantRuntime["run"]>(async (input) => {
+      expect(input.messages).toEqual([
+        { role: "user", content: text.question },
+        { role: "assistant", content: text.text },
+        { role: "user", content: "Hola" },
+      ]);
+      expect(input.instructions).not.toContain("privada de voz");
+      await input.delta("Hola, ¿cómo puedo ayudarte?");
+      return { complete: true };
+    });
+    const module = await Test.createTestingModule({
+      providers: [
+        AssistantService,
+        {
+          provide: AssistantConsentService,
+          useValue: { requireAccepted: async () => {} },
+        },
+        {
+          provide: EnvironmentService,
+          useValue: testEnvironment({ ASSISTANT_PROVIDER: "demo" }),
+        },
+        {
+          provide: PersistenceClient,
+          useValue: { user: () => ({ assistantConversations: store }) },
+        },
+        { provide: ActionsService, useValue: {} },
+        { provide: FinancialReads, useValue: {} },
+        { provide: ASSISTANT_RUNTIME, useValue: { run } },
+      ],
+    }).compile();
+    try {
+      const service = module.get(AssistantService);
+      expect(
+        (await service.conversation("owner", conversationId)).turns,
+      ).toEqual([text]);
+      await expect(
+        service.conversation("owner", conversationId, "voice"),
+      ).rejects.toThrow("unavailable");
+      await service.stream(
+        "owner",
+        { conversationId, requestId: turn.id, text: turn.question },
+        new AbortController().signal,
+        async () => {},
+      );
+      expect(begin).toHaveBeenCalledWith(
+        expect.objectContaining({ mode: "text" }),
+      );
+      conversation = { ...conversation, mode: "voice" };
+      await expect(
+        service.conversation("owner", conversationId),
+      ).rejects.toThrow("unavailable");
+      expect(
+        (await service.conversation("owner", conversationId, "voice")).turns,
+      ).toEqual(conversation.turns);
+      expect(run).toHaveBeenCalledOnce();
+    } finally {
+      await module.close();
+    }
+  });
   it.each([
     "applied",
     "proposed",
@@ -76,6 +189,7 @@ describe("text consent admission", () => {
           acquired: true,
           conversation: {
             id: conversationId,
+            mode: "text" as const,
             title: "Propuestas",
             createdAt,
             updatedAt: createdAt,

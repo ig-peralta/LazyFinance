@@ -9,6 +9,7 @@ import {
   ReviseFinancialActionSchema,
 } from "@lazyfinance/contracts";
 import type { ActionsService } from "../actions/actions.service";
+import { claimsPreparedProposal } from "./assistant-proposal-claims";
 import type { FinancialReads } from "./financial-reads";
 
 export class AssistantProposalConflict extends Error {}
@@ -24,6 +25,7 @@ export class AssistantTurnTools {
   private sourceBytes = 0;
   private reviewPending = false;
   private preparationAttempted = false;
+  private observedProposal = false;
 
   constructor(
     private readonly owner: string,
@@ -42,6 +44,7 @@ export class AssistantTurnTools {
       ),
     );
     for (const action of updates) actions.set(action.id, action);
+    this.observedProposal = actions.size > 0;
     this.observedReceipt = [...actions.values()].some(
       (action) => action.status === "applied" && action.results.length > 0,
     );
@@ -147,15 +150,17 @@ export class AssistantTurnTools {
     return action;
   }
 
-  async actionStatus(id: string) {
+  async actionStatus(id: string, reveal = true) {
     this.signal.throwIfAborted();
     if (++this.calls > 8) throw new Error("Tool budget exhausted");
     const action = await this.commands.get(this.owner, id);
     if (action.conversationId !== this.conversationId)
       throw new Error("Action is not part of this conversation");
     this.signal.throwIfAborted();
+    this.observedProposal = true;
     this.observedReceipt ||=
       action.status === "applied" && action.results.length > 0;
+    if (reveal) await this.emit({ type: "action_updated", action });
     return action;
   }
 
@@ -163,7 +168,7 @@ export class AssistantTurnTools {
     this.signal.throwIfAborted();
     if (++this.proposals > 4) throw new Error("Proposal budget exhausted");
     const input = ReviseFinancialActionSchema.parse(value);
-    const current = await this.actionStatus(input.id);
+    const current = await this.actionStatus(input.id, false);
     if (
       current.origin !== "assistant" ||
       current.version !== input.version ||
@@ -189,6 +194,10 @@ export class AssistantTurnTools {
     );
     return (
       !!text.trim() &&
+      (!claimsPreparedProposal(text) ||
+        this.actions.length > 0 ||
+        this.revisions.length > 0 ||
+        this.observedProposal) &&
       ![...text.matchAll(/\[F(\d+)\]/g)].some(
         (match) => !available.some((source) => source.id === `F${match[1]}`),
       ) &&

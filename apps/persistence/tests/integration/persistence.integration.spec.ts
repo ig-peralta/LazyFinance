@@ -32,6 +32,7 @@ import { z } from "zod";
 import { AppModule } from "../../src/app.module";
 import { createDatabase } from "../../src/database/connection";
 import { DatabaseModule } from "../../src/database/database.module";
+import { up as addConversationModes } from "../../src/database/migrations/assistant/202611110033-assistant-conversation-modes";
 import { up as addGrantCallback } from "../../src/database/migrations/identity/202611110031-mcp-grant-callback";
 import { MultiMigrationProvider, migrate } from "../../src/database/migrator";
 import {
@@ -1493,7 +1494,7 @@ describe.skipIf(!ownerUrl)(
             owner,
           );
         }
-        for (const column of ["user_id", "id", "expires_at"]) {
+        for (const column of ["user_id", "id", "expires_at", "mode"]) {
           await expect(
             withRequestContext(runtime, ctx(a), (tx) =>
               sql`update assistant.conversation set ${sql.id(column)}=${column === "expires_at" ? new Date() : b} where id=${chat.id}`.execute(
@@ -1511,6 +1512,172 @@ describe.skipIf(!ownerUrl)(
         ).rejects.toThrow(/row-level security/);
       } finally {
         await first.remove.mutate({ id: chat.id });
+      }
+    });
+
+    it("backfills voice-only history without rewriting transcripts, classifying mixed or empty text records as text", async () => {
+      const ids = Array.from({ length: 4 }, () => randomUUID());
+      const text = {
+        id: randomUUID(),
+        question: "Pregunta escrita",
+        text: "Respuesta",
+        status: "complete",
+        sources: [],
+        actions: [],
+        createdAt: new Date().toISOString(),
+      };
+      const voice = {
+        ...text,
+        id: randomUUID(),
+        question: "Consulta por voz",
+        voice: { question: "Pregunta hablada" },
+      };
+      const histories = [
+        [voice],
+        [{ ...text, question: "Consulta por voz" }],
+        [voice, text],
+        [],
+      ];
+      await expect(
+        owner.transaction().execute(async (tx) => {
+          await sql`ALTER TABLE assistant.conversation DROP COLUMN mode`.execute(
+            tx,
+          );
+          for (let index = 0; index < ids.length; index++)
+            await sql`INSERT INTO assistant.conversation(id,user_id,turns) VALUES (${ids[index]},${a},${JSON.stringify(histories[index])}::jsonb)`.execute(
+              tx,
+            );
+          await addConversationModes(tx);
+          for (let index = 0; index < ids.length; index++) {
+            const result = await sql<{
+              mode: string;
+              turns: unknown;
+            }>`SELECT mode,turns FROM assistant.conversation WHERE id=${ids[index]}`.execute(
+              tx,
+            );
+            expect(result.rows[0]).toEqual({
+              mode: index < 2 ? "voice" : "text",
+              turns: histories[index],
+            });
+          }
+          const rls = await sql<{
+            relforcerowsecurity: boolean;
+          }>`SELECT relforcerowsecurity FROM pg_class WHERE oid='assistant.conversation'::regclass`.execute(
+            tx,
+          );
+          expect(rls.rows[0].relforcerowsecurity).toBe(true);
+          throw new Error("Rollback isolated migration fixture");
+        }),
+      ).rejects.toThrow("Rollback isolated migration fixture");
+      expect(
+        (
+          await sql`SELECT id FROM assistant.conversation WHERE id IN (${sql.join(ids)})`.execute(
+            owner,
+          )
+        ).rows,
+      ).toEqual([]);
+    });
+
+    it("retains owned voice sessions outside text history and rejects cross-mode turn admission", async () => {
+      const client = purposeClient(ctx(a)).assistantConversations;
+      const text = await client.create.mutate();
+      const voice = await client.create.mutate({ mode: "voice" });
+      try {
+        expect(text.mode).toBe("text");
+        expect(voice.mode).toBe("voice");
+        expect((await client.list.query()).map((row) => row.id)).toContain(
+          text.id,
+        );
+        expect((await client.list.query()).map((row) => row.id)).not.toContain(
+          voice.id,
+        );
+        expect((await client.get.query({ id: voice.id })).mode).toBe("voice");
+        await expect(
+          purposeClient(ctx(b)).assistantConversations.get.query({
+            id: voice.id,
+          }),
+        ).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
+        const input = {
+          requestId: randomUUID(),
+          text: "Consulta por voz",
+          lease: randomUUID(),
+        };
+        await expect(
+          client.begin.mutate({ ...input, conversationId: voice.id }),
+        ).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
+        await expect(
+          client.begin.mutate({
+            ...input,
+            mode: "voice",
+            conversationId: text.id,
+          }),
+        ).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
+        const started = await client.begin.mutate({
+          ...input,
+          mode: "voice",
+          conversationId: voice.id,
+        });
+        await expect(
+          client.begin.mutate({
+            ...input,
+            requestId: randomUUID(),
+            conversationId: text.id,
+          }),
+        ).rejects.toMatchObject({ data: { code: "CONFLICT" } });
+        await client.finish.mutate({
+          conversationId: voice.id,
+          lease: input.lease,
+          turn: {
+            ...started.turn,
+            status: "complete",
+            text: "Respuesta hablada",
+            voice: { question: "Pregunta hablada" },
+          },
+        });
+        expect(
+          (await client.get.query({ id: voice.id })).turns[0].voice?.question,
+        ).toBe("Pregunta hablada");
+        await sql`UPDATE assistant.conversation SET turns=${JSON.stringify([{ ...started.turn, status: "complete", voice: { question: "Voz heredada" } }])}::jsonb WHERE id=${text.id}`.execute(
+          owner,
+        );
+        expect(
+          (await client.list.query()).find((row) => row.id === text.id)
+            ?.turnCount,
+        ).toBe(0);
+        await expect(
+          client.begin.mutate({ ...input, conversationId: text.id }),
+        ).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
+      } finally {
+        await client.remove.mutate({ id: text.id });
+        await client.remove.mutate({ id: voice.id });
+      }
+    });
+
+    it("keeps retained voice capacity separate from the ten text conversations", async () => {
+      const userId = randomUUID();
+      await sql`INSERT INTO identity."user"(id,email,name) VALUES (${userId},${`${userId}@example.test`},'Mode quota owner')`.execute(
+        owner,
+      );
+      const client = purposeClient(ctx(userId)).assistantConversations;
+      const chats = await Promise.all(
+        Array.from({ length: 10 }, () => client.create.mutate()),
+      );
+      try {
+        await expect(client.create.mutate()).rejects.toMatchObject({
+          data: { code: "TOO_MANY_REQUESTS" },
+        });
+        chats.push(await client.create.mutate({ mode: "voice" }));
+        await sql`INSERT INTO assistant.conversation(user_id,mode) SELECT ${userId},'voice' FROM generate_series(1,99)`.execute(
+          owner,
+        );
+        await expect(
+          client.create.mutate({ mode: "voice" }),
+        ).rejects.toMatchObject({ data: { code: "TOO_MANY_REQUESTS" } });
+        expect(await client.list.query()).toHaveLength(10);
+      } finally {
+        await sql`DELETE FROM assistant.conversation WHERE user_id=${userId}`.execute(
+          owner,
+        );
       }
     });
 
@@ -1698,7 +1865,7 @@ describe.skipIf(!ownerUrl)(
     it("fills a delayed native question without approving its interrupted proposal or changing the next lease", async () => {
       const client = purposeClient(ctx(a));
       const chats = client.assistantConversations;
-      const chat = await chats.create.mutate();
+      const chat = await chats.create.mutate({ mode: "voice" });
       const lease = randomUUID();
       try {
         const first = await chats.begin.mutate({
@@ -1706,6 +1873,7 @@ describe.skipIf(!ownerUrl)(
           requestId: randomUUID(),
           lease,
           text: "Consulta por voz",
+          mode: "voice",
         });
         const request = {
           kind: "create_tag" as const,
@@ -1736,6 +1904,7 @@ describe.skipIf(!ownerUrl)(
           requestId: randomUUID(),
           lease: nextLease,
           text: "La etiqueta debe ser roja",
+          mode: "voice",
         });
         const input = {
           conversationId: chat.id,

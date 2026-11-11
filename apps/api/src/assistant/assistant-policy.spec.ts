@@ -83,14 +83,34 @@ describe("provider-neutral assistant configuration and bounded context", () => {
     );
   });
 
-  it("uses readable voice questions for shared follow-ups and retains the context budget", () => {
+  it("uses readable voice questions within voice follow-ups and describes a missing saved proposal explicitly", () => {
     const voice = {
       ...turn(),
       question: "Consulta por voz",
       voice: { question: "¿Y octubre?" },
     };
     expect(assistantHistory([voice])[0].content).toBe("¿Y octubre?");
-    expect(assistantActionContext([])).toBe("");
+    expect(assistantActionContext([])).toContain(
+      "no hay ninguna solicitud guardada",
+    );
+    expect(assistantActionContext([])).toContain("NO prueba que exista");
+    expect(assistantActionContext([])).toContain("No inventes una tarjeta");
+  });
+
+  it("requires neutral Spanish and tagged objectives without changing Santiago/CLP semantics", () => {
+    const instructions = assistantInstructions(
+      new Date("2026-11-11T22:00:00Z"),
+    );
+    expect(instructions).toContain("español neutral");
+    expect(instructions).toContain("sin regionalismos ni jerga chilena");
+    expect(instructions).not.toContain("español de Chile");
+    expect(instructions).toContain("America/Santiago");
+    expect(instructions).toContain("Moneda CLP");
+    expect(instructions).toContain("sin etiquetas NO es una opción");
+    expect(instructions).toContain("consultar_etiquetas no prepara nada");
+    expect(instructions).toContain(
+      "consultar_estado_accion vuelve a mostrar su tarjeta actual",
+    );
   });
   it("requires the current turn and source shapes instead of upgrading earlier development formats", () => {
     const current = turn();

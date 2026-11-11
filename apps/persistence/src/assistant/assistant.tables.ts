@@ -14,6 +14,7 @@ export interface AssistantTables {
   };
   "assistant.conversation": {
     id: Generated<string>;
+    mode: Generated<"text" | "voice">;
     userId: string;
     title: Generated<string>;
     turns: ColumnType<AssistantTurn[], string | undefined, string>;

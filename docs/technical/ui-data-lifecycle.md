@@ -274,7 +274,7 @@ not a second chat host. It owns only the ordinary scoped snapshot above the
 inline conversation; summary loading is independent of consent/model availability.
 The summary is a compact disclosure rather than a hero/card grid. The home shell
 uses the available viewport height, with scrolling owned by the message area and
-the composer kept on screen. No permanent result column or view tabs reduce that
+the composer kept on screen. No permanent result column or conversation/results tabs reduce that
 default chat area. The ordinary workspace footer and redundant home launcher do
 not occupy the conversation viewport.
 The same instance docks beside other pages. Minimize keeps the text draft/selection/generation in memory;
@@ -327,16 +327,22 @@ data and drafts are not stored in cookies, browser storage or transfer state.
 Ordinary authenticated route navigation retains text work, but ends live microphone
 capture. Voice also ends on minimize, hidden tab, device loss and session changes;
 late permission/events cannot revive capture or adopt another owner's transcript.
-Native voice turns use a separate authenticated observation stream, server-executed
-tools and the same saved-turn leases and approvals. Transcription never invokes
+Native voice turns use an independent persisted conversation ID, separate
+authenticated observation stream, server-executed tools and the same lease policy
+and approvals. Text/voice have separate accepted-scope resources and retained turn
+buffers; text history lists never request voice sessions. Transcription never invokes
 the text stream, and completed text answers never trigger literal read-aloud.
 The optional `turn.voice.question` stores the readable input alongside the
-immutable lease question; shared history uses it for follow-ups. Visible subtitles
+immutable lease question; only that voice session uses it for follow-ups. Visible subtitles
 are removed; internal partial transcripts remain in bounded memory. A delayed
 transcript can fill an interrupted question without confirming its answer.
-Voice/text handoff stops capture, closes the optional detail view
-and preserves the draft and saved turns. Ending an in-flight turn reconciles
-history rather than replaying it.
+The **Texto / Voz** controls switch independent views. Returning to text stops capture,
+closes voice details and preserves the original text selection/draft, without
+inserting voice messages or their proposals. Ending capture retains proposal/query
+review in the voice view without exposing transcripts. Returning to that view does
+not capture; resumption requires explicit microphone start again. Ending an in-flight
+turn reconciles the owned voice read rather than replaying it. Pending voice review
+blocks replacing that voice session; text history remains independent.
 See the [voice privacy/lifetime contract](assistant-live-voice.md).
 After saved processing acceptance, voice has no repeated consent checkbox. Only
 the separate explicit microphone-start control can initiate capture. Availability
@@ -354,7 +360,7 @@ are not upgraded from earlier development formats. Model-generated source codes
 are hidden in rendered/copied replies; original evidence remains stored.
 Action cards appear inline with text replies, without duplicating approval controls
 in source details. Native voice can reveal its proposal in that same optional
-detail surface while mute/text-handoff controls remain available. Review shows one
+detail surface while mute/end controls and mode switching remain available. Review shows one
 request at a time, with explicit access to older requests. Owner/selection-scoped
 in-memory turn retention bridges history reloads and rapid voice turns; older
 snapshots cannot downgrade a revision or applied receipt. This is not browser

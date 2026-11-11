@@ -11,6 +11,7 @@ import {
   RpcEmptySchema,
 } from "@lazyfinance/contracts";
 import { Ctx, Input, Mutation, Query, Router } from "nestjs-trpc";
+import type { z } from "zod";
 import { type ApiRequestContext, rpcUser } from "../rpc/context";
 import { AssistantService } from "./assistant.service";
 import { AssistantConsentService } from "./assistant-consent.service";
@@ -67,7 +68,19 @@ export class AssistantRpc {
     meta: { auth: "user" },
   })
   conversation(@Input() input: { id: string }, @Ctx() ctx: ApiRequestContext) {
-    return this.assistant.conversations(rpcUser(ctx)).get.query(input);
+    return this.assistant.conversation(rpcUser(ctx), input.id);
+  }
+
+  @Query({
+    input: AssistantConversationIdSchema,
+    output: AssistantConversationSchema,
+    meta: { auth: "user" },
+  })
+  voiceConversation(
+    @Input() input: { id: string },
+    @Ctx() ctx: ApiRequestContext,
+  ) {
+    return this.assistant.conversation(rpcUser(ctx), input.id, "voice");
   }
 
   @Mutation({
@@ -75,8 +88,11 @@ export class AssistantRpc {
     output: AssistantConversationSchema,
     meta: { auth: "user" },
   })
-  createConversation(@Ctx() ctx: ApiRequestContext) {
-    return this.assistant.conversations(rpcUser(ctx)).create.mutate();
+  createConversation(
+    @Input() input: z.infer<typeof CreateAssistantConversationSchema>,
+    @Ctx() ctx: ApiRequestContext,
+  ) {
+    return this.assistant.conversations(rpcUser(ctx)).create.mutate(input);
   }
 
   @Mutation({

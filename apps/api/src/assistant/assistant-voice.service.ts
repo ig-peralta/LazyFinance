@@ -67,9 +67,11 @@ export class AssistantVoiceService implements OnModuleDestroy {
       throw new ForbiddenException();
     await this.assistant.requireConsent(owner);
     signal.throwIfAborted();
-    await this.assistant
+    const conversation = await this.assistant
       .conversations(owner)
       .get.query({ id: input.conversationId });
+    if (conversation.mode !== "voice")
+      throw new ForbiddenException("A separate voice conversation is required");
     signal.throwIfAborted();
     if (this.draining)
       throw new ServiceUnavailableException("Voice unavailable");

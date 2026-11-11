@@ -10,16 +10,22 @@ session ID). The response is bounded NDJSON `AssistantVoiceEvent`: existing
 turn/source/action/status/delta/done/error events plus listening/querying/responding
 phases. It is an observation stream, not a browser tool-results endpoint. Voice
 turns may store optional `voice.question` as a readable transcription alongside the
-unchanged lease question. Existing text histories remain valid. No table migration
-or change to approval authority is required by this additive JSON shape.
+unchanged lease question. Existing text histories remain valid. Migration 033
+adds immutable conversation mode and backfills voice-only records; it changes no
+approval authority and does not rewrite/delete transcripts.
 `voice.transcriptionPending` optionally marks an interrupted input placeholder.
 Private `assistantConversations.recordVoiceQuestion({ conversationId, turnId,
 question })` may fill only that missing readable input under owner scope. It does
 not change answer status, actions, lease or an existing transcript. This adds one
 private procedure, not a public transcript-edit endpoint.
-Deploy the API, persistence and rebuilt shared contracts together. No database
-migration or user-history rewrite is required.
-`action_updated` streams a revised existing proposal without assigning it to the
+Deploy migration 033, the API, persistence and rebuilt shared contracts together.
+`CreateAssistantConversationSchema` accepts an optional `mode` defaulting to `text`.
+Private `get`/`create`/`begin` return required stored mode; `begin` checks its
+expected mode before replay or lease admission. Lists are text-only. Public
+`assistant.conversation` rejects voice IDs and hides legacy voice turns;
+`assistant.voiceConversation` is an owned voice-only read for current-session
+results, not an entry in text history. The public conversation shape is unchanged.
+`action_updated` streams a revised or explicitly queried existing proposal without assigning it to the
 correcting turn. Its conversation and original action identity remain validated.
 
 ## Package boundaries
@@ -62,13 +68,13 @@ inferred Promises; there is no cross-app source import or HTTP/Observable adapte
 ## Public surface
 
 The [generated public router](../../libs/rpc-api/src/generated/server.ts) currently
-contains **84 procedures**. Prefix each method below with its router name.
+contains **85 procedures**. Prefix each method below with its router name.
 
 | Router | Methods | Responsibility |
 | --- | --- | --- |
 | `auth` | `config`, `loginMock`, `principal` | Provider selection, local mock login, verified principal |
 | `onboarding` | `state`, `finish` | Owned optional-guide state and terminal completion |
-| `assistant` | `configuration`, `consent`, `decideConsent`, `conversations`, `conversation`, `createConversation`, `deleteConversation` | First-party authenticated configuration, account processing consent and server-owned chat history |
+| `assistant` | `configuration`, `consent`, `decideConsent`, `conversations`, `conversation`, `voiceConversation`, `createConversation`, `deleteConversation` | First-party authenticated configuration, account processing consent, text-only history and separate owned voice results |
 | `financialActions` | `get`, `approve`, `revise`, `cancel` | Owned saved proposals; approval accepts only the exact ID/version, never caller-supplied execution payloads |
 | `mcpAccess` | `configuration`, `grants`, `revoke` | First-party authenticated external-client settings; no token issuance through RPC |
 | `accounts` | `list`, `setAlias` | Retained accounts, balances, tracking state and personal display names |
@@ -121,7 +127,8 @@ Optional bearer-only voice HTTP endpoints use shared strict public schemas:
 conversation ownership and admission are checked server-side. SDP negotiation
 exposes no provider key, owner selector, financial tools or execution authority.
 These are not tRPC procedures: the combined public/private inventories remain
-84/106. Account processing consent requires migration 032; the voice HTTP adapter
+85/106. Account processing consent requires migration 032; mode isolation requires
+migration 033 and the separate public voice read. The voice HTTP adapter
 itself adds no procedures. See the [voice contract and live-validation gates](assistant-live-voice.md).
 
 ## Private surface

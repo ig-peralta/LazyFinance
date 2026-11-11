@@ -1,6 +1,5 @@
 import {
   AssistantConversationIdSchema,
-  AssistantConversationSchema,
   AssistantConversationsSchema,
   AssistantRemovedSchema,
   CreateAssistantConversationSchema,
@@ -15,8 +14,10 @@ import {
   FinishAssistantTurnSchema,
   type RecordAssistantVoiceQuestion,
   RecordAssistantVoiceQuestionSchema,
+  StoredAssistantConversationSchema,
 } from "@lazyfinance/contracts/internal";
 import { Input, Mutation, Query, Router } from "nestjs-trpc";
+import type { z } from "zod";
 import { AssistantRepository } from "./assistant.repository";
 
 @Router({ alias: "assistantConversations" })
@@ -34,7 +35,7 @@ export class AssistantConversationsRpc {
 
   @Query({
     input: AssistantConversationIdSchema,
-    output: AssistantConversationSchema,
+    output: StoredAssistantConversationSchema,
     meta: { context: "user" },
   })
   get(@Input() input: { id: string }) {
@@ -43,11 +44,11 @@ export class AssistantConversationsRpc {
 
   @Mutation({
     input: CreateAssistantConversationSchema,
-    output: AssistantConversationSchema,
+    output: StoredAssistantConversationSchema,
     meta: { context: "user" },
   })
-  create() {
-    return this.repository.create();
+  create(@Input() input: z.infer<typeof CreateAssistantConversationSchema>) {
+    return this.repository.create(input);
   }
 
   @Mutation({

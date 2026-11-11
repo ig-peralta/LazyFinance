@@ -1,17 +1,23 @@
 import { z } from "zod";
 import {
   ASSISTANT_MAX_INPUT,
+  AssistantConversationModeSchema,
   AssistantConversationSchema,
   AssistantSendSchema,
   AssistantTurnSchema,
 } from "../assistant";
 
+export const StoredAssistantConversationSchema =
+  AssistantConversationSchema.extend({
+    mode: AssistantConversationModeSchema,
+  });
 export const BeginAssistantTurnSchema = AssistantSendSchema.extend({
   lease: z.uuid(),
+  mode: AssistantConversationModeSchema.default("text"),
 });
 export const BeginAssistantTurnResultSchema = z.object({
   acquired: z.boolean(),
-  conversation: AssistantConversationSchema,
+  conversation: StoredAssistantConversationSchema,
   turn: AssistantTurnSchema,
 });
 export const FinishAssistantTurnSchema = z.strictObject({

@@ -28,9 +28,9 @@ import { AssistantReference } from "../reference/assistant-reference";
           }
         </section>
       }
-      @if (results().length > 1) { <label class="result-selector"><span>Respuesta de la conversación</span><select [value]="active()?.id ?? ''" (change)="choose($event)">@for (turn of results(); track turn.id) { <option [value]="turn.id" [selected]="turn.id === active()?.id">{{ turn.voice?.question ?? turn.question }}</option> }</select></label> }
+      @if (results().length > 1) { <label class="result-selector"><span>{{ showQuestions() ? 'Respuesta de la conversación' : 'Consulta de voz' }}</span><select [value]="active()?.id ?? ''" (change)="choose($event)">@for (turn of results(); track turn.id; let index = $index) { <option [value]="turn.id" [selected]="turn.id === active()?.id">{{ showQuestions() ? (turn.voice?.question ?? turn.question) : 'Consulta de voz ' + (index + 1) }}</option> }</select></label> }
       @if (active(); as turn) {
-        <p class="result-question">{{ turn.voice?.question ?? turn.question }}</p>
+        @if (showQuestions()) { <p class="result-question">{{ turn.voice?.question ?? turn.question }}</p> }
         @if (turn.status !== 'complete') { <p class="notice warning" role="status">{{ turn.status === 'pending' ? 'Consultando. Las propuestas solo se pueden aprobar cuando termine la respuesta.' : 'Respuesta incompleta. Las consultas adjuntas no confirman sus afirmaciones.' }}</p> }
         @if (turn.sources.length > 1) {
           <nav class="result-tabs" aria-label="Consultas mostradas">@for (source of turn.sources; track source.id) { <button type="button" [attr.aria-pressed]="source.id === sourceId()" (click)="sourceSelection.set({ turn: turn.id, source: source.id })">{{ source.title }}</button> }</nav>
@@ -47,6 +47,7 @@ export class AssistantCanvas {
   readonly turns = input.required<AssistantTurn[]>();
   readonly busy = input(false);
   readonly showActions = input(false);
+  readonly showQuestions = input(true);
   readonly selection = input<string>();
   readonly actionChanged = output<FinancialAction>();
   readonly selected = output<string>();

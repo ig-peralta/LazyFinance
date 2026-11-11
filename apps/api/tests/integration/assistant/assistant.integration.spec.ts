@@ -10,6 +10,79 @@ import { integration } from "../../fixtures/persistence";
 describe.skipIf(!integration)(
   "owned first-party assistant over real signed RPC",
   () => {
+    it("keeps retained voice records out of text reads/context and rejects voice IDs at the text boundary", async () => {
+      const f = await assistantFixture();
+      try {
+        const client = f.api.client();
+        const text = await client.assistant.createConversation.mutate();
+        const voice = await client.assistant.createConversation.mutate({
+          mode: "voice",
+        });
+        const store = f.persistence.user(f.userId).assistantConversations;
+        const lease = randomUUID();
+        const started = await store.begin.mutate({
+          conversationId: voice.id,
+          mode: "voice",
+          requestId: randomUUID(),
+          text: "Consulta por voz",
+          lease,
+        });
+        const spoken = {
+          ...started.turn,
+          status: "complete" as const,
+          text: "Respuesta privada de voz",
+          voice: { question: "Pregunta privada de voz" },
+        };
+        await store.finish.mutate({
+          conversationId: voice.id,
+          lease,
+          turn: spoken,
+        });
+        expect(
+          (await client.assistant.conversations.query()).map((row) => row.id),
+        ).toEqual([text.id]);
+        expect((await store.get.query({ id: voice.id })).turns).toEqual([
+          spoken,
+        ]);
+        expect(
+          (await client.assistant.voiceConversation.query({ id: voice.id }))
+            .turns,
+        ).toEqual([spoken]);
+        await expect(
+          client.assistant.conversation.query({ id: voice.id }),
+        ).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
+        await expect(
+          client.assistant.voiceConversation.query({ id: text.id }),
+        ).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
+        await expect(
+          f.api
+            .client(f.otherToken)
+            .assistant.voiceConversation.query({ id: voice.id }),
+        ).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
+        expect((await f.send(voice.id)).response.status).toBe(404);
+        expect(f.runtime.run).not.toHaveBeenCalled();
+        // Simulate an older mixed-mode conversation without altering the retained voice record.
+        await f.db.pool.query(
+          "UPDATE assistant.conversation SET turns=$1::jsonb WHERE id=$2",
+          [JSON.stringify([spoken]), text.id],
+        );
+        expect(
+          (await client.assistant.conversation.query({ id: text.id })).turns,
+        ).toEqual([]);
+        expect(
+          (await client.assistant.conversations.query())[0].turnCount,
+        ).toBe(0);
+        await f.send(text.id, "Hola desde texto");
+        expect(
+          JSON.stringify(f.runtime.run.mock.calls[0][0].messages),
+        ).not.toContain("privada de voz");
+        expect((await store.get.query({ id: voice.id })).turns).toEqual([
+          spoken,
+        ]);
+      } finally {
+        await f.close();
+      }
+    });
     it("gates real-provider text before a history lease while keeping account decisions and history accessible", async () => {
       const f = await assistantFixture(undefined, true, {
         ASSISTANT_PROVIDER: "openai",

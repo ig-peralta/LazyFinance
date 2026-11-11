@@ -1,8 +1,8 @@
 <section class="voice-start" aria-labelledby="voice-start-title">
   <span class="voice-start-icon" aria-hidden="true"><app-icon name="microphone" /></span>
   <h3 id="voice-start-title" tabindex="-1">Conversemos por voz</h3>
-  <p>Habla con Lazy en esta conversación. Puedes interrumpir o volver al texto cuando quieras.</p>
+  <p>Habla con Lazy en una sesión de voz separada. Puedes interrumpir o volver al texto cuando quieras.</p>
   <p class="voice-start-privacy">OpenAI procesará tu audio, contexto reciente y consultas financieras. No guardamos audio. Puede generar costes.</p>
-  <details><summary>Privacidad y controles</summary><p>La retención del proveedor es independiente. Compartes la misma conversación, sin enviar cada transcripción al modelo de texto. No se envían credenciales bancarias.</p><p>Máximo cinco minutos. La voz termina al navegar o dejar esta pestaña. Decir «sí» no aprueba cambios: las solicitudes se aceptan en su tarjeta.</p></details>
+  <details><summary>Privacidad y controles</summary><p>La retención del proveedor es independiente. Las transcripciones y los resultados se guardan en el servidor por separado, pero no aparecen en tu historial de texto ni se envían como mensajes al chat. No se envían credenciales bancarias.</p><p>Máximo cinco minutos. La voz termina al navegar o dejar esta pestaña. Decir «sí» no aprueba cambios: las solicitudes se aceptan en su tarjeta.</p></details>
   <div class="voice-start-buttons"><button type="button" class="button primary" [disabled]="!ready()" (click)="started.emit()">Entiendo, iniciar micrófono</button><button type="button" class="text-link" (click)="cancelled.emit()">Cancelar voz</button></div>
 </section>

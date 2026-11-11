@@ -14,7 +14,7 @@ target is not evidence of a delivered capability.
 | [Implemented ER and 4+1 views](../diagrams/README.md) | Dated Stage B PlantUML/PNG baseline: ER, logical, development, process, planned physical and scenarios views; deployment pending |
 | [Private RPC, transactions and RLS](persistence-security.md) | Signed contexts, bootstrap, roles/grants, related ownership, rollback, atomic commands and limits |
 | [Implemented database model and ERD](database-model.md) | All 33 application tables, actual relationships/keys, financial representation, migrations and diagram baseline limits |
-| [RPC contracts and clients](rpc-contracts.md) | Public/private exports, 84/106 procedure inventories, MCP, code generation and wire semantics |
+| [RPC contracts and clients](rpc-contracts.md) | Public/private exports, 85/106 procedure inventories, MCP, code generation and wire semantics |
 | [First-party financial assistant](financial-assistant.md) | Provider-neutral models, grounded reads, explicit action approval, durable receipts, streaming, privacy, limits and evaluation gates |
 | [Live voice contract](assistant-live-voice.md) | Opt-in WebRTC, processing disclosure, microphone/session lifetimes, client-policy limits and live release gates |
 | [External MCP authorization](mcp-authorization.md) | Standards-first OAuth, client interoperability/evidence, independent grants, consent, revocation and operations |

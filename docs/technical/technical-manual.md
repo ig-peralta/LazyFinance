@@ -186,9 +186,9 @@ remote lifetime or currency-denominated budget. Keep text available when voice
 fails and investigate unconfirmed shutdown warnings through the provider project.
 See the [voice transport, privacy and operational limits](assistant-live-voice.md).
 `ASSISTANT_VOICE_NAME=marin` is the default timbre; `cedar` is also supported.
-Changing it affects new calls only. The prompt requests natural Chilean Spanish;
-there is no guaranteed Chilean-accent preset. Evaluate accent quality by listening
-before choosing a deployment voice.
+Changing it affects new calls only. The prompt requests neutral Spanish without
+regional slang; pronunciation is guidance, not a guaranteed provider preset.
+Evaluate clarity and naturalness by listening before choosing a deployment voice.
 
 Migration 029 adds financial proposals/receipts; migration 027 directly defines
 the final MCP scope constraint for this clean development baseline. Apply all

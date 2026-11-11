@@ -6,7 +6,7 @@ The API exchanges an SDP offer at OpenAI Realtime's unified
 `POST /v1/realtime/calls`. WebRTC carries continuous bidirectional audio; a
 server-side WebSocket attaches to the returned call ID. No provider key or
 ephemeral credential reaches the browser. Sessions are bound to the authenticated
-owner, an owned conversation and an allowlisted browser origin.
+owner, a separate owned voice conversation and an allowlisted browser origin.
 
 Capability documentation reviewed 2026-11-11, **not live-provider evidence**:
 
@@ -24,7 +24,7 @@ interruption is enabled; local output mute/clear and server cancellation also
 invalidate the old response immediately.
 
 The API waits for sideband configuration acknowledgement before returning usable
-SDP. It seeds bounded saved text/voice history, installs the same financial reads,
+SDP. It seeds bounded saved history from that voice session only, installs the same financial reads,
 proposal preparation and action-status tools, and gives each turn short,
 speech-specific instructions. Financial tools execute only on the sideband using
 the verified owner, never browser-supplied tool results. `AssistantTurnTools`
@@ -38,12 +38,13 @@ are used for local playback/interruption, not financial authority. A
 second observer is rejected; stream loss ends the session, with no reconnect or
 tool replay. Foreign IDs neither read nor terminate another owner's session.
 
-## Shared conversation, results and approvals
+## Separate voice sessions, results and approvals
 
-The server claims/finishes the same 90-second conversation leases as text.
+The server claims/finishes the same 90-second lease policy as text, but only on
+conversations persisted with `mode: "voice"`. Text admission requires `text`.
 Native voice uses an immutable `Consulta por voz` lease question and optional
-`turn.voice.question` for its readable transcription. Shared model history and
-the UI use the readable question. Completion requires a transcript, a completed
+`turn.voice.question` for its readable transcription. Voice-model context uses
+the readable question; the UI does not render it. Completion requires a transcript, a completed
 provider response and the shared evidence check. Missing transcriptions, failures or
 interruption never become a confirmed answer. No audio is stored.
 
@@ -52,10 +53,10 @@ An interrupted turn can finish before its asynchronous input transcription arriv
 `assistantConversations.recordVoiceQuestion` fills only that missing question,
 without changing the interrupted status, action authority or a newer turn's lease.
 It cannot overwrite an existing transcript. Late input received while the session
-is still open becomes shared conversational context; unfinished assistant answers
+is still open becomes voice-session context; unfinished assistant answers
 do not. Closing the transport cannot recover a transcript that never arrived.
 
-Tools attach observations to the shared conversation. Query details open on request;
+Tools attach observations to that voice session. Query details open on request;
 native voice proposals reveal one visual review card at a time. Other saved requests
 remain explicitly selectable; new turns and delayed history do not displace them.
 Spoken replies favor one
@@ -69,7 +70,9 @@ replayed, and an interrupted turn cannot authorize it.
 The shared flow gathers one missing detail at a time, including a new tag's color
 or explicit no-color choice. A budget/goal and its new tags form **one atomic
 request**, not separate tag and objective approvals. After preparation the assistant
-offers to accept the request in its card or correct it by voice/text or **Editar**.
+offers to accept the request in its card or correct it by voice or **Editar**.
+Text-chat requests have their own text corrections and manual editing; switching
+to text does not import voice messages or proposal context into that chat.
 `corregir_propuesta_financiera` revises that same pending ID/version, preserving
 unchanged fields. It cannot accept, execute, change action kind or revise an applied
 or cancelled request. A new request waits until the current review is resolved.
@@ -101,15 +104,19 @@ evaluation remains a release gate.
 Text stays the default and is fully supported. Empty conversations promote voice
 with a large central entry, alongside text suggestions; it opens the explicit start
 disclosure and never captures automatically. Voice has a dedicated stage,
-restrained decorative waveform and persistent **Silenciar /
-Continuar por texto** controls, including while reviewing a proposal. Continuing
-by text also ends voice; there are no two buttons for the same end-and-return action.
+restrained decorative waveform and persistent **Silenciar / Terminar voz** controls,
+including while reviewing a proposal. Ending capture leaves the separate session's
+requests and query results reviewable. **Texto / Voz** switches views; returning
+to text also ends capture. Returning to the voice view does not restart capture.
 The waveform illustrates state, not measured microphone amplitude. Returning to
-text stops capture without clearing the draft, selected conversation or results.
+text stops capture without clearing its original draft or selected text conversation.
 Text proposals stay inline; query details open only on request, while native voice
 reveals proposed changes for visual review. History is a drawer, not competing
-transcript blocks or a separate conversation/results mode. On ending a pending turn,
-history must confirm its outcome before another text question can be sent.
+transcript blocks. Only text conversations appear there; voice messages never enter
+the text transcript or text-model context. Pending voice results must reconcile
+before another question or a voice resumption, matching the single owner lease.
+A new voice session is blocked while a request
+still needs review, so its approval controls are not silently lost.
 
 Account processing consent precedes provider work. A separate explicit microphone
 start discloses that OpenAI receives audio, recent conversation and consulted
@@ -131,9 +138,12 @@ blocks new admitted work after commit; it does not retract provider disclosures 
 guarantee cross-device termination of already-admitted audio.
 
 Visible subtitles and their toggle are removed pending redesign. Internal
-transcription remains for saved history and turn confirmation; it never submits a
+transcription remains in the database for voice-session context and turn confirmation; it never submits a
 text request. Partials stay in bounded memory. Completed readable exchanges
-use existing chat retention/deletion. No audio, draft, SDP or transcript enters
+use the existing fixed 30-day availability policy, with no voice-history browser.
+Migration 033 backfills voice-only records without deleting or rewriting transcripts;
+mixed legacy text records hide voice turns on text reads. There are separate
+10-text/100-voice storage quotas. No audio, draft, SDP or transcript enters
 browser storage, hydration or application logs. Provider retention is separate.
 Deleting chat does not undo finance or delete independent receipts. Review provider
 project data controls before enabling.
@@ -153,10 +163,11 @@ per turn. Queued events, speech items, output
 length and observation-stream bytes are bounded. Excesses fail closed.
 
 Default provider output is 320 tokens per response, including tool continuations.
-Shared instructions ask for short natural Chilean Spanish, not repeated inability
+Shared instructions ask for short neutral Spanish without Chilean slang or a
+deliberate regional accent, not repeated inability
 disclaimers. `ASSISTANT_VOICE_NAME` selects `marin` (default) or `cedar`, the
-provider's recommended timbres, for **new calls only**. Regional accent is prompt
-guidance, not a guaranteed Chilean preset. Accent/naturalness require listening
+provider's recommended timbres, for **new calls only**. Santiago dates and CLP
+remain financial context, not an accent instruction. Pronunciation/naturalness require listening
 tests; voice cannot change after audio has been emitted in a call.
 This is not a security/currency quota against modified browser commands. Use a dedicated project spend limit and
 alerts. Distributed durable admission and hangup recovery are required before

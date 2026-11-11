@@ -39,6 +39,11 @@ const chat: AssistantConversation = {
   turnCount: 0,
   turns: [],
 };
+const voiceChat: AssistantConversation = {
+  ...chat,
+  id: "00000000-0000-4000-8000-000000000010",
+  title: "Consulta por voz",
+};
 const configuration = {
   enabled: true,
   provider: "demo",
@@ -90,7 +95,9 @@ function setup(
       "assistant.configuration": () => configuration,
       "assistant.conversations": () => [chat],
       "assistant.conversation": () => chat,
-      "assistant.createConversation": () => chat,
+      "assistant.voiceConversation": () => voiceChat,
+      "assistant.createConversation": (input) =>
+        input?.mode === "voice" ? voiceChat : chat,
       "assistant.deleteConversation": () => ({ removed: true }),
       "assistant.consent": () => savedConsent,
       "assistant.decideConsent": (input) => {
@@ -275,7 +282,7 @@ describe("first-party chat page lifetimes and confirmed history", () => {
     }
   });
 
-  it("keeps native voice proposals reviewable, then restores the same saved proposal inline on text handoff", async () => {
+  it("keeps voice proposals in their separate review view after capture ends and restores only the original text and draft", async () => {
     const f = setup(
       { "assistant.configuration": () => externalConfiguration },
       chat.id,
@@ -302,7 +309,7 @@ describe("first-party chat page lifetimes and confirmed history", () => {
       sources: [],
       status: "pending" as const,
     };
-    const action = assistantAction();
+    const action = assistantAction({ conversationId: voiceChat.id });
     receive?.({ type: "turn", turn: pending });
     receive?.({ type: "source", source: assistantSource() });
     await render(f.fixture);
@@ -333,24 +340,52 @@ describe("first-party chat page lifetimes and confirmed history", () => {
     });
     await render(f.fixture);
     expect(button(f.root, "Guardar etiqueta").disabled).toBe(false);
-    button(f.root, "Continuar por texto").click();
+    button(f.root, "Terminar voz").click();
+    await render(f.fixture);
+    expect(f.root.textContent).toContain("Sesión de voz finalizada");
+    expect(button(f.root, "Guardar etiqueta").disabled).toBe(false);
+    expect(f.root.querySelector(".result-question")?.textContent).not.toContain(
+      "Prepara una etiqueta",
+    );
+    button(f.root, "Texto").click();
     await render(f.fixture);
     expect(f.root.querySelector(".chat-details")).toBeNull();
     expect(
       f.root.querySelectorAll("assistant-reply assistant-action-card"),
-    ).toHaveLength(1);
+    ).toHaveLength(0);
     expect(f.root.querySelector("textarea")?.value).toBe("Mi borrador");
+    expect(f.workspace.selection()).toBe(chat.id);
+    expect(f.callsTo("assistant.createConversation")[0].input).toEqual({
+      mode: "voice",
+    });
+    expect(
+      f
+        .callsTo("assistant.conversation")
+        .every((call) => call.input.id === chat.id),
+    ).toBe(true);
+    expect(
+      f
+        .callsTo("assistant.voiceConversation")
+        .every((call) => call.input.id === voiceChat.id),
+    ).toBe(true);
+    expect(f.root.querySelectorAll("assistant-reply")).toHaveLength(0);
+    button(f.root, "Voz").click();
+    await render(f.fixture);
+    button(f.root, "Ver propuestas · 1").click();
+    await render(f.fixture);
+    expect(button(f.root, "Guardar etiqueta").disabled).toBe(false);
     expect(f.callsTo("financialActions.approve")).toHaveLength(0);
     expect(f.stream).not.toHaveBeenCalled();
   });
 
-  it("retains multiple voice approvals across rapid turns, lagging history, review selection and text handoff without subtitles", async () => {
+  it("retains voice reviews across rapid turns and lagging voice reads without adding them to text", async () => {
     const lag = deferred<AssistantConversation>();
     let reads = 0;
     const f = setup(
       {
         "assistant.configuration": () => externalConfiguration,
-        "assistant.conversation": () => (++reads === 1 ? chat : lag.promise),
+        "assistant.voiceConversation": () =>
+          ++reads === 1 ? voiceChat : lag.promise,
       },
       chat.id,
       true,
@@ -378,6 +413,7 @@ describe("first-party chat page lifetimes and confirmed history", () => {
       status: "pending",
     };
     const budget = assistantAction({
+      conversationId: voiceChat.id,
       request: {
         kind: "create_budget",
         budget: {
@@ -394,6 +430,7 @@ describe("first-party chat page lifetimes and confirmed history", () => {
       id: "00000000-0000-4000-8000-000000000020",
     };
     const tag = assistantAction({
+      conversationId: voiceChat.id,
       id: "00000000-0000-4000-8000-000000000021",
       turnId: second.id,
     });
@@ -431,7 +468,7 @@ describe("first-party chat page lifetimes and confirmed history", () => {
     f.fixture.detectChanges();
 
     lag.resolve({
-      ...chat,
+      ...voiceChat,
       turns: [{ ...first, actions: [budget] }],
       turnCount: 1,
     });
@@ -449,11 +486,18 @@ describe("first-party chat page lifetimes and confirmed history", () => {
       f.root.querySelectorAll("assistant-canvas assistant-action-card"),
     ).toHaveLength(1);
     expect(requests()).toHaveLength(2);
-    button(f.root, "Continuar por texto").click();
+    button(f.root, "Texto").click();
     await render(f.fixture);
     expect(
       f.root.querySelectorAll("assistant-reply assistant-action-card"),
-    ).toHaveLength(2);
+    ).toHaveLength(0);
+    expect(f.workspace.selection()).toBe(chat.id);
+    button(f.root, "Voz").click();
+    await render(f.fixture);
+    button(f.root, "Ver propuestas · 2").click();
+    await render(f.fixture);
+    expect(requests()).toHaveLength(2);
+    expect(button(f.root, "Nueva sesión de voz").disabled).toBe(true);
     expect(f.callsTo("financialActions.approve")).toHaveLength(0);
     expect(f.stream).not.toHaveBeenCalled();
     f.credentials.accept(
@@ -527,8 +571,8 @@ describe("first-party chat page lifetimes and confirmed history", () => {
     const f = setup(
       {
         "assistant.configuration": () => externalConfiguration,
-        "assistant.conversation": () => ({
-          ...chat,
+        "assistant.voiceConversation": () => ({
+          ...voiceChat,
           turns: saved,
           turnCount: saved.length,
         }),
@@ -569,7 +613,10 @@ describe("first-party chat page lifetimes and confirmed history", () => {
     ];
     button(f.root, "Consultar estado").click();
     await render(f.fixture);
-    expect(f.root.textContent).toContain("Audio interrumpido");
+    expect(f.root.textContent).not.toContain("Audio interrumpido");
+    expect(button(f.root, "Reanudar voz").disabled).toBe(false);
+    button(f.root, "Texto").click();
+    await render(f.fixture);
     compose(f, "Una nueva pregunta explícita");
     expect(button(f.root, "Enviar pregunta").disabled).toBe(false);
     expect(f.stream).not.toHaveBeenCalled();
@@ -618,13 +665,85 @@ describe("first-party chat page lifetimes and confirmed history", () => {
     });
     await render(f.fixture);
     expect(f.stream).not.toHaveBeenCalled();
-    button(f.root, "Continuar por texto").click();
+    button(f.root, "Texto").click();
     await render(f.fixture);
     expect(f.root.querySelector("textarea")?.value).toBe(
       "Mi borrador detallado",
     );
-    expect(f.root.textContent).toContain("¿Y el mes anterior?");
+    expect(f.root.textContent).not.toContain("¿Y el mes anterior?");
+    expect(f.root.textContent).not.toContain(
+      "Revisemos un período comparable.",
+    );
+    expect(f.workspace.selection()).toBe(chat.id);
     expect(f.root.querySelector(".voice-stage")).toBeNull();
+  });
+
+  it("preserves an unselected text draft while a separate voice turn closes, reconciles and rejects late events", async () => {
+    const closed = deferred<void>();
+    let saved: AssistantTurn[] = [];
+    const f = setup(
+      {
+        "assistant.configuration": () => externalConfiguration,
+        "assistant.voiceConversation": () => ({
+          ...voiceChat,
+          turns: saved,
+          turnCount: saved.length,
+        }),
+      },
+      null,
+      true,
+    );
+    const voice = f.fixture.debugElement.injector.get(AssistantVoiceClient);
+    let receive: Parameters<AssistantVoiceClient["start"]>[2] | undefined;
+    vi.spyOn(voice, "start").mockImplementation(
+      async (_owner, _id, handler) => {
+        receive = handler;
+        voice.state.set("listening");
+      },
+    );
+    vi.spyOn(voice, "end").mockImplementation(() => {
+      const active = voice.state() !== "off";
+      voice.state.set("off");
+      return active ? closed.promise : Promise.resolve();
+    });
+    await render(f.fixture);
+    compose(f, "Borrador anterior a la voz");
+    button(f.root, "Voz").click();
+    await render(f.fixture);
+    button(f.root, "Entiendo, iniciar micrófono").click();
+    await render(f.fixture);
+    const pending = {
+      ...assistantReply,
+      question: "Consulta por voz",
+      text: "",
+      status: "pending" as const,
+      voice: { question: "Transcripción privada" },
+    };
+    receive?.({ type: "turn", turn: pending });
+    f.fixture.detectChanges();
+    button(f.root, "Texto").click();
+    f.fixture.detectChanges();
+    expect(f.workspace.selection()).toBeUndefined();
+    expect(f.root.querySelector("textarea")?.value).toBe(
+      "Borrador anterior a la voz",
+    );
+    expect(button(f.root, "Enviar pregunta").disabled).toBe(true);
+    expect(f.root.textContent).not.toContain("Transcripción privada");
+    saved = [{ ...pending, status: "interrupted" }];
+    closed.resolve();
+    await render(f.fixture);
+    receive?.({
+      type: "done",
+      turn: { ...pending, text: "Respuesta tardía de voz", status: "complete" },
+    });
+    await render(f.fixture);
+    expect(f.root.textContent).not.toContain("Respuesta tardía de voz");
+    expect(button(f.root, "Enviar pregunta").disabled).toBe(false);
+    expect(
+      f.callsTo("assistant.createConversation").map((call) => call.input),
+    ).toEqual([{ mode: "voice" }]);
+    expect(f.callsTo("assistant.conversation")).toHaveLength(0);
+    expect(f.stream).not.toHaveBeenCalled();
   });
   afterEach(() => {
     TestBed.resetTestingModule();
@@ -670,7 +789,7 @@ describe("first-party chat page lifetimes and confirmed history", () => {
     button(f.root, "Conversar por voz").click();
     await render(f.fixture);
     expect(f.root.querySelector(".voice-start")?.textContent).toContain(
-      "sin enviar cada transcripción al modelo de texto",
+      "no aparecen en tu historial de texto",
     );
     expect(f.root.querySelector(".voice-processing-consent")).toBeNull();
     expect(button(f.root, "Entiendo, iniciar micrófono").disabled).toBe(false);
@@ -849,15 +968,13 @@ describe("first-party chat page lifetimes and confirmed history", () => {
     if (reason === "owner") f.credentials.clear();
     if (reason === "destroy") f.fixture.destroy();
     else f.fixture.detectChanges();
-    created.resolve(chat);
+    created.resolve(voiceChat);
     if (reason !== "destroy") await render(f.fixture);
     else await Promise.resolve();
     expect(start).toHaveBeenCalledTimes(reason === "accepted" ? 1 : 0);
     expect(f.microphone).not.toHaveBeenCalled();
     expect(f.stream).not.toHaveBeenCalled();
-    expect(f.workspace.selection()).toBe(
-      reason === "accepted" ? chat.id : undefined,
-    );
+    expect(f.workspace.selection()).toBeUndefined();
   });
 
   it("keeps suggestions explicit, supports Shift+Enter and prevents duplicate creation or sends across navigation", async () => {

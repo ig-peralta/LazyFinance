@@ -62,6 +62,11 @@ protected/TLS service channel in deployment.
 
 ## Boundaries
 
+- Migration 033 adds immutable text/voice conversation mode and an owner/mode
+  index. Voice-only histories are backfilled without deleting or rewriting turns.
+  Lists are text-only; private turn claims check mode. Text/voice creation quotas
+  are separate (10/100) while the single active owner lease spans both. Apply this
+  additive migration before running the rebuilt API/persistence; no seed/reset.
 - Migration 032 adds one account-owned processing-consent decision with policy key,
   CAS revision and server timestamp. Reads never insert, unchanged decisions keep
   time/revision, and forced owner RLS permits no deletion/reassignment. Apply this

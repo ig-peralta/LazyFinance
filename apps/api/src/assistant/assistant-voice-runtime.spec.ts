@@ -1,12 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
 import type {
-  AssistantConversation,
   AssistantTurn,
   AssistantVoiceEvent,
   FinancialAction,
 } from "@lazyfinance/contracts";
 import { FinancialActionRequestSchema } from "@lazyfinance/contracts";
+import { type StoredAssistantConversationSchema } from "@lazyfinance/contracts/internal";
 import { Test } from "@nestjs/testing";
 import { describe, expect, it, vi } from "vitest";
 import WebSocket from "ws";
@@ -42,9 +42,12 @@ async function setup() {
   const socket = new Socket();
   const conversationId = randomUUID();
   const saved: AssistantTurn[] = [];
-  const conversation = (): AssistantConversation => ({
+  const conversation = (): z.infer<
+    typeof StoredAssistantConversationSchema
+  > => ({
     id: conversationId,
-    title: "Conversación compartida",
+    mode: "voice",
+    title: "Sesión de voz",
     createdAt: "2026-11-11T00:00:00.000Z",
     updatedAt: "2026-11-11T00:00:00.000Z",
     expiresAt: "2026-12-11T00:00:00.000Z",
@@ -250,6 +253,11 @@ describe("server-owned native audio conversation", () => {
     );
     try {
       await f.begin();
+      expect(f.store.begin.mutate.mock.calls[0][0].mode).toBe("voice");
+      expect(JSON.stringify(f.responses().at(-1))).toContain("español neutral");
+      expect(JSON.stringify(f.responses().at(-1))).not.toContain(
+        "acento chileno",
+      );
       const request = {
         kind: "create_budget",
         budget: {

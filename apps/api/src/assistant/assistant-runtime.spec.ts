@@ -81,6 +81,81 @@ function input(): AssistantRuntimeInput {
 }
 
 describe("actual provider-neutral AI SDK tool loop with controlled models", () => {
+  it.each([
+    {
+      kind: "create_budget",
+      field: "budget",
+      objective: {
+        name: "Compras",
+        amount: "150000.00",
+        schedule: { period: "monthly", startDate: "2026-12-01" },
+      },
+    },
+    {
+      kind: "create_savings_goal",
+      field: "goal",
+      objective: {
+        name: "Reserva",
+        amount: "150000.00",
+        schedule: { period: "lifetime" },
+      },
+    },
+  ])("exposes a nonempty tag alternative in the $kind model JSON schema", ({
+    kind,
+    field,
+    objective,
+  }) => {
+    const schema = z.toJSONSchema(FinancialActionRequestSchema, {
+      io: "input",
+    });
+    const branches = z
+      .object({
+        oneOf: z.array(
+          z.object({ properties: z.record(z.string(), z.unknown()) }),
+        ),
+      })
+      .parse(schema).oneOf;
+    const branch = branches.find((branch) => field in branch.properties);
+    const alternatives = z
+      .object({
+        anyOf: z.array(
+          z.object({
+            required: z.array(z.string()),
+            properties: z.record(
+              z.string(),
+              z.object({ minItems: z.number().optional() }).passthrough(),
+            ),
+          }),
+        ),
+      })
+      .parse(branch?.properties[field]).anyOf;
+    expect(alternatives).toHaveLength(2);
+    expect(
+      alternatives.every((branch) =>
+        ["tagIds", "newTags"].some(
+          (key) =>
+            branch.required.includes(key) &&
+            branch.properties[key].minItems === 1,
+        ),
+      ),
+    ).toBe(true);
+    expect(
+      FinancialActionRequestSchema.safeParse({
+        kind,
+        [field]: { ...objective, tagIds: [], newTags: [] },
+      }).success,
+    ).toBe(false);
+    expect(
+      FinancialActionRequestSchema.safeParse({
+        kind,
+        [field]: {
+          ...objective,
+          tagIds: [],
+          newTags: [{ name: "Compras", color: null }],
+        },
+      }).success,
+    ).toBe(true);
+  });
   it("executes a validated read, returns its source to the next model step and streams only answer text", async () => {
     const model = new MockLanguageModelV4({
       doStream: [

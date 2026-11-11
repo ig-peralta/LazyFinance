@@ -13,14 +13,16 @@ export class AssistantVoiceStage {
   readonly showResult = output<string>();
   protected readonly voice = inject(AssistantVoiceClient);
   protected readonly label = computed(() =>
-    this.voice.state() === "connecting"
-      ? "Conectando…"
-      : this.voice.state() === "querying"
-        ? "Consultando tus datos"
-        : this.voice.state() === "responding"
-          ? "Respondiendo"
-          : this.voice.state() === "muted"
-            ? "Micrófono silenciado"
-            : "Te escucho",
+    this.voice.state() === "off"
+      ? "Sesión de voz finalizada"
+      : this.voice.state() === "connecting"
+        ? "Conectando…"
+        : this.voice.state() === "querying"
+          ? "Consultando tus datos"
+          : this.voice.state() === "responding"
+            ? "Respondiendo"
+            : this.voice.state() === "muted"
+              ? "Micrófono silenciado"
+              : "Te escucho",
   );
 }

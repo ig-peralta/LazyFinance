@@ -28,7 +28,7 @@ All unqualified table names in the finance section below belong to `finance`.
 | `identity.onboarding` | PK `user_id` → user | Optional-guide skip/completion; self-owned read/insert and status/timestamp update, no runtime delete |
 | `identity.mcp_grant` | Opaque text `id`; unique `interaction_id`; `user_id` → user | Immutable owner/client/resource/scopes/maximum-30-day expiry; self-owned listing and monotonic revocation |
 | `identity.mcp_artifact` | PK `(model, key)` with SHA-256 key; optional `account_id` → user | Allowlisted OAuth provider state encrypted by API; expiry/consumption/UID/grant indexes, dedicated-purpose writes |
-| `assistant.conversation` | `id`; `user_id` → user; owner/update-time index | Server-owned bounded turns and sources, generation lease and fixed maximum-30-day availability; no financial facts or credentials |
+| `assistant.conversation` | `id`; `user_id` → user; owner/mode/update-time index | Immutable text/voice mode, bounded retained turns and sources, generation lease and fixed maximum-30-day availability; no financial facts or credentials |
 | `assistant.action` | `id`; `user_id` → user; nullable `conversation_id` → conversation; unique `(user_id, origin, request_id)` | Versioned proposals and immutable finalized receipts; client/grant-bound direct execution; chat deletion only nulls its reference |
 | `assistant.processing_consent` | PK `user_id` → user | Latest accepted/refused external-processing decision, policy key, CAS revision and server decision time; no runtime delete/reassignment |
 | `provider` | `id`; unique `identifier` | Shared catalog; runtime SELECT only |
@@ -108,6 +108,12 @@ financial access. See [OAuth persistence and lifecycle](mcp-authorization.md).
   user lock; an unchanged current decision preserves its revision/timestamp.
   Outdated policy projects to `unset` at the API without changing the stored row.
   This is one latest preference, not a historical decision ledger.
+- Assistant conversations have immutable `text`/`voice` mode after migration 033.
+  Nonempty voice-only histories are backfilled without rewriting transcripts;
+  mixed/empty histories remain text. Text lists/reads/context exclude voice
+  sessions/turns, but the database retains them under the same availability policy.
+  Separate quotas allow ten text and 100 voice conversations per owner; the
+  single active owner lease still spans both modes. Runtime cannot update mode.
 - Monetary columns use `numeric(15,2)` and cross RPC as decimal strings. CLP is the
   implemented currency. Transaction amounts are nonzero, with negative debits and
   positive credits enforced together. The balance is nullable and independent of

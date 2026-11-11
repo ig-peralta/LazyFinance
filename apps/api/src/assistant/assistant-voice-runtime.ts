@@ -40,7 +40,7 @@ export const voiceSocket: VoiceSocketFactory = (call, key) =>
     },
   );
 
-const voiceInstructions = `\nModo voz: escuchas audio nativo. Habla en español de Chile, con acento chileno natural y suave, tuteo y ritmo tranquilo; sin exagerar modismos ni imitar una caricatura. Responde en una o dos frases cortas, sin listas, Markdown, informes ni despedidas repetidas. No narres que vas a consultar: usa las herramientas en silencio y habla después del resultado. Si falta un dato, pregunta solo por ese dato y conserva lo que el usuario ya indicó. Las consultas actualizan el espacio en pantalla: para mostrar gráficos usa el resumen o comparación, para acotar por etiqueta usa compras del gasto, y para mostrar compras usa evidencia o buscar_movimientos. No navegues fuera del espacio. Si te interrumpen, acepta la corrección sin reiniciar la tarea. Decir sí NUNCA aprueba: deben revisar y pulsar el botón en pantalla. Conserva fechas, limitaciones y cifras exactas en las fuentes visibles. No afirmes cantidades personales antes de recibir herramientas de este turno. Nunca inventes un resultado visual ni un cambio aplicado.`;
+const voiceInstructions = `\nModo voz: escuchas audio nativo. Habla en español neutral, con pronunciación clara, tono cordial y ritmo tranquilo; sin acento regional deliberado, jerga chilena ni modismos locales. Responde en una o dos frases cortas, sin listas, Markdown, informes ni despedidas repetidas. No narres que vas a consultar: usa las herramientas en silencio y habla después del resultado. Si falta un dato, pregunta solo por ese dato y conserva lo que el usuario ya indicó. Las consultas actualizan el espacio en pantalla: para mostrar gráficos usa el resumen o comparación, para acotar por etiqueta usa compras del gasto, y para mostrar compras usa evidencia o buscar_movimientos. No navegues fuera del espacio. Si te interrumpen, acepta la corrección sin reiniciar la tarea. Decir sí NUNCA aprueba: deben revisar y pulsar el botón en pantalla. Conserva fechas, limitaciones y cifras exactas en las fuentes visibles. No afirmes cantidades personales antes de recibir herramientas de este turno. Nunca inventes un resultado visual ni un cambio aplicado.`;
 const actionStates = {
   proposed: 0,
   stale: 1,
@@ -210,6 +210,8 @@ export class RealtimeConversation {
       const conversation = await this.assistant
         .conversations(this.owner)
         .get.query({ id: this.conversationId });
+      if (conversation.mode !== "voice")
+        throw new Error("Voice conversation required");
       this.contextTurns = conversation.turns;
       this.refreshInstructions();
       this.unobserve = this.actions.observe(
@@ -402,6 +404,7 @@ export class RealtimeConversation {
           conversationId: this.conversationId,
           requestId: randomUUID(),
           lease,
+          mode: "voice",
           text: "Consulta por voz",
         });
       if (!started.acquired) throw new Error("Voice lease unavailable");

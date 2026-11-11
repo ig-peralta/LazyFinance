@@ -65,6 +65,10 @@ const appRouter = t.router({
       .input(AssistantConversationIdSchema)
       .output(AssistantConversationSchema)
       .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    voiceConversation: publicProcedure
+      .input(AssistantConversationIdSchema)
+      .output(AssistantConversationSchema)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
     createConversation: publicProcedure
       .input(CreateAssistantConversationSchema)
       .output(AssistantConversationSchema)

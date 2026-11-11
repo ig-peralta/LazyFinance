@@ -185,7 +185,8 @@ or external-identity write permission. Its named upsert makes completion termina
 and retains the first server timestamp; no financial facts are changed.
 
 `assistant.conversation` is a separate owner-RLS schema, with no runtime CREATE
-or owner/ID/retention reassignment. Its named commands enforce creation/turn quotas,
+or owner/ID/mode/retention reassignment. Its named commands enforce separate
+10-text/100-voice creation quotas, matching-mode turn admission,
 nonce replay and lease-checked completion under the user advisory lock. Model
 calls remain outside SQL; conversation deletion changes no financial facts. See
 [assistant persistence, cancellation and retention limits](financial-assistant.md).
