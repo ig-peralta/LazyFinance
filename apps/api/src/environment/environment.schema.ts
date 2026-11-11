@@ -49,6 +49,10 @@ export const ENV_SCHEMA = z
       .string()
       .regex(/^pk_(test|live)_[A-Za-z0-9_-]+$/)
       .optional(),
+    BANKING_AUTOMATIC_SYNC_ENABLED: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((value) => value === "true"),
     FINTOC_SECRET_KEY: z
       .string()
       .regex(/^sk_(test|live)_[A-Za-z0-9_-]+$/)

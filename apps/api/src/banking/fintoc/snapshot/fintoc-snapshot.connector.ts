@@ -24,6 +24,7 @@ export class FintocSnapshotConnector implements BankingConnector {
   private total: number | null | undefined;
   private readonly seenAccounts = new Set<string>();
   private readonly accounts: NormalizedAccountSnapshot[] = [];
+  private readonly selectedAccounts: ReadonlySet<string>;
   private accountIndex = 0;
   private readonly seenMovements = new Set<string>();
   private from: string | null = null;
@@ -37,7 +38,9 @@ export class FintocSnapshotConnector implements BankingConnector {
     >,
     private readonly token: string,
     private readonly window: BankingImportReport["requestedHistory"],
+    private readonly selectedAccountIds: readonly string[],
   ) {
+    this.selectedAccounts = new Set(selectedAccountIds);
     this.report = {
       requestedHistory: { ...window },
       importedAccounts: 0,
@@ -73,7 +76,7 @@ export class FintocSnapshotConnector implements BankingConnector {
         complete: false,
       };
       if (this.phase === "link") {
-        const link = await this.fintoc.link(this.token, input.signal);
+        const link = await this.fintoc.link(this.token, input.signal, "sync");
         if (
           link.id !== this.owned.externalId ||
           link.mode !== this.owned.connection.mode ||
@@ -95,6 +98,7 @@ export class FintocSnapshotConnector implements BankingConnector {
           if (this.seenAccounts.has(raw.id) || this.seenAccounts.size >= 1000)
             throw new FintocFailure("invalid_data");
           this.seenAccounts.add(raw.id);
+          if (!this.selectedAccounts.has(raw.id)) continue;
           const normalized = normalizeFintocAccount(raw);
           if ("skipped" in normalized) {
             this.report.skippedAccounts.push(normalized.skipped);
@@ -109,6 +113,8 @@ export class FintocSnapshotConnector implements BankingConnector {
         }
         if (data.hasMore) this.page++;
         else {
+          if (this.accounts.length !== this.selectedAccountIds.length)
+            return this.failure("account_unavailable");
           this.phase = this.accounts.length ? "movements" : "done";
           this.page = 1;
           this.total = undefined;
@@ -198,7 +204,12 @@ export class FintocSnapshotConnector implements BankingConnector {
   }
 
   private failure(
-    reason: "retryable" | "expired" | "revoked" | "invalid_data",
+    reason:
+      | "retryable"
+      | "expired"
+      | "revoked"
+      | "invalid_data"
+      | "account_unavailable",
     retryAfter: string | null = null,
   ): ConnectorResult {
     this.phase = "done";

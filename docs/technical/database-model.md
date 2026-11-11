@@ -1,8 +1,8 @@
 # Implemented database model
 
 This reference describes the checked-in Kysely migrations, not a conceptual
-product model. PostgreSQL 18 holds **28 application tables** in fixed `identity`,
-`finance` and `assistant` schemas. Twenty-seven sensitive tables force user/identity/OAuth-purpose RLS;
+product model. PostgreSQL 18 holds **32 application tables** in fixed `identity`,
+`finance` and `assistant` schemas. Thirty-one sensitive tables force scoped RLS;
 `finance.provider` is the shared read-only catalog exception. There is no tenancy,
 membership or account-sharing model. See [security and RLS](persistence-security.md)
 for policy/grant details.
@@ -33,6 +33,10 @@ All unqualified table names in the finance section below belong to `finance`.
 | `provider` | `id`; unique `identifier` | Shared catalog; runtime SELECT only |
 | `provider_connection` | `id` → provider; `user_id`; unique provider/mode/external Link ID | Owned access status, API-encrypted credential/version, institution/holder and terminal disconnect/remote-cleanup state; legacy fixture fields remain nullable |
 | `provider_link_intent` | `id`; unique provider intent ID; optional original/completed connection FKs | Owner-bound, expiring callback claims with hashed exchange token, version-pinned relink and durable completion |
+| `provider_account_selection` | PK `connection_id`; immutable `user_id` → user | Minimal bounded discovery, credential/discovery/selection versions, selected IDs, consent and connection read backoff; no balances or movements |
+| `provider_sync_schedule` | PK `connection_id`; immutable `user_id` → user | Operational eligibility, next due time, failure streak, claim/run references and bounded daily attempts; scheduler can update claim fields only |
+| `provider_request_admission` | Caller-generated UUID; mode/purpose and time indexes | Durable deployment-wide rate/concurrency/read-volume admission; dedicated banking-transport context only |
+| `provider_request_backoff` | PK `mode` (`test`/`live`) | Greatest retained provider waiting period shared by all transport reads/lifecycle requests; banking-transport context only, no runtime delete |
 | `account` | `id`; unique `(provider_connection_id, external_id)`; `user_id` | Owned account and owned connection must agree; independent nullable source balance |
 | `transaction` | `id`; unique non-null `(account_id, external_id)` | Ownership through account; provider fact plus preserved user interpretation |
 | `tag` | `id`; unique `(user_id, name)` | User-owned catalog with archive flag |
@@ -61,10 +65,15 @@ policy independently rejects it.
 
 The [editable PlantUML source](../diagrams/sources/er.puml) and
 [full-size rendered PNG](../diagrams/er.png) are part of the
-[implemented ER and 4+1 atlas](../diagrams/README.md). They cover all
-**28 application tables and 44 foreign keys**, with PK/FK markers, nullable ends,
+[implemented ER and 4+1 atlas](../diagrams/README.md). They show the earlier
+**28-table, 44-foreign-key baseline**, with PK/FK markers, nullable ends,
 identifying/non-identifying relationships and selected domain attributes.
 Entity titles use qualified SQL `schema.table` names.
+
+The four banking operational tables added by migration `202611100030` are listed
+above but not drawn in that baseline image. Selection and schedules each reference
+the owned connection and user, bringing the current schema to 32 tables and 48
+foreign keys. The transport tables contain no financial-owner references.
 
 ![Implemented relationships across identity, finance and assistant](../diagrams/er.png)
 
@@ -165,6 +174,14 @@ advance revisions under the user write lock. A stale lease is an interrupted
 attempt, not a synthesized failure or successful refresh. Provider backoff remains
 durable across requests. The owned status projection includes source dates and
 balance-presence flags without downloading movements or encrypted credentials.
+
+For Fintoc, run state also captures credential/selection versions and the optional
+scheduling claim. Completion/failure must match the live revision, versions and
+claim; scheduled expiry is aligned with the ingestion lease. Selection and schedule
+records are separate from imported account facts. Deselecting or disconnecting
+invalidates work without using `account.active` to hide retained history. Empty or
+legacy selection never implicitly authorizes an import. Durable quota exhaustion
+postpones and releases the exhausted claim so healthy due work is not blocked.
 
 An explicit temporary unbooking adds a `provider_unbooked` conflict and excludes
 the retained movement with `needs_review`. Confirmation can resolve that conflict

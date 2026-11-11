@@ -1,5 +1,5 @@
 import {
-  AccountSummarySchema,
+  AccountListItemSchema,
   type AssistantReadName,
   type AssistantSource,
   BudgetContributionsInputSchema,
@@ -106,9 +106,9 @@ export class FinancialReads {
     ),
     consultar_saldos_cuentas: read(
       "Cuentas y saldos",
-      "Saldos reportados, tipo de cuenta y última sincronización. null es desconocido; tarjetas son deuda. No reconstruyas saldos ni uses ingresos esperados como efectivo.",
+      "Saldos reportados, tipo de cuenta, fecha de origen y seguimiento activo/en pausa/sin acceso. Los saldos en pausa son últimos valores conocidos, no datos actuales. null es desconocido; tarjetas son deuda. No reconstruyas saldos ni uses ingresos esperados como efectivo.",
       empty,
-      z.object({ accounts: z.array(AccountSummarySchema) }),
+      z.object({ accounts: z.array(AccountListItemSchema) }),
       "/cuentas",
       async (userId) => ({
         accounts: await this.accounts.getActiveForUser(userId),

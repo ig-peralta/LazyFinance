@@ -308,6 +308,12 @@ describe.skipIf(!integration)(
           { retryAfter: new Date(Date.now() - 1).toISOString() },
           "providerConnectionId",
         );
+        await f.db.update(
+          "provider_account_selection",
+          f.connected.id,
+          { readRetryAfter: new Date(Date.now() - 1).toISOString() },
+          "connectionId",
+        );
         f.state.failMovements = false;
         expect(await f.refresh()).toMatchObject({ status: "complete" });
         expect(await f.syncStatus()).toMatchObject({
@@ -375,6 +381,19 @@ describe.skipIf(!integration)(
           failure: { reason: "retryable" },
         });
         f.state.linkFailureStatus = null;
+        expect(await f.refresh()).toMatchObject({ status: "retry_later" });
+        await f.db.update(
+          "provider_sync_state",
+          f.connected.id,
+          { retryAfter: new Date(Date.now() - 1).toISOString() },
+          "providerConnectionId",
+        );
+        await f.db.update(
+          "provider_account_selection",
+          f.connected.id,
+          { readRetryAfter: new Date(Date.now() - 1).toISOString() },
+          "connectionId",
+        );
         expect(await f.refresh()).toMatchObject({ status: "complete" });
       } finally {
         await f.close();

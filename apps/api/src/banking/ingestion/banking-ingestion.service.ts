@@ -15,6 +15,7 @@ import {
   type ConnectorPage,
   ConnectorResultSchema,
 } from "../connector/normalized-banking.schema";
+import { syncScheduleCompletion } from "../synchronization/sync-schedule-policy";
 import { InvalidBatchError, prepareSync, syncScope } from "./prepare-sync";
 
 const MAX_PAGES = 100;
@@ -29,6 +30,11 @@ export class BankingIngestionService {
     connectionId: string,
     connector: BankingConnector,
     expectedCredentialVersion?: number,
+    options: {
+      selectionVersion?: number;
+      claimId?: string;
+      signal?: AbortSignal;
+    } = {},
   ): Promise<ProviderSyncOutcome> {
     const client = this.persistence.user(userId);
     let state: ProviderSyncBegin;
@@ -39,6 +45,10 @@ export class BankingIngestionService {
         ...(expectedCredentialVersion === undefined
           ? {}
           : { expectedCredentialVersion }),
+        ...(options.selectionVersion === undefined
+          ? {}
+          : { expectedSelectionVersion: options.selectionVersion }),
+        ...(options.claimId ? { claimId: options.claimId } : {}),
       });
     } catch (error) {
       if (persistenceException(error)?.getStatus() === 409)
@@ -59,15 +69,30 @@ export class BankingIngestionService {
       connector,
       connectionId,
       state.checkpoint,
+      options.signal,
     );
-    const failure = (value: ConnectorFailure) =>
-      client.providerSync.failure.mutate({
+    const failure = (value: ConnectorFailure) => {
+      const scheduling = state.tracking
+        ? syncScheduleCompletion(
+            state.tracking.automation.failureCount,
+            new Date(),
+            Math.random(),
+            value.reason,
+            value.retryAfter,
+          )
+        : undefined;
+      return client.providerSync.failure.mutate({
         connectionId,
         revision: state.revision,
         reason: value.reason,
         observedAt: value.observedAt,
-        retryAfter: value.retryAfter,
+        retryAfter:
+          value.reason === "retryable" && scheduling
+            ? scheduling.nextAttemptAt
+            : value.retryAfter,
+        ...(scheduling ? { scheduling } : {}),
       });
+    };
     if ("failure" in fetched) return failure(fetched.failure);
 
     const scope = syncScope(connectionId, state.revision, fetched.pages);
@@ -88,6 +113,12 @@ export class BankingIngestionService {
 
       try {
         const prepared = prepareSync(scope, facts, fetched.pages);
+        if (facts.tracking)
+          prepared.scheduling = syncScheduleCompletion(
+            facts.tracking.automation.failureCount,
+            new Date(),
+            Math.random(),
+          );
         if (
           Buffer.byteLength(JSON.stringify(prepared)) >
           MAX_PERSISTENCE_RPC_BYTES
@@ -124,10 +155,14 @@ export class BankingIngestionService {
     connector: BankingConnector,
     connectionId: string,
     checkpoint: string | null,
+    cancellation?: AbortSignal,
   ): Promise<{ pages: ConnectorPage[] } | { failure: ConnectorFailure }> {
     const pages: ConnectorPage[] = [],
       seen = new Set<string>();
-    const signal = AbortSignal.timeout(60_000);
+    const signal = AbortSignal.any([
+      AbortSignal.timeout(60_000),
+      ...(cancellation ? [cancellation] : []),
+    ]);
     let pageCursor: string | null = null,
       records = 0,
       bytes = 0;

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AccountSummarySchema } from "../accounts";
+import { AccountListItemSchema } from "../accounts";
 import {
   IncomeExpectationInputSchema,
   IncomeExpectationSchema,
@@ -21,7 +21,7 @@ export const RpcEmptySchema = z.void();
 export const RpcVoidSchema = z.void();
 export const RpcIdSchema = z.strictObject({ id: z.uuid() });
 export const RpcMonthSchema = z.strictObject({ month: MonthSchema.optional() });
-export const AccountsResultSchema = z.array(AccountSummarySchema);
+export const AccountsResultSchema = z.array(AccountListItemSchema);
 export const RecentTransactionsResultSchema = z.array(RecentTransactionSchema);
 export const ObjectivesResultSchema = z.array(ObjectiveSummarySchema);
 export const BudgetProgressResultSchema = z.array(BudgetProgressSchema);

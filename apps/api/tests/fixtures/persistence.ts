@@ -12,6 +12,7 @@ import {
 } from "../../src/assistant/assistant-runtime";
 import { MockAuthService } from "../../src/auth/mock/mock-auth.service";
 import { FINTOC_FETCH } from "../../src/banking/fintoc/client/fintoc-client";
+import { FintocRequestAdmission } from "../../src/banking/fintoc/client/fintoc-request-admission";
 import { configureCors } from "../../src/cors";
 import { EnvironmentService } from "../../src/environment/environment.service";
 import { MCP_OAUTH_FETCH } from "../../src/mcp/authorization/oauth-provider";
@@ -108,7 +109,10 @@ export async function startApi(
   fintocFetch?: typeof fetch,
   port = 0,
   oauthFetch?: typeof fetch,
-  options: { assistantRuntime?: AssistantRuntime } = {},
+  options: {
+    assistantRuntime?: AssistantRuntime;
+    fintocAdmission?: FintocRequestAdmission;
+  } = {},
 ) {
   const { verifier } = testMockAuth({
     [f.token]: {
@@ -128,6 +132,10 @@ export async function startApi(
     .overrideProvider(MockAuthService)
     .useValue(verifier);
   if (fintocFetch) builder.overrideProvider(FINTOC_FETCH).useValue(fintocFetch);
+  if (options.fintocAdmission)
+    builder
+      .overrideProvider(FintocRequestAdmission)
+      .useValue(options.fintocAdmission);
   if (oauthFetch)
     builder.overrideProvider(MCP_OAUTH_FETCH).useValue(oauthFetch);
   if (options.assistantRuntime)

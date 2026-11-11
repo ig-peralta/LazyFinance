@@ -1,4 +1,4 @@
 import { z } from "zod";
-import { AccountSummarySchema } from "../accounts/account-summary.schema";
+import { AccountListItemSchema } from "../accounts/account-summary.schema";
 
-export const AccountRecordsSchema = z.array(AccountSummarySchema);
+export const AccountRecordsSchema = z.array(AccountListItemSchema);

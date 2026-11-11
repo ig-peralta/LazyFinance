@@ -1,18 +1,22 @@
 # Selected-account synchronization policy (LAZ-89)
 
 - **Decision date:** 2026-11-10.
-- **Status:** implementation design for review, not delivered automation.
+- **Status:** implemented selection and isolated automatic-import composition in
+  the LAZ-74 working source; regression/live acceptance gates remain open.
 - **Source:** LAZ-89 acceptance, repository baseline `7c017f7a`, public Fintoc
   documentation reviewed on the decision date, and the approved proposal.
 - **Additional requirement:** synchronization must have explicit, isolated
   boundaries so it can later move to a separate service without rewriting its
   behavior or duplicating financial logic.
 
-The current implementation remains the explicit snapshot workflow described in
-the [banking guide](../../../apps/api/src/banking/README.md). LAZ-86 implements
-selection; LAZ-90 implements background execution. This record changes neither
-runtime behavior nor existing data. No organization plan, pricing, live bank or
-deployment was inspected to make this decision.
+The 2026-11-10 decision evidence and acceptance requirements below are retained.
+The current [banking guide](../../../apps/api/src/banking/README.md) now describes
+delivered explicit discovery/versioned selection (LAZ-86) and background execution
+(LAZ-90), sharing the existing ingestion workflow. Migration 030 adds durable
+operational records without replacing imported history; existing connections start
+unconfirmed/unenrolled. Automation defaults off. This documentation update reports
+source behavior, not newly passed tests. No organization plan, pricing, live bank,
+manual/browser acceptance gate or deployment was verified for this update.
 
 ## 1. Provider capability and selected mechanism
 
@@ -45,16 +49,19 @@ Authorization, discovery and enrollment are separate operations:
 1. Complete owned authorization without selecting or importing accounts.
 2. Explicitly discover a bounded account inventory. Retain only the identifiers
    and minimal product/currency/masked-label metadata needed to choose accounts.
-   Provider responses may include balances; discard those for unselected
-   accounts and never fetch their movements. Do not log raw inventory payloads.
-3. Confirm the selected set and permission for first import and future automatic
-   imports together. Persist consent and a monotonically increasing selection
-   version before starting the confirmed work. If operational automation is
-   disabled, disclose that fact rather than showing updates as enabled.
+   Provider responses may include balances; discard all discovery balances and
+   never fetch unselected movements. Do not log raw inventory payloads.
+3. Confirm one selected set and its explicit `automaticEnrolled` choice through
+   `banking.selectAccounts`, with expected selection/discovery versions. The stored
+   discovery must match the current credential version. Selection persists before
+   any import; it does not itself fetch finance. The explicit first-import command
+   or an eligible scheduler then uses that selection. If operational automation is
+   disabled, disclose that fact rather than showing the worker as enabled.
 
 The durable discovery/selection records are separate from imported
-`finance.account` financial facts. Keys are `(connectionId, externalAccountId)`;
-aliases, numbers, provider ordering and existing imported rows cannot establish
+`finance.account` financial facts. One row per connection stores bounded choices
+and selected IDs; each choice is keyed logically by `(connectionId, externalAccountId)`.
+Aliases, numbers, provider ordering and existing imported rows cannot establish
 selection or consent. Public commands never accept a financial owner ID.
 
 | Event | Required behavior |
@@ -90,8 +97,8 @@ existing bounded retry for a known rolled-back factual conflict remains valid.
 
 ## 3. Isolated synchronization boundary
 
-The target is a cohesive banking subsystem with replaceable entry points, not a
-generic jobs platform or a new microservice in this issue.
+The delivered boundary is a cohesive banking subsystem with replaceable entry
+points, not a generic jobs platform or a new independently trusted microservice.
 
 ```text
 Verified manual command       Timer adapter (later: queue/event adapter)
@@ -158,10 +165,17 @@ bootstrap the public tagging routers to reuse it.
   permission to copy the API's broad signing key, grant owner database access or
   add a general administrator context.
 
-Current code does not yet satisfy all these extraction requirements: in
-particular, `BankingLinksModule` currently wires the public router and Fintoc
-import together. LAZ-90 owns the composition split and its verification, while
-preserving existing behavior. LAZ-89 adds no unused interfaces or packages.
+The composition split is implemented: `BankingSyncModule` composes import,
+discovery and the existing ingestion module without public routers or timers;
+`FintocModule` owns credentials/transport/shared durable admission.
+`BankingLinksModule` consumes that boundary for verified manual commands.
+`BankingSchedulingModule` separately hosts `BankingSyncRunner` and the timer.
+The API imports scheduling; `pnpm --filter api worker:banking` runs the same
+headless module after building, without `AppModule`, public HTTP, Firebase, MCP,
+assistant or a database pool. Omitting scheduling leaves manual synchronization
+available. Multiple API/headless hosts are safe through database claims, not an
+in-memory singleton. Separate signing authority and credential/network review
+remain mandatory before extracting an independently deployed service.
 
 ## 4. Durable scheduling and background authority
 
@@ -186,6 +200,16 @@ persistence. Begin rechecks the claim and live selection/credentials/lifecycle
 before provider I/O; commit checks them again. A stale operational record never
 authorizes importing financial data.
 
+The implemented scheduler context can call only `providerScheduler.claim`.
+RLS permits operational schedule reads/claims; an update trigger restricts that
+purpose to claim ID/expiry changes, never owner/eligibility/enrollment changes.
+The distinct `banking-transport` context can call only `providerRequests.acquire`,
+`release` and `defer`, with RLS only on request-admission/per-mode-backoff records.
+Neither purpose has financial, credential or identity access. The claimed owner
+then enters the shared engine through ordinary signed user context, with live
+claim/version/selection checks. These are purpose boundaries within the trusted
+signer, not separate cryptographic signing authorities.
+
 Keep these two leases distinct: a scheduling claim reserves execution capacity;
 the existing five-minute ingestion lease/revision authorizes one financial run.
 Bind the claim to that run so late workers cannot finish another worker's claim.
@@ -207,18 +231,33 @@ verified commercial budget. Enforce durable limits across replicas/restarts.
 | --- | --- |
 | Operational enablement | Off by default. Require explicit operator enablement and valid matching-mode Fintoc configuration; confirm live plan/cost separately |
 | Routine cadence | Next import one hour after successful completion, plus 0–5 minutes of jitter. First confirmed import can be due immediately. Missed intervals coalesce into one current snapshot, not a backlog of hourly replays |
-| Wake-up/capacity | Wake every minute; claim only available capacity. Initially one background run deployment-wide. Fair due-time ordering and database claims prevent one replica or connection from monopolizing work |
+| Wake-up/capacity | Immediate initial wake, then 60 seconds after each invocation settles; one claim per invocation and one reserved background run deployment-wide. Due-time/connection ordering with `FOR UPDATE SKIP LOCKED` avoids waiting on a user-held row lock. Daily-quota deferral advances due time and releases the claim; abandoned claims otherwise expire within five minutes |
 | Provider request admission | At most two requests/second and two in-flight requests across Fintoc transport users in the deployment, including manual and background work. Shared durable admission uses only operational counters, not cross-user financial access |
-| Read-volume budget | At most 1,000 synchronization/discovery provider requests per organization/mode per rolling hour. Both manual and background reads consume it. Lifecycle calls share rate admission but are not starved by this read-volume budget |
+| Read-volume budget | At most 1,000 synchronization/discovery provider requests per mode per rolling hour in this deployment (one configured Fintoc organization, not a multi-organization quota allocator). Both manual and background reads consume it. Lifecycle calls share rate admission but do not consume this read-volume budget |
 | Connection attempt budget | At most 30 acquired sync starts per rolling 24 hours, including first import, manual recovery, background work and retries. Coalesced/status calls are not starts; selection changes, relink and restarts do not reset the counter |
 | Run/transport limits | Retain five-minute ingestion lease; 60-second total fetch budget; 20-second request deadline; 100 pages; 1,000-account inventory; 50,000 combined normalized records; 32 MiB normalized, 64 MiB private and 1 MiB provider-response limits |
 | Financial commit | One atomic prepared commit for the intended selected snapshot. Never split, silently truncate or advance a checkpoint after partial failure |
 
-Admission counts actual outbound requests, including failed requests. A denied
+Admission records granted permits conservatively, including failed requests and
+potentially a permit whose response was lost before outbound I/O. A denied
 permit defers work without a provider call or a busy retry loop. Waiting for
 admission consumes the existing run deadline; do not claim more work to bypass
 it. Manual actions cannot bypass provider backoff or budgets. Provide sanitized
 next-eligible information when capacity or quota prevents a run.
+
+Request permits last 25 seconds; release marks completion, while response loss
+reserves capacity until expiry. Admission waits are bounded by the 20-second
+request deadline and shared 60-second fetch budget; release/defer private calls
+have a five-second timeout. Valid future provider `Retry-After` is saved as a
+nondecreasing per-mode wait. Discovery saves a connection read wait (provider
+time, or five minutes if absent), and begin/discovery honor it durably. Saving that
+wait also advances an unpaused schedule's due time without shortening an existing
+wait or altering a live claim/run. Read-volume
+exhaustion returns a retry time without provider I/O; it does not reset on restart.
+Connection daily-attempt exhaustion clears claim/run references and defers due time
+to the oldest retained attempt plus 24 hours. Other early begin deferrals currently
+retain the bounded scheduler claim until expiry; do not describe them as immediate
+claim release or unlimited wake-up fairness.
 
 The volume/attempt bounds limit traffic, not Link subscription charges or a
 currency-denominated bill. Record actual pricing and an acceptable Link/volume
@@ -276,7 +315,7 @@ Status/navigation reads are bounded, cancellable and provider-free. They never
 select accounts, enroll, begin work or retry a mutation. Unknown mutation
 outcomes reconcile through stored status before another explicit action.
 
-## 6. Delivery ownership and planned verification
+## 6. Delivery ownership and verification gates
 
 | Issue | Implementation responsibility |
 | --- | --- |
@@ -286,8 +325,9 @@ outcomes reconcile through stored status before another explicit action.
 | LAZ-87 | Selected/paused and automatic status, source age, next/retry facts and actionable recovery without hidden provider work |
 | LAZ-97 / LAZ-85 | Reuse the guided flow in optional onboarding / implement aliases without changing provider identity or losing saved names on sync |
 
-Acceptance must demonstrate the following; **none is execution evidence from
-this documentation change**:
+The source implements these boundaries; acceptance must still demonstrate the
+following. **This documentation task ran no regression, database, provider or
+browser checks and does not report the coordinator's ongoing regressions as passed**:
 
 | Boundary | Required checks |
 | --- | --- |
@@ -306,6 +346,6 @@ presentation. Sandbox/live validation remains separately authorized under
 LAZ-100; neither mocked providers nor a portable module establish live plan,
 bank freshness, maximum-size performance or production-service readiness.
 
-Update the current banking/security/contract/database/operations guides and
-generated contracts with their implementing issues. Do not describe this design
-as current runtime behavior or rewrite dated Stage B evidence as automation.
+Keep current banking/security/contract/database/operations guides and generated
+contracts aligned with the implementation. Preserve the decision date/provider
+evidence above; do not rewrite dated Stage B evidence as automation validation.

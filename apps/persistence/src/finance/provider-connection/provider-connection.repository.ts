@@ -14,6 +14,8 @@ import { RLS_DB } from "../../database/tokens";
 import { wireValue } from "../../serialization";
 import type { FinanceTables } from "../finance.tables";
 import type { ProviderMovementConflictTable } from "../provider-movement-conflict/provider-movement-conflict.tables";
+import { ProviderScheduleRepository } from "../provider-scheduling/provider-schedule.repository";
+import { ProviderSelectionRepository } from "../provider-selection/provider-selection.repository";
 import { TagRuleRepository } from "../tag-rule/tag-rule.repository";
 import {
   applyProviderSuspensions,
@@ -35,6 +37,8 @@ export class ProviderConnectionRepository {
   constructor(
     @Inject(RLS_DB) private readonly db: Kysely<FinanceTables>,
     private readonly tagging: TagRuleRepository,
+    private readonly selections: ProviderSelectionRepository,
+    private readonly schedules: ProviderScheduleRepository,
   ) {}
 
   private async connection(id: string) {
@@ -77,6 +81,8 @@ export class ProviderConnectionRepository {
     connectionId,
     provider,
     expectedCredentialVersion,
+    expectedSelectionVersion,
+    claimId,
   }: BeginProviderSync) {
     const connection = await this.connection(connectionId);
 
@@ -103,6 +109,22 @@ export class ProviderConnectionRepository {
     if (connection.status !== "active")
       invalid("Banking connection needs relinking");
 
+    const tracking =
+      provider === "fintoc"
+        ? await this.selections.tracking(connectionId)
+        : undefined;
+    if (
+      tracking &&
+      (expectedSelectionVersion !== tracking.selection.version ||
+        !tracking.selection.confirmedAt ||
+        !tracking.selection.accountIds.length)
+    )
+      throw new TRPCError({
+        code: "CONFLICT",
+        message:
+          "Confirm the accounts selected for tracking before synchronizing",
+      });
+
     const current = await this.db
       .selectFrom("finance.provider_sync_state")
       .selectAll()
@@ -116,6 +138,38 @@ export class ProviderConnectionRepository {
     )
       return { ...current, acquired: false };
 
+    if (
+      tracking?.selection.readRetryAfter &&
+      Date.parse(tracking.selection.readRetryAfter) > now
+    ) {
+      return {
+        ...(current ?? this.emptyState(connectionId)),
+        acquired: false,
+        retryAfter: tracking.selection.readRetryAfter,
+      };
+    }
+
+    if (tracking) {
+      const retryAfter = await this.schedules.begin(
+        connectionId,
+        current ? current.revision + 1 : 0,
+        new Date(now + 5 * 60_000),
+        claimId,
+      );
+      if (retryAfter) {
+        await this.selections.deferDiscovery({
+          connectionId,
+          expectedCredentialVersion: connection.credentialVersion,
+          retryAfter: retryAfter.toISOString(),
+        });
+        return {
+          ...(current ?? this.emptyState(connectionId)),
+          acquired: false,
+          retryAfter,
+        };
+      }
+    }
+
     const leaseExpiresAt = new Date(now + 5 * 60_000);
     const state = await this.db
       .insertInto("finance.provider_sync_state")
@@ -123,21 +177,50 @@ export class ProviderConnectionRepository {
         providerConnectionId: connectionId,
         lastAttemptAt: sql<Date>`now()`,
         leaseExpiresAt,
+        credentialVersion: expectedCredentialVersion ?? null,
+        selectionVersion: expectedSelectionVersion ?? null,
+        claimId: claimId ?? null,
       })
       .onConflict((oc) =>
         oc.column("providerConnectionId").doUpdateSet({
           lastAttemptAt: sql<Date>`now()`,
           leaseExpiresAt,
           revision: sql<number>`finance.provider_sync_state.revision + 1`,
+          credentialVersion: expectedCredentialVersion ?? null,
+          selectionVersion: expectedSelectionVersion ?? null,
+          claimId: claimId ?? null,
         }),
       )
       .returningAll()
       .executeTakeFirstOrThrow();
-    return { ...state, acquired: true };
+    return { ...state, acquired: true, ...(tracking ? { tracking } : {}) };
+  }
+
+  private emptyState(connectionId: string) {
+    return {
+      providerConnectionId: connectionId,
+      checkpoint: null,
+      revision: 0,
+      lastAttemptAt: null,
+      lastSuccessAt: null,
+      lastProviderObservedAt: null,
+      lastResult: null,
+      unresolvedConflictCount: 0,
+      lastFailureAt: null,
+      lastFailureReason: null,
+      leaseExpiresAt: null,
+    };
   }
 
   async status(id: string) {
     const connection = await this.connection(id);
+    const tracking =
+      connection.identifier === "fintoc"
+        ? await this.selections.tracking(id)
+        : undefined;
+    const selectedAccounts = tracking
+      ? new Set(tracking.selection.accountIds)
+      : undefined;
     const state = await this.db
       .selectFrom("finance.provider_sync_state")
       .selectAll()
@@ -148,6 +231,7 @@ export class ProviderConnectionRepository {
       .select([
         "a.id",
         "a.type",
+        "a.externalId",
         "a.lastSyncedAt",
         "a.historyCompleteness",
         "a.historyFrom",
@@ -181,13 +265,38 @@ export class ProviderConnectionRepository {
       },
       state: state ?? null,
       providerSuspensionCount: pending.count,
-      accounts,
+      ...(tracking ? { tracking } : {}),
+      accounts: accounts.map(({ externalId, ...account }) => ({
+        ...account,
+        selected: selectedAccounts
+          ? selectedAccounts.has(externalId ?? "")
+          : true,
+      })),
     };
   }
 
   async facts(scope: ProviderSyncScope) {
     const connection = await this.connection(scope.connectionId);
     const state = await this.state(scope.connectionId);
+    const tracking =
+      connection.identifier === "fintoc"
+        ? await this.selections.tracking(scope.connectionId)
+        : undefined;
+    if (
+      tracking &&
+      (state.selectionVersion !== tracking.selection.version ||
+        state.credentialVersion !== connection.credentialVersion)
+    )
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "Sync selection or credentials changed",
+      });
+    if (tracking)
+      await this.schedules.assertRun(
+        scope.connectionId,
+        scope.revision,
+        state.claimId,
+      );
     if (state.revision !== scope.revision || connection.status !== "active") {
       throw new TRPCError({ code: "CONFLICT", message: "Sync was superseded" });
     }
@@ -247,6 +356,7 @@ export class ProviderConnectionRepository {
         movements,
         removals,
         rules,
+        ...(tracking ? { tracking } : {}),
       }),
     );
 
@@ -265,7 +375,30 @@ export class ProviderConnectionRepository {
     )
       return { status: "superseded" as const };
 
+    if (
+      connection.identifier === "fintoc" &&
+      !(await this.schedules.matchesRun(
+        scope.connectionId,
+        scope.revision,
+        state.claimId,
+        true,
+      ))
+    )
+      return { status: "superseded" as const };
     const facts = await this.facts(scope);
+    if (facts.tracking) {
+      const selected = new Set(facts.tracking.selection.accountIds);
+      if (
+        !input.scheduling ||
+        input.accounts.some((row) => !selected.has(row.externalId)) ||
+        [
+          ...input.movements,
+          ...input.removals,
+          ...(input.suspensions ?? []),
+        ].some((row) => !selected.has(row.accountExternalId))
+      )
+        invalid("Prepared financial facts are outside the selected accounts");
+    }
     if (facts.fingerprint !== input.expectedFingerprint)
       throw new TRPCError({
         code: "CONFLICT",
@@ -589,13 +722,38 @@ export class ProviderConnectionRepository {
       .where("providerConnectionId", "=", scope.connectionId)
       .execute();
 
+    if (input.scheduling)
+      await this.schedules.finish(
+        scope.connectionId,
+        scope.revision,
+        state.claimId,
+        input.scheduling,
+      );
     return { status, conflictCount: count.count, checkpoint: input.checkpoint };
   }
 
   async failure(input: RecordProviderFailure) {
     const connection = await this.connection(input.connectionId);
     const state = await this.state(input.connectionId);
-    if (connection.status !== "active" || state.revision !== input.revision)
+    if (
+      connection.status !== "active" ||
+      state.revision !== input.revision ||
+      !state.leaseExpiresAt ||
+      state.leaseExpiresAt.getTime() <= Date.now()
+    )
+      return { status: "superseded" as const };
+
+    if (connection.identifier === "fintoc" && !input.scheduling)
+      invalid("Synchronization scheduling outcome is required");
+    if (
+      connection.identifier === "fintoc" &&
+      !(await this.schedules.matchesRun(
+        input.connectionId,
+        input.revision,
+        state.claimId,
+        true,
+      ))
+    )
       return { status: "superseded" as const };
 
     await this.db
@@ -621,6 +779,25 @@ export class ProviderConnectionRepository {
         .where("id", "=", input.connectionId)
         .execute();
 
+    if (
+      connection.identifier === "fintoc" &&
+      input.reason === "retryable" &&
+      input.retryAfter
+    )
+      await this.selections.deferDiscovery({
+        connectionId: input.connectionId,
+        expectedCredentialVersion: connection.credentialVersion,
+        retryAfter: input.retryAfter,
+      });
+
+    if (input.scheduling)
+      await this.schedules.finish(
+        input.connectionId,
+        input.revision,
+        state.claimId,
+        input.scheduling,
+        input.reason,
+      );
     return {
       status: "failed" as const,
       reason: input.reason,

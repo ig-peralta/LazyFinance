@@ -40,6 +40,7 @@ const account = (
   changes: Partial<ProviderSyncStatusFacts["accounts"][number]> = {},
 ): ProviderSyncStatusFacts["accounts"][number] => ({
   id: "00000000-0000-4000-8000-000000000082",
+  selected: true,
   type: "checking",
   hasReportedBalance: true,
   lastSyncedAt: "2026-11-08T17:00:00.000Z",
