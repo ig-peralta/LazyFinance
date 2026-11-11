@@ -4,6 +4,7 @@ import {
   HttpException,
   Inject,
   Injectable,
+  Logger,
   type OnModuleDestroy,
   ServiceUnavailableException,
 } from "@nestjs/common";
@@ -16,6 +17,11 @@ interface VoiceLease {
   owner: string;
   call?: string;
   timer?: ReturnType<typeof setTimeout>;
+  initializing: boolean;
+  stopRequested: boolean;
+  termination?: Promise<boolean>;
+  drainEpoch?: number;
+  drainAttempts?: number;
 }
 
 /** Single-replica, bounded admission. Never exposes a provider credential. */
@@ -23,6 +29,10 @@ interface VoiceLease {
 export class AssistantVoiceService implements OnModuleDestroy {
   private readonly sessions = new Map<string, VoiceLease>();
   private readonly starts = new Map<string, number[]>();
+  private readonly initializing = new Set<Promise<unknown>>();
+  private draining = false;
+  private drainEpoch = 0;
+  private readonly logger = new Logger(AssistantVoiceService.name);
 
   constructor(
     private readonly environment: EnvironmentService,
@@ -42,7 +52,7 @@ export class AssistantVoiceService implements OnModuleDestroy {
     input: { conversationId: string; sdp: string },
     signal: AbortSignal,
   ) {
-    if (!this.configuration().enabled)
+    if (this.draining || !this.configuration().enabled)
       throw new ServiceUnavailableException("Voice unavailable");
     if (!origin || !this.environment.get("CORS_ORIGINS").includes(origin))
       throw new ForbiddenException();
@@ -50,6 +60,8 @@ export class AssistantVoiceService implements OnModuleDestroy {
       .conversations(owner)
       .get.query({ id: input.conversationId });
     signal.throwIfAborted();
+    if (this.draining)
+      throw new ServiceUnavailableException("Voice unavailable");
     const now = Date.now();
     for (const [key, times] of this.starts) {
       const recent = times.filter((time) => time > now - 3_600_000);
@@ -65,7 +77,11 @@ export class AssistantVoiceService implements OnModuleDestroy {
     )
       throw new HttpException("Voice capacity reached", 429);
     const id = randomUUID();
-    const lease: VoiceLease = { owner };
+    const lease: VoiceLease = {
+      owner,
+      initializing: true,
+      stopRequested: false,
+    };
     this.sessions.set(id, lease);
     this.starts.set(owner, [...recent, now]);
     const form = new FormData();
@@ -92,6 +108,23 @@ export class AssistantVoiceService implements OnModuleDestroy {
         },
       }),
     );
+    const operation = this.initialize(owner, id, lease, form, signal, now);
+    this.initializing.add(operation);
+    try {
+      return await operation;
+    } finally {
+      this.initializing.delete(operation);
+    }
+  }
+
+  private async initialize(
+    owner: string,
+    id: string,
+    lease: VoiceLease,
+    form: FormData,
+    signal: AbortSignal,
+    now: number,
+  ) {
     try {
       // Complete an uncertain initialization even after browser disconnect so that
       // a returned call ID can be hung up, rather than orphaning paid processing.
@@ -99,6 +132,7 @@ export class AssistantVoiceService implements OnModuleDestroy {
         "https://api.openai.com/v1/realtime/calls",
         {
           method: "POST",
+          redirect: "error",
           headers: {
             authorization: `Bearer ${this.environment.get("ASSISTANT_VOICE_API_KEY")}`,
             "OpenAI-Safety-Identifier": createHash("sha256")
@@ -115,6 +149,7 @@ export class AssistantVoiceService implements OnModuleDestroy {
       )?.[1];
       if (!response.ok || !call) throw new Error("Voice initialization failed");
       lease.call = call;
+      lease.initializing = false;
       lease.timer = setTimeout(
         () => {
           void this.end(owner, id);
@@ -122,11 +157,17 @@ export class AssistantVoiceService implements OnModuleDestroy {
         Math.max(1, duration - (Date.now() - now)),
       );
       lease.timer.unref();
-      const sdp = await response.text();
-      if (sdp.length > 64_000 || !sdp.startsWith("v=0") || signal.aborted)
+      const sdp = await this.readSdp(response);
+      if (
+        !sdp.startsWith("v=0") ||
+        signal.aborted ||
+        this.draining ||
+        lease.stopRequested
+      )
         throw new Error("Invalid or obsolete voice session");
       return { id, sdp, expiresAt: new Date(now + duration).toISOString() };
     } catch {
+      lease.initializing = false;
       await this.end(owner, id);
       throw new ServiceUnavailableException(
         "No pudimos iniciar la voz. Puedes continuar por texto.",
@@ -138,13 +179,46 @@ export class AssistantVoiceService implements OnModuleDestroy {
     const lease = this.sessions.get(id);
     // An opaque foreign ID neither reveals nor terminates another owner's call.
     if (!lease || lease.owner !== owner) return;
+    lease.stopRequested = true;
     clearTimeout(lease.timer);
-    if (lease.call) {
+    // Keep the lease until its in-flight initialization supplies the remote ID.
+    if (lease.initializing) return;
+    if (!lease.call) {
+      this.sessions.delete(id);
+      return;
+    }
+    const attempts = this.draining ? 3 : 1;
+    for (let attempt = 0; attempt < attempts; attempt++) {
+      if (this.draining) {
+        if (lease.drainEpoch !== this.drainEpoch) {
+          lease.drainEpoch = this.drainEpoch;
+          lease.drainAttempts = 0;
+        }
+        if ((lease.drainAttempts ?? 0) >= 3) return;
+        lease.drainAttempts = (lease.drainAttempts ?? 0) + 1;
+      }
+      if (await this.hangup(id, lease)) return;
+    }
+    if (!this.draining) {
+      clearTimeout(lease.timer);
+      lease.timer = setTimeout(() => {
+        void this.end(owner, id);
+      }, 5_000);
+      lease.timer.unref();
+    }
+    // Unconfirmed remote IDs remain in memory for a subsequent drain/recovery
+    // attempt. There is intentionally no claim of crash-durable recovery.
+  }
+
+  private async hangup(id: string, lease: VoiceLease): Promise<boolean> {
+    if (lease.termination) return lease.termination;
+    const operation = (async () => {
       try {
         const response = await this.request(
           `https://api.openai.com/v1/realtime/calls/${lease.call}/hangup`,
           {
             method: "POST",
+            redirect: "error",
             headers: {
               authorization: `Bearer ${this.environment.get("ASSISTANT_VOICE_API_KEY")}`,
             },
@@ -153,22 +227,65 @@ export class AssistantVoiceService implements OnModuleDestroy {
         );
         if (!response.ok && response.status !== 404)
           throw new Error("Hangup failed");
+        this.sessions.delete(id);
+        return true;
       } catch {
-        // Keep admission occupied until bounded retry; never replay creation.
-        lease.timer = setTimeout(() => {
-          void this.end(owner, id);
-        }, 5_000);
-        lease.timer.unref();
-        return;
+        return false;
       }
+    })();
+    lease.termination = operation;
+    try {
+      return await operation;
+    } finally {
+      if (lease.termination === operation) lease.termination = undefined;
     }
-    this.sessions.delete(id);
   }
 
   async onModuleDestroy() {
-    await Promise.all(
-      [...this.sessions].map(([id, lease]) => this.end(lease.owner, id)),
-    );
-    for (const lease of this.sessions.values()) clearTimeout(lease.timer);
+    this.draining = true;
+    this.drainEpoch++;
+    for (const lease of this.sessions.values()) {
+      lease.stopRequested = true;
+      clearTimeout(lease.timer);
+    }
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        Promise.allSettled([
+          ...this.initializing,
+          ...[...this.sessions].map(([id, lease]) => this.end(lease.owner, id)),
+        ]),
+        new Promise<void>((resolve) => {
+          timer = setTimeout(resolve, 20_000);
+        }),
+      ]);
+    } finally {
+      clearTimeout(timer);
+      if (this.sessions.size)
+        this.logger.warn(
+          `Voice shutdown unconfirmed for ${this.sessions.size} session(s); remote lifetime and project spend controls still apply`,
+        );
+    }
+  }
+
+  private async readSdp(response: Response) {
+    if (!response.body) throw new Error("Missing SDP");
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8", { fatal: true });
+    let bytes = 0,
+      text = "";
+    try {
+      while (true) {
+        const chunk = await reader.read();
+        if (chunk.done) break;
+        bytes += chunk.value.byteLength;
+        if (bytes > 64_000) throw new Error("SDP too large");
+        text += decoder.decode(chunk.value, { stream: true });
+      }
+      return text + decoder.decode();
+    } finally {
+      await reader.cancel().catch(() => {});
+      reader.releaseLock();
+    }
   }
 }

@@ -46,8 +46,104 @@ const input = {
 const origin = "http://localhost:4200";
 const signal = () => new AbortController().signal;
 
+function pendingResponse() {
+  let resolve: (value: Response) => void = (_value: Response) => {
+    throw new Error("Not initialized");
+  };
+  const promise = new Promise<Response>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
+const answer = () =>
+  new Response("v=0\r\nanswer", {
+    headers: { location: "/v1/realtime/calls/rtc_late" },
+  });
+
 describe("voice admission, provider privacy and owner-bound termination", () => {
   afterEach(() => vi.useRealTimers());
+
+  it("drains an initializing call, rejects new starts and hangs up its late remote ID", async () => {
+    const f = await setup();
+    const pending = pendingResponse();
+    f.request.mockReturnValueOnce(pending.promise);
+    const started = f.voice
+      .start("owner", origin, input, signal())
+      .catch((error: unknown) => error);
+    await vi.waitFor(() => expect(f.request).toHaveBeenCalledOnce());
+    let drained = false;
+    const shutdown = f.voice.onModuleDestroy().then(() => {
+      drained = true;
+    });
+    await expect(
+      f.voice.start("other", origin, input, signal()),
+    ).rejects.toThrow("Voice unavailable");
+    expect(drained).toBe(false);
+    pending.resolve(answer());
+    await started;
+    await shutdown;
+    expect(f.request).toHaveBeenCalledTimes(2);
+    expect(f.request.mock.calls[1][0]).toContain("rtc_late/hangup");
+    await f.close();
+  });
+
+  it("retries failed shutdown hangup within the drain and retains unresolved IDs for another recovery attempt", async () => {
+    const f = await setup();
+    await f.voice.start("owner", origin, input, signal());
+    f.request.mockResolvedValue(new Response(null, { status: 503 }));
+    await f.voice.onModuleDestroy();
+    expect(f.request).toHaveBeenCalledTimes(4); // creation + three bounded attempts
+    f.request.mockResolvedValue(new Response(null, { status: 200 }));
+    await f.voice.onModuleDestroy();
+    expect(f.request).toHaveBeenCalledTimes(5); // unresolved remote ID was not erased
+    await f.close();
+  });
+
+  it("bounds shutdown waiting and still terminates a response arriving after the drain deadline", async () => {
+    const f = await setup();
+    const pending = pendingResponse();
+    f.request.mockReturnValueOnce(pending.promise);
+    const started = f.voice
+      .start("owner", origin, input, signal())
+      .catch((error: unknown) => error);
+    await vi.waitFor(() => expect(f.request).toHaveBeenCalledOnce());
+    vi.useFakeTimers();
+    const shutdown = f.voice.onModuleDestroy();
+    await vi.advanceTimersByTimeAsync(20_000);
+    await shutdown;
+    expect(f.request).toHaveBeenCalledOnce();
+    pending.resolve(answer());
+    await started;
+    expect(f.request.mock.calls[1][0]).toContain("rtc_late/hangup");
+    await f.close();
+  });
+
+  it("rejects redirects and cancels an oversized SDP stream before consuming the rest", async () => {
+    const f = await setup();
+    const cancelled = vi.fn();
+    f.request.mockResolvedValueOnce(
+      new Response(
+        new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(new Uint8Array(64_001));
+          },
+          cancel: cancelled,
+        }),
+        { headers: { location: "/v1/realtime/calls/rtc_large" } },
+      ),
+    );
+    await expect(
+      f.voice.start("owner", origin, input, signal()),
+    ).rejects.toThrow("Puedes continuar por texto");
+    expect(cancelled).toHaveBeenCalledOnce();
+    expect(f.request).toHaveBeenCalledTimes(2);
+    expect(
+      f.request.mock.calls.every(
+        ([, options]) => options?.redirect === "error",
+      ),
+    ).toBe(true);
+    await f.close();
+  });
 
   it("defaults closed and requires dedicated configuration before enabling", async () => {
     expect(ENV_SCHEMA.parse({}).ASSISTANT_VOICE_ENABLED).toBe("false");
