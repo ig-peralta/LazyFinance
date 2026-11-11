@@ -1,5 +1,7 @@
-<p class="panel-subtitle">Pequeños detalles que hacen todo más claro.</p>
+<p class="panel-subtitle">Crea o edita tu catálogo. Aquí no asignas movimientos ni creas reglas.</p>
 @if (command.error()) { <p class="notice danger" role="alert">{{ command.error() }}</p> }
+@if (needsCheck()) { <p class="notice warning">El resultado es incierto. Comprueba el catálogo antes de volver a guardar. <button type="button" [disabled]="command.pending()" (click)="checkCatalog()">Comprobar catálogo</button></p> }
+@if (checked()) { <p class="notice" role="status">Catálogo comprobado. Conservamos tu borrador; revisa el nombre y los cambios antes de guardar.</p> }
 <form (ngSubmit)="save()">
   <fieldset [disabled]="command.pending()" class="form-fieldset">
     <div class="form-grid">
@@ -12,6 +14,6 @@
     </div>
     @if (formError()) { <p class="field-error" role="alert">{{ formError() }}</p> }
   </fieldset>
-  <p class="notice"><strong>El nombre cambia, el historial no.</strong> Renombrar o cambiar un color no modifica los importes ni los movimientos que usan la etiqueta.</p>
-  <div class="form-actions"><button class="button" type="button" (click)="cancelled.emit()">Cancelar</button><button class="button primary" type="submit" [disabled]="command.pending()">{{ command.pending() ? 'Guardando…' : tag() ? 'Guardar cambios' : 'Crear etiqueta' }}</button></div>
+  <details class="financial-details"><summary>Qué cambia al editar</summary><p>Renombrar o cambiar el color conserva el historial, los importes y las asignaciones. No crea una regla automática.</p></details>
+  <div class="form-actions"><button class="button" type="button" (click)="cancelled.emit()">Cancelar</button><button class="button primary" type="submit" [disabled]="command.pending() || needsCheck()">{{ command.pending() ? 'Guardando…' : tag() ? 'Guardar cambios' : 'Crear etiqueta' }}</button></div>
 </form>

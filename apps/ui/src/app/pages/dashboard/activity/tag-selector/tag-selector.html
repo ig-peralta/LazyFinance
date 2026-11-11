@@ -5,7 +5,7 @@
     class="!px-3 !py-1.5 !text-xs"
     [attr.aria-label]="(transaction().tag?.name || '+ Etiquetar') + ': elegir etiqueta para ' + (transaction().merchant || transaction().description || 'movimiento')"
     (click)="togglePicker()">
-    {{ transaction().tag?.name || '+ Etiquetar' }}
+    {{ transaction().tag?.name || (transaction().tagDecisionOrigin === 'manual' ? 'Sin etiqueta' : 'Elegir etiqueta') }}
   </button>
   @if (transaction().tagDecisionOrigin === 'rule') {
     <p-tag value="Automática" severity="info" [rounded]="true" />
@@ -23,13 +23,14 @@
   @if (error()) {
     <p role="alert" class="notice danger">{{ error() }}</p>
   }
+  @if (needsCheck()) { <button type="button" class="button small" [disabled]="saving()" (click)="reconcile()">Comprobar movimiento</button> }
   @if (opened()) {
     <div #panel [id]="'tag-picker-' + transaction().id" role="dialog"
       [style.margin-left.px]="horizontalOffset()"
       [attr.aria-label]="'Etiquetar ' + (transaction().merchant || transaction().description || 'movimiento')"
       class="absolute left-0 top-full z-50 mt-2 w-[min(22rem,calc(100vw-6rem))] rounded-2xl border border-surface bg-surface-0 shadow-xl">
       <p-card styleClass="!border-0 !bg-transparent !shadow-none">
-        <div class="space-y-2.5">
+        <fieldset class="space-y-2.5" style="border:0;padding:0;margin:0;min-width:0" [disabled]="needsCheck()">
           <div>
             <p class="text-sm font-semibold text-color-emphasis">Etiquetar movimiento</p>
             <p class="mt-1 truncate text-xs text-muted-color">
@@ -70,8 +71,10 @@
                   [disabled]="saving()" (click)="resetTagDecision()">Marcar sin revisar</button>
               }
             </div>
+            <details class="financial-details"><summary>Etiqueta, revisión y clasificación</summary><p class="field-hint">Sin etiqueta guarda tu decisión. Marcar sin revisar retira la decisión manual. No cambian el importe ni si el movimiento es interno o externo; eso se revisa en su detalle.</p></details>
             @if (transaction().merchant) {
               <div class="rounded-xl bg-surface-50 px-3 py-2">
+                <p class="text-xs font-semibold">Regla automática · opcional</p>
                 <label class="flex cursor-pointer items-center gap-3">
                   <span class="relative inline-flex shrink-0 items-center">
                     <input type="checkbox" class="peer sr-only" [checked]="autoForMerchant()"
@@ -92,7 +95,7 @@
               </div>
             }
           }
-        </div>
+        </fieldset>
       </p-card>
     </div>
   }

@@ -10,6 +10,7 @@ import {
   rpcFailure,
   setupRpc,
   tag,
+  transactionDetail,
 } from "../../../testing/rpc";
 import { createTagDecision } from "./tag-decision";
 import { TaggingData } from "./tagging.data";
@@ -78,5 +79,39 @@ describe("component-lifetime tag commands", () => {
     await vi.waitFor(() => expect(callsTo("tags.decide")).toHaveLength(1));
     response.resolve(manualDecision());
     expect(await first).toBe(true);
+  });
+
+  it("requires a successful detail read after an uncertain result without replaying a write", async () => {
+    const { callsTo } = setupRpc({ "tags.decide": () => rpcFailure() });
+    const fixture = TestBed.createComponent(DecisionHost);
+    fixture.detectChanges();
+    const decision = fixture.componentInstance.decision;
+    expect(await decision.choose(tag, false)).toBe(false);
+    expect(decision.needsCheck()).toBe(true);
+    decision.clearError();
+    expect(await decision.reset()).toBe(false);
+    expect(await decision.createAndChoose("Otra", false)).toBe(false);
+    expect(callsTo("tags.decide")).toHaveLength(1);
+    expect(callsTo("tags.create")).toHaveLength(0);
+    expect(callsTo("tags.reset")).toHaveLength(0);
+    expect(await decision.reconcile()).toBe(true);
+    expect(callsTo("transactions.detail")).toHaveLength(1);
+    expect(decision.needsCheck()).toBe(false);
+    expect(TestBed.inject(TaggingData).changed()?.selection.origin).toBe(
+      "unreviewed",
+    );
+  });
+
+  it("does not let an older reconciliation read erase a newer confirmed decision", async () => {
+    const detail = deferred<RpcOutput<"transactions.detail">>();
+    setupRpc({ "transactions.detail": () => detail.promise });
+    const tagging = TestBed.inject(TaggingData);
+    const signal = new AbortController().signal;
+    const read = tagging.reconcile(movement.id, signal);
+    await tagging.choose(movement, tag, false, signal);
+    detail.resolve(transactionDetail);
+    await read;
+    expect(tagging.changed()?.selection.tag?.id).toBe(tag.id);
+    expect(tagging.changed()?.selection.origin).toBe("manual");
   });
 });

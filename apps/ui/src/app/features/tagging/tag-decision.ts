@@ -28,6 +28,7 @@ export function createTagDecision(transaction: Signal<RecentTransaction>) {
         scope: RpcScope;
         transactionId: string;
         pending: boolean;
+        needsCheck: boolean;
         error: string | null;
       }
     | undefined
@@ -59,8 +60,10 @@ export function createTagDecision(transaction: Signal<RecentTransaction>) {
 
   async function execute(
     operation: (movement: RecentTransaction) => Promise<TagDecisionOutcome>,
+    reconcile = false,
   ): Promise<boolean> {
-    if (current()?.pending) return false;
+    if (current()?.pending || (current()?.needsCheck && !reconcile))
+      return false;
 
     const scope = rpc.authenticatedScope();
     if (!scope) return false;
@@ -70,6 +73,7 @@ export function createTagDecision(transaction: Signal<RecentTransaction>) {
       scope,
       transactionId: movement.id,
       pending: true,
+      needsCheck: false,
       error: null,
     };
     command.set(state);
@@ -100,7 +104,9 @@ export function createTagDecision(transaction: Signal<RecentTransaction>) {
         command.set({
           ...state,
           pending: false,
-          error: "No pudimos actualizar la etiqueta. Inténtalo nuevamente.",
+          needsCheck: true,
+          error:
+            "No pudimos confirmar todos los cambios. Comprueba el movimiento antes de volver a guardar; una etiqueta nueva puede haberse creado sin quedar asignada.",
         });
       } else if (command() === state) {
         command.set(undefined);
@@ -114,6 +120,12 @@ export function createTagDecision(transaction: Signal<RecentTransaction>) {
 
   return {
     saving: computed(() => current()?.pending ?? false),
+    needsCheck: computed(() => current()?.needsCheck ?? false),
+    reconcile: () =>
+      execute(
+        (movement) => tagging.reconcile(movement.id, lifetime.signal),
+        true,
+      ),
     error: computed(() => current()?.error ?? null),
     suggestion: computed(() =>
       suggestions.hasValue() ? (suggestions.value()[0] ?? null) : null,

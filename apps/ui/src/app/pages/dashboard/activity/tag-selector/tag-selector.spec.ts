@@ -150,7 +150,7 @@ describe("TransactionTagSelector presentation and command state", () => {
     expect(callsTo("tagRules.create")).toHaveLength(1);
     expect(tagging.changed()?.selection.tag).toEqual(tag);
     expect(fixture.nativeElement.textContent).toContain(
-      "La etiqueta se guardó, pero no pudimos crear la regla automática.",
+      "La etiqueta se guardó, pero no pudimos confirmar la regla automática. No repitas su creación sin comprobar el resultado.",
     );
     expect(
       fixture.nativeElement.querySelector('[role="dialog"]'),
@@ -172,7 +172,7 @@ describe("TransactionTagSelector presentation and command state", () => {
     expect(tagging.changed()).toBeUndefined();
     expect(callsTo("tags.decide")).toHaveLength(1);
     expect(fixture.nativeElement.textContent).toContain(
-      "No pudimos actualizar la etiqueta",
+      "No pudimos confirmar todos los cambios",
     );
     expect(button(fixture, "Sugerencia: Comida")).toBeDefined();
   });

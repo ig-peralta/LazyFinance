@@ -43,10 +43,13 @@ readiness. Other UI hosting only needs equivalent static fallback/caching.
 
 ## Authenticated workspace
 
-The authenticated workspace uses dark surfaces, emerald accents, rounded cards
-and pill actions aligned with the public landing's visual language. Its dark
-tokens are workspace-scoped, including PrimeNG controls; the public landing and
-login retain their existing system-aware theme.
+The authenticated workspace offers system/light/dark themes and three text sizes
+under **Apariencia** in the top bar. Shared semantic tokens also reach dialogs,
+PrimeNG controls and assistant content inside the workspace. Only allowlisted
+device presentation values (theme, text size and compact navigation) enter the
+`lazyfinance-workspace-preferences` localStorage key; financial data, identity,
+messages and drafts never enter it. Invalid/blocked storage falls back safely.
+The public landing and login retain their existing system-aware theme.
 
 Navigation includes **Asistente**, **Resumen**, **Mi dinero** (movements, accounts,
 tags), **Planificación** (budgets, savings, income and sources), and **Mi cuenta**
@@ -58,6 +61,9 @@ The sidebar has no internal scrolling or expandable lists. Narrow or short
 viewports replace it with a compact native modal menu, including a two-column
 layout on short screens, focus containment and Escape handling. A skip link and
 keyboard-visible focus remain available.
+Desktop users can explicitly toggle **Navegación compacta**. Destination and
+logout labels remain available by accessible name and hover/keyboard tooltip;
+the mobile/short-screen modal retains full labels regardless of that preference.
 
 Financial editors are opened explicitly instead of occupying a permanent page
 column: tags, budget/savings creation and adjustments, income sources and dated
@@ -125,6 +131,9 @@ archive confirmation. Archived names remain reserved and historical references a
 retained. Its resource is page-owned; commands reject duplicate submissions and
 discard obsolete owner/component results. Form drafts are cleared on owner changes
 and no financial record is cached in browser storage or hydration transfer state.
+Catalog editing does not assign movements or create rules. Known duplicate names
+are explained without clearing the draft. An uncertain create/update/archive
+requires an explicit catalog read before another attempt; reads never replay writes.
 
 `/movimientos` is a URL-filtered cursor ledger (account, Santiago dates, nullable
 tag/internal status, direction and literal merchant substring). Previous/next
@@ -141,6 +150,18 @@ The detail view supports explicit tag/no-tag/reset and nullable internal-status
 corrections. A saved command reloads detail; history, summaries and budget pages
 refetch on navigation rather than sharing a stale application-wide cache. Removed
 records are read-only, and the backend remains authoritative for valid references.
+History and detail distinguish manual no-tag, unreviewed and automatic decisions.
+An unavailable active-tag reference stays visible, but cannot be newly submitted.
+An uncertain correction asks the user to close and reload detail before another
+attempt. Dashboard tagging offers **Comprobar movimiento**, a fresh detail read
+that reconciles page-local decisions and invalidates dependent summaries.
+
+The callback-based `layout/app-shell/assistant-shortcut.ts` binding reserves **?**
+outside editable controls, composition, repeats and modal/popover dialogs. It
+must be installed by the authenticated persistent assistant host, with teardown,
+and call that host's `open()`; it never mounts a host, starts a chat or sends a
+message itself. Integration and focus ownership are recorded in the
+[Stage C workspace delivery](../../docs/planning/stage-c/workspace-delivery.md).
 
 `/ingresos/fuentes` manages owned fixed/variable, regular/irregular declarations,
 all supported weekly/14-day/monthly/twice-monthly schedules, archival and dated

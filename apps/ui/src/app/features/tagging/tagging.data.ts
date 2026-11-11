@@ -61,6 +61,29 @@ export class TaggingData {
     if (this.tags.error()) this.tags.reload();
   }
 
+  async reconcile(
+    id: string,
+    signal: AbortSignal,
+  ): Promise<TagDecisionOutcome> {
+    const scope = this.rpc.requireScope();
+    const version = this.changed()?.selections.get(id)?.version;
+    const movement = await scope.client.transactions.detail.query(
+      { id },
+      { signal },
+    );
+    this.assertActive(scope, signal);
+    this.catalogRevision.update((revision) => revision + 1);
+    // A decision confirmed after this read began takes precedence over its snapshot.
+    if (this.changed()?.selections.get(id)?.version !== version)
+      return { warning: null };
+    this.publish(scope, {
+      transactionId: id,
+      tag: movement.tag,
+      origin: movement.tagDecisionOrigin,
+    });
+    return { warning: null };
+  }
+
   choose(
     transaction: RecentTransaction,
     tag: TagSummary | null,
@@ -153,7 +176,7 @@ export class TaggingData {
         // The decision is already committed. Do not replay it or pretend it rolled back.
         return {
           warning:
-            "La etiqueta se guardó, pero no pudimos crear la regla automática.",
+            "La etiqueta se guardó, pero no pudimos confirmar la regla automática. No repitas su creación sin comprobar el resultado.",
         };
       }
     }
