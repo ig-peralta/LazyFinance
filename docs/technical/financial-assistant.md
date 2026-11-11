@@ -60,9 +60,11 @@ text assistant. The [voice contract](assistant-live-voice.md) records provider/A
 evidence, privacy, stop/response/browser targets, single-replica/cost bounds and
 unverified live gates. Native audio turns use a server-side Realtime control
 connection and the same bounded financial tools and history leases as text, not
-transcription → text request → read-aloud. Captions support reading/history;
+transcription → text request → read-aloud. Internal transcriptions support saved history;
 the native audio item drives generation. A dedicated stage shows listening,
-querying and responding, optional captions, **Silenciar** and **Continuar por texto**.
+querying and responding, **Silenciar** and **Continuar por texto**. Subtitles are
+removed pending redesign. A large central entry promotes voice in empty chats
+without bypassing the explicit start disclosure.
 Continuing by text also ends voice.
 Switching back to text preserves the draft, conversation and results. Minimize,
 navigation and hidden tabs end capture, not text history. Audio has no approval
@@ -167,8 +169,10 @@ body contains only `{ conversationId, requestId, text }`. Neither browser histor
 system messages, tool definitions nor a caller-selected owner are accepted.
 
 The API claims the turn through signed private RPC before invoking a model.
-Persistence returns authoritative server history. Only completed user/answer pairs
-enter recent context: at most eight pairs and 32,000 characters. Tool payloads and
+Persistence returns authoritative server history. Recent context contains at most
+eight eligible turns / 32,000 characters: completed user/answer pairs and readable
+user questions from interrupted/failed turns, never their unfinished answers.
+Missing voice-transcript placeholders and pending turns are excluded. Tool payloads and
 reasoning are not replayed from old turns. Bounded historical action IDs/statuses
 allow follow-up questions but do not prove current execution. Historical answers
 provide conversational context, not current financial truth; the prompt requires fresh reads for personal
@@ -187,7 +191,7 @@ can acknowledge what was actually approved without repeating the proposal; fresh
 financial reads still establish current balances and resource state.
 
 The runtime offers the eleven financial reads plus the owned tag catalog, filtered
-movement browsing and movement detail. It can prepare proposals and read their
+movement browsing and movement detail. It can prepare or correct proposals and read their
 current status, never approve/execute/cancel them. Arguments and
 outputs are schema-validated; the authenticated internal UUID is closed over by
 the service, never an LLM argument. Domain services retain all money, schedule,
@@ -221,6 +225,11 @@ incomplete-answer warning remain visible.
 `preparar_accion_financiera` accepts `{ action }` with a typed, bounded command.
 Missing or ambiguous amounts, periods, dates and tag selections require clarification;
 owned reads supply real IDs. Budget/goal proposals may include up to five new tags.
+The assistant asks one missing detail at a time, including the color of a new tag
+or an explicit no-color choice. It presents **one request at a time**: "Preparé la
+solicitud… Puedes aceptarla en la tarjeta o decirme qué corregir", rather than
+claiming it cannot create supported resources. A pending request blocks another
+new request; previous requests remain accessible instead of being replaced.
 Those tags and the objective commit together; existing active names are reused
 without changing their color. Bulk tagging, automatic rules, editing objectives,
 income confirmation and banking operations are outside this action slice.
@@ -231,7 +240,15 @@ saved ID/version and requires a completed saved turn in an available owned chat.
 Failed/interrupted generations cannot authorize proposals. Editing stores a new
 version and requires fresh approval. Each revision expires after 15 minutes;
 stale/expired proposals must be reviewed again. At most four proposals belong to
-one turn.
+one stored turn; current generation prepares at most one new request per turn.
+`corregir_propuesta_financiera` accepts the same saved ID, current version and full
+corrected request. It changes only a pending proposal, not finance, and cannot
+change action kind, cross conversations or revise an applied/cancelled request.
+Unchanged fields/colors survive corrections. Manual **Editar** supports dependent
+tag colors too. Both paths require accepting the new exact version. Active voice
+sessions receive confirmed manual outcomes in server instructions immediately;
+text refreshes them at the next exchange. Neither path treats spoken agreement as
+acceptance or generates another proposal after a confirmed receipt.
 
 Tag colors appear as swatches, not hexadecimal text. Editing uses a native color
 picker and an explicit no-color choice; exact hexadecimal values remain internal
@@ -305,7 +322,9 @@ and retention plan instead of silently deleting chat history.
 
 ## Streaming, cancellation and limits
 
-NDJSON events are `turn`, `status`, `source`, `action`, `delta`, `done` and sanitized `error`.
+NDJSON events are `turn`, `status`, `source`, `action`, `action_updated`, `delta`,
+`done` and sanitized `error`. `action_updated` revises an existing conversation
+request without reassigning it to the correcting turn or duplicating its controls.
 Only a non-pending `done` confirms persistence. The client validates event order,
 UTF-8, matching nonce/question, response bytes and output length. A closed stream
 without confirmation offers an explicit history read, never an automatic resend.
@@ -324,10 +343,10 @@ sources and drafts never enter browser storage, cookies or protected hydration.
 | --- | --- |
 | Question / answer | 2,000 / 16,000 characters |
 | Model steps / read calls | 6 / 8 per turn |
-| Proposals / dependent new tags | 4 per turn / 5 per objective; 15-minute expiry per revision |
+| Proposal operations / new requests / dependent new tags | 4 per turn / 1 at a time / 5 per objective; 15-minute expiry per revision |
 | Model output | 3,000 tokens per step |
 | Read evidence JSON | 24,000 bytes each, 64,000 bytes total |
-| Recent context | 8 completed pairs, 32,000 characters |
+| Recent context | 8 eligible turns, 32,000 characters; unfinished answers excluded |
 | Generation | 60s SDK total; 20s chunk / 15s tool timeout; 65s HTTP signal |
 | Parallel runs | 8 per API process; 1 leased run per owner across replicas |
 | Conversation JSON | Database maximum 786,432 bytes; new turn refused above 500,000 existing bytes |

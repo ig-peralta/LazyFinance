@@ -104,11 +104,7 @@ export class AssistantService {
         generationSignal,
         emit,
       );
-      tools.observedReceipt = started.conversation.turns.some((saved) =>
-        saved.actions.some(
-          (action) => action.status === "applied" && action.results.length > 0,
-        ),
-      );
+      tools.observeHistory(started.conversation.turns);
       try {
         await emit({ type: "turn", turn });
         const outcome = await this.runtime.run({
@@ -122,6 +118,7 @@ export class AssistantService {
           signal: generationSignal,
           read: (name, raw) => tools.read(name, raw),
           propose: (value) => tools.propose(value),
+          revise: (value) => tools.revise(value),
           actionStatus: (id) => tools.actionStatus(id),
           delta: async (delta) => {
             generationSignal.throwIfAborted();

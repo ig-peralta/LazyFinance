@@ -11,7 +11,42 @@ import { actionCommand, actionRequest } from "./action-command";
 
 @Injectable()
 export class ActionsService {
+  private readonly observers = new Set<{
+    owner: string;
+    conversationId: string;
+    receive: (action: FinancialAction) => void;
+  }>();
+
   constructor(private readonly persistence: PersistenceClient) {}
+
+  observe(
+    owner: string,
+    conversationId: string,
+    receive: (action: FinancialAction) => void,
+  ) {
+    const observer = { owner, conversationId, receive };
+    this.observers.add(observer);
+    return () => {
+      this.observers.delete(observer);
+    };
+  }
+
+  private changed(owner: string, action: FinancialAction) {
+    for (const observer of this.observers) {
+      if (
+        observer.owner !== owner ||
+        observer.conversationId !== action.conversationId
+      )
+        continue;
+      // A media observer cannot turn a committed command into a failed write.
+      try {
+        observer.receive(action);
+      } catch {
+        /* The receipt is already authoritative. */
+      }
+    }
+    return action;
+  }
 
   get(userId: string, id: string) {
     return this.persistence.user(userId).financialActions.get.query({ id });
@@ -48,23 +83,33 @@ export class ActionsService {
       if (!(error instanceof TRPCError) || error.code !== "BAD_REQUEST")
         throw error;
     }
-    return this.persistence
+    const action = await this.persistence
       .user(userId)
       .financialActions.apply.mutate({ ...input, command });
+    return this.changed(userId, action);
   }
 
-  revise(userId: string, input: z.infer<typeof ReviseFinancialActionSchema>) {
+  async revise(
+    userId: string,
+    input: z.infer<typeof ReviseFinancialActionSchema>,
+  ) {
     const { action, command } = actionCommand(input.action);
-    return this.persistence.user(userId).financialActions.revise.mutate({
-      id: input.id,
-      version: input.version,
-      action,
-      command,
-    });
+    const revised = await this.persistence
+      .user(userId)
+      .financialActions.revise.mutate({
+        id: input.id,
+        version: input.version,
+        action,
+        command,
+      });
+    return this.changed(userId, revised);
   }
 
-  cancel(userId: string, input: { id: string; version: number }) {
-    return this.persistence.user(userId).financialActions.cancel.mutate(input);
+  async cancel(userId: string, input: { id: string; version: number }) {
+    const action = await this.persistence
+      .user(userId)
+      .financialActions.cancel.mutate(input);
+    return this.changed(userId, action);
   }
 
   execute(

@@ -8,11 +8,16 @@ import {
   FinancialActionIdSchema,
   FinancialActionInputSchema,
   FinancialActionSchema,
+  ReviseFinancialActionSchema,
 } from "@lazyfinance/contracts";
 import type { LanguageModel, ModelMessage, ToolSet } from "ai";
 import { isStepCount, streamText, tool } from "ai";
 import { z } from "zod";
 import type { EnvironmentService } from "../environment/environment.service";
+import {
+  assistantProposalDescription,
+  assistantRevisionDescription,
+} from "./assistant-policy";
 
 export const ASSISTANT_RUNTIME = Symbol("ASSISTANT_RUNTIME");
 export interface AssistantRuntimeInput {
@@ -21,6 +26,7 @@ export interface AssistantRuntimeInput {
   signal: AbortSignal;
   read: (name: AssistantReadName, input: unknown) => Promise<AssistantSource>;
   propose?: (input: unknown) => Promise<FinancialAction>;
+  revise?: (input: unknown) => Promise<FinancialAction>;
   actionStatus?: (id: string) => Promise<FinancialAction>;
   delta: (text: string) => Promise<void>;
 }
@@ -87,13 +93,20 @@ export class AiSdkAssistantRuntime implements AssistantRuntime {
     const propose = input.propose;
     if (propose)
       tools.preparar_accion_financiera = tool({
-        description:
-          "Prepara una propuesta validada, SIN ejecutarla. Requiere el botón de aprobación en la app. Usa etiquetas/IDs consultados o declara newTags explícitamente. No puedes aprobar, ejecutar ni cancelar propuestas con esta herramienta.",
+        description: assistantProposalDescription,
         inputSchema: FinancialActionInputSchema,
         outputSchema: FinancialActionSchema,
         execute: (args) => propose(args.action),
       });
     const actionStatus = input.actionStatus;
+    const revise = input.revise;
+    if (revise)
+      tools.corregir_propuesta_financiera = tool({
+        description: assistantRevisionDescription,
+        inputSchema: ReviseFinancialActionSchema,
+        outputSchema: FinancialActionSchema,
+        execute: (args) => revise(args),
+      });
     if (actionStatus)
       tools.consultar_estado_accion = tool({
         description:

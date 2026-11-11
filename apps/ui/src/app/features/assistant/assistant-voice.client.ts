@@ -457,6 +457,13 @@ export class AssistantVoiceClient {
                 event.action.status !== "proposed"))
           )
             throw new Error("Foreign voice event");
+          if (
+            event.type === "action_updated" &&
+            (event.action.conversationId !== conversationId ||
+              !event.action.turnId ||
+              event.action.origin !== "assistant")
+          )
+            throw new Error("Foreign voice correction");
           receive(event);
           if (event.type === "error") throw new Error("Unconfirmed voice turn");
         }

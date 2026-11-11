@@ -1,5 +1,11 @@
 <div class="chat-welcome">
   <h2>¿Qué revisamos{{ name() ? ', ' + name() : '' }}?</h2>
+  @if (voiceAvailable()) {
+    <div class="welcome-voice">
+      <button type="button" class="welcome-voice-start" aria-label="Iniciar conversación por voz" [disabled]="busy() || !voiceReady()" (click)="startVoice.emit()"><span class="welcome-microphone" aria-hidden="true"><app-icon name="microphone" /></span><span><strong>Conversar por voz</strong><small>Cuéntame qué tienes en mente</small></span><app-icon name="arrow" /></button>
+      <p>Sin escribir, en esta misma conversación.</p>
+    </div>
+  }
   <div class="suggestion-grid">
     @for (suggestion of suggestions; track suggestion.title) {
       <button type="button" class="suggestion" [title]="suggestion.question" [attr.aria-label]="suggestion.title + ': ' + suggestion.question" [disabled]="busy()" (click)="choose.emit(suggestion.question)">

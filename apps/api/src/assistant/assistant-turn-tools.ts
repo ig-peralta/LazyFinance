@@ -4,19 +4,26 @@ import {
   AssistantReadNameSchema,
   type AssistantSource,
   AssistantSourceSchema,
+  type AssistantTurn,
   type FinancialAction,
+  ReviseFinancialActionSchema,
 } from "@lazyfinance/contracts";
 import type { ActionsService } from "../actions/actions.service";
 import type { FinancialReads } from "./financial-reads";
+
+export class AssistantProposalConflict extends Error {}
 
 /** The same owned, bounded financial authority for text and native voice turns. */
 export class AssistantTurnTools {
   readonly sources: AssistantSource[] = [];
   readonly actions: FinancialAction[] = [];
+  readonly revisions: FinancialAction[] = [];
   observedReceipt = false;
   private calls = 0;
   private proposals = 0;
   private sourceBytes = 0;
+  private reviewPending = false;
+  private preparationAttempted = false;
 
   constructor(
     private readonly owner: string,
@@ -27,6 +34,27 @@ export class AssistantTurnTools {
     private readonly signal: AbortSignal,
     private readonly emit: (event: AssistantEvent) => Promise<void>,
   ) {}
+
+  observeHistory(turns: AssistantTurn[], updates: FinancialAction[] = []) {
+    const actions = new Map(
+      turns.flatMap((turn) =>
+        turn.actions.map((action) => [action.id, action] as const),
+      ),
+    );
+    for (const action of updates) actions.set(action.id, action);
+    this.observedReceipt = [...actions.values()].some(
+      (action) => action.status === "applied" && action.results.length > 0,
+    );
+    this.reviewPending = turns.some(
+      (turn) =>
+        turn.status === "complete" &&
+        turn.actions.some((action) =>
+          ["proposed", "stale"].includes(
+            actions.get(action.id)?.status ?? action.status,
+          ),
+        ),
+    );
+  }
 
   async read(name: AssistantReadName, raw: unknown) {
     this.signal.throwIfAborted();
@@ -95,7 +123,16 @@ export class AssistantTurnTools {
 
   async propose(value: unknown) {
     this.signal.throwIfAborted();
+    if (this.reviewPending || this.actions.length > 0)
+      throw new AssistantProposalConflict(
+        "Hay una solicitud pendiente: revísala, corrígela o pide cancelarla en su tarjeta antes de preparar otra. Solo una solicitud a la vez.",
+      );
+    if (this.preparationAttempted)
+      throw new AssistantProposalConflict(
+        "Ya se intentó preparar una solicitud en este turno. Revisa su estado antes de preparar otra; no se reenviará automáticamente.",
+      );
     if (++this.proposals > 4) throw new Error("Proposal budget exhausted");
+    this.preparationAttempted = true;
     const action = await this.commands.prepare(
       this.owner,
       this.conversationId,
@@ -122,6 +159,30 @@ export class AssistantTurnTools {
     return action;
   }
 
+  async revise(value: unknown) {
+    this.signal.throwIfAborted();
+    if (++this.proposals > 4) throw new Error("Proposal budget exhausted");
+    const input = ReviseFinancialActionSchema.parse(value);
+    const current = await this.actionStatus(input.id);
+    if (
+      current.origin !== "assistant" ||
+      current.version !== input.version ||
+      !["proposed", "stale", "expired"].includes(current.status) ||
+      current.request.kind !== input.action.kind
+    )
+      throw new AssistantProposalConflict(
+        "Only an unchanged, unaccepted proposal can be corrected",
+      );
+    const action = await this.commands.revise(this.owner, input);
+    this.reviewPending = true;
+    const index = this.revisions.findIndex((value) => value.id === action.id);
+    if (index < 0) this.revisions.push(action);
+    else this.revisions[index] = action;
+    this.signal.throwIfAborted();
+    await this.emit({ type: "action_updated", action });
+    return action;
+  }
+
   grounded(text: string) {
     const available = this.sources.filter(
       (source) => source.status === "available",
@@ -133,6 +194,7 @@ export class AssistantTurnTools {
       ) &&
       (available.length > 0 ||
         this.actions.length > 0 ||
+        this.revisions.length > 0 ||
         this.observedReceipt ||
         !/\d/.test(text.replace(/\[F\d+\]/g, "")))
     );

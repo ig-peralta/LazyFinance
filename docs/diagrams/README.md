@@ -113,7 +113,7 @@ external-client authorization, model orchestration and provider normalization ha
 different responsibilities. Only private persistence owns SQL and named atomic
 commands; factual aggregates do not move financial interpretation into the UI.
 
-The first-party model prepares proposals/reads status, never approves or executes.
+The first-party model prepares/corrects proposals and reads status, never approves or executes.
 Card approval and separately consented MCP writes have distinct authorization
 paths. First-party sign-in/consent and MCP OAuth are different credential
 boundaries: Firebase/application bearers are not accepted on `/mcp`. Model and

@@ -106,17 +106,18 @@ export class AssistantVoiceService implements OnModuleDestroy {
         instructions:
           "Espera la configuración del servidor. No respondas ni ejecutes acciones antes de recibirla.",
         tools: [],
-        max_output_tokens: 1024,
+        max_output_tokens: 320,
         audio: {
           input: {
             transcription: { model: "gpt-4o-mini-transcribe", language: "es" },
             turn_detection: {
-              type: "server_vad",
+              type: "semantic_vad",
+              eagerness: "low",
               create_response: false,
               interrupt_response: true,
             },
           },
-          output: { voice: "marin" },
+          output: { voice: this.environment.get("ASSISTANT_VOICE_NAME") },
         },
       }),
     );

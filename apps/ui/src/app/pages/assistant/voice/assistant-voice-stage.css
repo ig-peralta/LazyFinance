@@ -57,11 +57,6 @@ button:focus-visible {
   height: 8px;
   color: var(--muted);
 }
-.voice-captions {
-  max-height: 160px;
-  overflow: auto;
-  width: 100%;
-}
 @keyframes voice-wave {
   to {
     transform: scaleY(0.35);

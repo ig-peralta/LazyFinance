@@ -1,5 +1,14 @@
-import { Component, computed, input, output, signal } from "@angular/core";
+import {
+  Component,
+  computed,
+  effect,
+  input,
+  output,
+  signal,
+} from "@angular/core";
 import type { AssistantTurn, FinancialAction } from "@lazyfinance/contracts";
+import { latestAssistantAction } from "../../../features/assistant/assistant-action-state";
+import { actionLabels } from "../action/action-presentation";
 import { AssistantActionCard } from "../action/assistant-action-card";
 import { AssistantReference } from "../reference/assistant-reference";
 
@@ -9,11 +18,20 @@ import { AssistantReference } from "../reference/assistant-reference";
   imports: [AssistantReference, AssistantActionCard],
   template: `
     <section class="result-canvas" aria-label="Consultas de la respuesta">
+      @if (showActions() && proposals().length) {
+        <section class="conversation-proposals" aria-labelledby="conversation-proposals-title">
+          <h4 id="conversation-proposals-title">Revisar solicitud</h4>
+          @if (proposals().length > 1) { <details class="proposal-list"><summary>Solicitudes de esta conversación · {{ proposals().length }}</summary><nav class="result-tabs" aria-label="Solicitudes de cambio">@for (proposal of proposals(); track proposal.action.id; let index = $index) { <button type="button" [attr.aria-pressed]="proposal.action.id === proposalId()" (click)="proposalId.set(proposal.action.id)">{{ index + 1 }} · {{ proposal.name }}<small>Versión {{ proposal.action.version }} · {{ statuses[proposal.action.status] }}</small></button> }</nav></details> }
+          @if (proposal(); as current) {
+            <p class="result-question">Una solicitud a la vez. Puedes aceptarla o corregirla por voz o con Editar. Versión {{ current.action.version }}.</p>
+            <assistant-action-card [action]="current.action" [confirmedTurn]="current.confirmed" [busy]="busy()" (changed)="actionChanged.emit($event)" />
+          }
+        </section>
+      }
       @if (results().length > 1) { <label class="result-selector"><span>Respuesta de la conversación</span><select [value]="active()?.id ?? ''" (change)="choose($event)">@for (turn of results(); track turn.id) { <option [value]="turn.id" [selected]="turn.id === active()?.id">{{ turn.voice?.question ?? turn.question }}</option> }</select></label> }
       @if (active(); as turn) {
         <p class="result-question">{{ turn.voice?.question ?? turn.question }}</p>
         @if (turn.status !== 'complete') { <p class="notice warning" role="status">{{ turn.status === 'pending' ? 'Consultando. Las propuestas solo se pueden aprobar cuando termine la respuesta.' : 'Respuesta incompleta. Las consultas adjuntas no confirman sus afirmaciones.' }}</p> }
-        @if (showActions()) { @for (action of turn.actions; track action.id) { <assistant-action-card [action]="action" [confirmedTurn]="turn.status === 'complete'" [busy]="busy()" (changed)="actionChanged.emit($event)" /> } }
         @if (turn.sources.length > 1) {
           <nav class="result-tabs" aria-label="Consultas mostradas">@for (source of turn.sources; track source.id) { <button type="button" [attr.aria-pressed]="source.id === sourceId()" (click)="sourceSelection.set({ turn: turn.id, source: source.id })">{{ source.title }}</button> }</nav>
         }
@@ -32,6 +50,44 @@ export class AssistantCanvas {
   readonly selection = input<string>();
   readonly actionChanged = output<FinancialAction>();
   readonly selected = output<string>();
+  protected readonly labels = actionLabels;
+  protected readonly statuses = {
+    proposed: "Pendiente",
+    stale: "Revisar",
+    expired: "Vencida",
+    applied: "Confirmada",
+    cancelled: "Cancelada",
+  };
+  protected readonly proposalId = signal<string | undefined>(undefined);
+  private knownProposals = new Set<string>();
+  protected readonly proposals = computed(() => {
+    const turns = this.turns();
+    const statuses = new Map(turns.map((turn) => [turn.id, turn.status]));
+    const actions = new Map<string, FinancialAction>();
+    for (const turn of turns)
+      for (const action of turn.actions) {
+        const previous = actions.get(action.id);
+        actions.set(
+          action.id,
+          previous ? latestAssistantAction(previous, action) : action,
+        );
+      }
+    return [...actions.values()].map((action) => ({
+      action,
+      confirmed: !!action.turnId && statuses.get(action.turnId) === "complete",
+      name:
+        action.request.kind === "create_budget"
+          ? action.request.budget.name
+          : action.request.kind === "create_savings_goal"
+            ? action.request.goal.name
+            : action.request.kind === "create_tag"
+              ? action.request.tag.name
+              : this.labels[action.request.kind].title,
+    }));
+  });
+  protected readonly proposal = computed(() =>
+    this.proposals().find((value) => value.action.id === this.proposalId()),
+  );
   protected readonly sourceSelection = signal<
     { turn: string; source: string } | undefined
   >(undefined);
@@ -56,6 +112,35 @@ export class AssistantCanvas {
       ? selected?.source
       : turn?.sources.at(-1)?.id;
   });
+
+  constructor() {
+    effect(() => {
+      const proposals = this.proposals();
+      const current = proposals.find(
+        (value) => value.action.id === this.proposalId(),
+      );
+      const next = proposals.find(
+        (value) =>
+          !this.knownProposals.has(value.action.id) &&
+          value.action.status === "proposed",
+      );
+      this.knownProposals = new Set(proposals.map((value) => value.action.id));
+      if (
+        !current ||
+        (next &&
+          ["applied", "cancelled", "expired"].includes(current.action.status))
+      )
+        this.proposalId.set(
+          (
+            next ??
+            proposals.find((value) =>
+              ["proposed", "stale"].includes(value.action.status),
+            ) ??
+            proposals.at(-1)
+          )?.action.id,
+        );
+    });
+  }
 
   protected choose(event: Event) {
     if (event.target instanceof HTMLSelectElement)

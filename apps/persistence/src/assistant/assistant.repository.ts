@@ -6,6 +6,7 @@ import {
 import type {
   BeginAssistantTurn,
   FinishAssistantTurn,
+  RecordAssistantVoiceQuestion,
 } from "@lazyfinance/contracts/internal";
 import { Inject, Injectable } from "@nestjs/common";
 import { TRPCError } from "@trpc/server";
@@ -214,5 +215,41 @@ export class AssistantRepository {
       .returning("id")
       .executeTakeFirst();
     return { removed: !!row };
+  }
+
+  async recordVoiceQuestion({
+    conversationId,
+    turnId,
+    question,
+  }: RecordAssistantVoiceQuestion) {
+    const row = await this.owned(conversationId, true);
+    const turn = row.turns.find((turn) => turn.id === turnId);
+    if (
+      !turn?.voice ||
+      turn.question !== "Consulta por voz" ||
+      !["interrupted", "failed"].includes(turn.status)
+    )
+      return { saved: false };
+    if (!turn.voice.transcriptionPending)
+      return { saved: turn.voice.question === question };
+    // Fill only the missing readable input. Never change answer status, actions,
+    // receipts, the current lease, or a question already recorded by the server.
+    await this.db
+      .updateTable("assistant.conversation")
+      .set({
+        turns: JSON.stringify(
+          row.turns.map((value) =>
+            value.id === turnId
+              ? {
+                  ...value,
+                  voice: { question },
+                }
+              : value,
+          ),
+        ),
+      })
+      .where("id", "=", conversationId)
+      .execute();
+    return { saved: true };
   }
 }

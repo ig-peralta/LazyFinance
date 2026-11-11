@@ -332,14 +332,6 @@
   padding: 8px 20px;
   line-height: 1.6;
 }
-.voice-start {
-  padding: 16px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-}
-.voice-start p {
-  margin: 0 0 10px;
-}
 .stream-error,
 .assistant-unavailable,
 .delete-confirm {
@@ -441,6 +433,11 @@
 }
 .voice-session-controls > span {
   color: var(--accent);
+}
+.voice-proposals {
+  align-self: center;
+  flex-shrink: 0;
+  margin: 0 16px 20px;
 }
 @media (min-width: 1101px) {
   .home-assistant.canvas-active .chat-layout {

@@ -12,6 +12,15 @@ phases. It is an observation stream, not a browser tool-results endpoint. Voice
 turns may store optional `voice.question` as a readable transcription alongside the
 unchanged lease question. Existing text histories remain valid. No table migration
 or change to approval authority is required by this additive JSON shape.
+`voice.transcriptionPending` optionally marks an interrupted input placeholder.
+Private `assistantConversations.recordVoiceQuestion({ conversationId, turnId,
+question })` may fill only that missing readable input under owner scope. It does
+not change answer status, actions, lease or an existing transcript. This adds one
+private procedure, not a public transcript-edit endpoint.
+Deploy the API, persistence and rebuilt shared contracts together. No database
+migration or user-history rewrite is required.
+`action_updated` streams a revised existing proposal without assigning it to the
+correcting turn. Its conversation and original action identity remain validated.
 
 ## Package boundaries
 
@@ -112,20 +121,20 @@ Optional bearer-only voice HTTP endpoints use shared strict public schemas:
 conversation ownership and admission are checked server-side. SDP negotiation
 exposes no provider key, owner selector, financial tools or execution authority.
 These are not tRPC procedures: the combined public/private inventories remain
-84/105. Account processing consent requires migration 032; the voice HTTP adapter
+84/106. Account processing consent requires migration 032; the voice HTTP adapter
 itself adds no procedures. See the [voice contract and live-validation gates](assistant-live-voice.md).
 
 ## Private surface
 
 The [generated private router](../../libs/rpc-persistence/src/generated/server.ts)
-currently contains **105 procedures**. They expose owned facts and authoritative
+currently contains **106 procedures**. They expose owned facts and authoritative
 commands rather than copying public screen calculations into persistence.
 
 | Router | Methods |
 | --- | --- |
 | `identity` | `resolve` (bootstrap only) |
 | `onboarding` | `state`, `finish` |
-| `assistantConversations` | `list`, `get`, `create`, `begin`, `finish`, `remove` (user context only) |
+| `assistantConversations` | `list`, `get`, `create`, `begin`, `finish`, `recordVoiceQuestion`, `remove` (user context only) |
 | `assistantConsent` | `get`, `decide` (user context only; account-owned revisioned processing decision) |
 | `financialActions` | `get`, `preview`, `prepare`, `revise`, `apply`, `cancel`, `execute` (user context only; atomic ledger/domain commands) |
 | `mcpGrants` | `list`, `bind`, `revoke` (user context) |

@@ -331,8 +331,10 @@ Native voice turns use a separate authenticated observation stream, server-execu
 tools and the same saved-turn leases and approvals. Transcription never invokes
 the text stream, and completed text answers never trigger literal read-aloud.
 The optional `turn.voice.question` stores the readable input alongside the
-immutable lease question; shared history uses it for follow-ups. Partial captions
-remain in memory. Voice/text handoff stops capture, closes the optional detail view
+immutable lease question; shared history uses it for follow-ups. Visible subtitles
+are removed; internal partial transcripts remain in bounded memory. A delayed
+transcript can fill an interrupted question without confirming its answer.
+Voice/text handoff stops capture, closes the optional detail view
 and preserves the draft and saved turns. Ending an in-flight turn reconciles
 history rather than replaying it.
 See the [voice privacy/lifetime contract](assistant-live-voice.md).
@@ -340,6 +342,8 @@ After saved processing acceptance, voice has no repeated consent checkbox. Only
 the separate explicit microphone-start control can initiate capture. Availability
 loading/error/disabled states are available in the options disclosure with a
 readonly retry; refresh includes that resource.
+Empty conversations also show a large central voice entry, opening the same
+explicit start disclosure without requesting capture.
 References are financial cards projected from validated stored results,
 not raw JSON or model-authored markup. They retain uncertainty/cutoff disclosures,
 show up to 100 rows in the on-demand query detail view, and use service totals
@@ -350,7 +354,12 @@ are not upgraded from earlier development formats. Model-generated source codes
 are hidden in rendered/copied replies; original evidence remains stored.
 Action cards appear inline with text replies, without duplicating approval controls
 in source details. Native voice can reveal its proposal in that same optional
-detail surface while mute/text-handoff controls remain available. The
+detail surface while mute/text-handoff controls remain available. Review shows one
+request at a time, with explicit access to older requests. Owner/selection-scoped
+in-memory turn retention bridges history reloads and rapid voice turns; older
+snapshots cannot downgrade a revision or applied receipt. This is not browser
+storage or an independent financial authority. `action_updated` updates the
+original card for voice/text corrections without duplicating approval controls. The
 presentation-only `AssistantVoiceStage` shares the page-owned voice client; it does
 not own capture. The cards show saved fields, current decisions and effects; only
 an explicit button submits the saved ID/version.

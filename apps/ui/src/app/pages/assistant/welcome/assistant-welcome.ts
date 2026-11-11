@@ -10,7 +10,10 @@ import { Icon } from "../../../shared/ui/icon";
 export class AssistantWelcome {
   readonly name = input("");
   readonly busy = input(false);
+  readonly voiceAvailable = input(false);
+  readonly voiceReady = input(false);
   readonly choose = output<string>();
+  readonly startVoice = output<void>();
   protected readonly suggestions = [
     {
       title: "Mi dinero hoy",

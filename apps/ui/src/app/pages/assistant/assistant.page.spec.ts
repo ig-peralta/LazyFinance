@@ -344,6 +344,149 @@ describe("first-party chat page lifetimes and confirmed history", () => {
     expect(f.stream).not.toHaveBeenCalled();
   });
 
+  it("retains multiple voice approvals across rapid turns, lagging history, review selection and text handoff without subtitles", async () => {
+    const lag = deferred<AssistantConversation>();
+    let reads = 0;
+    const f = setup(
+      {
+        "assistant.configuration": () => externalConfiguration,
+        "assistant.conversation": () => (++reads === 1 ? chat : lag.promise),
+      },
+      chat.id,
+      true,
+    );
+    const voice = f.fixture.debugElement.injector.get(AssistantVoiceClient);
+    let receive: Parameters<AssistantVoiceClient["start"]>[2] | undefined;
+    vi.spyOn(voice, "start").mockImplementation(
+      async (_owner, _id, handler) => {
+        receive = handler;
+        voice.state.set("listening");
+      },
+    );
+    await render(f.fixture);
+    button(f.root, "Conversar por voz").click();
+    await render(f.fixture);
+    button(f.root, "Entiendo, iniciar micrófono").click();
+    await render(f.fixture);
+    expect(f.root.textContent).not.toContain("subtítulos");
+    expect(f.root.querySelector(".voice-captions")).toBeNull();
+
+    const first: AssistantTurn = {
+      ...assistantReply,
+      sources: [],
+      actions: [],
+      status: "pending",
+    };
+    const budget = assistantAction({
+      request: {
+        kind: "create_budget",
+        budget: {
+          name: "Burger King",
+          amount: "100000.00",
+          schedule: { period: "monthly", startDate: "2026-12-01" },
+          tagIds: [],
+          newTags: [{ name: "Burger King", color: null }],
+        },
+      },
+    });
+    const second: AssistantTurn = {
+      ...first,
+      id: "00000000-0000-4000-8000-000000000020",
+    };
+    const tag = assistantAction({
+      id: "00000000-0000-4000-8000-000000000021",
+      turnId: second.id,
+    });
+    receive?.({ type: "turn", turn: first });
+    receive?.({ type: "action", action: budget });
+    receive?.({
+      type: "done",
+      turn: { ...first, status: "complete", actions: [budget] },
+    });
+    f.fixture.detectChanges();
+    const selection = () =>
+      f.root.querySelector<HTMLSelectElement>(".result-selector select");
+    const requests = () =>
+      f.root.querySelectorAll<HTMLButtonElement>(
+        '[aria-label="Solicitudes de cambio"] button',
+      );
+    receive?.({ type: "turn", turn: second });
+    receive?.({ type: "action", action: tag });
+    f.fixture.detectChanges();
+    expect(
+      f.root.querySelectorAll("assistant-canvas assistant-action-card"),
+    ).toHaveLength(1);
+    expect(requests()).toHaveLength(2);
+    expect(selection()?.value).toBe(first.id);
+    receive?.({
+      type: "done",
+      turn: { ...second, status: "complete", actions: [tag] },
+    });
+    f.fixture.detectChanges();
+    expect(button(f.root, "Crear presupuesto").disabled).toBe(false);
+    requests()[1].click();
+    f.fixture.detectChanges();
+    expect(button(f.root, "Guardar etiqueta").disabled).toBe(false);
+    requests()[0].click();
+    f.fixture.detectChanges();
+
+    lag.resolve({
+      ...chat,
+      turns: [{ ...first, actions: [budget] }],
+      turnCount: 1,
+    });
+    await render(f.fixture);
+    expect(
+      f.root.querySelectorAll("assistant-canvas assistant-action-card"),
+    ).toHaveLength(1);
+    expect(requests()).toHaveLength(2);
+    expect(button(f.root, "Crear presupuesto").disabled).toBe(false);
+    button(f.root, "Cerrar detalles").click();
+    await render(f.fixture);
+    button(f.root, "Ver propuestas · 2").click();
+    await render(f.fixture);
+    expect(
+      f.root.querySelectorAll("assistant-canvas assistant-action-card"),
+    ).toHaveLength(1);
+    expect(requests()).toHaveLength(2);
+    button(f.root, "Continuar por texto").click();
+    await render(f.fixture);
+    expect(
+      f.root.querySelectorAll("assistant-reply assistant-action-card"),
+    ).toHaveLength(2);
+    expect(f.callsTo("financialActions.approve")).toHaveLength(0);
+    expect(f.stream).not.toHaveBeenCalled();
+    f.credentials.accept(
+      { ...principal, userId: "other-owner" },
+      "replacement-token",
+    );
+    await render(f.fixture);
+    expect(f.root.querySelectorAll("assistant-action-card")).toHaveLength(0);
+  });
+
+  it("promotes voice in the center of an empty conversation without starting capture before confirmation", async () => {
+    const f = setup(
+      { "assistant.configuration": () => externalConfiguration },
+      null,
+      true,
+    );
+    const start = vi
+      .spyOn(AssistantVoiceClient.prototype, "start")
+      .mockImplementation(async () => {});
+    await render(f.fixture);
+    expect(
+      f.root.querySelector("assistant-welcome .welcome-voice-start"),
+    ).not.toBeNull();
+    button(f.root, "Iniciar conversación por voz").click();
+    await render(f.fixture);
+    expect(f.root.querySelector(".voice-start")).not.toBeNull();
+    expect(f.microphone).not.toHaveBeenCalled();
+    expect(start).not.toHaveBeenCalled();
+    button(f.root, "Entiendo, iniciar micrófono").click();
+    await render(f.fixture);
+    expect(start).toHaveBeenCalledOnce();
+  });
+
   it("dismisses assistant options on Escape or an outside pointer without clearing the draft or withdrawing consent", async () => {
     const f = setup({ "assistant.configuration": () => externalConfiguration });
     document.body.append(f.root);

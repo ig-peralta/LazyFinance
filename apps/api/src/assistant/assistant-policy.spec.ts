@@ -181,7 +181,7 @@ describe("provider-neutral assistant configuration and bounded context", () => {
     expect(model.specificationVersion).toBe("v4");
   });
 
-  it("keeps only completed server turns, limits historical pairs and does not expose reasoning, raw tools or unfinished answers", () => {
+  it("keeps completed answers and unfinished user intent within the shared context budget", () => {
     const turns = Array.from({ length: 20 }, () => turn());
     const history = assistantHistory([
       ...turns,
@@ -189,7 +189,7 @@ describe("provider-neutral assistant configuration and bounded context", () => {
       turn("interrupted"),
       turn("pending"),
     ]);
-    expect(history).toHaveLength(16);
+    expect(history).toHaveLength(14);
     expect(history[0].role).toBe("user");
     expect(
       assistantHistory(
@@ -204,5 +204,42 @@ describe("provider-neutral assistant configuration and bounded context", () => {
       "muestra las referencias por separado como tarjetas",
     );
     expect(prompt).toContain("no incluyas códigos de fuente");
+  });
+
+  it("retains interrupted voice corrections and failed text questions, never their unconfirmed answers or missing transcripts", () => {
+    const history = assistantHistory([
+      {
+        ...turn("interrupted"),
+        question: "Consulta por voz",
+        voice: { question: "Mensual, de cien mil, desde el próximo mes" },
+        text: "Invented unfinished answer",
+      },
+      {
+        ...turn("failed"),
+        question: "Usa una etiqueta Burger King roja",
+        text: "False success",
+      },
+      {
+        ...turn("interrupted"),
+        voice: {
+          question: "Audio interrumpido · transcripción no disponible",
+          transcriptionPending: true,
+        },
+      },
+    ]);
+    expect(history).toEqual([
+      { role: "user", content: "Mensual, de cien mil, desde el próximo mes" },
+      { role: "user", content: "Usa una etiqueta Burger King roja" },
+    ]);
+    const prompt = assistantInstructions(new Date("2026-12-01T02:30:00Z"));
+    expect(prompt).toContain("2026-11-30 23:30:00");
+    expect(prompt).toContain("mes actual 2026-11");
+    expect(prompt).toContain("UNA A LA VEZ");
+    expect(prompt).toContain("budget.newTags");
+    expect(prompt).toContain("pregunta qué color quiere");
+    expect(prompt).toContain("corregir_propuesta_financiera");
+    expect(prompt).toContain(
+      "Puedes aceptarla en la tarjeta o decirme qué corregir",
+    );
   });
 });

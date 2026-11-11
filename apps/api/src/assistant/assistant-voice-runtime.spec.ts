@@ -4,7 +4,9 @@ import type {
   AssistantConversation,
   AssistantTurn,
   AssistantVoiceEvent,
+  FinancialAction,
 } from "@lazyfinance/contracts";
+import { FinancialActionRequestSchema } from "@lazyfinance/contracts";
 import { Test } from "@nestjs/testing";
 import { describe, expect, it, vi } from "vitest";
 import WebSocket from "ws";
@@ -14,6 +16,7 @@ import type { AsyncStub, RpcStubs } from "../../tests/fixtures/rpc-stubs";
 import { ActionsService } from "../actions/actions.service";
 import { EnvironmentService } from "../environment/environment.service";
 import { AssistantService } from "./assistant.service";
+import { assistantHistory } from "./assistant-policy";
 import { AssistantVoiceRuntime, VOICE_SOCKET } from "./assistant-voice-runtime";
 import { FinancialReads } from "./financial-reads";
 
@@ -73,9 +76,17 @@ async function setup() {
         return { saved: true };
       }),
     },
+    recordVoiceQuestion: {
+      mutate: vi.fn(async ({ turnId, question }) => {
+        const index = saved.findIndex((turn) => turn.id === turnId);
+        if (index < 0) return { saved: false };
+        saved[index] = { ...saved[index], voice: { question } };
+        return { saved: true };
+      }),
+    },
   } satisfies Pick<
     RpcStubs<ReturnType<AssistantService["conversations"]>>,
-    "get" | "begin" | "finish"
+    "get" | "begin" | "finish" | "recordVoiceQuestion"
   >;
   const execute = vi.fn(async (_owner: string, _input: unknown) => ({
     accounts: [],
@@ -95,6 +106,11 @@ async function setup() {
   const get = vi.fn<AsyncStub<ActionsService["get"]>>(async () => {
     throw new Error("Unknown action");
   });
+  const revise = vi.fn<AsyncStub<ActionsService["revise"]>>(async () => {
+    throw new Error("Unexpected correction");
+  });
+  const unobserve = vi.fn();
+  const observe = vi.fn<ActionsService["observe"]>(() => unobserve);
   const module = await Test.createTestingModule({
     providers: [
       AssistantVoiceRuntime,
@@ -106,7 +122,7 @@ async function setup() {
         },
       },
       { provide: FinancialReads, useValue: { tools } },
-      { provide: ActionsService, useValue: { prepare, get } },
+      { provide: ActionsService, useValue: { prepare, get, revise, observe } },
       {
         provide: EnvironmentService,
         useValue: testEnvironment({ ASSISTANT_VOICE_API_KEY: "server-key" }),
@@ -141,6 +157,7 @@ async function setup() {
     item = "audio-1",
     transcript = "Muéstrame mis cuentas",
   ) => {
+    const count = store.finish.mutate.mock.calls.length;
     socket.event({
       type: "conversation.item.input_audio_transcription.completed",
       item_id: item,
@@ -159,11 +176,14 @@ async function setup() {
         output: [{ type: "message" }],
       },
     });
-    await vi.waitFor(() => expect(store.finish.mutate).toHaveBeenCalled());
+    await vi.waitFor(() =>
+      expect(store.finish.mutate).toHaveBeenCalledTimes(count + 1),
+    );
   };
   return {
     socket,
     run,
+    conversationId,
     saved,
     store,
     events,
@@ -171,6 +191,34 @@ async function setup() {
     execute,
     prepare,
     get,
+    revise,
+    unobserve,
+    change: (action: FinancialAction) => observe.mock.calls[0][2](action),
+    tool: async (name: string, args: unknown, response = "audio-1") => {
+      const call = randomUUID();
+      socket.event({
+        type: "response.output_item.done",
+        response_id: response,
+        item: {
+          type: "function_call",
+          call_id: call,
+          name,
+          arguments: JSON.stringify(args),
+        },
+      });
+      await vi.waitFor(() =>
+        expect(
+          socket.sent.some(
+            (event) =>
+              z
+                .object({
+                  item: z.object({ call_id: z.string().optional() }).optional(),
+                })
+                .parse(event).item?.call_id === call,
+          ),
+        ).toBe(true),
+      );
+    },
     begin,
     finish,
     close: async () => {
@@ -183,6 +231,201 @@ async function setup() {
 }
 
 describe("server-owned native audio conversation", () => {
+  it("prepares the budget and its colored new tag as one request and refuses a competing request", async () => {
+    const f = await setup();
+    f.prepare.mockImplementation(
+      async (_owner, conversationId, turnId, request) => ({
+        id: randomUUID(),
+        conversationId,
+        turnId,
+        version: 1,
+        origin: "assistant",
+        request: FinancialActionRequestSchema.parse(request),
+        context: { tags: [], movement: null },
+        status: "proposed",
+        createdAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 900000).toISOString(),
+        results: [],
+      }),
+    );
+    try {
+      await f.begin();
+      const request = {
+        kind: "create_budget",
+        budget: {
+          name: "Burger King",
+          amount: "100000.00",
+          schedule: { period: "monthly", startDate: "2026-12-01" },
+          tagIds: [],
+          newTags: [{ name: "Burger King", color: "#ef4444" }],
+        },
+      };
+      await f.tool("preparar_accion_financiera", { action: request });
+      await f.tool("preparar_accion_financiera", {
+        action: { kind: "create_tag", tag: { name: "Separate", color: null } },
+      });
+      expect(f.prepare).toHaveBeenCalledOnce();
+      await f.finish();
+      expect(f.saved[0].actions).toHaveLength(1);
+      expect(f.saved[0].actions[0].request).toEqual(request);
+      expect(f.saved[0].actions[0].status).toBe("proposed");
+      await f.begin("second");
+      await f.tool("preparar_accion_financiera", { action: request }, "second");
+      expect(f.prepare).toHaveBeenCalledOnce();
+      expect(JSON.stringify(f.responses().at(-1))).toContain("UNA A LA VEZ");
+    } finally {
+      await f.close();
+    }
+  });
+
+  it("corrects the same pending request by voice and receives authoritative acceptance without another model call", async () => {
+    const f = await setup();
+    const original: FinancialAction = {
+      id: randomUUID(),
+      version: 1,
+      conversationId: f.conversationId,
+      turnId: randomUUID(),
+      origin: "assistant",
+      request: {
+        kind: "create_budget",
+        budget: {
+          name: "Burger King",
+          amount: "100000.00",
+          tagIds: [],
+          newTags: [{ name: "Burger King", color: "#ef4444" }],
+          schedule: { period: "monthly", startDate: "2026-12-01" },
+        },
+      },
+      context: { tags: [], movement: null },
+      status: "proposed",
+      createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 900000).toISOString(),
+      results: [],
+    };
+    f.saved.push({
+      id: original.turnId ?? randomUUID(),
+      question: "Prepara el presupuesto rojo de 100 mil",
+      text: "Preparé la solicitud. Puedes aceptarla o corregirla.",
+      status: "complete",
+      sources: [],
+      actions: [original],
+      createdAt: original.createdAt,
+    });
+    if (original.request.kind !== "create_budget")
+      throw new Error("Expected budget");
+    const revised: FinancialAction = {
+      ...original,
+      version: 2,
+      request: {
+        kind: "create_budget",
+        budget: { ...original.request.budget, amount: "80000.00" },
+      },
+    };
+    f.get.mockResolvedValue(original);
+    f.revise.mockImplementation(async () => {
+      f.saved[0] = { ...f.saved[0], actions: [revised] };
+      f.change(revised);
+      return revised;
+    });
+    try {
+      await f.begin();
+      await f.tool("corregir_propuesta_financiera", {
+        id: original.id,
+        version: 1,
+        action: revised.request,
+      });
+      expect(f.revise).toHaveBeenCalledExactlyOnceWith("verified-owner", {
+        id: original.id,
+        version: 1,
+        action: revised.request,
+      });
+      expect(f.prepare).not.toHaveBeenCalled();
+      await f.finish(
+        "audio-1",
+        "Mejor que sea de ochenta mil, conserva el rojo",
+      );
+      expect(f.events).toContainEqual({
+        type: "action_updated",
+        action: revised,
+      });
+      expect(f.saved[1].actions).toEqual([]);
+      const budgetId = randomUUID();
+      const receipt: FinancialAction = {
+        ...revised,
+        status: "applied",
+        results: [
+          {
+            id: budgetId,
+            title: "Burger King",
+            path: `/presupuestos/${budgetId}`,
+            outcome: "created",
+          },
+          {
+            id: randomUUID(),
+            title: "Burger King",
+            path: "/etiquetas",
+            outcome: "created",
+          },
+        ],
+      };
+      const responses = f.responses().length;
+      f.change(receipt);
+      expect(f.responses()).toHaveLength(responses);
+      await vi.waitFor(() =>
+        expect(
+          z
+            .object({ session: z.object({ instructions: z.string() }) })
+            .parse(f.socket.sent.at(-1)).session.instructions,
+        ).toContain('"status":"applied"'),
+      );
+      expect(JSON.stringify(f.socket.sent.at(-1))).toContain("80000.00");
+      expect(JSON.stringify(f.socket.sent.at(-1))).toContain("#ef4444");
+      f.saved[0] = {
+        ...f.saved[0],
+        actions: [{ ...revised, status: "stale" }],
+      };
+      await f.begin("after-acceptance");
+      expect(
+        z
+          .object({ response: z.object({ instructions: z.string() }) })
+          .parse(f.responses().at(-1)).response.instructions,
+      ).toContain('"status":"applied"');
+    } finally {
+      await f.close();
+    }
+    expect(f.unobserve).toHaveBeenCalledOnce();
+  });
+
+  it("keeps delayed user details from an interrupted turn without promoting its answer or losing the next turn", async () => {
+    const f = await setup();
+    try {
+      await f.begin();
+      await f.begin("correction");
+      expect(f.saved[0].voice?.transcriptionPending).toBe(true);
+      f.socket.event({
+        type: "conversation.item.input_audio_transcription.completed",
+        item_id: "audio-1",
+        transcript: "Mensual de cien mil desde diciembre",
+      });
+      await vi.waitFor(() =>
+        expect(f.store.recordVoiceQuestion.mutate).toHaveBeenCalledOnce(),
+      );
+      expect(f.saved[0].status).toBe("interrupted");
+      expect(f.saved[0].voice).toEqual({
+        question: "Mensual de cien mil desde diciembre",
+      });
+      expect(assistantHistory(f.saved)).toContainEqual({
+        role: "user",
+        content: "Mensual de cien mil desde diciembre",
+      });
+      expect(f.saved[1].status).toBe("pending");
+      await f.finish("correction", "Con una etiqueta nueva roja");
+      expect(f.saved[1].status).toBe("complete");
+    } finally {
+      await f.close();
+    }
+  });
+
   it("responds to committed AUDIO before transcription, runs owned tools and saves the shared readable turn", async () => {
     const f = await setup();
     try {

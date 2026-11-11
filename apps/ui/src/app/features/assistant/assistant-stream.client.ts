@@ -91,6 +91,13 @@ export class AssistantStreamClient {
         if (actionIds.size > 4)
           throw new Error("La respuesta excede el límite de propuestas.");
       }
+      if (
+        event.type === "action_updated" &&
+        (event.action.conversationId !== message.conversationId ||
+          !event.action.turnId ||
+          event.action.origin !== "assistant")
+      )
+        throw new Error("La corrección no corresponde a esta conversación.");
       if (event.type === "turn" || event.type === "done") {
         const actions = event.turn.actions;
         if (

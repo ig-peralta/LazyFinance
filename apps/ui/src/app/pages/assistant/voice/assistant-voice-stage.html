@@ -3,7 +3,5 @@
   <h3 role="status">{{ label() }}</h3>
   <p>Habla con naturalidad. Puedes interrumpirme.</p>
   @if (turn(); as current) { @if (current.sources.length) { <button type="button" class="text-link" (click)="showResult.emit(current.id)">Ver consultas · {{ current.sources.length }} ↗</button> } }
-  <button type="button" class="text-link" [attr.aria-expanded]="captions()" aria-controls="voice-captions" (click)="captions.set(!captions())">{{ captions() ? 'Ocultar subtítulos' : 'Mostrar subtítulos' }}</button>
-  @if (captions()) { <div id="voice-captions" class="voice-captions"><p>{{ voice.inputTranscript() }}</p><p>{{ voice.outputTranscript() }}</p></div> }
   @if (voice.playbackBlocked()) { <button type="button" class="button small" (click)="voice.play()">Reproducir audio</button> }
 </section>

@@ -47,22 +47,27 @@
         @if (consent.loading() && configuration.hasValue() && configuration.value().enabled && !configuration.value().demonstration) { <p class="notice" role="status">Comprobando el consentimiento guardado…</p> }
         @if (historyOnly()) { <div class="notice"><p>Estás viendo el historial sin enviar datos nuevos a un modelo.</p><button class="button small" type="button" (click)="requestConsent()">Autorizar asistente</button></div> }
 
-        @if (voice.state() !== 'off') { <assistant-voice-stage [turn]="live()?.nativeVoice ? live()?.turn : undefined" (showResult)="showResult($event)" /> }
+        @if (voice.state() !== 'off') { <assistant-voice-stage [turn]="live()?.nativeVoice ? live()?.turn : undefined" (showResult)="showResult($event)" />
+          @if (proposalTurn(); as proposal) { <button type="button" class="text-link voice-proposals" (click)="showResult(proposal.id)">Ver propuestas · {{ proposalCount() }}</button> }
+        }
         <div class="chat-transcript" [hidden]="voice.state() !== 'off'">
         <div #messages class="chat-messages" [hidden]="voice.state() !== 'off'" (scroll)="scroll($event)">
+          @if (voiceDisclosure()) { <assistant-voice-start id="assistant-voice-start" [ready]="canStartVoice()" (started)="startVoice()" (cancelled)="cancelVoiceStart()" /> }
+          <div [hidden]="voiceDisclosure()">
           @if (configuration.isLoading()) { <p class="notice" role="status">Preparando tu asistente…</p> }
           @else if (configuration.error()) { <p class="notice danger" role="alert">No pudimos comprobar la disponibilidad. <button type="button" class="text-link" (click)="configuration.reload()">Volver a consultar</button></p> }
           @else if (invalidId()) { <p class="notice danger" role="alert">El enlace de esta conversación no es válido. Abre una conversación de tu historial o empieza una nueva.</p> }
           @else if (conversation.error()) { <div class="notice danger" role="alert">Esta conversación no está disponible para tu cuenta o no se pudo consultar. <button type="button" class="text-link" (click)="refresh()">Consultar de nuevo</button></div> }
           @else if (conversation.isLoading() && !live()) { <p class="notice" role="status">Recuperando la conversación…</p> }
-          @if (!historyOnly() && !turns().length && !conversation.isLoading() && !conversation.error() && !invalidId()) { <assistant-welcome [name]="greeting()" [busy]="busy()" (choose)="suggest($event)" /> }
+          @if (!historyOnly() && !turns().length && !conversation.isLoading() && !conversation.error() && !invalidId()) { <assistant-welcome [name]="greeting()" [busy]="busy()" [voiceAvailable]="voice.supported && voiceConfiguration.hasValue() && voiceConfiguration.value().enabled && configuration.hasValue() && configuration.value().enabled && !configuration.value().demonstration" [voiceReady]="canStartVoice()" (startVoice)="voiceDisclosure.set(true)" (choose)="suggest($event)" /> }
           @if (historyOnly() && !id()) { <p class="notice">Elige una conversación para leerla o eliminarla.</p> }
           <div class="turns" role="log" aria-label="Mensajes de la conversación" aria-live="off">@for (turn of turns(); track turn.id) {
             <assistant-reply [attr.data-turn]="turn.id" [turn]="turn" [canvas]="voice.state() !== 'off'" [detailsPanel]="true" [busy]="busy()" (askAgain)="suggest($event)" (showResult)="showResult($event)" (actionChanged)="actionChanged($event)" />
           }</div>
           <div class="chat-bottom" aria-hidden="true"></div>
+          </div>
         </div>
-        @if (!follow() && turns().length) { <button type="button" class="jump-bottom" aria-label="Ir al último mensaje" title="Ir al último mensaje" (click)="jump()"><app-icon name="arrow" /></button> }
+        @if (!voiceDisclosure() && !follow() && turns().length) { <button type="button" class="jump-bottom" aria-label="Ir al último mensaje" title="Ir al último mensaje" (click)="jump()"><app-icon name="arrow" /></button> }
         </div>
 
         @if (live()?.error || command.error()) { <div class="stream-error notice warning" role="alert">{{ live()?.error || command.error() }} <button type="button" class="text-link" [disabled]="busy()" (click)="refresh()">Consultar estado</button></div> }
@@ -72,11 +77,10 @@
         @if (configuration.hasValue() && configuration.value().demonstration) { <div class="demo-notice">MODO DEMOSTRACIÓN · Sin modelo externo.</div> }
 
         @if (!historyOnly()) {
-          @if (voiceDisclosure() || voice.error() || voiceFallback()) { <div class="voice-controls" role="group" aria-label="Conversación por voz">
-            @if (voiceDisclosure()) { <section id="assistant-voice-start" class="voice-start" aria-label="Privacidad y confirmación para iniciar voz"><p>Al iniciar, tu audio, contexto reciente y datos financieros consultados se procesan en OpenAI para conversar en vivo. Puede generar costes. No guardamos audio; la retención del proveedor es independiente.</p><p>Compartes la misma conversación, sin enviar cada transcripción al modelo de texto. No se envían credenciales bancarias.</p><p>Máximo cinco minutos. La voz termina al navegar o dejar esta pestaña. Decir «sí» no aprueba cambios.</p><div class="button-row"><button type="button" class="button small" [disabled]="!canStartVoice()" (click)="startVoice()">Entiendo, iniciar micrófono</button><button type="button" class="button small" (click)="endVoice()">Cancelar voz</button></div></section> }
+          @if (voice.error() || voiceFallback()) { <div class="voice-controls" role="group" aria-label="Conversación por voz">
             @if (voice.error()) { <p role="alert">{{ voice.error() }}</p> } @if (voiceFallback()) { <p role="status">{{ voiceFallback() }}</p> }
           </div> }
-          <form class="chat-composer" [hidden]="voice.state() !== 'off'" (submit)="$event.preventDefault(); send()">
+          <form class="chat-composer" [hidden]="voice.state() !== 'off' || voiceDisclosure()" (submit)="$event.preventDefault(); send()">
             <div class="chat-status" role="status" aria-live="polite" aria-atomic="true">{{ live()?.pending ? live()?.status : '' }}</div>
             <label class="sr-only" for="assistant-message">Tu pregunta financiera</label>
             <div class="composer-box"><textarea #composer id="assistant-message" rows="2" [maxLength]="maxInput" [value]="draft()" (input)="input($event)" (keydown)="keydown($event)" [disabled]="busy() || !configuration.hasValue() || !configuration.value().enabled" placeholder="Escribe tu pregunta…" aria-describedby="composer-help"></textarea>

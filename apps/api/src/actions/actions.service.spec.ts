@@ -2,9 +2,10 @@ import {
   type FinancialAction,
   FinancialActionRequestSchema,
 } from "@lazyfinance/contracts";
+import { Test } from "@nestjs/testing";
 import { describe, expect, it, vi } from "vitest";
 import type { RpcStubs } from "../../tests/fixtures/rpc-stubs";
-import type { PersistenceClient } from "../persistence/persistence.client";
+import { PersistenceClient } from "../persistence/persistence.client";
 import { ActionsService } from "./actions.service";
 
 type ActionsClient = RpcStubs<
@@ -12,6 +13,76 @@ type ActionsClient = RpcStubs<
 >;
 
 describe("MCP financial action replay across schedule boundaries", () => {
+  it("notifies only the owning conversation after a confirmed approval and isolates observer failures", async () => {
+    const action: FinancialAction = {
+      id: "00000000-0000-4000-8000-000000000009",
+      version: 2,
+      conversationId: "00000000-0000-4000-8000-000000000001",
+      turnId: "00000000-0000-4000-8000-000000000002",
+      origin: "assistant",
+      request: {
+        kind: "create_tag",
+        tag: { name: "Burger King", color: "#ef4444" },
+      },
+      context: { tags: [], movement: null },
+      status: "applied",
+      results: [
+        {
+          id: "00000000-0000-4000-8000-000000000003",
+          title: "Burger King",
+          path: "/etiquetas",
+          outcome: "created",
+        },
+      ],
+      createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 900000).toISOString(),
+    };
+    let confirm: (action: FinancialAction) => void = () => {
+      throw new Error("Not initialized");
+    };
+    const committed = new Promise<FinancialAction>((resolve) => {
+      confirm = resolve;
+    });
+    const apply = vi.fn<ActionsClient["apply"]["mutate"]>(
+      async () => committed,
+    );
+    const store = {
+      get: { query: async () => action },
+      apply: { mutate: apply },
+    } satisfies Pick<ActionsClient, "get" | "apply">;
+    const module = await Test.createTestingModule({
+      providers: [
+        ActionsService,
+        {
+          provide: PersistenceClient,
+          useValue: { user: () => ({ financialActions: store }) },
+        },
+      ],
+    }).compile();
+    try {
+      const service = module.get(ActionsService);
+      const same = vi.fn(),
+        foreign = vi.fn();
+      const stop = service.observe("owner", action.conversationId ?? "", same);
+      service.observe("foreign", action.conversationId ?? "", foreign);
+      service.observe("owner", "other-chat", foreign);
+      service.observe("owner", action.conversationId ?? "", () => {
+        throw new Error("Closed media");
+      });
+      const approving = service.approve("owner", { id: action.id, version: 2 });
+      await vi.waitFor(() => expect(apply).toHaveBeenCalledOnce());
+      expect(same).not.toHaveBeenCalled();
+      confirm(action);
+      expect(await approving).toEqual(action);
+      expect(same).toHaveBeenCalledExactlyOnceWith(action);
+      expect(foreign).not.toHaveBeenCalled();
+      stop();
+      await service.approve("owner", { id: action.id, version: 2 });
+      expect(same).toHaveBeenCalledOnce();
+    } finally {
+      await module.close();
+    }
+  });
   it("still looks up an identical durable receipt when its original budget period is no longer creatable", async () => {
     const requestId = "00000000-0000-4000-8000-000000000001";
     const action = FinancialActionRequestSchema.parse({

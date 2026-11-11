@@ -61,7 +61,11 @@ export const AssistantTurnSchema = z.object({
   createdAt: z.iso.datetime(),
   // Native audio is the input. This optional transcription is only a readable record.
   voice: z
-    .object({ question: z.string().min(1).max(ASSISTANT_MAX_INPUT) })
+    .object({
+      question: z.string().min(1).max(ASSISTANT_MAX_INPUT),
+      // An interrupted answer may finish before the asynchronous input record.
+      transcriptionPending: z.literal(true).optional(),
+    })
     .optional(),
 });
 
@@ -103,6 +107,10 @@ export const AssistantEventSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("status"), text: z.string().max(200) }),
   z.object({ type: z.literal("source"), source: AssistantSourceSchema }),
   z.object({ type: z.literal("action"), action: FinancialActionSchema }),
+  z.object({
+    type: z.literal("action_updated"),
+    action: FinancialActionSchema,
+  }),
   z.object({
     type: z.literal("delta"),
     text: z.string().max(ASSISTANT_MAX_OUTPUT),

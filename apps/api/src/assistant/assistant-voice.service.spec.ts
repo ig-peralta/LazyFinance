@@ -10,7 +10,7 @@ import {
   type RealtimeConversation,
 } from "./assistant-voice-runtime";
 
-async function setup(enabled = true) {
+async function setup(enabled = true, voiceName: "marin" | "cedar" = "marin") {
   const listen = vi.fn<RealtimeConversation["listen"]>(async () => {});
   const stop = vi.fn<RealtimeConversation["close"]>(async () => {});
   const get = vi.fn(async (_input: { id: string }) => ({}));
@@ -47,6 +47,7 @@ async function setup(enabled = true) {
           ASSISTANT_VOICE_ENABLED: enabled ? "true" : "false",
           ASSISTANT_VOICE_MODEL: "configured-voice-model",
           ASSISTANT_VOICE_API_KEY: "server-only-key",
+          ASSISTANT_VOICE_NAME: voiceName,
         }),
       },
       { provide: VOICE_FETCH, useValue: request },
@@ -85,6 +86,23 @@ const answer = () =>
   });
 
 describe("voice admission, provider privacy and owner-bound termination", () => {
+  it("selects a configured recommended timbre only when starting a new call", async () => {
+    expect(ENV_SCHEMA.parse({}).ASSISTANT_VOICE_NAME).toBe("marin");
+    expect(
+      ENV_SCHEMA.safeParse({ ASSISTANT_VOICE_NAME: "unrecognized" }).success,
+    ).toBe(false);
+    const f = await setup(true, "cedar");
+    try {
+      await f.voice.start("owner", origin, input, signal());
+      const body = f.request.mock.calls[0][1]?.body;
+      if (!(body instanceof FormData)) throw new Error("Expected call setup");
+      expect(JSON.parse(String(body.get("session"))).audio.output.voice).toBe(
+        "cedar",
+      );
+    } finally {
+      await f.close();
+    }
+  });
   it("rejects foreign and duplicate observers without closing the existing owner's stream", async () => {
     const f = await setup();
     const controller = new AbortController();
@@ -278,8 +296,18 @@ describe("voice admission, provider privacy and owner-bound termination", () => 
     expect(body.get("sdp")).toBe(input.sdp);
     expect(JSON.parse(String(body.get("session")))).toMatchObject({
       tools: [],
-      max_output_tokens: 1024,
-      audio: { input: { turn_detection: { create_response: false } } },
+      max_output_tokens: 320,
+      audio: {
+        input: {
+          turn_detection: {
+            type: "semantic_vad",
+            eagerness: "low",
+            create_response: false,
+            interrupt_response: true,
+          },
+        },
+        output: { voice: "marin" },
+      },
     });
     expect(JSON.stringify(session)).not.toContain("server-only-key");
     expect(JSON.stringify(session)).not.toContain("rtc_test");

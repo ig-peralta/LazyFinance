@@ -34,6 +34,7 @@ export interface ActionFields {
   end: string;
   tagIds: string[];
   newTags: string;
+  newTagColors: Record<string, string | null>;
   tagId: string;
 }
 
@@ -67,6 +68,9 @@ export function actionFields(action: FinancialAction): ActionFields {
     end: goal?.schedule.period === "fixed" ? goal.schedule.endDate : "",
     tagIds: goal?.tagIds ?? [],
     newTags: goal?.newTags.map((tag) => tag.name).join("\n") ?? "",
+    newTagColors: Object.fromEntries(
+      goal?.newTags.map((tag) => [tag.name, tag.color]) ?? [],
+    ),
     tagId: request.kind === "tag_movement" ? (request.tagId ?? "") : "",
   };
 }
@@ -77,8 +81,6 @@ export function editedAction(action: FinancialAction, fields: ActionFields) {
     request.kind === "create_budget" ||
     request.kind === "create_savings_goal"
   ) {
-    const original =
-      request.kind === "create_budget" ? request.budget : request.goal;
     const schedule =
       fields.period === "lifetime"
         ? { period: "lifetime" }
@@ -95,8 +97,7 @@ export function editedAction(action: FinancialAction, fields: ActionFields) {
         .filter(Boolean)
         .map((name) => ({
           name,
-          color:
-            original.newTags.find((tag) => tag.name === name)?.color ?? null,
+          color: fields.newTagColors[name] ?? null,
         })),
       schedule,
     };
@@ -175,6 +176,17 @@ export function actionDetails(action: FinancialAction) {
         ),
       ].join(", "),
     });
+    for (const tag of goal.newTags) {
+      const existing = action.context.tags.find(
+        (value) => value.name === tag.name,
+      );
+      rows.push(
+        colorDetail(
+          `Color de ${tag.name}`,
+          existing ? existing.color : tag.color,
+        ),
+      );
+    }
     notes.push(
       request.kind === "create_budget"
         ? "El presupuesto es un límite de planificación: no reserva dinero. Puede compartir compras con otros presupuestos."

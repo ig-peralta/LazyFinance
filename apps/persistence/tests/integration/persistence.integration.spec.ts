@@ -1695,6 +1695,101 @@ describe.skipIf(!ownerUrl)(
       }
     });
 
+    it("fills a delayed native question without approving its interrupted proposal or changing the next lease", async () => {
+      const client = purposeClient(ctx(a));
+      const chats = client.assistantConversations;
+      const chat = await chats.create.mutate();
+      const lease = randomUUID();
+      try {
+        const first = await chats.begin.mutate({
+          conversationId: chat.id,
+          requestId: randomUUID(),
+          lease,
+          text: "Consulta por voz",
+        });
+        const request = {
+          kind: "create_tag" as const,
+          tag: { name: `Voice ${randomUUID()}`, color: "#112233" },
+        };
+        const proposal = await client.financialActions.prepare.mutate({
+          conversationId: chat.id,
+          turnId: first.turn.id,
+          action: request,
+          command: request,
+        });
+        await chats.finish.mutate({
+          conversationId: chat.id,
+          lease,
+          turn: {
+            ...first.turn,
+            status: "interrupted",
+            actions: [proposal],
+            voice: {
+              question: "Audio interrumpido · transcripción no disponible",
+              transcriptionPending: true,
+            },
+          },
+        });
+        const nextLease = randomUUID();
+        const next = await chats.begin.mutate({
+          conversationId: chat.id,
+          requestId: randomUUID(),
+          lease: nextLease,
+          text: "La etiqueta debe ser roja",
+        });
+        const input = {
+          conversationId: chat.id,
+          turnId: first.turn.id,
+          question: "Un presupuesto mensual de cien mil",
+        };
+        await expect(
+          purposeClient(
+            ctx(b),
+          ).assistantConversations.recordVoiceQuestion.mutate(input),
+        ).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
+        expect(await chats.recordVoiceQuestion.mutate(input)).toEqual({
+          saved: true,
+        });
+        expect(await chats.recordVoiceQuestion.mutate(input)).toEqual({
+          saved: true,
+        });
+        expect(
+          await chats.recordVoiceQuestion.mutate({
+            ...input,
+            question: "Overwrite",
+          }),
+        ).toEqual({ saved: false });
+        const saved = await chats.get.query({ id: chat.id });
+        expect(saved.turns[0]).toMatchObject({
+          status: "interrupted",
+          actions: [{ id: proposal.id, status: "proposed" }],
+          voice: { question: input.question },
+        });
+        expect(saved.turns[0].voice?.transcriptionPending).toBeUndefined();
+        expect(saved.turns[1].status).toBe("pending");
+        await expect(
+          client.financialActions.apply.mutate({
+            id: proposal.id,
+            version: 1,
+            command: request,
+          }),
+        ).rejects.toMatchObject({ data: { code: "CONFLICT" } });
+        expect(
+          await chats.finish.mutate({
+            conversationId: chat.id,
+            lease: nextLease,
+            turn: {
+              ...next.turn,
+              status: "complete",
+              text: "¿Qué color prefieres?",
+            },
+          }),
+        ).toEqual({ saved: true });
+      } finally {
+        await chats.remove.mutate({ id: chat.id });
+      }
+    });
+
     it("recovers expired assistant leases without replaying old turns or adopting late answers", async () => {
       const client = purposeClient(ctx(a)).assistantConversations;
       const chat = await client.create.mutate();

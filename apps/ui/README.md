@@ -161,6 +161,8 @@ Optional live WebRTC voice is disabled by default and requires separate start/pr
 confirmation. After saved processing acceptance, **Conversar por voz** opens its
 disclosure without a repeated checkbox. Only **Entiendo, iniciar micrófono** can
 request capture; accepting account consent, opening or canceling requests none.
+New conversations promote voice with a larger central entry. Visible subtitles
+are removed for now; server transcription still supports history and completion.
 Loading, failed and disabled availability are shown under assistant options, with
 **Volver a comprobar voz** for an explicit read after configuration changes.
 Minimize/navigation/hidden tabs end capture. See the
@@ -180,7 +182,11 @@ provider/model before sending. Separate action cards show exact proposals for
 budget/goal creation, tag management and single-movement tagging. Tag colors use
 visual swatches and native color pickers, not displayed hex codes. Approve submits
 only a saved ID/version; Edit saves a new unapproved version, and Cancel is not an
-undo. Stale/expired proposals require review. Ambiguous action outcomes block
+undo. Stale/expired proposals require review. Voice/text corrections revise the
+same request, including dependent tag colors, without creating another tag or
+replacing the budget request. Native voice reviews one request at a time while
+retaining access to previous ones; delayed history cannot undo newer versions.
+An outdated manual form cannot overwrite a newer voice correction. Ambiguous outcomes block
 another write until an explicit status read; stopping/deleting chat never reverses
 committed finance or deletes durable receipts. MCP consent delegates separately
 selected capabilities without these chat buttons. See [configuration, limits, privacy and evaluation](../../docs/technical/financial-assistant.md).

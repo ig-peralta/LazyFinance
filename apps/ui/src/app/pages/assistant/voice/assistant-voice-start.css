@@ -1,0 +1,62 @@
+:host {
+  display: block;
+}
+.voice-start {
+  max-width: 440px;
+  margin: clamp(12px, 4dvh, 40px) auto;
+  text-align: center;
+}
+.voice-start-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 16px;
+  border-radius: 50%;
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.voice-start-icon app-icon {
+  width: 28px;
+  height: 28px;
+}
+h3 {
+  font-size: 1.35rem;
+  font-weight: 500;
+  margin: 0 0 12px;
+}
+h3:focus {
+  outline: none;
+}
+p {
+  font-size: var(--text-small);
+  line-height: 1.6;
+  margin: 0 0 16px;
+}
+.voice-start-privacy,
+details {
+  color: var(--muted);
+  font-size: var(--text-caption);
+}
+details p {
+  font-size: inherit;
+  margin-top: 12px;
+}
+summary {
+  cursor: pointer;
+}
+summary:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.voice-start-buttons {
+  display: grid;
+  justify-items: stretch;
+  gap: 12px;
+  margin-top: 24px;
+}
+.voice-start-buttons button {
+  min-height: 44px;
+  white-space: normal;
+}

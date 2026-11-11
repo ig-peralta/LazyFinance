@@ -7,7 +7,7 @@ NDJSON at `POST /assistant/turns`; text configuration/consent/history use tRPC. 
 uses authenticated HTTP for WebRTC setup/termination and a server-observation NDJSON
 stream at `POST /assistant/voice/events`. A server-side Realtime WebSocket runs
 native audio turns and the same bounded financial tools/history leases as text;
-transcriptions are captions/records, not ordinary text requests. Both modes refresh
+transcriptions are internal records, not visible subtitles or ordinary text requests. Both modes refresh
 ledger-backed proposal outcomes, including edited approvals. Business REST controllers
 have been retired. Angular otherwise uses vanilla tRPC clients apart from the
 cookie-bound OAuth interaction.

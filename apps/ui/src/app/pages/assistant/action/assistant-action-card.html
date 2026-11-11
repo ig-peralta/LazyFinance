@@ -12,6 +12,10 @@
         @if (form.period === 'fixed') { <label>Último día incluido<input name="action-end" type="date" [ngModel]="form.end" (ngModelChange)="field('end', $event)" required /></label> }
         <fieldset><legend>Etiquetas seleccionadas</legend>@if (tags.hasValue()) { @for (tag of tags.value(); track tag.id) { <label class="check"><input type="checkbox" [checked]="form.tagIds.includes(tag.id)" (change)="toggleTag(tag.id)" />{{ tag.name }}</label> } }</fieldset>
         <label>Etiquetas nuevas, una por línea<textarea name="action-new-tags" [ngModel]="form.newTags" (ngModelChange)="field('newTags', $event)" rows="2"></textarea></label>
+        @for (tag of newTags(); track tag.name; let index = $index) {
+          <label>Color de {{ tag.name }}<input [name]="'new-tag-color-' + index" type="color" [ngModel]="tag.color ?? '#78966a'" (ngModelChange)="newTagColor(tag.name, $event)" [disabled]="tag.color === null" /></label>
+          <label class="check"><input [name]="'new-tag-no-color-' + index" type="checkbox" [ngModel]="tag.color === null" (ngModelChange)="newTagColor(tag.name, $event ? null : '#78966a')" />Sin color para {{ tag.name }}</label>
+        }
         <p class="field-hint">Los períodos mensuales comienzan el día 1; los anuales, el 1 de enero. Las etiquetas nuevas se guardan junto al objetivo.</p>
       }
       @if (tagEditor()) {
@@ -21,8 +25,9 @@
       @if (current().request.kind === 'tag_movement') { <label>Nueva decisión<select name="action-tag" [ngModel]="form.tagId" (ngModelChange)="field('tagId', $event)"><option value="">Sin etiqueta, decisión manual</option>@if (tags.hasValue()) { @for (tag of tags.value(); track tag.id) { <option [value]="tag.id">{{ tag.name }}</option> } }</select></label> }
       @if (tags.error()) { <p role="alert">No pudimos consultar tus etiquetas. <button type="button" (click)="tags.reload()">Volver a consultar</button></p> }
       @if (invalid()) { <p role="alert">Revisa el importe, las fechas, el color y la selección de etiquetas.</p> }
+      @if (outdatedEdit()) { <p role="alert">La solicitud tiene una versión más reciente. Vuelve a la propuesta y abre Editar para corregir esa versión.</p> }
       <p class="action-note">Guardar la revisión no aplica el cambio. Tendrás que aprobar la nueva versión.</p>
-      <div class="action-buttons"><button type="submit" class="primary" [disabled]="!mutable() || tags.isLoading() || !!tags.error()">Guardar revisión</button><button type="button" [disabled]="command.pending()" (click)="editing.set(false)">Volver a la propuesta</button></div>
+      <div class="action-buttons"><button type="submit" class="primary" [disabled]="!mutable() || outdatedEdit() || tags.isLoading() || !!tags.error()">Guardar revisión</button><button type="button" [disabled]="command.pending()" (click)="editing.set(false)">Volver a la propuesta</button></div>
     </form>
   } @else {
     <dl>@for (row of details().rows; track row.label) { <div><dt>{{ row.label }}</dt><dd [class.color-detail]="row.color !== undefined">@if (row.color !== undefined) { <span class="action-color-swatch" [class.no-color]="row.color === null" [style.backgroundColor]="row.color" aria-hidden="true"></span> }{{ row.value }}</dd></div> }</dl>

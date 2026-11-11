@@ -13,6 +13,71 @@ h2 {
   margin: 0 0 24px;
   color: var(--ink);
 }
+.welcome-voice {
+  margin: 0 auto 28px;
+  max-width: 380px;
+}
+.welcome-voice-start {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  min-height: 88px;
+  padding: 16px 20px;
+  border: 1px solid var(--accent-line);
+  border-radius: 18px;
+  background: var(--accent-soft);
+  color: var(--ink);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.welcome-voice-start:hover {
+  border-color: var(--accent);
+}
+.welcome-voice-start:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.welcome-microphone {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  color: var(--accent);
+  background: var(--paper);
+}
+.welcome-microphone app-icon {
+  width: 24px;
+  height: 24px;
+}
+.welcome-voice-start strong,
+.welcome-voice-start small {
+  display: block;
+}
+.welcome-voice-start strong {
+  font-weight: 500;
+  font-size: 1rem;
+}
+.welcome-voice-start small {
+  margin-top: 4px;
+  font-size: var(--text-caption);
+  color: var(--muted);
+}
+.welcome-voice-start > app-icon {
+  margin-left: auto;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  color: var(--accent);
+}
+.welcome-voice > p {
+  color: var(--muted);
+  font-size: var(--text-caption);
+  margin: 10px 0 0;
+}
 .suggestion-grid {
   display: flex;
   flex-wrap: wrap;

@@ -91,6 +91,38 @@ describe("bounded credential-scoped assistant stream protocol", () => {
     );
   });
 
+  it("updates an earlier request in this conversation without treating it as a new current-turn proposal", async () => {
+    const f = setup();
+    const action = assistantAction({ version: 2 });
+    const events: AssistantEvent[] = [
+      start,
+      { type: "action_updated", action },
+      done,
+    ];
+    f.fetch.mockResolvedValueOnce(response(events));
+    const receive = vi.fn();
+    await f.client.send(
+      f.owner,
+      message,
+      new AbortController().signal,
+      receive,
+    );
+    expect(receive.mock.calls.map(([event]) => event)).toEqual(events);
+    f.fetch.mockResolvedValueOnce(
+      response([
+        start,
+        {
+          type: "action_updated",
+          action: { ...action, conversationId: action.id },
+        },
+        done,
+      ]),
+    );
+    await expect(
+      f.client.send(f.owner, message, new AbortController().signal, () => {}),
+    ).rejects.toThrow(/corrección/);
+  });
+
   it.each([
     [start, { type: "delta", text: "Incompleta" }],
     [start, { type: "done", turn: pending }],

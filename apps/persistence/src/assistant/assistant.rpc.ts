@@ -13,6 +13,8 @@ import {
   type FinishAssistantTurn,
   FinishAssistantTurnResultSchema,
   FinishAssistantTurnSchema,
+  type RecordAssistantVoiceQuestion,
+  RecordAssistantVoiceQuestionSchema,
 } from "@lazyfinance/contracts/internal";
 import { Input, Mutation, Query, Router } from "nestjs-trpc";
 import { AssistantRepository } from "./assistant.repository";
@@ -64,6 +66,15 @@ export class AssistantConversationsRpc {
   })
   finish(@Input() input: FinishAssistantTurn) {
     return this.repository.finish(input);
+  }
+
+  @Mutation({
+    input: RecordAssistantVoiceQuestionSchema,
+    output: FinishAssistantTurnResultSchema,
+    meta: { context: "user" },
+  })
+  recordVoiceQuestion(@Input() input: RecordAssistantVoiceQuestion) {
+    return this.repository.recordVoiceQuestion(input);
   }
 
   @Mutation({

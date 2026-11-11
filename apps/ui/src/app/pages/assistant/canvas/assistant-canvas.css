@@ -15,6 +15,30 @@
   font-size: var(--text-small);
   line-height: 1.6;
 }
+.conversation-proposals {
+  display: grid;
+  gap: 12px;
+}
+.conversation-proposals h4 {
+  font-size: var(--text-small);
+  font-weight: 500;
+  margin: 0;
+}
+.proposal-list summary {
+  color: var(--muted);
+  font-size: var(--text-caption);
+  cursor: pointer;
+  padding: 8px 0;
+}
+.proposal-list summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.proposal-list small {
+  display: block;
+  font-size: var(--text-caption);
+  margin-top: 4px;
+}
 .result-selector {
   display: grid;
   gap: 6px;

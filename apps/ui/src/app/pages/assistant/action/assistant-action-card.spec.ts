@@ -121,6 +121,99 @@ describe("explicit, scope-bound assistant approval cards", () => {
     expect(f.callsTo("financialActions.approve")).toHaveLength(0);
   });
 
+  it("corrects the color of a budget's new tag in the same request and accepts only the revised version", async () => {
+    const action = assistantAction({
+      request: {
+        kind: "create_budget",
+        budget: {
+          name: "Burger King",
+          amount: "100000.00",
+          tagIds: [],
+          newTags: [{ name: "Burger King", color: "#ef4444" }],
+          schedule: { period: "monthly", startDate: "2026-12-01" },
+        },
+      },
+    });
+    let current = action;
+    const f = setup(
+      {
+        "tags.list": () => [],
+        "financialActions.revise": (input) => {
+          current = {
+            ...current,
+            version: input.version + 1,
+            request: FinancialActionRequestSchema.parse(input.action),
+          };
+          return current;
+        },
+        "financialActions.approve": (input) => {
+          current = {
+            ...current,
+            version: input.version,
+            status: "applied",
+          };
+          return current;
+        },
+      },
+      action,
+    );
+    expect(
+      f.root.querySelector<HTMLElement>(".action-color-swatch")?.style
+        .backgroundColor,
+    ).toBe("rgb(239, 68, 68)");
+    f.button("Editar").click();
+    await f.render();
+    const picker = f.root.querySelector<HTMLInputElement>(
+      'input[type="color"]',
+    );
+    if (!picker) throw new Error("Missing dependent tag color picker");
+    expect(picker.value).toBe("#ef4444");
+    picker.value = "#112233";
+    picker.dispatchEvent(new Event("input", { bubbles: true }));
+    f.button("Guardar revisión").click();
+    await f.render();
+    expect(f.callsTo("financialActions.revise")[0].input).toMatchObject({
+      id: action.id,
+      version: 1,
+      action: {
+        kind: "create_budget",
+        budget: { newTags: [{ name: "Burger King", color: "#112233" }] },
+      },
+    });
+    expect(f.callsTo("tags.create")).toHaveLength(0);
+    expect(f.callsTo("financialActions.approve")).toHaveLength(0);
+    f.button("Crear presupuesto").click();
+    await f.render();
+    expect(f.callsTo("financialActions.approve")[0].input).toEqual({
+      id: action.id,
+      version: 2,
+    });
+    expect(f.root.textContent).toContain("Cambio confirmado");
+    expect(
+      f.root.querySelector<HTMLElement>(".action-color-swatch")?.style
+        .backgroundColor,
+    ).toBe("rgb(17, 34, 51)");
+  });
+
+  it("does not save an outdated manual form over a newer voice correction", async () => {
+    const action = assistantAction();
+    const f = setup({}, action);
+    f.button("Editar").click();
+    await f.render();
+    f.fixture.componentRef.setInput("action", {
+      ...action,
+      version: 2,
+      request: {
+        kind: "create_tag",
+        tag: { name: "Corregida por voz", color: "#112233" },
+      },
+    });
+    await f.render();
+    expect(f.button("Guardar revisión").disabled).toBe(true);
+    expect(f.root.textContent).toContain("versión más reciente");
+    expect(f.callsTo("financialActions.revise")).toHaveLength(0);
+  });
+
   it("never executes on render or an incomplete turn, and submits only the exact ID/version on approval", async () => {
     const action = assistantAction(),
       pending = deferred<FinancialAction>();
