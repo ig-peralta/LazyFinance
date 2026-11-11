@@ -46,6 +46,7 @@ delivery forecast. Linear owns their live values.
 | [Banking delivery](banking-delivery.md) and [browser verification](banking-browser-validation.md) | LAZ-74 implementation traceability, executed local checks and explicit unverified operational limits |
 | [Workspace delivery](workspace-delivery.md) | LAZ-75 workflows, preferences, shortcut integration and executed Chromium/accessibility screening |
 | [Financial assistant](../../technical/financial-assistant.md) and [live voice contract](../../technical/assistant-live-voice.md) | LAZ-72 persistent conversation/voice implementation, privacy, review fixes and remaining live-provider gates |
+| [Integrated assistant browser validation](assistant-browser-validation.md) | Final mocked Chromium matrix, deferred-focus regression/fix, responsive/accessibility results and synthetic voice boundaries |
 | [Validation plan](validation-plan.md) | Observable journeys, appropriate evidence and unresolved live checks |
 | [Stage Definition of Done](definition-of-done.md) | Required completion and gate checks, all still open |
 | [Dated issue snapshot](../snapshots/backlog-2026-11-10-stage-c-planning.md) | Complete project inventory after selection; not a live board |

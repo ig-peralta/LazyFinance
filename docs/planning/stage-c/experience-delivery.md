@@ -52,6 +52,10 @@ squash merging only; feature implementation retains natural commits on its branc
   21 axe scans and six heading-order scans, no reported violations.
 - [Workspace browser evidence](workspace-delivery.md): 199 checks and 99 axe scans,
   no reported violations after fixing real primary-action contrast.
+- [Integrated assistant browser evidence](assistant-browser-validation.md):
+  **103 checks, zero failures and 43 clean axe scans** after the deferred-launcher
+  focus fix. Responsive preferences, shortcut/focus, streaming/references, exact
+  approval, synthetic voice lifetimes and owner isolation were exercised.
 - Connected-app Chromium screening covered responsive identity/scopes, malicious
   metadata, focus and uncertain revocation; no external logo requests were used.
 
@@ -78,8 +82,15 @@ admission and unresolved hangup recovery are memory-only. A modified browser may
 request ungrounded provider audio but gains no financial execution or cross-user
 data authority. Written saved answers remain authoritative.
 
-Build retains bundle/style/CommonJS warnings; final lint reports **27 warnings and
-10 informational diagnostics**, without errors. Budgets were not raised.
+LAZ-94's separately authorized live-session acceptance remains unverified, so
+LAZ-94 and its parent LAZ-72 stay In Review rather than claiming full live
+acceptance. Other delivered implementation records can close independently;
+LAZ-76/98/99/100 and the release gate are not closed by this work.
+
+The final UI build reports **593.37 kB** initial output against a 500 kB warning
+budget, **4.89 kB** assistant styles against 4 kB, and contracts CommonJS optimization
+warnings. Final lint reports **27 warnings and 10 informational diagnostics**,
+without errors. Budgets were not raised.
 Automated axe/keyboard screening is not full WCAG,
 screen-reader, cross-browser or 200%-zoom certification. See the individual
 delivery records and [live voice contract](../../technical/assistant-live-voice.md).
