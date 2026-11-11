@@ -192,4 +192,70 @@ describe("owned tag management", () => {
     expect(root.querySelector("dialog")).not.toBeNull();
     expect(root.textContent).not.toContain("Etiqueta creada");
   });
+
+  it("retains a rejected draft and reconciles an uncertain create without replay", async () => {
+    const mock = setupRpc({
+      "tags.create": () => {
+        throw new Error("Lost response");
+      },
+    });
+    const fixture = TestBed.createComponent(TagsPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const root: HTMLElement = fixture.nativeElement;
+    const event = eventsIn(root);
+    [...root.querySelectorAll("button")]
+      .find((button) => button.textContent?.includes("Nueva etiqueta"))
+      ?.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const input = root.querySelector<HTMLInputElement>("#tag-name");
+    if (!input) throw new Error("Missing name");
+    input.value = "Borrador";
+    input.dispatchEvent(event("input"));
+    root.querySelector("form")?.dispatchEvent(event("submit"));
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(input.value).toBe("Borrador");
+    expect(root.textContent).toContain("El resultado es incierto");
+    root.querySelector("form")?.dispatchEvent(event("submit"));
+    await fixture.whenStable();
+    expect(mock.callsTo("tags.create")).toHaveLength(1);
+    [...root.querySelectorAll("button")]
+      .find((button) => button.textContent?.includes("Comprobar catálogo"))
+      ?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(root.textContent).toContain("Catálogo comprobado");
+    expect(input.value).toBe("Borrador");
+    expect(mock.callsTo("tags.create")).toHaveLength(1);
+    expect(mock.callsTo("tags.list").length).toBeGreaterThan(1);
+  });
+
+  it("keeps duplicate and invalid names editable without issuing a catalog write", async () => {
+    const mock = setupRpc();
+    const fixture = TestBed.createComponent(TagsPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const root: HTMLElement = fixture.nativeElement;
+    const event = eventsIn(root);
+    [...root.querySelectorAll("button")]
+      .find((button) => button.textContent?.includes("Nueva etiqueta"))
+      ?.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const input = root.querySelector<HTMLInputElement>("#tag-name");
+    if (!input) throw new Error("Missing name");
+    for (const name of ["   ", tag.name]) {
+      input.value = name;
+      input.dispatchEvent(event("input"));
+      root.querySelector("form")?.dispatchEvent(event("submit"));
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(root.querySelector(".field-error")).not.toBeNull();
+      expect(input.value).toBe(name);
+    }
+    expect(mock.callsTo("tags.create")).toHaveLength(0);
+    expect(root.querySelector("dialog")).not.toBeNull();
+  });
 });

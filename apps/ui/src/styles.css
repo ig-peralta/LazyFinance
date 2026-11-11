@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./workspace-loading.css";
+@import "./workspace-preferences.css";
 @plugin "tailwindcss-primeui";
 
 :root {

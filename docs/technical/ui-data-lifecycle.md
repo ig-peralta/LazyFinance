@@ -447,6 +447,20 @@ changes as well as link clicks. Tag pickers drop their drafts/overlay on scope o
 movement changes, cancel deferred positioning and return action focus to the
 trigger. Do not copy PrimeNG exit-snapshot workarounds into these native lifetimes.
 
+Workspace presentation preferences are an explicit exception to the no-private-data
+storage rule: one allowlisted localStorage object holds only system/light/dark,
+standard/large/largest text and the compact-navigation boolean. Invalid values are
+discarded and blocked storage keeps an in-memory preference with feedback. Never
+extend that object with identities, financial records, conversations or drafts.
+
+Catalog editors retain rejected drafts. An ambiguous tag write blocks another
+attempt until an explicit catalog read; movement corrections require closing and
+reloading detail. Dashboard tag decisions expose an explicit detail reconciliation
+read, publish the observed selection to page-local state and invalidate dependent
+summaries without replaying a mutation. A created catalog tag and a failed movement
+assignment are not claimed as one atomic UI operation. Provider classification,
+manual no-tag and reset-to-unreviewed remain separate decisions.
+
 ## Tests and extension rules
 
 UI tests inject `RPC_FETCH` and exercise real vanilla clients/resources with

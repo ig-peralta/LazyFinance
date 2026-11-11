@@ -17,12 +17,12 @@
       <dl class="detail-facts">
         <div><dt>Cuenta</dt><dd>{{ item.account.alias || 'Cuenta' }} · {{ item.account.currency }}</dd></div>
         <div><dt>Fecha de registro</dt><dd>{{ item.bookedPrecision === 'calendar_day' ? item.bookedOn : date(item.bookedAt) }}</dd></div>
-        <div><dt>Etiqueta actual</dt><dd>{{ item.tag?.name || 'Sin etiqueta' }}</dd></div>
+        <div><dt>Etiqueta actual</dt><dd>{{ item.tag?.name || 'Sin etiqueta' }} · {{ item.tagDecisionOrigin === 'manual' ? 'tu decisión' : item.tagDecisionOrigin === 'rule' ? 'regla automática' : 'sin revisar' }}</dd></div>
         <div><dt>Clasificación interna</dt><dd>{{ item.isInternalMovement === null ? 'Sin determinar' : item.isInternalMovement ? 'Interno' : 'Externo' }}</dd></div>
       </dl>
       @if (item.description) { <p class="notice">{{ item.description }}</p> }
       <p class="field-hint">{{ item.bookedPrecision === 'calendar_day' ? 'El proveedor informó un día, no una hora exacta.' : 'Hora mostrada en el calendario de Santiago.' }} El importe original nunca se cambia al corregir una etiqueta.</p>
-      @if (!item.removedAt) { <div class="button-row" style="margin-top:20px"><button class="button primary" type="button" (click)="editorOpen.set(true)">Corregir clasificación</button></div> }
+      @if (!item.removedAt) { <div class="button-row" style="margin-top:20px"><button class="button primary" type="button" (click)="editorOpen.set(true)">Editar etiqueta o clasificación</button></div> }
       <section style="margin-top:28px;padding-top:22px;border-top:1px solid var(--line)" aria-labelledby="facts-heading">
         <div class="panel-heading"><h2 id="facts-heading">Lo que sabemos</h2><app-icon name="info" /></div>
         <p class="record-meta">Evaluación del proveedor: {{ item.providerInternalAssessment === 'unknown' ? 'sin determinar' : item.providerInternalAssessment === 'internal' ? 'interno' : 'externo' }}.</p>
@@ -33,7 +33,7 @@
         @if (item.hasExpenseAdjustments) { <p class="notice">Este movimiento conserva vínculos de devolución o reembolso. Sus efectos dependen de los hechos actuales.</p> }
       </section>
     </section>
-    <p class="notice" style="margin:0">Un abono no es automáticamente un ingreso. Una transferencia interna no es una compra. Tampoco inferimos un saldo a partir de este registro.</p>
+    <details class="financial-details"><summary>Cómo afecta a tus totales</summary><p>Un abono no es automáticamente un ingreso. Una transferencia interna no es una compra. No calculamos un saldo desde este registro. Cambiar una etiqueta reorganiza gastos, presupuestos y ahorro, sin cambiar el importe ni la fecha del banco.</p></details>
   </div>
   @if (editorOpen() && !item.removedAt) { <editor-drawer title="Corregir clasificación" eyebrow="TU INTERPRETACIÓN" (dismissed)="editorOpen.set(false)">@for (current of [item]; track current.id) { <transaction-corrections [item]="current" (saved)="corrected($event)" (cancelled)="editorOpen.set(false)" /> }</editor-drawer> }
 }

@@ -1,5 +1,5 @@
 <header class="page-header">
-  <div><p class="eyebrow">LA HISTORIA DETRÁS DE TUS NÚMEROS</p><h1>Movimientos<span class="accent-text">.</span></h1><p class="page-description">Explora tus registros, encuentra una compra y entiende qué está contando. Sin confundir una página con todo tu historial.</p></div>
+  <div><p class="eyebrow">MI DINERO</p><h1>Movimientos<span class="accent-text">.</span></h1><p class="page-description">Abre un movimiento para revisar sus hechos, etiqueta o clasificación.</p></div>
   <span class="badge"><app-icon name="activity" /> Importes originales · CLP</span>
 </header>
 @if (error()) { <p class="notice danger" role="alert">{{ error() }} <button type="button" (click)="openFilters()">Revisar filtros</button></p> }
@@ -62,7 +62,7 @@
   @else {
     <div class="table-scroll desktop-ledger">
       <table class="ledger"><caption class="sr-only">Movimientos de la selección actual, con importe y cuenta</caption><thead><tr><th scope="col">Movimiento</th><th scope="col">Fecha</th><th scope="col">Cuenta</th><th scope="col">Etiqueta</th><th scope="col" style="text-align:right">Importe</th></tr></thead>
-        <tbody>@for (item of data.items(); track item.id) { <tr><td><a class="record-title text-link" [routerLink]="['/movimientos', item.id]" [queryParams]="route.snapshot.queryParams">{{ item.merchant || item.description || 'Movimiento' }}</a><p class="record-meta">{{ item.type === 'debit' ? 'Cargo' : 'Abono · no implica ingreso' }} @if (item.reviewStatus === 'needs_review') { <span class="badge warning">Por revisar</span> }</p></td><td style="white-space:nowrap">{{ date(item.bookedAt) }}</td><td>{{ item.account.alias || 'Cuenta' }}</td><td><span class="badge neutral"><span class="tag-swatch" [style.backgroundColor]="item.tag?.color || '#b5c1aa'"></span>{{ item.tag?.name || 'Sin etiqueta' }}</span></td><td class="record-amount">{{ money(item.amount) }}</td></tr> }</tbody>
+        <tbody>@for (item of data.items(); track item.id) { <tr><td><a class="record-title text-link" [routerLink]="['/movimientos', item.id]" [queryParams]="route.snapshot.queryParams">{{ item.merchant || item.description || 'Movimiento' }}</a><p class="record-meta">{{ item.type === 'debit' ? 'Cargo' : 'Abono · no implica ingreso' }} @if (item.reviewStatus === 'needs_review') { <span class="badge warning">Por revisar</span> }</p></td><td style="white-space:nowrap">{{ date(item.bookedAt) }}</td><td>{{ item.account.alias || 'Cuenta' }}</td><td><span class="badge neutral"><span class="tag-swatch" [style.backgroundColor]="item.tag?.color || '#b5c1aa'"></span>{{ item.tag?.name || 'Sin etiqueta' }}</span><p class="record-meta">{{ item.tagDecisionOrigin === 'manual' ? 'Tu decisión' : item.tagDecisionOrigin === 'rule' ? 'Regla automática' : 'Sin revisar' }}</p></td><td class="record-amount">{{ money(item.amount) }}</td></tr> }</tbody>
       </table>
     </div>
     <ul class="mobile-ledger" aria-label="Movimientos de la selección actual">
@@ -72,6 +72,7 @@
           <p class="record-meta">{{ date(item.bookedAt) }} · {{ item.account.alias || 'Cuenta' }}</p>
           <p class="record-meta">{{ item.type === 'debit' ? 'Cargo' : 'Abono · no implica ingreso' }}{{ item.reviewStatus === 'needs_review' ? ' · por revisar' : '' }}</p>
           <span class="badge neutral" style="margin-top:8px"><span class="tag-swatch" [style.backgroundColor]="item.tag?.color || '#b5c1aa'"></span>{{ item.tag?.name || 'Sin etiqueta' }}</span>
+          <p class="record-meta">{{ item.tagDecisionOrigin === 'manual' ? 'Tu decisión' : item.tagDecisionOrigin === 'rule' ? 'Regla automática' : 'Sin revisar' }}</p>
         </li>
       }
     </ul>

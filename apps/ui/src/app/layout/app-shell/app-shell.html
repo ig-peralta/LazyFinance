@@ -1,4 +1,4 @@
-<div class="workspace">
+<div class="workspace" [attr.data-theme]="preferences.value().theme" [attr.data-text-size]="preferences.value().textSize" [class.compact-navigation]="preferences.value().compact">
   <a class="skip-link" href="#workspace-content" (click)="skipToContent($event)">Saltar al contenido</a>
   <ng-template #navigation>
     <a routerLink="/dashboard" class="workspace-brand" aria-label="Inicio de LazyFinance" (click)="closeMenu()">
@@ -7,12 +7,12 @@
     <p class="nav-caption">TU ESPACIO PERSONAL</p>
     <ul class="workspace-links">
       @for (area of areas; track area.path) {
-        <li><a [routerLink]="area.path" [class.nav-active]="location().area === area" [attr.aria-current]="location().area === area ? 'true' : null" [title]="area.description" (click)="closeMenu()"><app-icon [name]="area.icon" /><span>{{ area.label }}</span><span class="nav-dot"></span></a></li>
+        <li><a [routerLink]="area.path" [class.nav-active]="location().area === area" [attr.aria-current]="location().area === area ? 'true' : null" [attr.aria-label]="area.label" [title]="area.label" (click)="closeMenu()"><app-icon [name]="area.icon" /><span class="nav-label">{{ area.label }}</span><span class="nav-dot"></span></a></li>
       }
     </ul>
     <div class="sidebar-account">
       <div class="sidebar-person"><span class="avatar">{{ initials() }}</span><div><strong>{{ person() }}</strong><small>Finanzas personales</small></div></div>
-      <button class="sidebar-logout" type="button" (click)="logout()"><app-icon name="logout" /> Cerrar sesión</button>
+      <button class="sidebar-logout" type="button" aria-label="Cerrar sesión" title="Cerrar sesión" (click)="logout()"><app-icon name="logout" /><span class="nav-label">Cerrar sesión</span></button>
     </div>
   </ng-template>
 
@@ -25,7 +25,7 @@
   <div class="workspace-body">
     <header class="workspace-topbar">
       <div class="topbar-location"><button type="button" class="icon-button menu-toggle" aria-controls="mobile-menu" [attr.aria-expanded]="menuOpen()" (click)="toggleMenu()"><app-icon name="menu" /><span class="sr-only">{{ menuOpen() ? 'Cerrar menú' : 'Abrir menú' }}</span></button><span>{{ location().area.label }} <span class="breadcrumb-divider">/</span> <strong>{{ location().destination.label }}</strong></span></div>
-      <div class="topbar-right"><span class="currency-label"><span></span> CLP · Chile</span><span class="topbar-avatar" aria-hidden="true">{{ initials() }}</span></div>
+      <div class="topbar-right"><workspace-appearance /><button class="icon-button desktop-navigation-toggle" type="button" [attr.aria-pressed]="preferences.value().compact" aria-label="Navegación compacta" title="Navegación compacta" (click)="preferences.update({ compact: !preferences.value().compact })"><app-icon name="menu" /></button><span class="currency-label"><span></span> CLP · Chile</span></div>
     </header>
     @if (destinations().length > 1) {
       <nav class="workspace-subnav" [attr.aria-label]="'Secciones de ' + location().area.label">

@@ -44,6 +44,8 @@ export class TransactionTagSelector {
   protected readonly searchTerm = signal("");
   protected readonly autoForMerchant = signal(false);
   protected readonly saving = this.decision.saving;
+  protected readonly needsCheck = this.decision.needsCheck;
+  protected readonly reconcile = this.decision.reconcile;
   protected readonly suggestion = this.decision.suggestion;
   protected readonly loadingTags = this.tagging.tags.isLoading;
 
