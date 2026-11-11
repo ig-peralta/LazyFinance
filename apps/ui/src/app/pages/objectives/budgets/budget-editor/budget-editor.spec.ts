@@ -49,6 +49,32 @@ describe("revision-aware spending budgets", () => {
     });
   });
 
+  it("associates field help and validation feedback without changing exact input", async () => {
+    const mock = setupRpc();
+    const fixture = TestBed.createComponent(BudgetEditor);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement;
+    const amount = root.querySelector<HTMLInputElement>("#objective-amount");
+    expect(amount?.getAttribute("aria-describedby")).toBe(
+      "objective-amount-help",
+    );
+    root.querySelector("form")?.dispatchEvent(eventsIn(root)("submit"));
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(amount?.getAttribute("aria-describedby")).toBe(
+      "objective-amount-help objective-error",
+    );
+    expect(root.querySelector("#objective-error")?.textContent).toContain(
+      "Revisa nombre",
+    );
+    expect(
+      root.querySelector("#objective-start")?.getAttribute("aria-describedby"),
+    ).toBe("objective-start-help objective-error");
+    expect(mock.callsTo("objectives.createBudget")).toHaveLength(0);
+  });
+
   it("sends the expected version without a started schedule and makes started fixed budgets read-only", async () => {
     const mock = setupRpc({
       "objectives.updateBudget": () => ({ ...budgetDetail, version: 2 }),
@@ -133,6 +159,13 @@ describe("revision-aware spending budgets", () => {
     harness.detectChanges();
     const root: HTMLElement = harness.fixture.nativeElement;
     const event = eventsIn(root);
+    const historyToggle = root.querySelector<HTMLButtonElement>(
+      '[aria-controls="budget-revision-history"]',
+    );
+    expect(historyToggle?.getAttribute("aria-expanded")).toBe("false");
+    expect(
+      root.querySelector<HTMLElement>("#budget-revision-history")?.hidden,
+    ).toBe(true);
     expect(root.querySelector("form")).toBeNull();
     [...root.querySelectorAll("button")]
       .find((button) => button.textContent?.includes("Ajustar presupuesto"))
@@ -156,6 +189,10 @@ describe("revision-aware spending budgets", () => {
     await harness.fixture.whenStable();
     harness.detectChanges();
     expect(mock.callsTo("objectives.budgetHistory")).toHaveLength(1);
+    expect(historyToggle?.getAttribute("aria-expanded")).toBe("true");
+    expect(
+      root.querySelector<HTMLElement>("#budget-revision-history")?.hidden,
+    ).toBe(false);
     [...root.querySelectorAll("button")]
       .find((button) => button.textContent?.includes("Archivar presupuesto"))
       ?.click();
@@ -170,5 +207,40 @@ describe("revision-aware spending budgets", () => {
     await harness.fixture.whenStable();
     harness.detectChanges();
     expect(root.textContent).not.toContain("Presupuesto archivado.");
+  });
+
+  it("explains the started fixed lock before offering an editor", async () => {
+    const mock = setupRpc({
+      "objectives.budget": () => ({
+        ...budgetDetail,
+        effective: {
+          ...budgetRevision,
+          isRecurring: false,
+          period: null,
+          endDate: "2020-02-01T03:00:00.000Z",
+        },
+      }),
+    });
+    mock.navigate.mockRestore();
+    TestBed.inject(Router).resetConfig([
+      { path: "presupuestos/:id", component: BudgetPage },
+    ]);
+    const harness = await RouterTestingHarness.create(
+      `/presupuestos/${budgetDetail.id}`,
+    );
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    const root: HTMLElement = harness.fixture.nativeElement;
+    expect(root.textContent).toContain(
+      "fechas fijas ya iniciado no se puede editar",
+    );
+    expect(
+      [...root.querySelectorAll("button")].some((button) =>
+        button.textContent?.includes("Ajustar presupuesto"),
+      ),
+    ).toBe(false);
+    expect(root.querySelector("budget-editor")).toBeNull();
+    expect(root.textContent).toContain("Archivar presupuesto");
+    expect(mock.callsTo("objectives.updateBudget")).toHaveLength(0);
   });
 });

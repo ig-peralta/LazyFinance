@@ -16,6 +16,7 @@ import { createScopedCommand } from "../../../core/rpc/scoped-command";
 import { createCursorTrail } from "../../../features/pagination/cursor-trail";
 import { EditorDrawer } from "../../../shared/ui/editor-drawer";
 import { Icon } from "../../../shared/ui/icon";
+import { budgetEditPolicy } from "./budget-edit-policy";
 import { BudgetEditor } from "./budget-editor/budget-editor";
 
 @Component({
@@ -40,6 +41,9 @@ export class BudgetPage {
       scope.client.objectives.budget.query({ id }, { signal: abortSignal }),
   });
   protected readonly showHistory = signal(false);
+  protected readonly editPolicy = computed(() =>
+    budgetEditPolicy(this.detail.hasValue() ? this.detail.value() : null),
+  );
   protected readonly historyTrail = createCursorTrail(this.selection);
   protected readonly history = resource({
     params: () => {

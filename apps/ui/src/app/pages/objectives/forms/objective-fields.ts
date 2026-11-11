@@ -15,6 +15,7 @@ export class ObjectiveFieldsView {
   readonly fields = input.required<ObjectiveFields>();
   readonly savings = input(false);
   readonly scheduleLocked = input(false);
+  readonly error = input<string | null>(null);
   readonly retainedTags = input<TagSummary[]>([]);
   protected readonly tags = inject(TagsData).tags;
   protected readonly choices = computed(() => {
