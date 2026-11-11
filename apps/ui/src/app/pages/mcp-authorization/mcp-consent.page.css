@@ -9,9 +9,6 @@
   font-size: 1.5rem;
   line-height: 1.25;
 }
-.consent-panel h1:focus {
-  outline: none;
-}
 .consent-account {
   display: flex;
   align-items: center;

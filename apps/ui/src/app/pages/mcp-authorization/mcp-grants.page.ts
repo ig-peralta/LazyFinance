@@ -22,11 +22,13 @@ import {
 import { RpcClient, type RpcScope } from "../../core/rpc/rpc-client";
 import { createScopedCommand } from "../../core/rpc/scoped-command";
 import { McpClientIdentity } from "../../features/mcp-authorization/client-identity";
+import { Icon } from "../../shared/ui/icon";
 
 @Component({
   selector: "mcp-grants-page",
-  imports: [McpClientIdentity],
+  imports: [McpClientIdentity, Icon],
   templateUrl: "./mcp-grants.page.html",
+  styleUrl: "./mcp-grants.page.css",
 })
 export class McpGrantsPage {
   private readonly now = signal(Date.now());
@@ -41,7 +43,7 @@ export class McpGrantsPage {
     return parsed.success
       ? MCP_PERMISSION_LABELS[parsed.data]
       : scope === "finance:read"
-        ? "Consultar información financiera guardada"
+        ? "Consultar tus finanzas"
         : scope === "offline_access"
           ? "Renovar el acceso dentro de su vigencia"
           : scope === "openid"
@@ -53,6 +55,12 @@ export class McpGrantsPage {
       const value = FinancialWriteScopeSchema.safeParse(scope);
       return value.success ? [MCP_PERMISSION_LABELS[value.data]] : [];
     });
+  protected readonly financialPermissions = (grant: McpGrant) =>
+    grant.scopes.filter(
+      (scope) =>
+        scope === "finance:read" ||
+        FinancialWriteScopeSchema.safeParse(scope).success,
+    );
   private readonly rpc = inject(RpcClient);
   private readonly injector = inject(Injector);
   private readonly cancelButton =
@@ -108,6 +116,11 @@ export class McpGrantsPage {
       timeZone: "America/Santiago",
       dateStyle: "medium",
       timeStyle: "short",
+    }).format(new Date(value));
+  protected readonly date = (value: string) =>
+    new Intl.DateTimeFormat("es-CL", {
+      timeZone: "America/Santiago",
+      dateStyle: "medium",
     }).format(new Date(value));
 
   constructor() {
@@ -183,7 +196,7 @@ export class McpGrantsPage {
           { injector: this.injector },
         );
       },
-      "Acceso revocado. Las próximas consultas de esta conexión serán rechazadas.",
+      "Acceso retirado. La aplicación ya no puede hacer nuevas consultas.",
     );
     if (
       !confirmed &&

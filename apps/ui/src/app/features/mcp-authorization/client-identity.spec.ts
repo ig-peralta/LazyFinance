@@ -70,12 +70,11 @@ describe("bounded local client artwork", () => {
     expect(root.textContent).toContain("No registrado");
   });
 
-  it("keeps compact identity facts available in a closed disclosure", () => {
+  it("keeps technical identity facts available in a closed disclosure", () => {
     const fixture = TestBed.createComponent(McpClientIdentity);
     fixture.componentRef.setInput("clientId", id);
     fixture.componentRef.setInput("name", "OpenCode");
     fixture.componentRef.setInput("redirectUri", callback);
-    fixture.componentRef.setInput("compact", true);
     fixture.detectChanges();
     const root: HTMLElement = fixture.nativeElement;
     const details = root.querySelector("details");

@@ -6,9 +6,6 @@
   overflow: hidden;
   pointer-events: none;
 }
-.workspace-prepared:focus {
-  outline: none;
-}
 .workspace-loading {
   min-height: 100dvh;
   box-sizing: border-box;

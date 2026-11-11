@@ -790,6 +790,21 @@ body {
 .workspace :focus-visible {
   outline: 2px solid var(--accent);
 }
+/* Announce navigation/context changes without framing non-interactive content.
+   Buttons, links, inputs and other controls retain their keyboard focus styles. */
+:is(
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    main,
+    [role="dialog"],
+    .workspace-prepared
+  )[tabindex="-1"]:focus {
+  outline: none;
+}
 .workspace button {
   cursor: pointer;
 }

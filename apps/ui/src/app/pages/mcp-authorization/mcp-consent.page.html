@@ -11,14 +11,13 @@
     </p>
   }
   @if (consent(); as request) {
-    <mcp-client-identity [compact]="true" [clientId]="request.clientId"
+    <mcp-client-identity [clientId]="request.clientId"
       [name]="request.clientName" [redirectUri]="request.redirectUri">
       <div class="connection-facts">
         <p>Solicitud válida hasta el {{ time(request.expiresAt) }} (Santiago).</p>
         @if (localCallback()) {
           <p>El regreso es a una aplicación local en este equipo. Comprueba que tú iniciaste esta conexión.</p>
         }
-        <p>Nombre declarado e imagen ilustrativa, sin recomendación de LazyFinance.</p>
         <p>Permisos solicitados: {{ request.scopes.join(', ') }}.</p>
         <p>La aplicación podría conservar información ya recibida. Cerrar esta página no revierte una decisión enviada.</p>
       </div>
