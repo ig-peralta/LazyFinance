@@ -169,6 +169,47 @@ describe("first-party chat page lifetimes and confirmed history", () => {
     vi.restoreAllMocks();
   });
 
+  it.each([
+    "removed",
+    "hidden",
+    "inert",
+    "closed-dialog",
+  ])("returns focus to the visible launcher when the opener is %s", async (state) => {
+    const f = setup();
+    document.body.append(f.root);
+    const container = document.createElement(
+      state === "closed-dialog" ? "dialog" : "div",
+    );
+    if (container instanceof HTMLDialogElement) container.open = true;
+    const opener = document.createElement("button");
+    opener.textContent = "Synthetic opener";
+    container.append(opener);
+    document.body.append(container);
+    try {
+      await render(f.fixture);
+      f.workspace.minimize();
+      await render(f.fixture);
+      opener.focus();
+      f.workspace.open();
+      await render(f.fixture);
+      if (state === "removed") container.remove();
+      else if (state === "hidden") container.hidden = true;
+      else if (state === "inert") container.setAttribute("inert", "");
+      else if (container instanceof HTMLDialogElement) container.open = false;
+      f.workspace.minimize();
+      await render(f.fixture);
+      const launcher = f.root.querySelector<HTMLButtonElement>(
+        ".assistant-launcher",
+      );
+      expect(launcher?.hidden).toBe(false);
+      expect(document.activeElement).toBe(launcher);
+      expect(f.stream).not.toHaveBeenCalled();
+    } finally {
+      container.remove();
+      f.root.remove();
+    }
+  });
+
   it("does not disclose a question after acknowledgement is withdrawn during deferred text conversation creation, even if reaccepted", async () => {
     const created = deferred<AssistantConversation>();
     const f = setup(

@@ -1,4 +1,4 @@
-<button type="button" class="assistant-launcher button" [hidden]="workspace.opened()" aria-keyshortcuts="?" (click)="workspace.open()">Abrir asistente · ?</button>
+<button #launcher type="button" class="assistant-launcher button" [hidden]="workspace.opened()" aria-keyshortcuts="?" (click)="workspace.open()">Abrir asistente · ?</button>
 <section #panel tabindex="-1" class="assistant" role="dialog" [attr.aria-modal]="workspace.modal()" aria-labelledby="assistant-title" [hidden]="!workspace.opened()" (keydown)="containFocus($event)" (keydown.escape)="workspace.minimize(); $event.stopPropagation()">
   <header class="assistant-heading">
     <div class="assistant-brand">

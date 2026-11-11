@@ -99,6 +99,8 @@ The shell provides one persistent, minimizable theme-token-aligned assistant.
 **Abrir asistente · ?** exposes the actual keyboard shortcut. It restores/focuses
 that instance without resending, respects editable fields and real modals, and is
 bound only within the accepted authenticated shell lifetime.
+Minimize returns focus to the connected invoker, or to the visible persistent
+launcher if deferred mounting/navigation removed or hid that invoker.
 `/asistente` opens the existing panel; explicit conversation deep links select
 server-owned history. First open loads it once; authenticated navigation preserves
 in-memory text state without resend. Minimize retains it, while Close panel clears

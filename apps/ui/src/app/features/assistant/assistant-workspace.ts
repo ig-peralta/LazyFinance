@@ -59,8 +59,20 @@ export class AssistantWorkspace {
   }
 
   /** Called by the host after hidden-state rendering, not while the opener is hidden. */
-  restoreFocus() {
-    if (!this.opened() && this.opener?.isConnected) this.opener.focus();
+  restoreFocus(fallback?: HTMLElement) {
+    if (this.opened() || !this.credentials.current()) return;
+    const opener = this.opener;
+    if (
+      opener?.isConnected &&
+      opener !== opener.ownerDocument.body &&
+      !opener.closest("[hidden], [inert], dialog:not([open])")
+    ) {
+      opener.focus();
+      if (opener.ownerDocument.activeElement === opener) return;
+    }
+    // The first deferred launcher is replaced when its host mounts. The host
+    // supplies its now-visible persistent launcher after hidden-state rendering.
+    fallback?.focus();
   }
 
   toggle() {

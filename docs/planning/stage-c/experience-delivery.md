@@ -39,7 +39,8 @@ squash merging only; feature implementation retains natural commits on its branc
 
 ## Executed verification
 
-- Integrated Angular suite: **518 passed**, 63 files.
+- Integrated Angular suite: **522 passed**, 63 files, including first-deferred-
+  launcher restoration and removed/hidden/inert/closed-dialog opener regressions.
 - API suite with signed persistence and disposable PostgreSQL configured:
   **533 passed, 5 conditional skips**, 83 files. Workflow deadlines were not raised.
 - Persistence: **69 unit / 46 PostgreSQL boundary tests passed**, including a
@@ -56,7 +57,10 @@ squash merging only; feature implementation retains natural commits on its branc
 
 Independent reviews found and fixed banking quota fairness, row-claim races,
 claim-bound completion, shared backoff, voice startup cancellation, shutdown
-initialization and transcription ordering. An accumulated-fixture summary slowdown
+initialization and transcription ordering. Integrated browser QA also found that
+the replaced first launcher lost focus on minimize; the host now supplies its
+visible persistent launcher as fallback while preserving connected-opener return.
+An accumulated-fixture summary slowdown
 was traced to PostgreSQL JIT compilation and fixed with a trusted-owner join/filter
 while retaining RLS and exact results. This is not a maximum-size/load benchmark.
 

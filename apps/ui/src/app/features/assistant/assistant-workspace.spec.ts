@@ -55,7 +55,12 @@ describe("single shell-owned assistant across real route navigation", () => {
     fixture.detectChanges();
     await fixture.whenStable();
     const workspace = TestBed.inject(AssistantWorkspace);
-    workspace.open();
+    const placeholder = root.querySelector<HTMLButtonElement>(
+      'button[aria-keyshortcuts="?"]',
+    );
+    if (!placeholder) throw new Error("Missing deferred assistant launcher");
+    placeholder.focus();
+    placeholder.click();
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -79,6 +84,8 @@ describe("single shell-owned assistant across real route navigation", () => {
     const launcher = root.querySelector<HTMLButtonElement>(
       ".assistant-launcher",
     );
+    expect(placeholder.isConnected).toBe(false);
+    expect(document.activeElement).toBe(launcher);
     launcher?.focus();
     launcher?.click();
     fixture.detectChanges();
