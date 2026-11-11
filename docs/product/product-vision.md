@@ -63,14 +63,23 @@ persistent readable assistant with **live voice**. These are planned outcomes,
 not claims about the current runtime. The
 [planning snapshot](../planning/snapshots/backlog-2026-11-10-stage-c-planning.md)
 records 29 required and 5 Optional issue records; the November 20 target remains
-tentative, without agreed owners, estimates or individual deadlines.
+tentative. Owners, estimates and individual deadlines were unset at initial
+publication; Linear owns current assignments and dates.
+
+The [November 11 addition](../planning/stage-c/planning.md#required-scope-additions--2026-11-11)
+also makes **deployment, performance testing, a mock banking provider and
+substantial seed improvement required**, bringing selected Stage C scope to
+33 required and 5 Optional records. These are general directions, not designs:
+deployment and performance-testing approaches are chosen when the respective
+issues start. The mock provider and richer synthetic history support development,
+demonstrations and validation without real bank access.
 
 External price comparison is optional but highly desirable. A synthetic
 banking-action demo, alerts and WhatsApp are also optional; none silently expands
 the required gate. Broader MCP management remains the Stage B follow-up, but its
 additional commands/permissions are **not selected in this brief**. Advanced
-analysis, further banking adapters, historical backfill and shared ownership also
-remain future directions rather than automatic commitments.
+analysis, further real banking integrations, historical backfill and shared
+ownership also remain future directions rather than automatic commitments.
 
 ## Scope boundaries
 
