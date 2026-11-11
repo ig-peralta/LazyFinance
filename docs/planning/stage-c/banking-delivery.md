@@ -34,6 +34,10 @@ and scheduler claims use row locking; completion/failure is claim/revision-bound
 with aligned lease expiry; discovery/synchronization honor persisted connection
 and provider-mode backoff. Aliases and tracking metadata remain consistent in
 public RPC, assistant reads and MCP account reads.
+Final integration also serializes scheduled claim extension with global capacity
+observation, preventing an expired committed MVCC tuple from admitting a second
+background run while the extension is uncommitted. Its gated PostgreSQL regression
+uses controlled clocks, not sleeps or relaxed deadlines.
 
 ## Verification evidence
 
