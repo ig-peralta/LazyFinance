@@ -872,6 +872,7 @@ body {
   place-items: center;
   width: 24px;
   height: 32px;
+  border: 1px solid var(--line);
   border-radius: 0 16px 16px 0;
   background: var(--paper);
   transition:
