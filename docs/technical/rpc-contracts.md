@@ -44,13 +44,13 @@ inferred Promises; there is no cross-app source import or HTTP/Observable adapte
 ## Public surface
 
 The [generated public router](../../libs/rpc-api/src/generated/server.ts) currently
-contains **82 procedures**. Prefix each method below with its router name.
+contains **84 procedures**. Prefix each method below with its router name.
 
 | Router | Methods | Responsibility |
 | --- | --- | --- |
 | `auth` | `config`, `loginMock`, `principal` | Provider selection, local mock login, verified principal |
 | `onboarding` | `state`, `finish` | Owned optional-guide state and terminal completion |
-| `assistant` | `configuration`, `conversations`, `conversation`, `createConversation`, `deleteConversation` | First-party authenticated configuration and server-owned chat history |
+| `assistant` | `configuration`, `consent`, `decideConsent`, `conversations`, `conversation`, `createConversation`, `deleteConversation` | First-party authenticated configuration, account processing consent and server-owned chat history |
 | `financialActions` | `get`, `approve`, `revise`, `cancel` | Owned saved proposals; approval accepts only the exact ID/version, never caller-supplied execution payloads |
 | `mcpAccess` | `configuration`, `grants`, `revoke` | First-party authenticated external-client settings; no token issuance through RPC |
 | `accounts` | `list`, `setAlias` | Retained accounts, balances, tracking state and personal display names |
@@ -103,12 +103,13 @@ Optional bearer-only voice HTTP endpoints use shared strict public schemas:
 conversation ownership and admission are checked server-side. SDP negotiation
 exposes no provider key, owner selector, financial tools or execution authority.
 These are not tRPC procedures: the combined public/private inventories remain
-82/103, and voice itself needs no migration. See the [voice contract and live-validation gates](assistant-live-voice.md).
+84/105. Account processing consent requires migration 032; the voice HTTP adapter
+itself adds no procedures. See the [voice contract and live-validation gates](assistant-live-voice.md).
 
 ## Private surface
 
 The [generated private router](../../libs/rpc-persistence/src/generated/server.ts)
-currently contains **103 procedures**. They expose owned facts and authoritative
+currently contains **105 procedures**. They expose owned facts and authoritative
 commands rather than copying public screen calculations into persistence.
 
 | Router | Methods |
@@ -116,6 +117,7 @@ commands rather than copying public screen calculations into persistence.
 | `identity` | `resolve` (bootstrap only) |
 | `onboarding` | `state`, `finish` |
 | `assistantConversations` | `list`, `get`, `create`, `begin`, `finish`, `remove` (user context only) |
+| `assistantConsent` | `get`, `decide` (user context only; account-owned revisioned processing decision) |
 | `financialActions` | `get`, `preview`, `prepare`, `revise`, `apply`, `cancel`, `execute` (user context only; atomic ledger/domain commands) |
 | `mcpGrants` | `list`, `bind`, `revoke` (user context) |
 | `mcpArtifacts` | `find`, `save`, `consume`, `destroy`, `identity`, `revoke` (dedicated OAuth purpose only) |
@@ -195,6 +197,18 @@ their last-known facts. Assistant/MCP account reads preserve the same tracking
 metadata rather than presenting paused balances as live.
 
 ## Wire semantics and transport
+
+`assistant.consent()` returns `{ required, policy, decision, revision, decidedAt }`.
+Missing or outdated consent is `unset` with a null timestamp; outdated policy
+retains the stored revision. `policy` identifies disclosure version, provider,
+model and compatible endpoint origin, with a key bound to the full base URL.
+`assistant.decideConsent({ policyKey, expectedRevision, decision })` accepts only
+`accepted`/`refused`, with no owner or timestamp. Stale policy/revision conflicts;
+unchanged current decisions preserve time/revision. The private `get` returns
+nullable stored consent; `decide` returns the persisted policy key, decision,
+revision and server timestamp. Reads never create records. Current acceptance is
+required before new non-demo text/voice processing, not for history operations or
+financial action approval. See [consent lifecycle and limitations](financial-assistant.md#account-processing-consent).
 
 `mcpAccess.grants` includes the approved exact `redirectUri` when recorded. It is
 nullable (and optional for rolling wire compatibility); older grants show an

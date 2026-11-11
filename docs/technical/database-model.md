@@ -1,8 +1,8 @@
 # Implemented database model
 
 This reference describes the checked-in Kysely migrations, not a conceptual
-product model. PostgreSQL 18 holds **32 application tables** in fixed `identity`,
-`finance` and `assistant` schemas. Thirty-one sensitive tables force scoped RLS;
+product model. PostgreSQL 18 holds **33 application tables** in fixed `identity`,
+`finance` and `assistant` schemas. Thirty-two sensitive tables force scoped RLS;
 `finance.provider` is the shared read-only catalog exception. There is no tenancy,
 membership or account-sharing model. See [security and RLS](persistence-security.md)
 for policy/grant details.
@@ -30,6 +30,7 @@ All unqualified table names in the finance section below belong to `finance`.
 | `identity.mcp_artifact` | PK `(model, key)` with SHA-256 key; optional `account_id` → user | Allowlisted OAuth provider state encrypted by API; expiry/consumption/UID/grant indexes, dedicated-purpose writes |
 | `assistant.conversation` | `id`; `user_id` → user; owner/update-time index | Server-owned bounded turns and sources, generation lease and fixed maximum-30-day availability; no financial facts or credentials |
 | `assistant.action` | `id`; `user_id` → user; nullable `conversation_id` → conversation; unique `(user_id, origin, request_id)` | Versioned proposals and immutable finalized receipts; client/grant-bound direct execution; chat deletion only nulls its reference |
+| `assistant.processing_consent` | PK `user_id` → user | Latest accepted/refused external-processing decision, policy key, CAS revision and server decision time; no runtime delete/reassignment |
 | `provider` | `id`; unique `identifier` | Shared catalog; runtime SELECT only |
 | `provider_connection` | `id` → provider; `user_id`; unique provider/mode/external Link ID | Owned access status, API-encrypted credential/version, institution/holder and terminal disconnect/remote-cleanup state; legacy fixture fields remain nullable |
 | `provider_link_intent` | `id`; unique provider intent ID; optional original/completed connection FKs | Owner-bound, expiring callback claims with hashed exchange token, version-pinned relink and durable completion |
@@ -72,8 +73,10 @@ Entity titles use qualified SQL `schema.table` names.
 
 The four banking operational tables added by migration `202611100030` are listed
 above but not drawn in that baseline image. Selection and schedules each reference
-the owned connection and user, bringing the current schema to 32 tables and 48
-foreign keys. The transport tables contain no financial-owner references.
+the owned connection and user. Migration 032's consent table also references the
+user, bringing the current schema to 33 tables and 49 foreign keys. Neither
+addition is drawn in the baseline image. The transport tables contain no
+financial-owner references.
 
 ![Implemented relationships across identity, finance and assistant](../diagrams/er.png)
 
@@ -99,6 +102,12 @@ financial access. See [OAuth persistence and lifecycle](mcp-authorization.md).
   named upsert preserves terminal completion and its first timestamp, including
   concurrent first writes. No reset/delete RPC exists; financial setup never
   controls this non-financial preference.
+- Assistant processing consent has no row until an explicit decision. Stored
+  `accepted`/`refused` decisions retain a SHA-256 policy key, positive integer
+  revision and server `decided_at`. Compare-and-set writes serialize under the
+  user lock; an unchanged current decision preserves its revision/timestamp.
+  Outdated policy projects to `unset` at the API without changing the stored row.
+  This is one latest preference, not a historical decision ledger.
 - Monetary columns use `numeric(15,2)` and cross RPC as decimal strings. CLP is the
   implemented currency. Transaction amounts are nonzero, with negative debits and
   positive credits enforced together. The balance is nullable and independent of
@@ -190,7 +199,7 @@ is distinct from permanent tombstones, which replay never reactivates.
 
 ## Migration and seed lifecycle
 
-Twenty-nine migrations are globally ordered across `migrations/identity`,
+Thirty-two migrations are globally ordered across `migrations/identity`,
 `migrations/finance` and `migrations/assistant`: schema/bootstrap foundations plus
 the table migrations.
 Kysely's PostgreSQL migrator owns locking and transactional DDL/ledger updates.
@@ -238,6 +247,11 @@ approved at consent. Existing grants keep all facts and history; null means the
 callback was not recorded, not that the client has no callback. No scope, RLS,
 runtime update privilege, grant lifetime or OAuth authority changes. Destructive
 rollback is refused to preserve this history.
+
+Migration 032 adds only `assistant.processing_consent`, with self-owned read/
+insert, column-limited updates and forced RLS. Runtime cannot delete or reassign
+records. It changes no existing data and needs no reseed/reset; apply it only to
+an authorized target. Destructive rollback requires an explicit recovery plan.
 
 Seeding is explicit owner-only demo tooling, never startup or migration work.
 Stable fixture IDs allow repeatable updates and preserve existing transaction

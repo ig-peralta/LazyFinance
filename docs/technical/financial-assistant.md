@@ -27,8 +27,8 @@ the explicit jump control reveals the latest content. Native reference disclosur
 start collapsed and retain expansion for that answer. Action approvals remain
 outside these optional references and visible for review. All surfaces use the
 workspace theme tokens. Model/provider names appear only in the separate processing
-disclosure before the first send; session acknowledgement is required. Errors and
-normal assistant identity use product-level language.
+consent screen before new processing. The account's saved decision replaces
+session checkboxes. Errors and normal assistant identity use product-level language.
 
 Optional **live bidirectional WebRTC voice** is implemented but disabled by default.
 It needs separate API-only `ASSISTANT_VOICE_ENABLED=true`,
@@ -80,10 +80,56 @@ does not send anything to a model. No provider key is included in configuration
 responses. Owned history and deletion remain available when generation is disabled.
 Existing banking/OAuth/RPC keys are unrelated and must not be reused.
 
+## Account processing consent
+
+Opening the configured non-demo assistant shows a dedicated consent screen when
+the decision is missing, refused or no longer matches the processing policy.
+**Permitir y abrir asistente** saves acceptance; **Ahora no** saves refusal and
+minimizes the panel. Refusal shows the screen again on the next open. Acceptance
+survives reload, sign-out and other devices without another checkbox. It never
+sends a question, creates a conversation or starts microphone capture by itself.
+**Ver historial sin IA** allows reading/deleting saved chats without new model
+processing; reopening returns to the consent screen while permission is absent.
+
+The authenticated `assistant.consent` read never inserts a record. The explicit
+`assistant.decideConsent` command accepts only policy key, expected revision and
+`accepted`/`refused`. The API binds the policy key to disclosure version, text
+provider, model and full compatible base URL. The screen displays its origin,
+not credentials or URL secrets. Changed policy returns `unset` with the stored
+revision for a fresh explicit decision; API-key rotation alone changes no policy.
+Disabled/demo generation requires no consent and creates no preference record.
+
+Migration **032** adds one `assistant.processing_consent` row per internal user,
+with forced owner RLS, revision checks and a server-generated decision timestamp.
+The shared user write lock serializes competing decisions. An unchanged decision
+for the current policy preserves its revision/time; stale revisions conflict.
+Only the latest decision is retained, not an immutable consent audit log. Runtime
+cannot delete or reassign it. Consent is not stored in browser storage, cookies
+or hydration. The additive migration preserves existing financial/chat data and
+does not require a seed or reset.
+
+Each new text request and voice admission checks current accepted consent on the
+server before history claims or provider work. Missing/refused/unavailable consent
+fails closed. Configuration and history/create/delete remain accessible. Ordinary
+reopening rechecks permission without recreating an already-authorized composer,
+selection or expanded references; new sends wait for that read. Failed/uncertain
+saves require an explicit **Comprobar decisión guardada** read, never an automatic
+mutation replay. An older or ordinary reopening read cannot clear that uncertainty.
+
+**Privacidad → Retirar consentimiento** immediately stops local voice/text and
+invalidates deferred conversation startup, even if the save is uncertain. A failed
+withdrawal leaves local processing blocked until explicit reconciliation/review.
+Withdrawal blocks new server admissions after it commits; it does not atomically
+cancel previously admitted work, erase provider disclosures or guarantee remote
+voice termination on other devices. There is no cross-device cancellation feed.
+Voice still requires its own explicit microphone start. Financial action approval
+and external MCP grants remain separate permissions.
+
 ## Request, history and trust boundaries
 
-Five authenticated tRPC procedures expose configuration, conversation summaries,
-one conversation, creation and deletion. Four separate `financialActions` procedures
+Seven authenticated tRPC procedures expose configuration, account consent read/
+decision, conversation summaries, one conversation, creation and deletion.
+Four separate `financialActions` procedures
 read, approve, revise or cancel saved proposals. `POST /assistant/turns` uses the same
 first-party bearer verification, not an MCP OAuth grant or cookies. Its strict
 body contains only `{ conversationId, requestId, text }`. Neither browser history,
@@ -288,8 +334,8 @@ pnpm --filter ui exec ng test --watch=false --include='**/assistant/**/*.spec.ts
 ```
 
 Real signed-RPC tests live in `apps/api/tests/integration/assistant`; the
-persistence suite covers schema privileges, two-owner isolation, concurrent quotas,
-nonce replay, stale leases, retention, immutable action receipts and rejected late
+persistence suite covers schema privileges, two-owner consent isolation/CAS,
+concurrent quotas, nonce replay, stale leases, retention, immutable action receipts and rejected late
 completions. Run these
 only with a fresh disposable database using the
 [integration workflow](development-workflow.md#service-starting-integration-checks).

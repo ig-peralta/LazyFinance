@@ -2,11 +2,11 @@
 
 Private NestJS/tRPC service using Kysely, `pg`, `identity`/`finance`/`assistant` schemas and
 PostgreSQL scoped RLS. The API and UI now use the matching RPC boundaries; no API
-database fallback remains. Its 103 private procedures expose identity resolution,
+database fallback remains. Its 105 private procedures expose identity resolution,
 bounded financial facts, revisioned budget/income commands, expense-adjustment
 allocations, tag decisions/rules, owned onboarding/banking lifecycle and prepared
 atomic provider sync, plus purpose-isolated OAuth artifacts, owned grants and
-bounded server-owned assistant conversations and atomic financial-action receipts.
+bounded server-owned assistant conversations, account processing consent and atomic financial-action receipts.
 Selected-account imports add owner-bound selection/schedules and purpose-isolated
 background claims/provider admission; they reuse the existing atomic ingestion.
 Product calculations and OAuth cryptography/protocol remain in the API. Read the
@@ -62,6 +62,10 @@ protected/TLS service channel in deployment.
 
 ## Boundaries
 
+- Migration 032 adds one account-owned processing-consent decision with policy key,
+  CAS revision and server timestamp. Reads never insert, unchanged decisions keep
+  time/revision, and forced owner RLS permits no deletion/reassignment. Apply this
+  additive migration to an authorized current database without resetting/reseeding.
 - Migration 031 additively retains each newly approved MCP grant's callback;
   historical grants remain nullable rather than receiving invented metadata.
 - Migration 030 adds versioned account selection, due-work schedules, request

@@ -1,7 +1,17 @@
-import type { AssistantTurn } from "@lazyfinance/contracts";
+import type {
+  AssistantConsentDecision,
+  AssistantTurn,
+} from "@lazyfinance/contracts";
 import type { ColumnType, Generated } from "kysely";
 
 export interface AssistantTables {
+  "assistant.processing_consent": {
+    userId: string;
+    policyKey: string;
+    decision: AssistantConsentDecision;
+    revision: number;
+    decidedAt: Date;
+  };
   "assistant.conversation": {
     id: Generated<string>;
     userId: string;

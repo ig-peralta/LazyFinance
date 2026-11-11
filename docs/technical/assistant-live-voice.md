@@ -47,7 +47,7 @@ the written answer and references remain authoritative.
 
 ## Controls, privacy and lifetime
 
-Separate disclosure precedes external text processing. A second explicit voice
+Account-persisted processing consent precedes external text processing. A separate voice
 start confirms that microphone audio and completed answer text go to OpenAI,
 including during silence; paid processing may occur. No automatic microphone
 request, reconnect, transcript replay or automatic retry. Start requests permission;
@@ -57,11 +57,11 @@ conversation replacement, hidden tab, device loss, logout, credential replacemen
 and component destruction end voice. Minimize retains only in-memory text state
 and may retain text generation; Stop generation is a separate control.
 
-**Conversar por voz** opens the disclosure even before session processing consent
-is acknowledged. The inline acknowledgment and text acknowledgment share the
-same in-memory session value. Only **Entiendo, iniciar micrófono** can begin
-startup, guarded by owner, supported browser, valid selection, idle state,
-acknowledgment and enabled non-demo text/voice configurations. Opening the
+First-time/refused consent shows a dedicated assistant entry screen. After current
+acceptance is confirmed, **Conversar por voz** opens the voice disclosure without
+another session checkbox. Only **Entiendo, iniciar micrófono** can begin startup,
+guarded by owner, supported browser, valid selection, idle state, current saved
+consent and enabled non-demo text/voice configurations. Opening the
 disclosure never creates a conversation or requests capture. Failed/disabled
 availability offers an explicit **Volver a comprobar voz** read; ordinary chat
 refresh also reloads voice availability without replaying a start.
@@ -69,7 +69,11 @@ refresh also reloads voice availability without replaying a start.
 Startup has a cancellable generation before conversation creation: cancel, consent
 withdrawal, navigation, minimize (even followed by reopen), hidden tabs, owner change
 and teardown invalidate it before any microphone request. Every asynchronous startup
-boundary checks that same generation, acknowledgement, visibility and accepted owner.
+boundary checks that same generation, consent, visibility and accepted owner.
+The server also checks current account consent before new voice admission/provider
+requests. Withdrawal stops local capture/text immediately, including when its save
+is uncertain; it blocks new admissions after commit, not already-admitted remote
+audio on every device. See [account consent and reconciliation](financial-assistant.md#account-processing-consent).
 
 Input partials and actual spoken-output transcripts are visible in memory. Completed
 questions and authoritative replies use existing server chat retention/deletion;

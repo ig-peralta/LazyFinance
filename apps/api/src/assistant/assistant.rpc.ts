@@ -1,19 +1,47 @@
 import {
   AssistantConfigurationSchema,
+  AssistantConsentStateSchema,
   AssistantConversationIdSchema,
   AssistantConversationSchema,
   AssistantConversationsSchema,
   AssistantRemovedSchema,
   CreateAssistantConversationSchema,
+  type DecideAssistantConsent,
+  DecideAssistantConsentSchema,
   RpcEmptySchema,
 } from "@lazyfinance/contracts";
 import { Ctx, Input, Mutation, Query, Router } from "nestjs-trpc";
 import { type ApiRequestContext, rpcUser } from "../rpc/context";
 import { AssistantService } from "./assistant.service";
+import { AssistantConsentService } from "./assistant-consent.service";
 
 @Router({ alias: "assistant" })
 export class AssistantRpc {
-  constructor(private readonly assistant: AssistantService) {}
+  constructor(
+    private readonly assistant: AssistantService,
+    private readonly consentService: AssistantConsentService,
+  ) {}
+
+  @Query({
+    input: RpcEmptySchema,
+    output: AssistantConsentStateSchema,
+    meta: { auth: "user" },
+  })
+  consent(@Ctx() ctx: ApiRequestContext) {
+    return this.consentService.state(rpcUser(ctx));
+  }
+
+  @Mutation({
+    input: DecideAssistantConsentSchema,
+    output: AssistantConsentStateSchema,
+    meta: { auth: "user" },
+  })
+  decideConsent(
+    @Input() input: DecideAssistantConsent,
+    @Ctx() ctx: ApiRequestContext,
+  ) {
+    return this.consentService.decide(rpcUser(ctx), input);
+  }
 
   @Query({
     input: RpcEmptySchema,

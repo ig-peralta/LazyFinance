@@ -6,6 +6,7 @@ import {
 } from "@lazyfinance/contracts";
 import { vi } from "vitest";
 import type { AssistantRuntime } from "../../src/assistant/assistant-runtime";
+import type { EnvironmentVariables } from "../../src/environment/environment.schema";
 import { testEnvironment } from "./environment";
 import { fixture, startApi } from "./persistence";
 
@@ -18,10 +19,12 @@ export async function assistantFixture(
     return { complete: true };
   },
   enabled = true,
+  overrides: Partial<EnvironmentVariables> = {},
 ) {
   const f = await fixture(true);
   f.environment = testEnvironment({
     ASSISTANT_PROVIDER: enabled ? "demo" : "disabled",
+    ...overrides,
   });
   const runtime = { run: vi.fn(run) } satisfies AssistantRuntime;
   let api: Awaited<ReturnType<typeof startApi>>;

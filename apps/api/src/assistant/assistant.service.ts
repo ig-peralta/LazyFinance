@@ -21,6 +21,7 @@ import {
 import { ActionsService } from "../actions/actions.service";
 import { EnvironmentService } from "../environment/environment.service";
 import { PersistenceClient } from "../persistence/persistence.client";
+import { AssistantConsentService } from "./assistant-consent.service";
 import { assistantHistory, assistantInstructions } from "./assistant-policy";
 import { ASSISTANT_RUNTIME, type AssistantRuntime } from "./assistant-runtime";
 import { FinancialReads } from "./financial-reads";
@@ -35,6 +36,7 @@ export class AssistantService {
     private readonly reads: FinancialReads,
     private readonly actions: ActionsService,
     @Inject(ASSISTANT_RUNTIME) private readonly runtime: AssistantRuntime,
+    private readonly consent: AssistantConsentService,
   ) {}
 
   configuration() {
@@ -53,6 +55,10 @@ export class AssistantService {
     return this.persistence.user(userId).assistantConversations;
   }
 
+  requireConsent(owner: string) {
+    return this.consent.requireAccepted(owner);
+  }
+
   async stream(
     userId: string,
     input: AssistantSend,
@@ -61,6 +67,9 @@ export class AssistantService {
   ) {
     if (!this.configuration().enabled)
       throw new ServiceUnavailableException("Assistant is not configured");
+    signal.throwIfAborted();
+    await this.requireConsent(userId);
+    signal.throwIfAborted();
     if (this.running >= 8)
       throw new HttpException("Assistant capacity reached", 429);
     this.running++;

@@ -9,6 +9,9 @@ import { AssistantVoiceService, VOICE_FETCH } from "./assistant-voice.service";
 async function setup(enabled = true) {
   const get = vi.fn(async (_input: { id: string }) => ({}));
   const conversations = vi.fn((_owner: string) => ({ get: { query: get } }));
+  const requireConsent = vi.fn<AssistantService["requireConsent"]>(
+    async () => {},
+  );
   const request = vi.fn<typeof fetch>(async (_url, options) =>
     options?.body instanceof FormData
       ? new Response("v=0\r\nanswer", {
@@ -19,7 +22,10 @@ async function setup(enabled = true) {
   const module = await Test.createTestingModule({
     providers: [
       AssistantVoiceService,
-      { provide: AssistantService, useValue: { conversations } },
+      {
+        provide: AssistantService,
+        useValue: { conversations, requireConsent },
+      },
       {
         provide: EnvironmentService,
         useValue: testEnvironment({
@@ -35,6 +41,7 @@ async function setup(enabled = true) {
     voice: module.get(AssistantVoiceService),
     request,
     conversations,
+    requireConsent,
     get,
     close: () => module.close(),
   };
@@ -62,6 +69,44 @@ const answer = () =>
 
 describe("voice admission, provider privacy and owner-bound termination", () => {
   afterEach(() => vi.useRealTimers());
+
+  it("checks consent after the origin gate and before history, admission or provider requests", async () => {
+    const f = await setup();
+    try {
+      await expect(
+        f.voice.start("owner", "https://untrusted.test", input, signal()),
+      ).rejects.toThrow();
+      expect(f.requireConsent).not.toHaveBeenCalled();
+      f.requireConsent.mockRejectedValue(new Error("Consent refused"));
+      await expect(
+        f.voice.start("owner", origin, input, signal()),
+      ).rejects.toThrow("Consent refused");
+      expect(f.conversations).not.toHaveBeenCalled();
+      expect(f.request).not.toHaveBeenCalled();
+      f.requireConsent.mockImplementation(async () => {});
+      await f.voice.start("owner", origin, input, signal());
+      expect(f.request).toHaveBeenCalledOnce();
+    } finally {
+      await f.close();
+    }
+  });
+
+  it("honors cancellation occurring during the consent check without consuming admission", async () => {
+    const f = await setup();
+    const controller = new AbortController();
+    f.requireConsent.mockImplementation(async () => {
+      controller.abort();
+    });
+    try {
+      await expect(
+        f.voice.start("owner", origin, input, controller.signal),
+      ).rejects.toThrow();
+      expect(f.conversations).not.toHaveBeenCalled();
+      expect(f.request).not.toHaveBeenCalled();
+    } finally {
+      await f.close();
+    }
+  });
 
   it("drains an initializing call, rejects new starts and hangs up its late remote ID", async () => {
     const f = await setup();

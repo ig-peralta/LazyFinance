@@ -190,6 +190,17 @@ nonce replay and lease-checked completion under the user advisory lock. Model
 calls remain outside SQL; conversation deletion changes no financial facts. See
 [assistant persistence, cancellation and retention limits](financial-assistant.md).
 
+`assistant.processing_consent` is one owner-scoped account preference. Reads never
+insert. Only explicit accepted/refused decisions can insert/update policy key,
+revision and server decision time under the common user lock. Stale revisions
+conflict; unchanged current decisions retain their time/revision. Runtime has no
+DELETE or owner-update privilege; bootstrap, OAuth, scheduler, transport and
+unscoped contexts see no records. The API binds the policy key to disclosure
+version/provider/model/compatible endpoint and requires current acceptance before
+new non-demo text or voice admission. This is not an atomic gate around all future
+provider I/O, global live-session cancellation or withdrawal of already-sent data.
+History/create/delete and exact financial-action approval need no new AI consent.
+
 `assistant.action` forces owner RLS and checks the optional conversation's owner.
 Runtime cannot update ownership/origin/request/grant/client metadata or delete
 records; a trigger forbids rewriting finalized applied/cancelled records. Chat
@@ -245,6 +256,7 @@ or generic transaction scripts.
 | Command | Authoritative persistence work | API work outside SQL |
 | --- | --- | --- |
 | Onboarding finish | Upsert only the scoped user's skip/completion; retain terminal completion and its first timestamp under concurrent writes | Authenticated optional-guide intent; no financial prerequisites or writes |
+| Assistant processing decision | Compare expected revision under the user lock; save only the owned policy key/decision and server timestamp, preserving unchanged decisions | Validate current processing policy and explicit accepted/refused intent; fail closed before new model/voice admission |
 | External-client grant | Validate provider-artifact ownership, bind immutable consent; atomically consume credentials and revoke/delete a family | Verify first-party consent, run the OAuth protocol, encrypt/decrypt artifacts and enforce resource/scope/owner on MCP |
 | Financial action | Recheck saved approval/version/fingerprint or MCP grant; execute bounded named commands and record one durable receipt, including dependent tags and decision events | Normalize exact money/schedules, prepare proposals, authenticate explicit UI approval or separately scoped MCP execution; no model execution authority |
 | Income confirmation | Lock/check source and eligible movement; reject any retained expense allocation; upsert one receipt | Calendar/money calculations and response composition |

@@ -264,6 +264,16 @@ not a second chat host. Minimize keeps the text draft/selection/generation in me
 Close panel clears them and stops generation without deleting server history.
 Full reload discards private browser state and reads saved history through the API.
 Owner/credential changes clear private state; no chat cache/storage is introduced.
+The panel owns `AssistantConsentData`: account-scoped reads plus explicit revisioned
+decisions, never a browser-stored permission. Missing/refused/outdated decisions
+show a dedicated entry screen. Reopening checks saved consent while retaining an
+already-authorized composer, selection, focus and expanded references; new sends
+wait for that check. Confirmed acceptance opens chat but never sends or starts
+voice. Refusal minimizes; history-only entry still permits owned reading/deletion.
+An uncertain save blocks local processing until an explicit causal state read;
+ordinary reopening or stale reads cannot reconcile it. Withdrawal immediately
+invalidates deferred creation and local text/voice, without claiming server rollback
+or remote cancellation on other devices.
 The desktop non-modal dialog leaves financial navigation available. Narrow screens
 use a full-screen modal dialog state with inert background and Tab containment;
 both support Escape, focus return and safe areas. First-answer anchoring occurs
@@ -288,9 +298,8 @@ capture. Voice also ends on minimize, hidden tab, device loss and session change
 late permission/events cannot revive capture or adopt another owner's transcript.
 Completed voice questions use the same turn stream and approvals; partial/audio
 transcripts remain in memory. See the [voice privacy/lifetime contract](assistant-live-voice.md).
-Voice disclosure entry is not gated by an unrelated disabled control: its inline
-processing acknowledgment shares the session consent value, and only the explicit
-microphone-start control can initiate capture. Availability loading/error/disabled
+After saved processing acceptance, voice has no repeated consent checkbox. Only
+the separate explicit microphone-start control can initiate capture. Availability loading/error/disabled
 states remain visible and have a readonly retry; refresh includes that resource.
 References are separate financial cards projected from validated stored results,
 not raw JSON or model-authored markup. They retain uncertainty/cutoff disclosures,

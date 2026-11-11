@@ -3,7 +3,7 @@
 NestJS financial workflow service exposing public tRPC at `/trpc` and scoped
 MCP at `/mcp`. Ordinary HTTP also serves OAuth discovery/protocol/browser interaction
 and the public `GET /` listening check. The first-party assistant streams bearer-only
-NDJSON at `POST /assistant/turns`; text configuration/history use tRPC. Opt-in voice
+NDJSON at `POST /assistant/turns`; text configuration/consent/history use tRPC. Opt-in voice
 uses authenticated HTTP for WebRTC setup/termination. Business REST controllers
 have been retired. Angular otherwise uses vanilla tRPC clients apart from the
 cookie-bound OAuth interaction.
@@ -112,6 +112,11 @@ decisions share an atomic executor with separately scoped MCP writes. Conversati
 deleting chat does not undo finance. Provider keys remain API-only. It defaults disabled, with
 live provider/model quality and operational cost/privacy review still separate
 release gates.
+Authenticated `assistant.consent` / `assistant.decideConsent` persist the account's
+processing decision (migration 032). Disclosure version/provider/model/compatible
+endpoint changes require a fresh decision. New non-demo text/voice admissions fail
+closed without current acceptance; history/create/delete remain available. Accepting
+consent neither sends a question nor starts microphone capture.
 
 Voice uses `GET /assistant/voice/configuration`, `POST /assistant/voice/sessions`
 and `POST /assistant/voice/end`, under the existing bearer/origin assistant boundary.

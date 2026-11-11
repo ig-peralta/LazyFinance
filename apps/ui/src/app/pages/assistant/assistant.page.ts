@@ -15,6 +15,7 @@ import {
 import { Router } from "@angular/router";
 import {
   ASSISTANT_MAX_INPUT,
+  type AssistantConsentDecision,
   type AssistantConversation,
   type AssistantTurn,
   type FinancialAction,
@@ -25,11 +26,13 @@ import {
 } from "../../core/auth/auth-credentials";
 import { RpcClient, type RpcScope } from "../../core/rpc/rpc-client";
 import { createScopedCommand } from "../../core/rpc/scoped-command";
+import { AssistantConsentData } from "../../features/assistant/assistant-consent.data";
 import { assistantReplyText } from "../../features/assistant/assistant-reply-text";
 import { AssistantStreamClient } from "../../features/assistant/assistant-stream.client";
 import { AssistantVoiceClient } from "../../features/assistant/assistant-voice.client";
 import { AssistantWorkspace } from "../../features/assistant/assistant-workspace";
 import { Icon } from "../../shared/ui/icon";
+import { AssistantConsentScreen } from "./consent/assistant-consent-screen";
 import { AssistantReply } from "./reply/assistant-reply";
 import { AssistantWelcome } from "./welcome/assistant-welcome";
 
@@ -45,15 +48,16 @@ interface LiveTurn {
 
 @Component({
   selector: "assistant-page",
-  imports: [Icon, AssistantReply, AssistantWelcome],
+  imports: [Icon, AssistantReply, AssistantWelcome, AssistantConsentScreen],
   templateUrl: "./assistant.page.html",
   styleUrl: "./assistant.page.css",
-  providers: [AssistantVoiceClient],
+  providers: [AssistantVoiceClient, AssistantConsentData],
 })
 export class AssistantPage {
   readonly returnFocus = input<HTMLElement>();
   private voiceStartup: AbortController | undefined;
   protected readonly voice = inject(AssistantVoiceClient);
+  protected readonly consent = inject(AssistantConsentData);
   protected readonly voiceDisclosure = signal(false);
   protected readonly voiceFallback = signal("");
   private readonly rpc = inject(RpcClient);
@@ -70,7 +74,27 @@ export class AssistantPage {
   private readonly panel = viewChild<ElementRef<HTMLElement>>("panel");
   protected readonly follow = signal(true);
   protected readonly draft = signal("");
-  protected readonly processingAccepted = signal(false);
+  protected readonly historyOnly = signal(false);
+  private readonly consentReview = signal(false);
+  protected readonly processingAccepted = computed(
+    () => !this.consentReview() && this.consent.allowed(),
+  );
+  protected readonly consentRequired = computed(
+    () =>
+      this.consent.state()?.required ??
+      (this.configuration.hasValue() &&
+        this.configuration.value().enabled &&
+        !this.configuration.value().demonstration),
+  );
+  protected readonly showConsent = computed(
+    () =>
+      this.consentRequired() &&
+      (this.consentReview() ||
+        this.consent.state()?.decision !== "accepted" ||
+        this.consent.readError() ||
+        this.consent.needsCheck()) &&
+      !this.historyOnly(),
+  );
   protected readonly confirmDelete = signal(false);
   protected readonly maxInput = ASSISTANT_MAX_INPUT;
   protected readonly time = (value: string) =>
@@ -170,10 +194,11 @@ export class AssistantPage {
   protected readonly canSend = computed(
     () =>
       !this.busy() &&
+      !this.historyOnly() &&
       !this.invalidId() &&
       this.configuration.hasValue() &&
       this.configuration.value().enabled &&
-      (this.configuration.value().demonstration || this.processingAccepted()) &&
+      (!this.consentRequired() || this.processingAccepted()) &&
       !this.conversation.isLoading() &&
       !this.conversation.error() &&
       !this.turns().some((turn) => turn.status === "pending") &&
@@ -187,6 +212,7 @@ export class AssistantPage {
       this.voice.supported &&
       this.voice.state() === "off" &&
       !this.busy() &&
+      !this.historyOnly() &&
       !this.invalidId() &&
       this.processingAccepted() &&
       this.configuration.hasValue() &&
@@ -226,7 +252,8 @@ export class AssistantPage {
         this.confirmDelete.set(false);
       }
       if (scope !== previous) {
-        this.processingAccepted.set(false);
+        this.consentReview.set(false);
+        this.historyOnly.set(false);
         this.voiceDisclosure.set(false);
         this.voiceFallback.set("");
       }
@@ -235,6 +262,28 @@ export class AssistantPage {
       if (live && (live.scope !== scope || live.conversationId !== id)) {
         live.controller.abort();
         this.liveState.set(null);
+      }
+    });
+    let opened = false;
+    effect(() => {
+      const visible = this.workspace.opened();
+      if (visible && !opened) {
+        this.historyOnly.set(false);
+        untracked(() => this.consent.reload());
+      }
+      opened = visible;
+    });
+    let accepted = false;
+    effect(() => {
+      const state = this.consent.state();
+      if (
+        !this.consent.loading() &&
+        !this.consent.readError() &&
+        state?.required
+      ) {
+        if (accepted && state.decision !== "accepted")
+          untracked(() => this.cancelProcessing());
+        accepted = state.decision === "accepted";
       }
     });
     let anchored: string | undefined;
@@ -261,8 +310,18 @@ export class AssistantPage {
     afterRenderEffect(() => {
       this.workspace.focusRequest();
       this.configuration.hasValue();
+      this.showConsent();
+      this.historyOnly();
       if (this.workspace.opened())
         untracked(() => {
+          if (this.showConsent()) {
+            const heading =
+              this.panel()?.nativeElement.querySelector<HTMLElement>(
+                "#assistant-consent-title",
+              );
+            (heading ?? this.panel()?.nativeElement)?.focus();
+            return;
+          }
           const composer = this.composer()?.nativeElement;
           if (composer && !composer.disabled) composer.focus();
           else this.panel()?.nativeElement.focus();
@@ -308,14 +367,44 @@ export class AssistantPage {
     if (!this.busy()) this.workspace.selection.set(id);
   }
 
-  protected acceptProcessing(event: Event) {
-    if (event.target instanceof HTMLInputElement) {
-      this.processingAccepted.set(event.target.checked);
-      if (!event.target.checked) {
-        this.endVoice();
-        this.stop();
-      }
+  private cancelProcessing() {
+    this.revision.update((value) => value + 1);
+    this.endVoice();
+    this.stop();
+    this.sending.set(null);
+    const live = this.live();
+    if (live)
+      this.liveState.set({
+        ...live,
+        pending: false,
+        error:
+          "El procesamiento se detuvo. Consulta el historial para comprobar lo que alcanzó a guardarse antes de volver a enviar.",
+      });
+  }
+
+  protected async decideConsent(decision: AssistantConsentDecision) {
+    if (!this.consent.canDecide()) return;
+    const owner = this.credentials.current(),
+      opening = this.workspace.focusRequest();
+    if (decision === "refused") {
+      this.consentReview.set(true);
+      this.cancelProcessing();
     }
+    const confirmed = await this.consent.decide(decision);
+    if (!confirmed || this.credentials.current() !== owner) return;
+    this.consentReview.set(false);
+    this.historyOnly.set(false);
+    if (decision === "refused" && this.workspace.focusRequest() === opening)
+      this.workspace.minimize();
+  }
+
+  protected viewHistory() {
+    this.cancelProcessing();
+    this.historyOnly.set(true);
+  }
+
+  protected requestConsent() {
+    this.historyOnly.set(false);
   }
 
   protected async startVoice() {
@@ -475,6 +564,7 @@ export class AssistantPage {
       this.conversations.reload();
       this.configuration.reload();
       this.voiceConfiguration.reload();
+      this.consent.reload();
     }
   }
 
@@ -549,7 +639,7 @@ export class AssistantPage {
       this.revision() !== revision ||
       !this.configuration.hasValue() ||
       !this.configuration.value().enabled ||
-      (!this.configuration.value().demonstration && !this.processingAccepted())
+      (this.consentRequired() && !this.processingAccepted())
     )
       return;
     const execution: LiveTurn = {

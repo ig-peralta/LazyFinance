@@ -44,6 +44,20 @@ export const principal = {
   name: "Camila Rojas",
 } satisfies RpcOutput<"auth.principal">;
 
+export const assistantConsent = {
+  required: true,
+  policy: {
+    key: "a".repeat(64),
+    version: 1,
+    provider: "openai",
+    model: "configured-text-model",
+    endpoint: null,
+  },
+  decision: "accepted",
+  revision: 1,
+  decidedAt: "2026-11-11T12:00:00.000Z",
+} satisfies RpcOutput<"assistant.consent">;
+
 export const emptySummary = {
   month: "2026-09",
   receivedIncome: "0.00",
@@ -305,6 +319,12 @@ export function createRpcFetch(overrides: RpcHandlers = {}) {
     "auth.config": () => ({ provider: "mock" }),
     "auth.principal": () => principal,
     "auth.loginMock": () => ({ token: "mock-token" }),
+    "assistant.consent": () => assistantConsent,
+    "assistant.decideConsent": (input) => ({
+      ...assistantConsent,
+      decision: input.decision,
+      revision: input.expectedRevision + 1,
+    }),
     "onboarding.state": () => ({ status: "active", completedAt: null }),
     "onboarding.finish": ({ status }) =>
       status === "completed"

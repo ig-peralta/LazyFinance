@@ -207,23 +207,17 @@ h2 {
   margin: 6px 0 0;
 }
 .processing-disclosure,
-.processing-consent,
 .voice-controls {
   font-size: var(--text-small);
   padding: 6px 16px;
   line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 .processing-disclosure {
   background: var(--raised);
   flex-shrink: 0;
   max-height: 28dvh;
   overflow-y: auto;
-}
-.processing-consent,
-.voice-processing-consent {
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 .processing-disclosure p {
   margin: 6px 0;

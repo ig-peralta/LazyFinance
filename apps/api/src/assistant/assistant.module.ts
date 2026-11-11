@@ -13,6 +13,7 @@ import { TransactionsModule } from "../transactions/transactions.module";
 import { AssistantHttp } from "./assistant.http";
 import { AssistantRpc } from "./assistant.rpc";
 import { AssistantService } from "./assistant.service";
+import { AssistantConsentService } from "./assistant-consent.service";
 import {
   AiSdkAssistantRuntime,
   ASSISTANT_RUNTIME,
@@ -39,6 +40,7 @@ import { FinancialReads } from "./financial-reads";
   providers: [
     FinancialReads,
     AssistantService,
+    AssistantConsentService,
     AssistantRpc,
     AssistantVoiceService,
     {

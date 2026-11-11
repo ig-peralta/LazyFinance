@@ -1,5 +1,6 @@
 export * from "./accounts";
 export * from "./assistant";
+export * from "./assistant-consent";
 export * from "./common";
 export * from "./financial-actions";
 export * from "./identity";

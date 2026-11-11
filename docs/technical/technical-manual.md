@@ -362,6 +362,11 @@ fixture safety and live-Firebase distinctions. No real user database is a fixtur
   stale workspace contracts. Rebuild UI dependencies, restart the UI task and
   reload the browser. The dev-server prebundle exclusion prevents this cache from
   freezing contract exports; do not rotate keys or reset a database to fix it.
+- Assistant processing consent unavailable: apply additive migration 032 to the
+  authorized database with the owner-only migration CLI. Never reset or reseed to
+  add this preference. Failed/uncertain saves require **Comprobar decisión guardada**,
+  not another automatic mutation. This account decision is separate from external
+  MCP/OAuth consent and never grants microphone access by itself.
 - Oversized provider run: limits are 100 pages/50,000 records plus 32 MiB normalized
   and 64 MiB private JSON. It fails atomically, not as partial financial writes.
 - A failed/ambiguous mutation is not automatically retried. Only an explicit

@@ -1,6 +1,7 @@
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
 import { ActivatedRoute, convertToParamMap, Router } from "@angular/router";
 import type {
+  AssistantConsentState,
   AssistantConversation,
   AssistantEvent,
   AssistantSend,
@@ -10,6 +11,7 @@ import { BehaviorSubject } from "rxjs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { deferred } from "../../../testing/deferred";
 import {
+  assistantConsent,
   principal,
   type RpcHandlers,
   rpcFailure,
@@ -40,6 +42,18 @@ const configuration = {
   maxTurns: 24,
   maxInput: 2000,
 } as const;
+const externalConfiguration = {
+  ...configuration,
+  provider: "openai",
+  model: "configured-text-model",
+  demonstration: false,
+};
+const undecidedConsent: AssistantConsentState = {
+  ...assistantConsent,
+  decision: "unset",
+  revision: 0,
+  decidedAt: null,
+};
 function turn(input: AssistantSend): AssistantTurn {
   return {
     id: input.requestId,
@@ -57,7 +71,9 @@ function setup(
   selected: string | null = chat.id,
   voiceEnabled = false,
   voiceAvailability?: AssistantVoiceClient["configuration"],
+  initialConsent: AssistantConsentState = assistantConsent,
 ) {
+  let savedConsent = initialConsent;
   const microphone = vi.fn<() => Promise<MediaStream>>(async () => {
     throw new Error("Unexpected microphone access");
   });
@@ -71,6 +87,16 @@ function setup(
       "assistant.conversation": () => chat,
       "assistant.createConversation": () => chat,
       "assistant.deleteConversation": () => ({ removed: true }),
+      "assistant.consent": () => savedConsent,
+      "assistant.decideConsent": (input) => {
+        savedConsent = {
+          ...savedConsent,
+          decision: input.decision,
+          revision: savedConsent.revision + 1,
+          decidedAt: "2026-11-11T12:00:00.000Z",
+        };
+        return savedConsent;
+      },
       ...overrides,
     },
     "browser",
@@ -138,6 +164,9 @@ function setup(
     workspace,
     microphone,
     voiceRead,
+    setConsent(state: AssistantConsentState) {
+      savedConsent = state;
+    },
     fixture,
     root: fixture.nativeElement as HTMLElement,
   };
@@ -173,7 +202,7 @@ describe("first-party chat page lifetimes and confirmed history", () => {
     vi.restoreAllMocks();
   });
 
-  it("opens voice consent without a hidden prerequisite and starts only after acknowledgment and explicit confirmation", async () => {
+  it("shows a first-open consent screen and never starts voice from persisted processing permission alone", async () => {
     const f = setup(
       {
         "assistant.configuration": () => ({
@@ -185,37 +214,36 @@ describe("first-party chat page lifetimes and confirmed history", () => {
       },
       chat.id,
       true,
+      undefined,
+      { ...assistantConsent, decision: "unset", revision: 0, decidedAt: null },
     );
     const start = vi
       .spyOn(AssistantVoiceClient.prototype, "start")
       .mockResolvedValue();
     await render(f.fixture);
-    const textConsent = f.root.querySelector<HTMLInputElement>(
-      ".processing-consent input",
-    );
-    expect(textConsent?.checked).toBe(false);
-    expect(button(f.root, "Conversar por voz").disabled).toBe(false);
-    button(f.root, "Conversar por voz").click();
-    await render(f.fixture);
-    const disclosure = f.root.querySelector(".voice-start");
-    expect(disclosure?.textContent).toContain("configured-text-model");
-    expect(button(f.root, "Entiendo, iniciar micrófono").disabled).toBe(true);
+    expect(
+      f.root.querySelector("assistant-consent-screen")?.textContent,
+    ).toContain("configured-text-model");
+    expect(f.root.querySelector("textarea")).toBeNull();
+    expect(f.root.querySelector(".voice-controls")).toBeNull();
     expect(start).not.toHaveBeenCalled();
     expect(f.microphone).not.toHaveBeenCalled();
     expect(f.callsTo("assistant.createConversation")).toHaveLength(0);
-    button(f.root, "Cancelar voz").click();
+    button(f.root, "Permitir y abrir asistente").click();
     await render(f.fixture);
-    expect(f.root.querySelector(".voice-start")).toBeNull();
-    expect(textConsent?.checked).toBe(false);
+    expect(f.callsTo("assistant.decideConsent")[0].input).toEqual({
+      policyKey: assistantConsent.policy.key,
+      expectedRevision: 0,
+      decision: "accepted",
+    });
+    expect(f.root.querySelector("assistant-consent-screen")).toBeNull();
+    expect(start).not.toHaveBeenCalled();
     button(f.root, "Conversar por voz").click();
     await render(f.fixture);
-    const voiceConsent = f.root.querySelector<HTMLInputElement>(
-      ".voice-processing-consent input",
+    expect(f.root.querySelector(".voice-start")?.textContent).toContain(
+      "configured-text-model",
     );
-    if (!voiceConsent) throw new Error("Missing inline voice acknowledgement");
-    voiceConsent.click();
-    await render(f.fixture);
-    expect(textConsent?.checked).toBe(true);
+    expect(f.root.querySelector(".voice-processing-consent")).toBeNull();
     expect(button(f.root, "Entiendo, iniciar micrófono").disabled).toBe(false);
     expect(start).not.toHaveBeenCalled();
     button(f.root, "Entiendo, iniciar micrófono").click();
@@ -306,7 +334,7 @@ describe("first-party chat page lifetimes and confirmed history", () => {
     }
   });
 
-  it("does not disclose a question after acknowledgement is withdrawn during deferred text conversation creation, even if reaccepted", async () => {
+  it("does not disclose a question after persisted consent is withdrawn during deferred text creation, even if reaccepted", async () => {
     const created = deferred<AssistantConversation>();
     const f = setup(
       {
@@ -321,18 +349,17 @@ describe("first-party chat page lifetimes and confirmed history", () => {
       null,
     );
     await render(f.fixture);
-    const consent = f.root.querySelector<HTMLInputElement>(
-      ".processing-consent input",
-    );
-    if (!consent) throw new Error("Missing processing acknowledgement");
-    consent.click();
     compose(f, "Una pregunta que no debe enviarse");
     button(f.root, "Enviar pregunta").click();
     await vi.waitFor(() =>
       expect(f.callsTo("assistant.createConversation")).toHaveLength(1),
     );
-    consent.click();
-    consent.click();
+    button(f.root, "Retirar consentimiento").click();
+    await render(f.fixture);
+    f.workspace.open();
+    await render(f.fixture);
+    button(f.root, "Permitir y abrir asistente").click();
+    await render(f.fixture);
     created.resolve(chat);
     await render(f.fixture);
     expect(f.stream).not.toHaveBeenCalled();
@@ -342,7 +369,7 @@ describe("first-party chat page lifetimes and confirmed history", () => {
 
   it.each([
     "cancel",
-    "acknowledgement",
+    "withdrawal",
     "navigation",
     "minimize-reopen",
     "hidden",
@@ -368,13 +395,6 @@ describe("first-party chat page lifetimes and confirmed history", () => {
       .spyOn(AssistantVoiceClient.prototype, "start")
       .mockResolvedValue();
     await render(f.fixture);
-    const consent = f.root.querySelector<HTMLInputElement>(
-      ".processing-consent input",
-    );
-    if (!consent) throw new Error("Missing acknowledgement");
-    consent.checked = true;
-    consent.dispatchEvent(new Event("change"));
-    f.fixture.detectChanges();
     button(f.root, "Conversar por voz").click();
     f.fixture.detectChanges();
     button(f.root, "Entiendo, iniciar micrófono").click();
@@ -382,10 +402,8 @@ describe("first-party chat page lifetimes and confirmed history", () => {
       expect(f.callsTo("assistant.createConversation")).toHaveLength(1),
     );
     if (reason === "cancel") button(f.root, "Cancelar voz").click();
-    if (reason === "acknowledgement") {
-      consent.checked = false;
-      consent.dispatchEvent(new Event("change"));
-    }
+    if (reason === "withdrawal")
+      button(f.root, "Retirar consentimiento").click();
     if (reason === "minimize-reopen") {
       f.workspace.minimize();
       f.workspace.open();
@@ -657,7 +675,7 @@ describe("first-party chat page lifetimes and confirmed history", () => {
     expect(f.stream).toHaveBeenCalledOnce();
   });
 
-  it("requires separate before-processing acknowledgement and keeps provider identity outside the conversation", async () => {
+  it("uses saved processing consent without a session checkbox and keeps provider identity outside conversation text", async () => {
     const f = setup({
       "assistant.configuration": () => ({
         ...configuration,
@@ -668,22 +686,334 @@ describe("first-party chat page lifetimes and confirmed history", () => {
     });
     await render(f.fixture);
     compose(f);
-    expect(button(f.root, "Enviar pregunta").disabled).toBe(true);
+    expect(button(f.root, "Enviar pregunta").disabled).toBe(false);
     const disclosure = f.root.querySelector(".processing-disclosure");
-    expect(disclosure?.textContent).toContain("configured-model");
+    expect(disclosure?.textContent).toContain(assistantConsent.policy.model);
     expect(f.root.querySelector(".chat-messages")?.textContent).not.toContain(
-      "configured-model",
+      assistantConsent.policy.model,
     );
-    const consent = f.root.querySelector<HTMLInputElement>(
-      ".processing-consent input",
-    );
-    if (!consent) throw new Error("Missing separate consent");
-    consent.checked = true;
-    consent.dispatchEvent(new Event("change"));
-    f.fixture.detectChanges();
+    expect(f.root.querySelector(".processing-consent")).toBeNull();
+    expect(f.root.querySelector("assistant-consent-screen")).toBeNull();
     button(f.root, "Enviar pregunta").click();
     await render(f.fixture);
     expect(f.stream).toHaveBeenCalledOnce();
+    expect(f.callsTo("assistant.decideConsent")).toHaveLength(0);
+  });
+
+  it("remembers accepted consent after a new assistant component is mounted without browser storage or automatic sending", async () => {
+    const f = setup(
+      { "assistant.configuration": () => externalConfiguration },
+      chat.id,
+      false,
+      undefined,
+      undecidedConsent,
+    );
+    await render(f.fixture);
+    button(f.root, "Permitir y abrir asistente").click();
+    await render(f.fixture);
+    f.workspace.minimize();
+    f.fixture.destroy();
+    const restored = TestBed.createComponent(AssistantPage);
+    restored.detectChanges();
+    await render(restored);
+    f.workspace.open();
+    await render(restored);
+    const root: HTMLElement = restored.nativeElement;
+    expect(root.querySelector("assistant-consent-screen")).toBeNull();
+    expect(root.querySelector("textarea")).not.toBeNull();
+    expect(f.callsTo("assistant.decideConsent")).toHaveLength(1);
+    expect(f.callsTo("assistant.createConversation")).toHaveLength(0);
+    expect(f.stream).not.toHaveBeenCalled();
+    expect(f.microphone).not.toHaveBeenCalled();
+    expect(
+      Object.keys(localStorage).some((key) => key.includes("consent")),
+    ).toBe(false);
+  });
+
+  it("persists refusal, exits safely and shows the consent screen on the next open", async () => {
+    const f = setup(
+      { "assistant.configuration": () => externalConfiguration },
+      chat.id,
+      false,
+      undefined,
+      undecidedConsent,
+    );
+    await render(f.fixture);
+    button(f.root, "Ahora no").click();
+    await render(f.fixture);
+    expect(f.workspace.opened()).toBe(false);
+    expect(f.callsTo("assistant.decideConsent")[0].input).toMatchObject({
+      decision: "refused",
+      expectedRevision: 0,
+    });
+    f.workspace.open();
+    await render(f.fixture);
+    expect(
+      f.root.querySelector("assistant-consent-screen")?.textContent,
+    ).toContain("Elegiste no permitirlo");
+    expect(f.root.querySelector("textarea")).toBeNull();
+    expect(f.stream).not.toHaveBeenCalled();
+    expect(f.microphone).not.toHaveBeenCalled();
+  });
+
+  it("preserves the composer, focus, selected chat and expanded references across accepted reopening checks", async () => {
+    const rechecked = deferred<AssistantConsentState>();
+    let reads = 0;
+    const withReferences: AssistantConversation = {
+      ...chat,
+      turnCount: 1,
+      turns: [
+        {
+          ...turn({
+            conversationId: chat.id,
+            requestId: "00000000-0000-4000-8000-000000000002",
+            text: "Mis saldos",
+          }),
+          status: "complete",
+          text: "Revisa el saldo registrado.",
+          sources: [
+            {
+              id: "F1",
+              tool: "consultar_saldos_cuentas",
+              title: "Cuentas",
+              status: "available",
+              path: "/cuentas",
+              note: "",
+              data: { accounts: [] },
+              queriedAt: chat.createdAt,
+              month: null,
+              recordId: null,
+            },
+          ],
+        },
+      ],
+    };
+    const f = setup({
+      "assistant.configuration": () => externalConfiguration,
+      "assistant.conversation": () => withReferences,
+      "assistant.consent": () =>
+        ++reads === 1 ? assistantConsent : rechecked.promise,
+    });
+    document.body.append(f.root);
+    await render(f.fixture);
+    const composer = compose(f, "Borrador conservado");
+    const references =
+      f.root.querySelector<HTMLDetailsElement>(".reply-sources");
+    if (!references) throw new Error("Missing saved references");
+    references.open = true;
+    const selected = f.workspace.selection();
+    f.workspace.minimize();
+    await render(f.fixture);
+    f.workspace.open();
+    f.fixture.detectChanges();
+    await vi.waitFor(() =>
+      expect(f.callsTo("assistant.consent")).toHaveLength(2),
+    );
+    expect(f.root.querySelector("assistant-consent-screen")).toBeNull();
+    expect(f.root.querySelector("textarea")).toBe(composer);
+    expect(f.root.querySelector(".reply-sources")).toBe(references);
+    expect(references.open).toBe(true);
+    expect(composer.value).toBe("Borrador conservado");
+    expect(button(f.root, "Enviar pregunta").disabled).toBe(true);
+    rechecked.resolve(assistantConsent);
+    await render(f.fixture);
+    expect(f.workspace.selection()).toBe(selected);
+    expect(f.root.querySelector("textarea")).toBe(composer);
+    expect(document.activeElement).toBe(composer);
+    expect(references.open).toBe(true);
+    expect(button(f.root, "Enviar pregunta").disabled).toBe(false);
+    expect(f.stream).not.toHaveBeenCalled();
+    f.root.remove();
+  });
+
+  it("stops local text immediately on failed withdrawal and requires an explicit recheck and decision before resuming", async () => {
+    const finished = deferred<void>();
+    const f = setup({
+      "assistant.configuration": () => externalConfiguration,
+      "assistant.decideConsent": () => rpcFailure(),
+    });
+    f.stream.mockImplementationOnce(async (_owner, input, _signal, receive) => {
+      receive({ type: "turn", turn: turn(input) });
+      await finished.promise;
+      receive({
+        type: "done",
+        turn: { ...turn(input), text: "Late result", status: "complete" },
+      });
+    });
+    await render(f.fixture);
+    compose(f);
+    button(f.root, "Enviar pregunta").click();
+    await vi.waitFor(() => expect(f.stream).toHaveBeenCalledOnce());
+    button(f.root, "Retirar consentimiento").click();
+    f.fixture.detectChanges();
+    expect(f.stream.mock.calls[0][2].aborted).toBe(true);
+    await vi.waitFor(() =>
+      expect(f.root.textContent).toContain("No pudimos confirmar el cambio"),
+    );
+    expect(f.root.querySelector("textarea")).toBeNull();
+    button(f.root, "Comprobar decisión guardada").click();
+    f.fixture.detectChanges();
+    await vi.waitFor(() =>
+      expect(button(f.root, "Permitir y abrir asistente").disabled).toBe(false),
+    );
+    expect(f.root.querySelector("textarea")).toBeNull();
+    expect(f.callsTo("assistant.decideConsent")).toHaveLength(1);
+    finished.resolve();
+    await render(f.fixture);
+    expect(f.root.textContent).not.toContain("Late result");
+    expect(f.stream).toHaveBeenCalledOnce();
+  });
+
+  it("keeps history and confirmed chat deletion available after refusal without any AI request", async () => {
+    const f = setup(
+      { "assistant.configuration": () => externalConfiguration },
+      chat.id,
+      true,
+      undefined,
+      { ...assistantConsent, decision: "refused" },
+    );
+    await render(f.fixture);
+    button(f.root, "Ver historial sin IA").click();
+    await render(f.fixture);
+    expect(f.root.querySelector("textarea")).toBeNull();
+    expect(f.root.querySelector(".voice-controls")).toBeNull();
+    expect(f.root.querySelector("assistant-welcome")).toBeNull();
+    button(f.root, "Eliminar conversación").click();
+    await render(f.fixture);
+    button(f.root, "Confirmar eliminación").click();
+    await render(f.fixture);
+    expect(f.callsTo("assistant.deleteConversation")).toHaveLength(1);
+    expect(f.callsTo("assistant.decideConsent")).toHaveLength(0);
+    expect(f.stream).not.toHaveBeenCalled();
+    expect(f.microphone).not.toHaveBeenCalled();
+    f.workspace.minimize();
+    await render(f.fixture);
+    f.workspace.open();
+    await render(f.fixture);
+    expect(f.root.querySelector("assistant-consent-screen")).not.toBeNull();
+  });
+
+  it("waits for one confirmed consent save before exposing the composer and never sends or captures on acceptance", async () => {
+    const saved = deferred<AssistantConsentState>();
+    const f = setup(
+      {
+        "assistant.configuration": () => externalConfiguration,
+        "assistant.decideConsent": () => saved.promise,
+      },
+      chat.id,
+      true,
+      undefined,
+      undecidedConsent,
+    );
+    await render(f.fixture);
+    const accept = button(f.root, "Permitir y abrir asistente");
+    accept.click();
+    accept.click();
+    f.fixture.detectChanges();
+    await vi.waitFor(() =>
+      expect(f.callsTo("assistant.decideConsent")).toHaveLength(1),
+    );
+    expect(f.root.querySelector("textarea")).toBeNull();
+    expect(f.root.textContent).toContain("Guardando decisión");
+    expect(f.stream).not.toHaveBeenCalled();
+    expect(f.microphone).not.toHaveBeenCalled();
+    saved.resolve(assistantConsent);
+    await render(f.fixture);
+    expect(f.root.querySelector("textarea")).not.toBeNull();
+    expect(f.stream).not.toHaveBeenCalled();
+    expect(f.microphone).not.toHaveBeenCalled();
+  });
+
+  it("reconciles an uncertain accepted decision by explicit read rather than retrying the write", async () => {
+    let state = undecidedConsent;
+    const f = setup({
+      "assistant.configuration": () => externalConfiguration,
+      "assistant.consent": () => state,
+      "assistant.decideConsent": () => {
+        state = assistantConsent;
+        return rpcFailure();
+      },
+    });
+    await render(f.fixture);
+    button(f.root, "Permitir y abrir asistente").click();
+    await render(f.fixture);
+    expect(button(f.root, "Permitir y abrir asistente").disabled).toBe(true);
+    expect(f.root.querySelector("textarea")).toBeNull();
+    f.workspace.minimize();
+    await render(f.fixture);
+    f.workspace.open();
+    await render(f.fixture);
+    expect(f.root.querySelector("textarea")).toBeNull();
+    button(f.root, "Comprobar decisión guardada").click();
+    await render(f.fixture);
+    expect(f.root.querySelector("textarea")).not.toBeNull();
+    expect(f.callsTo("assistant.decideConsent")).toHaveLength(1);
+    expect(f.stream).not.toHaveBeenCalled();
+  });
+
+  it("does not carry the previous account's permission or draft into a new account", async () => {
+    const f = setup({ "assistant.configuration": () => externalConfiguration });
+    await render(f.fixture);
+    compose(f, "Borrador privado");
+    f.setConsent(undecidedConsent);
+    f.credentials.accept({ ...principal, userId: "owner-b" }, "second-token");
+    await render(f.fixture);
+    f.workspace.open();
+    await render(f.fixture);
+    expect(f.root.querySelector("assistant-consent-screen")).not.toBeNull();
+    expect(f.root.querySelector("textarea")).toBeNull();
+    expect(f.root.textContent).not.toContain("Borrador privado");
+    expect(f.callsTo("assistant.decideConsent")).toHaveLength(0);
+  });
+
+  it("can reconcile uncertain acceptance after a previously confirmed refusal without a second write", async () => {
+    let state = undecidedConsent;
+    const f = setup({
+      "assistant.configuration": () => externalConfiguration,
+      "assistant.consent": () => state,
+      "assistant.decideConsent": (input) => {
+        state = {
+          ...assistantConsent,
+          decision: input.decision,
+          revision: input.expectedRevision + 1,
+        };
+        return input.decision === "accepted" ? rpcFailure() : state;
+      },
+    });
+    await render(f.fixture);
+    button(f.root, "Ahora no").click();
+    await render(f.fixture);
+    expect(f.workspace.opened()).toBe(false);
+    f.workspace.open();
+    await render(f.fixture);
+    button(f.root, "Permitir y abrir asistente").click();
+    await render(f.fixture);
+    expect(f.root.querySelector("textarea")).toBeNull();
+    button(f.root, "Comprobar decisión guardada").click();
+    await render(f.fixture);
+    expect(f.root.querySelector("textarea")).not.toBeNull();
+    expect(f.callsTo("assistant.decideConsent")).toHaveLength(2);
+    expect(f.stream).not.toHaveBeenCalled();
+    expect(f.microphone).not.toHaveBeenCalled();
+  });
+
+  it("shows newly required consent on reopening even when an older demo configuration is still mounted", async () => {
+    const f = setup({}, chat.id, false, undefined, {
+      ...undecidedConsent,
+      required: false,
+    });
+    await render(f.fixture);
+    compose(f, "Un borrador antes del cambio de configuración");
+    expect(button(f.root, "Enviar pregunta").disabled).toBe(false);
+    f.workspace.minimize();
+    await render(f.fixture);
+    f.setConsent(undecidedConsent);
+    f.workspace.open();
+    await render(f.fixture);
+    expect(f.root.querySelector("assistant-consent-screen")).not.toBeNull();
+    expect(f.root.querySelector("textarea")).toBeNull();
+    expect(f.stream).not.toHaveBeenCalled();
+    expect(f.callsTo("assistant.decideConsent")).toHaveLength(0);
   });
 
   it("anchors a new answer once and never follows deltas or source updates", async () => {

@@ -56,6 +56,8 @@ export class AssistantVoiceService implements OnModuleDestroy {
       throw new ServiceUnavailableException("Voice unavailable");
     if (!origin || !this.environment.get("CORS_ORIGINS").includes(origin))
       throw new ForbiddenException();
+    await this.assistant.requireConsent(owner);
+    signal.throwIfAborted();
     await this.assistant
       .conversations(owner)
       .get.query({ id: input.conversationId });

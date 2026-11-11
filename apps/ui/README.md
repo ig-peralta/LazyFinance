@@ -117,10 +117,19 @@ New answers anchor once at their beginning; later tokens never force scrolling.
 Native references start collapsed, retain per-answer expansion and keep approval
 cards separate. The desktop non-modal panel becomes modal with inert background
 and focus containment on narrow screens; both support Escape and safe areas.
+Processing consent is saved on the account through authenticated RPC, not browser
+storage. New/refused/outdated consent opens a dedicated screen; accepted consent
+survives reload/sign-out/devices. **Ahora no** saves refusal and minimizes;
+**Ver historial sin IA** keeps saved chats readable/deletable without new processing.
+Reopening checks permission without remounting an accepted chat. Failed/uncertain
+saves require an explicit state check, never automatic mutation replay.
+**Privacidad → Retirar consentimiento** immediately stops local voice/text and
+blocks new processing; it does not erase previous disclosures or guarantee remote
+voice termination on other devices. Consent and financial approval remain separate.
 Optional live WebRTC voice is disabled by default and requires separate start/privacy
-confirmation. **Conversar por voz** opens that disclosure without a hidden consent
-prerequisite. Its inline processing acknowledgment enables only the explicit
-**Entiendo, iniciar micrófono** control; opening or canceling requests no capture.
+confirmation. After saved processing acceptance, **Conversar por voz** opens its
+disclosure without a repeated checkbox. Only **Entiendo, iniciar micrófono** can
+request capture; accepting account consent, opening or canceling requests none.
 Loading, failed and disabled availability are shown beside voice controls, with
 **Volver a comprobar voz** for an explicit read after configuration changes.
 Minimize/navigation/hidden tabs end capture. See the

@@ -376,7 +376,7 @@ describe.skipIf(!ownerUrl)(
           .filter((name) => !name.startsWith("failure."))
           .sort(),
       ).toEqual(expected.sort());
-      expect(expected).toHaveLength(103);
+      expect(expected).toHaveLength(105);
 
       for (const name of expected)
         expect(procedures[name]._def.meta).toMatchObject({
@@ -393,7 +393,7 @@ describe.skipIf(!ownerUrl)(
         });
     });
 
-    it("migrates idempotently and enables/forces RLS on all 31 sensitive tables", async () => {
+    it("migrates idempotently and enables/forces RLS on all 32 sensitive tables", async () => {
       expect(await migrate(owner, migrationProvider())).toEqual([]);
       const { rows } = await sql<{
         relrowsecurity: boolean;
@@ -402,7 +402,7 @@ describe.skipIf(!ownerUrl)(
       from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname in ('identity','finance','assistant') and c.relkind='r' and c.relname != 'provider'`.execute(
         owner,
       );
-      expect(rows).toHaveLength(31);
+      expect(rows).toHaveLength(32);
       expect(
         rows.every((row) => row.relrowsecurity && row.relforcerowsecurity),
       ).toBe(true);
@@ -1781,6 +1781,195 @@ describe.skipIf(!ownerUrl)(
           chats.map((chat) => client.remove.mutate({ id: chat.id })),
         );
       }
+    });
+
+    it("persists versioned account consent, serializes competing first writes and preserves unchanged timestamps", async () => {
+      const userId = randomUUID();
+      await sql`insert into identity."user"(id,email,name) values (${userId},${`${userId}@example.test`},'Consent owner')`.execute(
+        owner,
+      );
+      const first = purposeClient(ctx(userId)).assistantConsent;
+      const policyKey = "a".repeat(64);
+      expect(await first.get.query()).toBeNull();
+      expect(
+        (
+          await sql`select * from assistant.processing_consent where user_id=${userId}`.execute(
+            owner,
+          )
+        ).rows,
+      ).toEqual([]);
+      const before = await sql<{
+        now: Date;
+      }>`select statement_timestamp() as now`.execute(owner);
+      const raced = await Promise.allSettled([
+        first.decide.mutate({
+          policyKey,
+          decision: "accepted",
+          expectedRevision: 0,
+        }),
+        first.decide.mutate({
+          policyKey,
+          decision: "refused",
+          expectedRevision: 0,
+        }),
+      ]);
+      expect(
+        raced.filter((result) => result.status === "fulfilled"),
+      ).toHaveLength(1);
+      expect(
+        raced.filter((result) => result.status === "rejected"),
+      ).toHaveLength(1);
+      const saved = await first.get.query();
+      const after = await sql<{
+        now: Date;
+      }>`select statement_timestamp() as now`.execute(owner);
+      expect(saved?.revision).toBe(1);
+      if (!saved) throw new Error("Consent missing");
+      expect(Date.parse(saved.decidedAt)).toBeGreaterThanOrEqual(
+        before.rows[0].now.getTime(),
+      );
+      expect(Date.parse(saved.decidedAt)).toBeLessThanOrEqual(
+        after.rows[0].now.getTime(),
+      );
+      expect(
+        await purposeClient(ctx(userId)).assistantConsent.get.query(),
+      ).toEqual(saved);
+      expect(
+        await first.decide.mutate({
+          policyKey,
+          decision: saved.decision,
+          expectedRevision: 1,
+        }),
+      ).toEqual(saved);
+      const refused = await first.decide.mutate({
+        policyKey,
+        decision: "refused",
+        expectedRevision: 1,
+      });
+      const accepted = await first.decide.mutate({
+        policyKey,
+        decision: "accepted",
+        expectedRevision: refused.revision,
+      });
+      expect(accepted.revision).toBe(refused.revision + 1);
+      const withdrawn = await first.decide.mutate({
+        policyKey,
+        decision: "refused",
+        expectedRevision: accepted.revision,
+      });
+      expect(withdrawn.revision).toBe(accepted.revision + 1);
+      expect(withdrawn.decidedAt).toEqual(expect.any(String));
+      await expect(
+        first.decide.mutate({
+          policyKey: "b".repeat(64),
+          decision: "accepted",
+          expectedRevision: 0,
+        }),
+      ).rejects.toMatchObject({ data: { code: "CONFLICT" } });
+      const newPolicy = await first.decide.mutate({
+        policyKey: "b".repeat(64),
+        decision: "accepted",
+        expectedRevision: withdrawn.revision,
+      });
+      expect(newPolicy.revision).toBe(withdrawn.revision + 1);
+      expect(
+        await purposeClient(ctx(b)).assistantConsent.get.query(),
+      ).toBeNull();
+      const raw = createTRPCUntypedClient({
+        links: [
+          httpLink({
+            url: `${url}/trpc`,
+            headers: async () => ({
+              authorization: `Bearer ${await sign(ctx(userId))}`,
+            }),
+          }),
+        ],
+      });
+      await expect(
+        raw.mutation("assistantConsent.decide", {
+          policyKey,
+          decision: "accepted",
+          expectedRevision: newPolicy.revision,
+          userId: b,
+        }),
+      ).rejects.toMatchObject({ data: { code: "BAD_REQUEST" } });
+      await expect(
+        raw.query("assistantConsent.get", { userId: b }),
+      ).rejects.toMatchObject({ data: { code: "BAD_REQUEST" } });
+    });
+
+    it("forces consent owner RLS and grants no deletion or owner reassignment", async () => {
+      const policyKey = "c".repeat(64);
+      await sql`insert into assistant.processing_consent(user_id,policy_key,decision,revision) values (${a},${policyKey},'accepted',1),(${b},${policyKey},'refused',1)`.execute(
+        owner,
+      );
+      await withRequestContext(runtime, ctx(a), async (tx) => {
+        const rows = await sql<{
+          user_id: string;
+        }>`select user_id from assistant.processing_consent`.execute(tx);
+        expect(rows.rows.map((row) => row.user_id)).toEqual([a]);
+        expect(
+          (
+            await sql`update assistant.processing_consent set decision='accepted' where user_id=${b} returning user_id`.execute(
+              tx,
+            )
+          ).rows,
+        ).toEqual([]);
+      });
+      expect(
+        (await sql`select * from assistant.processing_consent`.execute(runtime))
+          .rows,
+      ).toEqual([]);
+      for (const identity of [
+        oauthContext(),
+        {
+          kind: "identity-bootstrap" as const,
+          identity: {
+            provider: "mock" as const,
+            issuer: "https://identity.example.test",
+            providerSubject: "test",
+            verifiedEmail: null,
+            displayName: null,
+          },
+          requestId: randomUUID(),
+        },
+      ]) {
+        await withRequestContext(runtime, identity, async (tx) => {
+          expect(
+            (await sql`select * from assistant.processing_consent`.execute(tx))
+              .rows,
+          ).toEqual([]);
+        });
+      }
+      await expect(
+        withRequestContext(runtime, ctx(a), (tx) =>
+          sql`insert into assistant.processing_consent(user_id,policy_key,decision,revision) values (${b},${policyKey},'accepted',1)`.execute(
+            tx,
+          ),
+        ),
+      ).rejects.toThrow(/row-level security/);
+      for (const operation of [
+        (tx: QueryExecutorProvider) =>
+          sql`delete from assistant.processing_consent where user_id=${a}`.execute(
+            tx,
+          ),
+        (tx: QueryExecutorProvider) =>
+          sql`update assistant.processing_consent set user_id=${b} where user_id=${a}`.execute(
+            tx,
+          ),
+      ])
+        await expect(
+          withRequestContext(runtime, ctx(a), operation),
+        ).rejects.toThrow(/permission denied/);
+      const flags = await sql<{
+        relrowsecurity: boolean;
+        relforcerowsecurity: boolean;
+      }>`select relrowsecurity,relforcerowsecurity from pg_class where oid='assistant.processing_consent'::regclass`.execute(
+        owner,
+      );
+      expect(flags.rows).toEqual([
+        { relrowsecurity: true, relforcerowsecurity: true },
+      ]);
     });
 
     it("persists account onboarding, keeps completion terminal and preserves its first timestamp across races", async () => {

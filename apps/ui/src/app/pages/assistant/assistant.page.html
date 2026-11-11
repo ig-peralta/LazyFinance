@@ -9,11 +9,14 @@
     <div class="button-row"><button type="button" class="button small" (click)="workspace.minimize()">Minimizar</button><button type="button" class="icon-button" aria-label="Cerrar panel" title="Cerrar panel y descartar el borrador" (click)="close()"><app-icon name="close" /></button></div>
   </header>
 
+  @if (showConsent()) {
+    <assistant-consent-screen [state]="consent.state()" [loading]="consent.loading()" [pending]="consent.pending()" [failed]="consent.readError() || consent.saveError()" [needsCheck]="consent.needsCheck()" [canDecide]="consent.canDecide()" (accepted)="decideConsent('accepted')" (refused)="decideConsent('refused')" (checked)="consent.check()" (history)="viewHistory()" />
+  } @else {
   <div class="chat-layout">
     <aside class="chat-history" aria-label="Conversaciones guardadas">
-      <button type="button" class="button new-chat" [disabled]="busy()" (click)="newConversation()">
+      @if (!historyOnly()) { <button type="button" class="button new-chat" [disabled]="busy()" (click)="newConversation()">
         <app-icon name="plus" /> Nueva conversación
-      </button>
+      </button> }
       <p class="history-label">TU HISTORIAL <span>{{ history().length }}/10</span></p>
       @if (conversations.isLoading()) {
         <p class="history-empty" role="status">Consultando conversaciones…</p>
@@ -60,10 +63,12 @@
       }
 
       @if (configuration.hasValue() && configuration.value().enabled && !configuration.value().demonstration) {
-        <details class="processing-disclosure"><summary>Privacidad y procesamiento externo · antes de enviar</summary>
-          <p>Al enviar, compartes el mensaje, contexto reciente y datos consultados con {{ configuration.value().provider }} ({{ configuration.value().model }}). No se envían credenciales bancarias. La retención del proveedor es independiente del historial de LazyFinance.</p>
+        @if (consent.loading()) { <p class="notice" role="status">Comprobando el consentimiento guardado. Puedes seguir preparando tu pregunta; no se enviará hasta confirmar el permiso.</p> }
+        <details class="processing-disclosure"><summary>Privacidad</summary>
+          <p>Al enviar, compartes el mensaje, contexto reciente y datos consultados con {{ consent.state()?.policy.provider ?? configuration.value().provider }} ({{ consent.state()?.policy.model ?? configuration.value().model }}). No se envían credenciales bancarias. La retención del proveedor es independiente del historial de LazyFinance.</p>
+          @if (processingAccepted()) { <p>Tu consentimiento está guardado en tu cuenta. Retirarlo detiene la voz y el procesamiento en este dispositivo y bloquea nuevas solicitudes. No elimina datos ya enviados ni finaliza por sí solo sesiones de voz en otros dispositivos.</p><button type="button" class="text-link" [disabled]="!consent.canDecide()" (click)="decideConsent('refused')">Retirar consentimiento</button> }
         </details>
-        <label class="processing-consent"><input type="checkbox" [checked]="processingAccepted()" (change)="acceptProcessing($event)"> Entiendo el procesamiento externo para esta sesión.</label>
+        @if (historyOnly()) { <div class="notice"><p>Estás viendo el historial sin enviar datos nuevos a un modelo.</p><button class="button small" type="button" (click)="requestConsent()">Autorizar asistente</button></div> }
       }
       <div #messages class="chat-messages" (scroll)="scroll($event)">
         @if (configuration.isLoading()) {
@@ -81,9 +86,10 @@
         } @else if (conversation.isLoading() && !live()) {
           <p class="notice" role="status">Recuperando la conversación…</p>
         }
-        @if (!turns().length && !conversation.isLoading() && !conversation.error() && !invalidId()) {
+        @if (!historyOnly() && !turns().length && !conversation.isLoading() && !conversation.error() && !invalidId()) {
           <assistant-welcome [name]="greeting()" [busy]="busy()" (choose)="suggest($event)" />
         }
+        @if (historyOnly() && !id()) { <p class="notice">Elige una conversación para leerla o eliminarla. No necesitas autorizar nuevas consultas con IA.</p> }
         <div class="turns" role="log" aria-label="Mensajes de la conversación" aria-live="off">
           @for (turn of turns(); track turn.id) {
             <assistant-reply [attr.data-turn]="turn.id" [turn]="turn" [busy]="busy()" (askAgain)="suggest($event)" (actionChanged)="actionChanged($event)" />
@@ -116,6 +122,7 @@
         <div class="demo-notice">MODO DEMOSTRACIÓN · Sin modelo externo. Solo consultas predefinidas; no interpreta preguntas complejas.</div>
       }
 
+      @if (!historyOnly()) {
       <div class="voice-controls" aria-label="Conversación por voz">
         @if (!voice.supported) { <p>La voz no está disponible en este navegador. Puedes continuar por texto.</p> }
         @else if (voiceConfiguration.isLoading()) { <p role="status">Comprobando la disponibilidad de voz…</p> }
@@ -135,10 +142,8 @@
             <section id="assistant-voice-start" class="voice-start" aria-label="Privacidad y confirmación para iniciar voz">
               <p>Al iniciar, tu audio y las respuestas escritas se procesan en OpenAI. Puede generar costes. No grabamos audio; la retención del proveedor es independiente.</p>
               @if (configuration.hasValue() && configuration.value().enabled && !configuration.value().demonstration) {
-                <p>Para responder, tus preguntas transcritas, contexto reciente y datos consultados se comparten con {{ configuration.value().provider }} ({{ configuration.value().model }}). No se envían credenciales bancarias.</p>
-                <label class="voice-processing-consent"><input type="checkbox" [checked]="processingAccepted()" (change)="acceptProcessing($event)"> Entiendo el procesamiento externo de mi voz y mis preguntas.</label>
+                <p>Para responder, tus preguntas transcritas, contexto reciente y datos consultados se comparten con {{ consent.state()?.policy.provider ?? configuration.value().provider }} ({{ consent.state()?.policy.model ?? configuration.value().model }}). No se envían credenciales bancarias.</p>
               }
-              @if (!processingAccepted()) { <p class="field-hint">Confirma el procesamiento externo para habilitar el inicio del micrófono.</p> }
               <p>Máximo cinco minutos. La voz termina al minimizar, navegar o dejar esta pestaña. Revisa el texto y las referencias: decir «sí» no aprueba cambios.</p>
               <button type="button" class="button small" [disabled]="!canStartVoice()" (click)="startVoice()">Entiendo, iniciar micrófono</button>
               <button type="button" class="button small" (click)="endVoice()">Cancelar voz</button>
@@ -179,6 +184,8 @@
         </div>
         <p id="composer-help" class="composer-help">Enter para enviar · Shift + Enter para una nueva línea. La IA puede equivocarse: revisa las fuentes.</p>
       </form>
+      }
     </div>
   </div>
+  }
 </section>

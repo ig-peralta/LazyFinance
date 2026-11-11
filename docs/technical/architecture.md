@@ -194,6 +194,11 @@ named domain commands and durable receipts commit together after fingerprint and
 ownership checks. Server-owned history lives in `assistant.conversation`, with
 independent `assistant.action` receipts that survive chat deletion. Model calls
 never run inside SQL transactions.
+`assistant.processing_consent` stores the account's current processing decision.
+New/refused/outdated decisions show a dedicated entry screen; new non-demo text/
+voice admissions require current saved acceptance. Consent changes no financial
+permission and never starts capture or sends a question. History remains available
+without new processing. See [consent policy and withdrawal limits](financial-assistant.md#account-processing-consent).
 Generation is bounded, cancellable and lease/nonce protected. It defaults disabled;
 live model quality remains a separate verification gate. One deferred UI host
 preserves authenticated text state across navigation/minimization. Optional WebRTC
