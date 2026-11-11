@@ -37,6 +37,9 @@ export const ENV_SCHEMA = z
     ASSISTANT_MODEL: z.string().trim().min(1).max(200).optional(),
     ASSISTANT_API_KEY: z.string().trim().min(1).optional(),
     ASSISTANT_BASE_URL: z.url().optional(),
+    ASSISTANT_VOICE_ENABLED: z.enum(["true", "false"]).default("false"),
+    ASSISTANT_VOICE_API_KEY: z.string().trim().min(1).optional(),
+    ASSISTANT_VOICE_MODEL: z.string().trim().min(1).max(200).optional(),
     MCP_OAUTH_ISSUER: corsOrigin.optional(),
     MCP_OAUTH_UI_ORIGIN: corsOrigin.optional(),
     MCP_OAUTH_STATE_KEY: z
@@ -65,6 +68,18 @@ export const ENV_SCHEMA = z
   })
   .superRefine((values, context) => {
     const provider = values.ASSISTANT_PROVIDER;
+    if (
+      values.ASSISTANT_VOICE_ENABLED === "true" &&
+      (!values.ASSISTANT_VOICE_API_KEY ||
+        !values.ASSISTANT_VOICE_MODEL ||
+        ["disabled", "demo"].includes(provider))
+    )
+      context.addIssue({
+        code: "custom",
+        path: ["ASSISTANT_VOICE_ENABLED"],
+        message:
+          "Voice requires a dedicated key/model and configured non-demo text assistant",
+      });
     const issue = (message: string) =>
       context.addIssue({
         code: "custom",
