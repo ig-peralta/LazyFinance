@@ -3,27 +3,26 @@
   min-width: 0;
   min-height: 0;
   overflow: auto;
-  background: var(--raised);
-  border-left: 1px solid var(--line);
 }
 .result-canvas {
-  padding: 22px;
+  padding: 0 18px 20px;
   display: grid;
   gap: 16px;
 }
-header {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  justify-content: space-between;
-  align-items: center;
-}
-h2 {
+.result-question {
   margin: 0;
-  font-size: 1rem;
+  color: var(--muted);
+  font-size: var(--text-small);
+  line-height: 1.6;
 }
-header select {
-  max-width: 220px;
+.result-selector {
+  display: grid;
+  gap: 6px;
+  font-size: var(--text-caption);
+  color: var(--muted);
+}
+.result-selector select {
+  min-width: 0;
   width: 100%;
   font: inherit;
   font-size: var(--text-small);
@@ -37,7 +36,6 @@ header select {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  padding-bottom: 6px;
 }
 .result-tabs button {
   max-width: 100%;
@@ -54,43 +52,4 @@ header select {
 .result-tabs button[aria-pressed="true"] {
   background: var(--accent-soft);
   color: var(--ink);
-}
-.canvas-empty {
-  padding: 40px 8px;
-  color: var(--muted);
-  line-height: 1.7;
-}
-.canvas-empty > span {
-  color: var(--accent);
-  font-size: 2rem;
-}
-.canvas-empty h3 {
-  color: var(--ink);
-  font-size: 1.2rem;
-  font-weight: 500;
-  line-height: 1.5;
-}
-.canvas-empty p {
-  font-size: var(--text-small);
-}
-.canvas-empty div {
-  display: grid;
-  gap: 12px;
-  margin: 28px 0;
-}
-.canvas-empty a {
-  color: var(--ink);
-  font-size: var(--text-small);
-  text-decoration: none;
-}
-.canvas-empty small {
-  font-size: var(--text-caption);
-}
-@media (max-width: 1050px) {
-  :host {
-    border-left: 0;
-  }
-  .result-canvas {
-    padding: 16px;
-  }
 }

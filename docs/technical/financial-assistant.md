@@ -18,31 +18,40 @@ stops generation, ends voice and clears the in-memory selection/draft; it does n
 delete saved history. Delete requires its separate confirmation and never undoes
 financial changes. Logout, credential replacement and owner changes clear private
 state and invalidate late results.
-The persistent top-bar **Asistente · ?** control opens that same instance without
-covering page actions. It also supplies focus recovery after route entry. Welcome
-suggestions only prepare a draft, and the welcome copy distinguishes no money
-movement from changes that require explicit saved-action approval.
+Outside home, the persistent top-bar **Asistente · ?** control opens that same
+instance without covering page actions. It also supplies focus recovery after
+route entry. Welcome suggestions only prepare a draft; changes still require
+explicit saved-action approval.
 
-Home keeps a compact, month-selectable snapshot above the conversation. It uses
-the ordinary scoped monthly summary, not model calls, so it remains available
-without AI consent or a configured model. **Resumen completo** preserves the
+Home uses the available viewport for one full-width conversation and its composer.
+A single compact monthly strip expands to reveal the month selector and financial
+snapshot. It uses the ordinary scoped monthly summary, not model calls, so it
+remains available without AI consent or a configured model. **Resumen completo** preserves the
 existing dashboard at `/dashboard`; all manual financial pages remain reachable.
 Text is the default: typed questions, streamed answers, follow-ups and history.
-History opens in a drawer instead of a permanent third column. The results canvas
-shows validated source observations and the exact approval cards, with older
-results selectable. On narrow/docked layouts, **Conversación / Resultados** switch
-the visible pane. Sources remain expandable in their original replies. Spending
-charts reuse the dashboard's exact distribution policy; widgets never render
-model-authored HTML or independently reconstruct financial totals.
+History opens in a drawer. Privacy, voice availability and deletion are under
+**Opciones del asistente** instead of separate toolbar rows. Text proposals and
+their exact approval controls stay inline with the answer. **Ver consultas** opens
+validated source observations only on request; there is no empty results column
+or conversation/results tab switcher. Closing details restores the conversation,
+focus and draft. Wide home layouts can keep those requested details beside the
+chat; narrow layouts show a closeable detail view. Spending charts reuse the
+dashboard's exact distribution policy; widgets never render model-authored HTML
+or independently reconstruct financial totals.
 
 Replies anchor at the beginning of the new answer once, not on each token/source/
 action update. Deliberate scrolling and restored history are not auto-followed;
-the explicit jump control reveals the latest content. Native reference disclosures
-start collapsed and retain expansion for that answer. Action approvals remain
-outside these optional references and visible for review. All surfaces use the
-workspace theme tokens. Model/provider names appear only in the separate processing
-consent screen before new processing. The account's saved decision replaces
-session checkboxes. Errors and normal assistant identity use product-level language.
+the centered down-arrow reveals the latest content without a text-heavy floating
+button. Activity updates use quiet text above the input; errors, money and approval
+controls retain their emphasis. Today's message timestamps show time only;
+messages from other Santiago calendar days retain their date. Source cutoffs keep
+their full timestamps. Query details remain
+separate from action approval. Proposals are visible in the originating
+text reply, not hidden behind optional references. All surfaces use the
+workspace theme tokens. Model/provider names appear in the separate processing
+consent screen and optional privacy disclosure, not the chat toolbar. The account's
+saved decision replaces session checkboxes. Errors and normal assistant identity
+use product-level language.
 
 Optional **live bidirectional WebRTC voice** is implemented but disabled by default.
 It needs separate API-only `ASSISTANT_VOICE_ENABLED=true`,
@@ -53,7 +62,8 @@ unverified live gates. Native audio turns use a server-side Realtime control
 connection and the same bounded financial tools and history leases as text, not
 transcription → text request → read-aloud. Captions support reading/history;
 the native audio item drives generation. A dedicated stage shows listening,
-querying and responding, optional captions and persistent mute/end/text controls.
+querying and responding, optional captions, **Silenciar** and **Continuar por texto**.
+Continuing by text also ends voice.
 Switching back to text preserves the draft, conversation and results. Minimize,
 navigation and hidden tabs end capture, not text history. Audio has no approval
 or execution capability. Server-run tools are not a server-enforced restriction
@@ -107,8 +117,9 @@ minimizes a docked panel; at home the financial snapshot and consent/history
 entry remain available. Refusal shows the screen again on the next open. Acceptance
 survives reload, sign-out and other devices without another checkbox. It never
 sends a question, creates a conversation or starts microphone capture by itself.
-**Ver historial sin IA** allows reading/deleting saved chats without new model
-processing; reopening returns to the consent screen while permission is absent.
+**Ver historial sin IA** and the header's **Historial** allow reading/deleting saved
+chats without new model processing; reopening returns to the consent screen while
+permission is absent.
 
 The authenticated `assistant.consent` read never inserts a record. The explicit
 `assistant.decideConsent` command accepts only policy key, expected revision and
@@ -131,12 +142,13 @@ Each new text request and voice admission checks current accepted consent on the
 server before history claims or provider work. Missing/refused/unavailable consent
 fails closed. Configuration and history/create/delete remain accessible. Ordinary
 reopening rechecks permission without recreating an already-authorized composer,
-selection or expanded references; new sends wait for that read. Failed/uncertain
+selection or opened query details; new sends wait for that read. Failed/uncertain
 saves require an explicit **Comprobar decisión guardada** read, never an automatic
 mutation replay. An older or ordinary reopening read cannot clear that uncertainty.
 
-**Privacidad → Retirar consentimiento** immediately stops local voice/text and
-invalidates deferred conversation startup, even if the save is uncertain. A failed
+**Opciones del asistente → Privacidad y consentimiento → Retirar consentimiento**
+immediately stops local voice/text and invalidates deferred conversation startup,
+even if the save is uncertain. A failed
 withdrawal leaves local processing blocked until explicit reconciliation/review.
 Withdrawal blocks new server admissions after it commits; it does not atomically
 cancel previously admitted work, erase provider disclosures or guarantee remote

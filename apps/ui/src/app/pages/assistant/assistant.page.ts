@@ -35,6 +35,7 @@ import { Icon } from "../../shared/ui/icon";
 import { AssistantCanvas } from "./canvas/assistant-canvas";
 import { AssistantConsentScreen } from "./consent/assistant-consent-screen";
 import { AssistantReply } from "./reply/assistant-reply";
+import { AssistantVoiceStage } from "./voice/assistant-voice-stage";
 import { AssistantWelcome } from "./welcome/assistant-welcome";
 
 interface LiveTurn {
@@ -56,9 +57,11 @@ interface LiveTurn {
     AssistantWelcome,
     AssistantConsentScreen,
     AssistantCanvas,
+    AssistantVoiceStage,
   ],
   templateUrl: "./assistant.page.html",
   styleUrl: "./assistant.page.css",
+  host: { "(document:pointerdown)": "dismissOptions($event)" },
   providers: [AssistantVoiceClient, AssistantConsentData],
 })
 export class AssistantPage {
@@ -68,18 +71,6 @@ export class AssistantPage {
   protected readonly consent = inject(AssistantConsentData);
   protected readonly voiceDisclosure = signal(false);
   protected readonly voiceFallback = signal("");
-  protected readonly captions = signal(false);
-  protected readonly voiceLabel = computed(() =>
-    this.voice.state() === "connecting"
-      ? "Conectando…"
-      : this.voice.state() === "querying"
-        ? "Consultando tus datos"
-        : this.voice.state() === "responding"
-          ? "Respondiendo"
-          : this.voice.state() === "muted"
-            ? "Micrófono silenciado"
-            : "Te escucho",
-  );
   private readonly rpc = inject(RpcClient);
   private readonly credentials = inject(AuthCredentials);
   private readonly stream = inject(AssistantStreamClient);
@@ -89,13 +80,22 @@ export class AssistantPage {
   private readonly sending = signal<{ scope: RpcScope } | null>(null);
   private readonly composer =
     viewChild<ElementRef<HTMLTextAreaElement>>("composer");
-  private readonly bottom = viewChild<ElementRef<HTMLElement>>("bottom");
   private readonly messages = viewChild<ElementRef<HTMLElement>>("messages");
+  private readonly historyClose =
+    viewChild<ElementRef<HTMLButtonElement>>("historyClose");
   private readonly panel = viewChild<ElementRef<HTMLElement>>("panel");
+  private readonly resultPanel =
+    viewChild<ElementRef<HTMLElement>>("resultPanel");
+  private readonly optionsMenu =
+    viewChild<ElementRef<HTMLDetailsElement>>("optionsMenu");
+  private resultOpener: HTMLElement | null = null;
+  private focusResult = false;
+  private restoreResultFocus = false;
   protected readonly follow = signal(true);
   protected readonly draft = signal("");
   protected readonly historyOnly = signal(false);
   protected readonly historyOpen = signal(false);
+  protected readonly optionsOpen = signal(false);
   protected readonly canvasOpen = signal(false);
   protected readonly resultSelection = signal<string | undefined>(undefined);
   private readonly consentReview = signal(false);
@@ -293,7 +293,11 @@ export class AssistantPage {
         if (scope !== previous || previousId !== undefined) this.draft.set("");
         this.resultSelection.set(undefined);
         this.historyOpen.set(false);
+        this.optionsOpen.set(false);
         this.canvasOpen.set(false);
+        this.resultOpener = null;
+        this.focusResult = false;
+        this.restoreResultFocus = false;
         this.confirmDelete.set(false);
       }
       if (scope !== previous) {
@@ -343,15 +347,46 @@ export class AssistantPage {
       anchored = live.turn.id;
       // Anchor once, never follow token/source/action updates or resize.
       if (this.follow()) {
-        this.messages()
-          ?.nativeElement.querySelector(
-            `[data-turn="${live.turn.id}"] .assistant-message`,
-          )
-          ?.scrollIntoView?.({ block: "start", behavior: "instant" });
+        const messages = this.messages()?.nativeElement;
+        const answer = messages?.querySelector<HTMLElement>(
+          `[data-turn="${live.turn.id}"] .assistant-message`,
+        );
+        // scrollIntoView also scrolls clipped ancestors, moving the composer.
+        if (messages && answer)
+          messages.scrollTop +=
+            answer.getBoundingClientRect().top -
+            messages.getBoundingClientRect().top;
         this.follow.set(false);
       }
     });
     let wasOpen = false;
+    afterRenderEffect(() => {
+      if (this.historyOpen() && this.workspace.opened())
+        this.historyClose()?.nativeElement.focus();
+    });
+    afterRenderEffect(() => {
+      const open = this.canvasOpen(),
+        panel = this.resultPanel();
+      if (open && panel && this.focusResult) {
+        this.focusResult = false;
+        untracked(() => panel.nativeElement.focus());
+      } else if (!open && this.restoreResultFocus) {
+        this.restoreResultFocus = false;
+        untracked(() => {
+          const fallback =
+            this.voice.state() === "off"
+              ? this.composer()?.nativeElement
+              : this.panel()?.nativeElement.querySelector<HTMLButtonElement>(
+                  ".voice-session-controls button:not([disabled])",
+                );
+          (this.resultOpener?.isConnected
+            ? this.resultOpener
+            : fallback
+          )?.focus();
+          this.resultOpener = null;
+        });
+      }
+    });
     afterRenderEffect(() => {
       this.workspace.focusRequest();
       this.configuration.hasValue();
@@ -367,9 +402,22 @@ export class AssistantPage {
             (heading ?? this.panel()?.nativeElement)?.focus();
             return;
           }
+          if (this.historyOpen()) {
+            this.historyClose()?.nativeElement.focus();
+            return;
+          }
           const composer = this.composer()?.nativeElement;
-          if (composer && !composer.disabled) composer.focus();
-          else this.panel()?.nativeElement.focus();
+          if (
+            composer &&
+            !composer.disabled &&
+            !composer.closest("[hidden]") &&
+            getComputedStyle(composer).visibility !== "hidden"
+          )
+            composer.focus();
+          else
+            (
+              this.resultPanel()?.nativeElement ?? this.panel()?.nativeElement
+            )?.focus();
         });
       else if (wasOpen)
         untracked(() => this.workspace.restoreFocus(this.returnFocus()));
@@ -402,6 +450,9 @@ export class AssistantPage {
   protected newConversation() {
     if (!this.busy()) {
       this.endVoice();
+      this.historyOpen.set(false);
+      this.optionsOpen.set(false);
+      this.canvasOpen.set(false);
       this.liveState.set(null);
       this.confirmDelete.set(false);
       this.draft.set("");
@@ -427,9 +478,65 @@ export class AssistantPage {
       ?.focus();
   }
 
-  protected showResult(id: string) {
+  protected toggleHistory() {
+    this.optionsOpen.set(false);
+    this.canvasOpen.set(false);
+    if (this.showConsent()) {
+      this.viewHistory();
+      return;
+    }
+    this.historyOpen.update((open) => !open);
+  }
+
+  protected toggleOptions(event: Event) {
+    if (!(event.target instanceof HTMLDetailsElement)) return;
+    this.optionsOpen.set(event.target.open);
+    if (event.target.open) {
+      this.historyOpen.set(false);
+      this.canvasOpen.set(false);
+    }
+  }
+
+  protected dismissOptions(event: Event) {
+    if (
+      this.optionsOpen() &&
+      event.target instanceof Node &&
+      !this.optionsMenu()?.nativeElement.contains(event.target)
+    )
+      this.optionsOpen.set(false);
+  }
+
+  protected showResult(id: string, focus = true) {
+    this.resultOpener =
+      focus && document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    this.focusResult = focus;
+    this.restoreResultFocus = false;
+    this.historyOpen.set(false);
+    this.optionsOpen.set(false);
     this.resultSelection.set(id);
     this.canvasOpen.set(true);
+  }
+
+  protected closeResults() {
+    this.focusResult = false;
+    this.restoreResultFocus = true;
+    this.canvasOpen.set(false);
+  }
+
+  protected escape(event: Event) {
+    if (this.optionsOpen()) {
+      this.optionsOpen.set(false);
+      this.panel()
+        ?.nativeElement.querySelector<HTMLElement>(
+          ".assistant-options > summary",
+        )
+        ?.focus();
+    } else if (this.historyOpen()) this.closeHistory();
+    else if (this.canvasOpen()) this.closeResults();
+    else if (!this.workspace.home()) this.workspace.minimize();
+    event.stopPropagation();
   }
 
   private cancelProcessing() {
@@ -585,7 +692,7 @@ export class AssistantPage {
           ],
         },
       });
-      this.showResult(live.turn.id);
+      this.showResult(live.turn.id, false);
     }
     if (event.type === "status")
       this.liveState.set({ ...live, status: event.text });
@@ -668,7 +775,12 @@ export class AssistantPage {
       ...(panel?.querySelectorAll<HTMLElement>(
         "button:not([disabled]),a[href],input:not([disabled]),textarea:not([disabled]),select:not([disabled]),summary,[tabindex='0']",
       ) ?? []),
-    ].filter((element) => element.getClientRects().length > 0);
+    ].filter(
+      (element) =>
+        element.getClientRects().length > 0 &&
+        getComputedStyle(element).visibility !== "hidden" &&
+        !element.closest("[inert]"),
+    );
     const target = event.shiftKey ? elements.at(-1) : elements[0];
     const boundary = event.shiftKey ? elements[0] : elements.at(-1);
     if (
@@ -691,7 +803,8 @@ export class AssistantPage {
 
   protected jump() {
     this.follow.set(true);
-    this.bottom()?.nativeElement.scrollIntoView?.({ block: "end" });
+    const messages = this.messages()?.nativeElement;
+    if (messages) messages.scrollTop = messages.scrollHeight;
   }
 
   protected stop() {

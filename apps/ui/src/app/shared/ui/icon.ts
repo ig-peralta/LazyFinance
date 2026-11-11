@@ -17,6 +17,7 @@ const paths = {
   close: "M6 6l12 12 M6 18 18 6",
   arrow: "M4 12h16 M14 6l6 6-6 6",
   plus: "M12 5v14 M5 12h14",
+  more: "M5 12h.01 M12 12h.01 M19 12h.01",
   edit: "M16 3l5 5 M4 15L16 3l5 5L9 20l-6 1 1-6z",
   archive: "M3 4h18v4H3z M5 8v12h14V8 M10 12h4",
   check: "M5 12l4 4L19 6",

@@ -112,18 +112,23 @@ a retry click. Scoped styles inherit text/theme tokens without changing the shel
 See [OAuth browser/site configuration and compatibility](../../docs/technical/mcp-authorization.md).
 
 The assistant-first home at `/asistente` keeps an ordinary month-selectable financial
-snapshot above text chat and a results canvas, without requiring AI consent/model
-calls for the snapshot. `/dashboard` preserves the complete dashboard. The shell
-provides one persistent theme-token-aligned assistant, inline at home and docked
+strip above one full-width chat, without requiring AI consent/model calls for the
+snapshot. The strip expands for detailed figures and month selection; the default
+home keeps the composer on screen and lets messages use the available viewport.
+There is no hero, empty results pane or conversation/results tab switcher.
+Proposals stay inline, while **Ver consultas** opens source details on request.
+Privacy, availability and deletion are grouped under one options disclosure.
+`/dashboard` preserves the complete dashboard. The shell provides one persistent
+theme-token-aligned assistant, inline at home and docked
 beside other pages. Text remains the default; history opens in a drawer. Native
 voice uses a distinct stage and server-run tools, not transcript-to-text/read-aloud.
 Switching back to text stops capture and retains the draft, conversation and results.
 Confirmed receipts enter both modes' next server context; verbal agreement is never
 approval. See the [assistant guide](../../docs/technical/financial-assistant.md).
-**Asistente · ?** in the top bar (accessible name **Abrir asistente · ?**) exposes
-the actual keyboard shortcut without a floating button covering page actions. It
-restores/focuses that instance without resending, respects editable fields and real modals, and is
-bound only within the accepted authenticated shell lifetime.
+Outside home, **Asistente · ?** in the top bar (accessible name **Abrir asistente · ?**)
+exposes the actual keyboard shortcut without a floating button covering page
+actions. It restores/focuses that instance without resending, respects editable
+fields and real modals, and is bound only within the accepted authenticated shell lifetime.
 Minimize returns focus to the connected invoker, or to the same persistent header
 control if navigation removed or hid that invoker. Deferred loading never replaces it.
 Loading/error cancellation also restores the control before the assistant code is ready.
@@ -133,10 +138,14 @@ in-memory text state without resend. Minimize retains it, while Close panel clea
 the draft/selection and stops work without deleting saved history. Separate Delete
 still requires confirmation. Owner/credential replacement clears private state.
 New answers anchor once at their beginning; later tokens never force scrolling.
-Native references start collapsed, retain per-answer expansion and keep approval
-cards separate. Outside home, the desktop dock becomes modal with inert background
+A small centered down arrow returns to the latest message. Quiet activity text
+sits above the input rather than in a full-width status row.
+Requested source details retain their observation cutoffs and keep financial
+approval inline with text replies, never duplicated in a source-only pane.
+Outside home, the desktop dock becomes modal with inert background
 and focus containment on narrow screens; the inline home remains ordinary page
-content. Escape dismisses the history drawer or an outside-home dock.
+content. Escape dismisses options, history or requested details before minimizing
+an outside-home dock.
 Processing consent is saved on the account through authenticated RPC, not browser
 storage. New/refused/outdated consent opens a dedicated screen; accepted consent
 survives reload/sign-out/devices. **Ahora no** saves refusal and minimizes a dock;
@@ -144,14 +153,15 @@ the home snapshot and consent/history entry remain available without processing.
 **Ver historial sin IA** keeps saved chats readable/deletable without new processing.
 Reopening checks permission without remounting an accepted chat. Failed/uncertain
 saves require an explicit state check, never automatic mutation replay.
-**Privacidad → Retirar consentimiento** immediately stops local voice/text and
-blocks new processing; it does not erase previous disclosures or guarantee remote
+**Opciones del asistente → Privacidad y consentimiento → Retirar consentimiento**
+immediately stops local voice/text and blocks new processing; it does not erase
+previous disclosures or guarantee remote
 voice termination on other devices. Consent and financial approval remain separate.
 Optional live WebRTC voice is disabled by default and requires separate start/privacy
 confirmation. After saved processing acceptance, **Conversar por voz** opens its
 disclosure without a repeated checkbox. Only **Entiendo, iniciar micrófono** can
 request capture; accepting account consent, opening or canceling requests none.
-Loading, failed and disabled availability are shown beside voice controls, with
+Loading, failed and disabled availability are shown under assistant options, with
 **Volver a comprobar voz** for an explicit read after configuration changes.
 Minimize/navigation/hidden tabs end capture. See the
 [voice contract and unverified live gates](../../docs/technical/assistant-live-voice.md).

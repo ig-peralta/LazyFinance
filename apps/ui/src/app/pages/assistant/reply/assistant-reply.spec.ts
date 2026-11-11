@@ -15,7 +15,43 @@ function setup() {
 describe("conversational replies with separate financial reference cards", () => {
   afterEach(() => {
     TestBed.resetTestingModule();
+    vi.useRealTimers();
     vi.restoreAllMocks();
+  });
+
+  it.each([
+    ["2026-11-11T18:00:00.000Z", "2026-11-11T15:00:00.000Z"],
+    ["2026-11-12T02:30:00.000Z", "2026-11-11T15:00:00.000Z"],
+  ])("shows only the time for today's messages in Santiago at %s", (now, createdAt) => {
+    vi.setSystemTime(new Date(now));
+    const f = setup();
+    f.fixture.componentRef.setInput("turn", { ...assistantReply, createdAt });
+    f.fixture.detectChanges();
+    const timestamp = f.root.querySelector(".reply-heading time");
+    expect(timestamp?.getAttribute("datetime")).toBe(createdAt);
+    expect(timestamp?.textContent).toBe(
+      new Intl.DateTimeFormat("es-CL", {
+        timeZone: "America/Santiago",
+        timeStyle: "short",
+      }).format(new Date(createdAt)),
+    );
+  });
+
+  it.each([
+    ["2026-11-11T18:00:00.000Z", "2026-11-09T15:00:00.000Z"],
+    ["2026-11-12T04:00:00.000Z", "2026-11-12T02:30:00.000Z"],
+  ])("keeps the date and time for messages outside today's Santiago calendar day at %s", (now, createdAt) => {
+    vi.setSystemTime(new Date(now));
+    const f = setup();
+    f.fixture.componentRef.setInput("turn", { ...assistantReply, createdAt });
+    f.fixture.detectChanges();
+    expect(f.root.querySelector(".reply-heading time")?.textContent).toBe(
+      new Intl.DateTimeFormat("es-CL", {
+        timeZone: "America/Santiago",
+        dateStyle: "short",
+        timeStyle: "short",
+      }).format(new Date(createdAt)),
+    );
   });
 
   it("replaces technical codes and raw JSON with formatted account data and a section link for saved replies", () => {

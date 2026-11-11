@@ -24,6 +24,10 @@ describe("assistant-first home without an AI dependency", () => {
     await fixture.whenStable();
     fixture.detectChanges();
     const root: HTMLElement = fixture.nativeElement;
+    expect(root.querySelector<HTMLDetailsElement>(".home-overview")?.open).toBe(
+      false,
+    );
+    expect(root.querySelector("h1")).toBeNull();
     expect(root.querySelectorAll(".financial-snapshot a")).toHaveLength(3);
     expect(root.textContent).toContain("$200.000");
     expect(root.textContent).toContain("no es dinero disponible");
@@ -33,6 +37,38 @@ describe("assistant-first home without an AI dependency", () => {
     expect(f.callsTo("assistant.configuration")).toHaveLength(0);
     expect(f.callsTo("assistant.createConversation")).toHaveLength(0);
     expect(f.callsTo("assistant.consent")).toHaveLength(0);
+  });
+
+  it("closes the optional monthly details on Escape or an outside pointer without a new read", async () => {
+    const f = setupRpc(
+      { "summaries.monthly": () => emptySummary },
+      "browser",
+      true,
+    );
+    const fixture = TestBed.createComponent(AssistantEntry);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement;
+    document.body.append(root);
+    try {
+      const details = root.querySelector<HTMLDetailsElement>(".home-overview");
+      const summary = details?.querySelector("summary");
+      if (!details || !summary) throw new Error("Missing monthly overview");
+      details.open = true;
+      summary.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      );
+      expect(details.open).toBe(false);
+      expect(document.activeElement).toBe(summary);
+      details.open = true;
+      document.body.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+      expect(details.open).toBe(false);
+      expect(f.callsTo("summaries.monthly")).toHaveLength(1);
+      expect(f.callsTo("assistant.createConversation")).toHaveLength(0);
+    } finally {
+      root.remove();
+    }
   });
 
   it("changes the snapshot month through a normal scoped summary read", async () => {

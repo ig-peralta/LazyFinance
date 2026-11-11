@@ -1,0 +1,75 @@
+:host {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.voice-stage {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  text-align: center;
+  padding: 24px 20px;
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  gap: 16px;
+}
+h3 {
+  font-size: 1.35rem;
+  font-weight: 500;
+  margin: 0;
+}
+p {
+  color: var(--muted);
+  max-width: 34ch;
+  font-size: var(--text-small);
+  line-height: 1.7;
+  margin: 0;
+}
+button:focus-visible {
+  outline: none;
+  background: var(--accent-soft);
+}
+.voice-wave {
+  display: flex;
+  height: 64px;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent);
+}
+.voice-wave i {
+  width: 4px;
+  border-radius: 4px;
+  background: currentColor;
+  height: 18px;
+  animation: voice-wave 1.2s ease-in-out infinite alternate;
+}
+.voice-wave i:nth-child(2n) {
+  height: 36px;
+  animation-delay: -0.4s;
+}
+.voice-wave i:nth-child(3n) {
+  height: 52px;
+  animation-delay: -0.8s;
+}
+.voice-wave.paused i {
+  animation: none;
+  height: 8px;
+  color: var(--muted);
+}
+.voice-captions {
+  max-height: 160px;
+  overflow: auto;
+  width: 100%;
+}
+@keyframes voice-wave {
+  to {
+    transform: scaleY(0.35);
+    opacity: 0.5;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .voice-wave i {
+    animation: none;
+  }
+}

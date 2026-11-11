@@ -2,111 +2,58 @@
   display: block;
 }
 .chat-welcome {
-  max-width: 600px;
-  margin: 12px auto 20px;
+  max-width: 620px;
+  margin: clamp(24px, 9dvh, 100px) auto 24px;
+  text-align: center;
 }
-.welcome-kicker {
-  font-size: var(--text-control);
-  color: var(--accent);
-}
-.chat-welcome h2 {
-  font-size: clamp(1.4rem, 2.5vw, 1.8rem);
-  line-height: 1.25;
-  letter-spacing: -0.035em;
-  font-weight: 600;
+h2 {
+  font-size: clamp(1.35rem, 2.5vw, 1.8rem);
+  font-weight: 500;
+  line-height: 1.4;
+  margin: 0 0 24px;
   color: var(--ink);
-  margin: 8px 0 12px;
-}
-.chat-welcome > p {
-  color: var(--muted);
-  font-size: var(--text-control);
-  line-height: 1.6;
-  max-width: 490px;
 }
 .suggestion-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-top: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
 }
 .suggestion {
-  position: relative;
-  display: grid;
-  grid-template-columns: 20px minmax(0, 1fr) 14px;
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  text-align: left;
-  padding: 14px;
-  min-height: 52px;
-  background: var(--raised);
+  gap: 8px;
+  min-height: 44px;
+  padding: 9px 12px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  color: var(--ink);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
   cursor: pointer;
-  transition:
-    background 0.15s,
-    border-color 0.15s;
 }
-.suggestion:hover {
+.suggestion app-icon {
+  width: 16px;
+  height: 16px;
+}
+.suggestion strong {
+  font-size: var(--text-small);
+  font-weight: 400;
+}
+.suggestion:hover,
+.suggestion:focus-visible {
+  outline: none;
+  color: var(--ink);
   background: var(--accent-soft);
   border-color: var(--accent-line);
 }
-.suggestion > app-icon {
-  color: var(--accent);
-  width: 18px;
-  height: 18px;
-}
-.suggestion strong {
-  font-size: var(--text-control);
-  font-weight: 500;
-  color: var(--ink);
-}
-.suggestion .suggestion-arrow {
-  width: 13px;
-  height: 13px;
-  color: var(--accent);
-}
-.chat-welcome > .welcome-note {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  font-size: var(--text-small);
-  color: var(--muted);
+.welcome-note {
   margin-top: 20px;
+  color: var(--muted);
+  font-size: var(--text-caption);
 }
-.welcome-note app-icon {
-  width: 13px;
-  height: 13px;
-}
-button:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 4px;
-}
-button:disabled {
-  cursor: not-allowed;
-}
-@media (max-width: 540px) {
+@media (max-height: 650px) {
   .chat-welcome {
-    margin: 10px auto 20px;
-  }
-  .suggestion-grid {
-    gap: 8px;
-  }
-  .suggestion {
-    grid-template-columns: 18px minmax(0, 1fr);
-    gap: 8px;
-    padding: 15px 11px;
-  }
-  .suggestion > app-icon {
-    width: 15px;
-    height: 15px;
-  }
-  .suggestion .suggestion-arrow {
-    display: none;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .suggestion {
-    transition: none;
+    margin-top: 16px;
   }
 }

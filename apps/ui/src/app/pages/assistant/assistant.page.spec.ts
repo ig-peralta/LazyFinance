@@ -9,6 +9,11 @@ import type {
 } from "@lazyfinance/contracts";
 import { BehaviorSubject } from "rxjs";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  assistantAction,
+  assistantReply,
+  assistantSource,
+} from "../../../testing/assistant";
 import { deferred } from "../../../testing/deferred";
 import {
   assistantConsent,
@@ -197,6 +202,183 @@ function compose(f: ReturnType<typeof setup>, text = "¿Mis saldos?") {
 }
 
 describe("first-party chat page lifetimes and confirmed history", () => {
+  it("keeps proposals inline and opens source details only on request without duplicating approval controls", async () => {
+    let action = assistantAction();
+    const saved = () => ({
+      ...chat,
+      turns: [{ ...assistantReply, actions: [action] }],
+      turnCount: 1,
+    });
+    const f = setup({
+      "assistant.conversation": saved,
+      "financialActions.approve": () => {
+        action = {
+          ...action,
+          status: "applied",
+          results: [
+            {
+              id: action.id,
+              title: "Supermercado",
+              path: "/etiquetas",
+              outcome: "created",
+            },
+          ],
+        };
+        return action;
+      },
+    });
+    document.body.append(f.root);
+    try {
+      await render(f.fixture);
+      const composer = compose(f, "Un borrador que no debe perderse");
+      expect(f.root.querySelector("assistant-canvas")).toBeNull();
+      expect(f.root.querySelector(".workspace-mode-tabs")).toBeNull();
+      expect(
+        f.root.querySelectorAll("assistant-reply assistant-action-card"),
+      ).toHaveLength(1);
+      const details = button(f.root, "Ver consultas · 1 ↗");
+      details.focus();
+      details.click();
+      await render(f.fixture);
+      expect(
+        f.root.querySelector(".chat-details assistant-reference"),
+      ).not.toBeNull();
+      expect(
+        f.root.querySelector(".chat-details assistant-action-card"),
+      ).toBeNull();
+      button(f.root, "Cerrar detalles").click();
+      await render(f.fixture);
+      expect(document.activeElement).toBe(details);
+      expect(composer.value).toBe("Un borrador que no debe perderse");
+      button(f.root, "Historial").click();
+      await render(f.fixture);
+      expect(f.root.querySelector(".chat-surface")?.hasAttribute("inert")).toBe(
+        true,
+      );
+      expect(document.activeElement).toBe(button(f.root, "Cerrar historial"));
+      button(f.root, "Cerrar historial").click();
+      await render(f.fixture);
+      expect(f.root.querySelector(".chat-surface")?.hasAttribute("inert")).toBe(
+        false,
+      );
+      expect(document.activeElement).toBe(button(f.root, "Historial"));
+      expect(composer.value).toBe("Un borrador que no debe perderse");
+      button(f.root, "Guardar etiqueta").click();
+      await render(f.fixture);
+      expect(f.callsTo("financialActions.approve")).toHaveLength(1);
+      expect(f.root.querySelector(".action-status")?.textContent).toContain(
+        "Cambio confirmado",
+      );
+      expect(f.stream).not.toHaveBeenCalled();
+    } finally {
+      f.root.remove();
+    }
+  });
+
+  it("keeps native voice proposals reviewable, then restores the same saved proposal inline on text handoff", async () => {
+    const f = setup(
+      { "assistant.configuration": () => externalConfiguration },
+      chat.id,
+      true,
+    );
+    const voice = f.fixture.debugElement.injector.get(AssistantVoiceClient);
+    let receive: Parameters<AssistantVoiceClient["start"]>[2] | undefined;
+    vi.spyOn(voice, "start").mockImplementation(
+      async (_owner, _id, handler) => {
+        receive = handler;
+        voice.state.set("listening");
+      },
+    );
+    await render(f.fixture);
+    compose(f, "Mi borrador");
+    button(f.root, "Conversar por voz").click();
+    await render(f.fixture);
+    button(f.root, "Entiendo, iniciar micrófono").click();
+    await render(f.fixture);
+    const pending = {
+      ...assistantReply,
+      question: "Consulta por voz",
+      text: "",
+      sources: [],
+      status: "pending" as const,
+    };
+    const action = assistantAction();
+    receive?.({ type: "turn", turn: pending });
+    receive?.({ type: "source", source: assistantSource() });
+    await render(f.fixture);
+    expect(f.root.querySelector("assistant-canvas")).toBeNull();
+    button(f.root, "Ver consultas · 1 ↗").click();
+    await render(f.fixture);
+    expect(
+      f.root.querySelector(".chat-details assistant-reference"),
+    ).not.toBeNull();
+    button(f.root, "Cerrar detalles").click();
+    await render(f.fixture);
+    receive?.({ type: "action", action });
+    await render(f.fixture);
+    expect(
+      f.root.querySelector(".chat-details assistant-action-card"),
+    ).not.toBeNull();
+    expect(button(f.root, "Guardar etiqueta").disabled).toBe(true);
+    receive?.({
+      type: "done",
+      turn: {
+        ...pending,
+        status: "complete",
+        text: "Revisa la propuesta antes de aprobar.",
+        sources: [assistantSource()],
+        actions: [action],
+        voice: { question: "Prepara una etiqueta" },
+      },
+    });
+    await render(f.fixture);
+    expect(button(f.root, "Guardar etiqueta").disabled).toBe(false);
+    button(f.root, "Continuar por texto").click();
+    await render(f.fixture);
+    expect(f.root.querySelector(".chat-details")).toBeNull();
+    expect(
+      f.root.querySelectorAll("assistant-reply assistant-action-card"),
+    ).toHaveLength(1);
+    expect(f.root.querySelector("textarea")?.value).toBe("Mi borrador");
+    expect(f.callsTo("financialActions.approve")).toHaveLength(0);
+    expect(f.stream).not.toHaveBeenCalled();
+  });
+
+  it("dismisses assistant options on Escape or an outside pointer without clearing the draft or withdrawing consent", async () => {
+    const f = setup({ "assistant.configuration": () => externalConfiguration });
+    document.body.append(f.root);
+    try {
+      await render(f.fixture);
+      const composer = compose(f, "Una pregunta sin enviar");
+      const options =
+        f.root.querySelector<HTMLDetailsElement>(".assistant-options");
+      const trigger = options?.querySelector("summary");
+      if (!options || !trigger) throw new Error("Missing assistant options");
+      options.open = true;
+      options.dispatchEvent(new Event("toggle"));
+      await render(f.fixture);
+      trigger.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      );
+      await render(f.fixture);
+      expect(options.open).toBe(false);
+      expect(document.activeElement).toBe(trigger);
+
+      options.open = true;
+      options.dispatchEvent(new Event("toggle"));
+      await render(f.fixture);
+      composer.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+      await render(f.fixture);
+      expect(options.open).toBe(false);
+      expect(composer.value).toBe("Una pregunta sin enviar");
+      expect(f.callsTo("assistant.decideConsent")).toHaveLength(0);
+      expect(f.stream).not.toHaveBeenCalled();
+      expect(f.microphone).not.toHaveBeenCalled();
+    } finally {
+      f.root.remove();
+    }
+  });
+
   it("releases local busy state after native transport failure and allows explicit history reconciliation without replay", async () => {
     let saved: AssistantTurn[] = [];
     const f = setup(
@@ -860,7 +1042,7 @@ describe("first-party chat page lifetimes and confirmed history", () => {
     expect(f.microphone).not.toHaveBeenCalled();
   });
 
-  it("preserves the composer, focus, selected chat and expanded references across accepted reopening checks", async () => {
+  it("preserves the composer, selected chat and opened query details across accepted reopening checks", async () => {
     const rechecked = deferred<AssistantConsentState>();
     let reads = 0;
     const withReferences: AssistantConversation = {
@@ -901,10 +1083,10 @@ describe("first-party chat page lifetimes and confirmed history", () => {
     document.body.append(f.root);
     await render(f.fixture);
     const composer = compose(f, "Borrador conservado");
-    const references =
-      f.root.querySelector<HTMLDetailsElement>(".reply-sources");
+    button(f.root, "Ver consultas · 1 ↗").click();
+    await render(f.fixture);
+    const references = f.root.querySelector<HTMLElement>(".chat-details");
     if (!references) throw new Error("Missing saved references");
-    references.open = true;
     const selected = f.workspace.selection();
     f.workspace.minimize();
     await render(f.fixture);
@@ -915,16 +1097,16 @@ describe("first-party chat page lifetimes and confirmed history", () => {
     );
     expect(f.root.querySelector("assistant-consent-screen")).toBeNull();
     expect(f.root.querySelector("textarea")).toBe(composer);
-    expect(f.root.querySelector(".reply-sources")).toBe(references);
-    expect(references.open).toBe(true);
+    expect(f.root.querySelector(".chat-details")).toBe(references);
+    expect(references.querySelector("assistant-reference")).not.toBeNull();
     expect(composer.value).toBe("Borrador conservado");
     expect(button(f.root, "Enviar pregunta").disabled).toBe(true);
     rechecked.resolve(assistantConsent);
     await render(f.fixture);
     expect(f.workspace.selection()).toBe(selected);
     expect(f.root.querySelector("textarea")).toBe(composer);
-    expect(document.activeElement).toBe(composer);
-    expect(references.open).toBe(true);
+    expect(document.activeElement).toBe(references);
+    expect(f.root.querySelector(".chat-details")).toBe(references);
     expect(button(f.root, "Enviar pregunta").disabled).toBe(false);
     expect(f.stream).not.toHaveBeenCalled();
     f.root.remove();
@@ -968,7 +1150,10 @@ describe("first-party chat page lifetimes and confirmed history", () => {
     expect(f.stream).toHaveBeenCalledOnce();
   });
 
-  it("keeps history and confirmed chat deletion available after refusal without any AI request", async () => {
+  it.each([
+    "Ver historial sin IA",
+    "Historial",
+  ])("keeps history and confirmed chat deletion available through %s after refusal without any AI request", async (entry) => {
     const f = setup(
       { "assistant.configuration": () => externalConfiguration },
       chat.id,
@@ -977,7 +1162,7 @@ describe("first-party chat page lifetimes and confirmed history", () => {
       { ...assistantConsent, decision: "refused" },
     );
     await render(f.fixture);
-    button(f.root, "Ver historial sin IA").click();
+    button(f.root, entry).click();
     await render(f.fixture);
     expect(f.root.querySelector("textarea")).toBeNull();
     expect(f.root.querySelector(".voice-controls")).toBeNull();
@@ -1120,7 +1305,7 @@ describe("first-party chat page lifetimes and confirmed history", () => {
     expect(f.callsTo("assistant.decideConsent")).toHaveLength(0);
   });
 
-  it("anchors a new answer once and never follows deltas or source updates", async () => {
+  it("scrolls only the message pane once per answer and never follows deltas or source updates", async () => {
     const finish = deferred<void>();
     const f = setup();
     let receive: ((event: AssistantEvent) => void) | undefined;
@@ -1132,24 +1317,58 @@ describe("first-party chat page lifetimes and confirmed history", () => {
       },
     );
     await render(f.fixture);
-    const scroll = vi.fn();
-    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
-      configurable: true,
-      value: scroll,
+    const messages = f.root.querySelector<HTMLElement>(".chat-messages");
+    if (!messages) throw new Error("Missing message scroller");
+    let scrollTop = 40;
+    const scroll = vi.fn((value: number) => {
+      scrollTop = value;
     });
+    Object.defineProperty(messages, "scrollTop", {
+      configurable: true,
+      get: () => scrollTop,
+      set: scroll,
+    });
+    vi.spyOn(messages, "getBoundingClientRect").mockReturnValue(
+      new DOMRect(0, 100, 400, 400),
+    );
     compose(f);
     button(f.root, "Enviar pregunta").click();
     await render(f.fixture);
+    const answer = messages.querySelector<HTMLElement>(".assistant-message");
+    if (!answer) throw new Error("Missing streamed answer");
+    vi.spyOn(answer, "getBoundingClientRect").mockReturnValue(
+      new DOMRect(0, 300, 400, 80),
+    );
     receive?.({ type: "delta", text: "Inicio" });
     await render(f.fixture);
     expect(scroll).toHaveBeenCalledOnce();
+    expect(scroll).toHaveBeenCalledWith(240);
+    expect(f.root.querySelector(".chat-surface")?.scrollTop).toBe(0);
+    expect(f.root.querySelector(".assistant")?.scrollTop).toBe(0);
     receive?.({ type: "delta", text: " Continuación extensa" });
+    receive?.({ type: "source", source: assistantSource() });
     await render(f.fixture);
     f.workspace.minimize();
     f.workspace.open();
     await render(f.fixture);
     expect(scroll).toHaveBeenCalledOnce();
-    expect(f.root.textContent).toContain("Ir al último mensaje");
+    const jump = button(f.root, "Ir al último mensaje");
+    expect(jump.textContent?.trim()).toBe("");
+    expect(jump.querySelector("app-icon")).not.toBeNull();
+    expect(
+      f.root
+        .querySelector(".chat-composer .chat-status")
+        ?.getAttribute("aria-live"),
+    ).toBe("polite");
+    Object.defineProperty(messages, "scrollHeight", {
+      configurable: true,
+      value: 1200,
+    });
+    jump.click();
+    await render(f.fixture);
+    expect(scroll).toHaveBeenCalledTimes(2);
+    expect(scroll).toHaveBeenLastCalledWith(1200);
+    expect(f.root.querySelector(".chat-surface")?.scrollTop).toBe(0);
     finish.resolve();
     await render(f.fixture);
   });

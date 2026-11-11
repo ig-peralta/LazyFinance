@@ -262,15 +262,21 @@ Setup destinations use only the fixed `from=onboarding` return to `/comenzar`.
 ## Financial assistant lifetime
 
 The shell mounts `AssistantPage` once on first open, outside the route outlet.
-Its persistent top-bar control remains mounted before and after deferred loading;
-there is no passive floating launcher over financial actions. The shell passes
-that element as the focus-return fallback when the original invoker is unavailable.
+Its persistent top-bar control remains mounted before and after deferred loading,
+and is hidden on home; there is no passive floating launcher over financial actions.
+The shell passes that element as the focus-return fallback when the original
+invoker is unavailable.
 Before deferred code mounts, the shell owns loading/error cancellation focus and
 returns it to that control after removing background inertness.
 `AssistantWorkspace.open()/minimize()/toggle()` restores/focuses that same instance
 without sending or reloading a turn. `/asistente` is an entry/deep-link component,
 not a second chat host. It owns only the ordinary scoped snapshot above the
 inline conversation; summary loading is independent of consent/model availability.
+The summary is a compact disclosure rather than a hero/card grid. The home shell
+uses the available viewport height, with scrolling owned by the message area and
+the composer kept on screen. No permanent result column or view tabs reduce that
+default chat area. The ordinary workspace footer and redundant home launcher do
+not occupy the conversation viewport.
 The same instance docks beside other pages. Minimize keeps the text draft/selection/generation in memory;
 Close panel clears them and stops generation without deleting server history.
 Full reload discards private browser state and reads saved history through the API.
@@ -278,7 +284,7 @@ Owner/credential changes clear private state; no chat cache/storage is introduce
 The panel owns `AssistantConsentData`: account-scoped reads plus explicit revisioned
 decisions, never a browser-stored permission. Missing/refused/outdated decisions
 show a dedicated entry screen. Reopening checks saved consent while retaining an
-already-authorized composer, selection, focus and expanded references; new sends
+already-authorized composer, selection, focus and opened query details; new sends
 wait for that check. Confirmed acceptance opens chat but never sends or starts
 voice. Refusal minimizes a docked panel, not the home snapshot; history-only entry
 still permits owned reading/deletion.
@@ -289,8 +295,21 @@ or remote cancellation on other devices.
 The inline/docked region leaves financial navigation available. Narrow screens
 outside home use a full-screen modal with inert background and Tab containment;
 both support Escape, focus return and safe areas. First-answer anchoring occurs
-once; later streamed updates, history and native reference expansion preserve the
+once; later streamed updates, history and requested query details preserve the
 reading position. An explicit jump control is separate from automatic anchoring.
+It is an icon-only down arrow centered at the bottom of the message pane, not a
+text button in the corner. Activity text sits quietly above the input, aligned
+with the composer; its polite live announcement remains available to assistive
+technology. Progress/help/timestamp text uses a softer tone without dimming errors,
+financial amounts or approval controls.
+Message timestamps show only the time for today's Santiago calendar day; older
+messages retain date and time. Source observation and banking timestamps keep
+their full dates, so this presentation rule never hides evidence freshness.
+Both change only the message pane's scroll position, never a clipped ancestor;
+the chat surface itself is not a scroll container, so the composer stays pinned
+through pending, streamed and stopped replies.
+The history drawer focuses its close control and makes the covered chat surface
+inert until dismissed.
 
 `AssistantPage` owns configuration/history/detail resources and a credential-,
 selection- and component-bound streamed turn. Creation, deletion and duplicate-send
@@ -313,22 +332,28 @@ tools and the same saved-turn leases and approvals. Transcription never invokes
 the text stream, and completed text answers never trigger literal read-aloud.
 The optional `turn.voice.question` stores the readable input alongside the
 immutable lease question; shared history uses it for follow-ups. Partial captions
-remain in memory. Voice/text handoff stops capture and preserves the draft and
-canvas. Ending an in-flight turn reconciles history rather than replaying it.
+remain in memory. Voice/text handoff stops capture, closes the optional detail view
+and preserves the draft and saved turns. Ending an in-flight turn reconciles
+history rather than replaying it.
 See the [voice privacy/lifetime contract](assistant-live-voice.md).
 After saved processing acceptance, voice has no repeated consent checkbox. Only
-the separate explicit microphone-start control can initiate capture. Availability loading/error/disabled
-states remain visible and have a readonly retry; refresh includes that resource.
-References are separate financial cards projected from validated stored results,
+the separate explicit microphone-start control can initiate capture. Availability
+loading/error/disabled states are available in the options disclosure with a
+readonly retry; refresh includes that resource.
+References are financial cards projected from validated stored results,
 not raw JSON or model-authored markup. They retain uncertainty/cutoff disclosures,
-show at most four rows in reply previews and up to 100 in the results canvas, and use service totals rather than
-page sums. Trusted links open the relevant section or owned detail; budget evidence
-retains the revision, month and observation cutoffs. Current sources explicitly use
+show up to 100 rows in the on-demand query detail view, and use service totals
+rather than page sums. Trusted links open the relevant section or owned detail;
+budget evidence retains the revision, month and observation cutoffs. Current sources explicitly use
 null for section-level targets; all turns include their action array. Missing fields
 are not upgraded from earlier development formats. Model-generated source codes
 are hidden in rendered/copied replies; original evidence remains stored.
-Action cards are separate from prose/reference cards. They show saved fields,
-current decisions and effects; only an explicit button submits the saved ID/version.
+Action cards appear inline with text replies, without duplicating approval controls
+in source details. Native voice can reveal its proposal in that same optional
+detail surface while mute/text-handoff controls remain available. The
+presentation-only `AssistantVoiceStage` shares the page-owned voice client; it does
+not own capture. The cards show saved fields, current decisions and effects; only
+an explicit button submits the saved ID/version.
 Editing saves a new unapproved revision, and stale/expired selections require
 review. A model answer or conversational agreement cannot authorize execution.
 Component-owned scoped commands prevent duplicate clicks and suppress obsolete
@@ -337,9 +362,13 @@ explicit action-status read, never an automatic mutation retry. Confirmed outcom
 reload chat snapshots from the ledger and link to saved results. Deleting chat or
 stopping a stream does not undo financial changes or delete durable receipts.
 The next server turn receives fresh, bounded action outcomes independently of the
-recent-message window, never a browser assertion of success. Canvas selection is
-memory-only and is cleared on owner/conversation changes; ordinary source observations
-retain their query timestamp and are not silently relabelled as current data.
+recent-message window, never a browser assertion of success. Query-detail selection is
+memory-only and is cleared on owner/conversation changes; details are not mounted
+until explicitly requested or a native voice proposal needs visual review. Privacy,
+voice availability and deletion live under the single options disclosure. Closing
+details restores focus to their opener or the active text/voice control. Ordinary
+source observations retain their query timestamp and are not silently relabelled
+as current data.
 
 Model-generated HTML/links/images are inactive. The small Markdown presentation
 component prefixes its unencapsulated styles with its own host tag so sanitized

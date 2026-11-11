@@ -46,9 +46,11 @@ the UI use the readable question. Completion requires a transcript, a completed
 provider response and the shared evidence check. Missing captions, failures or
 interruption never become a confirmed answer. No audio is stored.
 
-Tools update the same results canvas used by text. Spoken replies favor one or
-two natural sentences; exact figures, dates, review states, charts and proposal
-fields remain visible. Correction/barge-in cancels the old generation and
+Tools attach observations to the shared conversation. Query details open on request;
+native voice proposals reveal their visual review cards. Spoken replies favor one
+or two natural sentences; exact figures, dates, review states, charts and proposal
+fields remain available. **Ver consultas** on the voice stage opens its latest
+observations without ending capture. Correction/barge-in cancels the old generation and
 discards late tool results without ending a healthy session. Already-started
 proposal preparation may have committed: it is retained as unapproved, never
 replayed, and an interrupted turn cannot authorize it.
@@ -75,10 +77,13 @@ evaluation remains a release gate.
 
 Text stays the default and is fully supported. Voice has a dedicated stage,
 restrained decorative waveform, optional captions and persistent **Silenciar /
-Terminar voz / Continuar por texto** controls, including while viewing results.
+Continuar por texto** controls, including while reviewing a proposal. Continuing
+by text also ends voice; there are no two buttons for the same end-and-return action.
 The waveform illustrates state, not measured microphone amplitude. Returning to
 text stops capture without clearing the draft, selected conversation or results.
-History is a drawer, not competing transcript blocks. On ending a pending turn,
+Text proposals stay inline; query details open only on request, while native voice
+reveals proposed changes for visual review. History is a drawer, not competing
+transcript blocks or a separate conversation/results mode. On ending a pending turn,
 history must confirm its outcome before another text question can be sent.
 
 Account processing consent precedes provider work. A separate explicit microphone

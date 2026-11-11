@@ -6,6 +6,7 @@
   min-width: 0;
 }
 .user-message {
+  width: fit-content;
   margin-left: auto;
   max-width: 85%;
   background: var(--accent-soft);
@@ -22,15 +23,22 @@
 .user-message p {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  font-size: 0.875rem;
+  font-size: var(--text-body);
   line-height: 1.8;
-  margin: 7px 0 0;
+  margin: 0;
+}
+.message-author:not(.sr-only) + p {
+  margin-top: 6px;
 }
 .assistant-message {
   display: flex;
   gap: 15px;
   margin-top: 28px;
   min-width: 0;
+}
+:host(:last-child) .assistant-message {
+  /* Keep a short new answer near the top without scrolling the composer. */
+  min-height: 100cqh;
 }
 .reply-avatar {
   display: grid;
@@ -62,11 +70,12 @@
   font-size: 0.8125rem;
   color: var(--ink);
 }
-.reply-heading > span {
+.reply-heading time {
   font-size: 0.75rem;
-  color: var(--muted);
+  color: color-mix(in srgb, var(--muted) 88%, var(--canvas));
 }
 .reply-incomplete {
+  font-size: 0.75rem;
   color: var(--ink);
   border: 1px solid var(--line);
   border-radius: 5px;
@@ -74,8 +83,8 @@
 }
 .reply-markdown {
   color: var(--ink);
-  font-size: 0.875rem;
-  line-height: 1.9;
+  font-size: var(--text-body);
+  line-height: 1.8;
   overflow-wrap: anywhere;
 }
 .incomplete-note {
@@ -116,6 +125,7 @@
 }
 .reply-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 16px;
   margin-top: 16px;
 }
@@ -175,7 +185,7 @@
   }
   .reply-markdown,
   .user-message p {
-    font-size: 0.875rem;
+    font-size: var(--text-body);
   }
   .user-message {
     max-width: 95%;

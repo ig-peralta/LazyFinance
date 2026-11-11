@@ -1,14 +1,11 @@
 <div class="chat-welcome">
-  <p class="welcome-kicker">Hola{{ name() ? ', ' + name() : '' }}</p>
-  <h2>¿Qué quieres entender hoy?</h2>
-  <p>Consulta tus gastos, ingresos o planes. Elige una idea para preparar tu pregunta, sin enviarla todavía.</p>
+  <h2>¿Qué revisamos{{ name() ? ', ' + name() : '' }}?</h2>
   <div class="suggestion-grid">
     @for (suggestion of suggestions; track suggestion.title) {
       <button type="button" class="suggestion" [title]="suggestion.question" [attr.aria-label]="suggestion.title + ': ' + suggestion.question" [disabled]="busy()" (click)="choose.emit(suggestion.question)">
         <app-icon [name]="suggestion.icon" /><strong>{{ suggestion.title }}</strong>
-        <app-icon class="suggestion-arrow" name="arrow" />
       </button>
     }
   </div>
-  <p class="welcome-note"><app-icon name="info" /> No muevo dinero. Solo realizo cambios con tu aprobación explícita.</p>
+  <p class="welcome-note">Los cambios siempre necesitan tu aprobación.</p>
 </div>
