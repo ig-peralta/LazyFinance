@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { SessionService } from "../../core/auth/session.service";
 import { OnboardingData } from "../../features/onboarding/onboarding.data";
 import { AppShell } from "./app-shell";
+import { WorkspacePreferences } from "./workspace-preferences";
 
 @Component({ selector: "tags-stub", template: "<h1>Etiquetas</h1>" })
 class TagsStub {}
@@ -36,7 +37,10 @@ class BankConnectionsStub {}
 class McpAccessStub {}
 
 describe("AppShell", () => {
-  afterEach(() => TestBed.resetTestingModule());
+  afterEach(() => {
+    localStorage.clear();
+    TestBed.resetTestingModule();
+  });
 
   async function setup(failLogout = false) {
     const onboardingStatus = signal<
@@ -164,6 +168,50 @@ describe("AppShell", () => {
     expect(TestBed.inject(Router).url).toBe("/presupuestos-y-metas");
   });
 
+  it("keeps compact navigation explicit, named and independent of the mobile modal at every text size", async () => {
+    const { harness, root } = await setup();
+    const preferences = TestBed.inject(WorkspacePreferences);
+    root
+      .querySelector<HTMLButtonElement>('[aria-label="Navegación compacta"]')
+      ?.click();
+    harness.detectChanges();
+    expect(
+      root
+        .querySelector(".workspace")
+        ?.classList.contains("compact-navigation"),
+    ).toBe(true);
+    for (const textSize of ["standard", "large", "largest"] as const) {
+      preferences.update({ textSize, theme: "light" });
+      harness.detectChanges();
+      expect(
+        root.querySelector(".workspace")?.getAttribute("data-text-size"),
+      ).toBe(textSize);
+      for (const link of root.querySelectorAll(
+        ".workspace-sidebar .workspace-links a",
+      )) {
+        expect(link.getAttribute("aria-label")).toBe(link.textContent?.trim());
+        expect(link.getAttribute("title")).toBe(link.textContent?.trim());
+      }
+    }
+    root
+      .querySelector<HTMLButtonElement>('[aria-controls="mobile-menu"]')
+      ?.click();
+    harness.detectChanges();
+    expect(root.querySelector<HTMLDialogElement>("#mobile-menu")?.open).toBe(
+      true,
+    );
+    expect(
+      root.querySelectorAll("#mobile-menu .workspace-links .nav-label"),
+    ).toHaveLength(5);
+    root.querySelector<HTMLButtonElement>(".drawer-close")?.click();
+    harness.detectChanges();
+    expect(root.querySelector<HTMLDialogElement>("#mobile-menu")?.open).toBe(
+      false,
+    );
+    root.querySelector<HTMLAnchorElement>(".skip-link")?.click();
+    expect(root.ownerDocument.activeElement).toBe(root.querySelector("main"));
+  });
+
   it("moves skip-link focus into content without navigating to the public landing", async () => {
     const { root } = await setup();
     const url = TestBed.inject(Router).url;
@@ -221,7 +269,7 @@ describe("AppShell", () => {
       expect([...active].map((link) => link.textContent?.trim())).toEqual([
         area,
       ]);
-      expect(active[0].getAttribute("aria-label")).toBeNull();
+      expect(active[0].getAttribute("aria-label")).toBe(area);
       const current = root.querySelectorAll(
         '.workspace-subnav a[aria-current="page"]',
       );

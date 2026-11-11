@@ -1,0 +1,246 @@
+/* Presentation tokens inherit into native dialogs and the assistant host. */
+.workspace[data-theme="light"] {
+  --p-primary-hover-color: #06583e;
+  --p-primary-active-color: #04452f;
+  --ink: #172c35;
+  --muted: #4e626c;
+  --accent: #086b4a;
+  --accent-soft: #e0f4e9;
+  --accent-line: #86bba5;
+  --line: #c4d2d8;
+  --paper: #ffffff;
+  --raised: #edf2f5;
+  --canvas: #f5f8fa;
+  --danger: #a21b3a;
+  --danger-soft: #fce8ed;
+  --warning: #784b00;
+  --warning-soft: #fff2d6;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: light) {
+  .workspace[data-theme="system"] {
+    --p-primary-hover-color: #06583e;
+    --p-primary-active-color: #04452f;
+    --ink: #172c35;
+    --muted: #4e626c;
+    --accent: #086b4a;
+    --accent-soft: #e0f4e9;
+    --accent-line: #86bba5;
+    --line: #c4d2d8;
+    --paper: #ffffff;
+    --raised: #edf2f5;
+    --canvas: #f5f8fa;
+    --danger: #a21b3a;
+    --danger-soft: #fce8ed;
+    --warning: #784b00;
+    --warning-soft: #fff2d6;
+    color-scheme: light;
+  }
+}
+.workspace {
+  --workspace-text-scale: 1;
+  --accent-contrast: #ffffff;
+}
+.workspace[data-theme="dark"] {
+  --accent-contrast: #052e22;
+}
+@media (prefers-color-scheme: dark) {
+  .workspace[data-theme="system"] {
+    --accent-contrast: #052e22;
+  }
+}
+.workspace[data-text-size="large"] {
+  --workspace-text-scale: 1.15;
+}
+.workspace[data-text-size="largest"] {
+  --workspace-text-scale: 1.3;
+}
+.workspace[data-theme] {
+  --p-primary-contrast-color: var(--accent-contrast);
+}
+html:has(.workspace[data-text-size="large"]) {
+  font-size: 115%;
+}
+html:has(.workspace[data-text-size="largest"]) {
+  font-size: 130%;
+}
+.workspace .workspace-sidebar {
+  background: var(--paper);
+}
+.workspace .metric-card.accent {
+  background: var(--accent-soft);
+}
+.workspace .metric-period {
+  color: var(--accent);
+}
+.workspace .button.primary,
+.workspace .brand-mark,
+.workspace .skip-link {
+  color: var(--accent-contrast);
+}
+.workspace[data-text-size]:not([data-text-size="standard"])
+  :where(p, small, label, legend, summary, button, input, select, textarea) {
+  font-size: calc(13px * var(--workspace-text-scale));
+}
+.workspace[data-text-size]:not([data-text-size="standard"]) h1 {
+  font-size: clamp(1.9rem, 3vw, 2.6rem);
+}
+.workspace[data-text-size]:not([data-text-size="standard"]) .record-amount {
+  font-size: calc(14px * var(--workspace-text-scale));
+}
+.workspace[data-text-size]:not([data-text-size="standard"]) .account-figure {
+  font-size: calc(24px * var(--workspace-text-scale));
+}
+.workspace[data-text-size]:not([data-text-size="standard"]) .metric-value {
+  font-size: clamp(1.7rem, 2.5vw, 2.5rem);
+}
+.workspace .page-description,
+.workspace .record-title,
+.workspace .ledger,
+.workspace .button,
+.workspace .field input,
+.workspace .field select,
+.workspace .field textarea,
+.workspace .notice,
+.workspace .detail-facts dd {
+  font-size: calc(13px * var(--workspace-text-scale));
+}
+.workspace .record-meta,
+.workspace .field-hint,
+.workspace .field small,
+.workspace .panel-subtitle,
+.workspace .metric-note,
+.workspace .detail-facts dt,
+.workspace .field > label,
+.workspace .field > span.label,
+.workspace .badge {
+  font-size: calc(12px * var(--workspace-text-scale));
+}
+.workspace .workspace-links a,
+.workspace .workspace-subnav a {
+  font-size: calc(13px * var(--workspace-text-scale));
+}
+.workspace .button[aria-pressed="true"] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.workspace-appearance {
+  position: relative;
+}
+.workspace-appearance summary {
+  cursor: pointer;
+  padding: 10px 0;
+}
+.appearance-options {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 40;
+  width: min(350px, calc(100vw - 40px));
+  max-height: 70dvh;
+  overflow: auto;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+  box-shadow: 0 12px 35px #0003;
+}
+.appearance-options fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0 0 16px;
+}
+.appearance-options legend {
+  margin-bottom: 8px;
+}
+.workspace .workspace-topbar {
+  flex-wrap: wrap;
+  gap: 8px;
+  height: auto;
+}
+.workspace .topbar-right {
+  gap: 14px;
+}
+.workspace .mobile-drawer {
+  max-height: calc(100dvh - 24px);
+  overflow: auto;
+}
+@media (min-width: 901px) and (min-height: 621px) {
+  .compact-navigation .workspace-sidebar {
+    width: 84px;
+    padding-inline: 12px;
+  }
+  .compact-navigation .workspace-body {
+    margin-left: 84px;
+  }
+  .compact-navigation .workspace-brand > span:last-child,
+  .compact-navigation .nav-caption,
+  .compact-navigation .sidebar-person,
+  .compact-navigation .workspace-sidebar .nav-dot {
+    display: none;
+  }
+  .compact-navigation .workspace-sidebar .workspace-links {
+    margin-top: 28px;
+  }
+  .compact-navigation .workspace-sidebar .workspace-links a {
+    justify-content: center;
+    position: relative;
+    padding: 14px;
+  }
+  .compact-navigation .workspace-sidebar a.nav-active::before {
+    content: "";
+    position: absolute;
+    left: -5px;
+    width: 3px;
+    height: 22px;
+    border-radius: 2px;
+    background: currentColor;
+  }
+  .compact-navigation .workspace-sidebar .nav-label {
+    position: absolute;
+    left: calc(100% + 12px);
+    width: max-content;
+    max-width: 240px;
+    padding: 8px 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--paper);
+    color: var(--ink);
+    visibility: hidden;
+  }
+  .compact-navigation .workspace-sidebar a:hover .nav-label,
+  .compact-navigation .workspace-sidebar a:focus-visible .nav-label,
+  .compact-navigation .workspace-sidebar button:hover .nav-label,
+  .compact-navigation .workspace-sidebar button:focus-visible .nav-label {
+    visibility: visible;
+  }
+  .compact-navigation .workspace-sidebar .sidebar-logout {
+    position: relative;
+    justify-content: center;
+    width: 100%;
+    min-height: 44px;
+  }
+  .compact-navigation .skip-link {
+    left: 96px;
+  }
+}
+@media (max-width: 900px), (max-height: 620px) {
+  .desktop-navigation-toggle {
+    display: none;
+  }
+  .appearance-options {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    max-height: min(70dvh, calc(100dvh - 100px));
+  }
+}
+@media (max-width: 480px) {
+  .workspace .workspace-topbar {
+    padding-block: 8px;
+  }
+  .workspace .topbar-location {
+    flex: 1 1 150px;
+  }
+}
