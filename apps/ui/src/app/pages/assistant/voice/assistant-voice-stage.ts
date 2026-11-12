@@ -34,8 +34,10 @@ export class AssistantVoiceStage {
             ? "Consultando tus datos"
             : this.voice.state() === "responding"
               ? "Respondiendo"
-              : this.voice.state() === "muted"
-                ? "Micrófono silenciado"
-                : "Te escucho",
+              : this.voice.state() === "interrupting"
+                ? "Deteniendo respuesta"
+                : this.voice.state() === "recording"
+                  ? "Te escucho"
+                  : "Listo para hablar",
   );
 }

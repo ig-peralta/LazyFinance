@@ -885,7 +885,6 @@ export class AssistantPage {
         (event) => {
           if (current()) this.receiveVoice(event);
         },
-        () => {},
         startup.signal,
       );
       if (!current() && this.voiceStartup === startup) this.endVoice();
@@ -1169,7 +1168,6 @@ export class AssistantPage {
     const owner = this.credentials.current(),
       scope = this.rpc.authenticatedScope();
     if (!owner || !scope || !this.canSend()) return;
-    this.voice.interrupt();
     const text = this.draft().trim();
     const operation = { scope };
     this.sending.set(operation);

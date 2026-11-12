@@ -57,8 +57,7 @@ const eventSchema = z.object({
 // media channel is used only for audio activity, playback gating and controls.
 const mediaEvents = new Set([
   "error",
-  "input_audio_buffer.speech_started",
-  "input_audio_buffer.speech_stopped",
+  "input_audio_buffer.committed",
   "response.created",
   "response.done",
 ]);
@@ -83,6 +82,9 @@ interface VoiceRun {
   seen: Set<string>;
   inputId?: string;
   outputId?: string;
+  pendingOutput?: { id: string; item: string };
+  awaitingResponse?: boolean;
+  interrupting?: boolean;
   responding?: boolean;
   turnId?: string;
   screenQueue: Promise<void>;
@@ -98,7 +100,13 @@ export class AssistantVoiceClient {
     `${inject(API_URL).replace(/\/$/, "")}/assistant/voice`;
   private run: VoiceRun | undefined;
   readonly state = signal<
-    "off" | "connecting" | "listening" | "querying" | "responding" | "muted"
+    | "off"
+    | "connecting"
+    | "listening"
+    | "recording"
+    | "querying"
+    | "responding"
+    | "interrupting"
   >("off");
   readonly problem = signal<VoiceProblem | null>(null);
   readonly retryAt = signal<number | null>(null);
@@ -179,7 +187,6 @@ export class AssistantVoiceClient {
     owner: VerifiedCredentials,
     conversationId: string,
     receive: (event: AssistantVoiceEvent) => void,
-    interrupt: () => void,
     startupSignal?: AbortSignal,
   ) {
     if (
@@ -264,6 +271,7 @@ export class AssistantVoiceClient {
       }
       run.microphone = microphone;
       for (const track of microphone.getAudioTracks()) {
+        track.enabled = false;
         track.addEventListener("ended", () => fail("microphone_unavailable"), {
           signal: run.controller.signal,
         });
@@ -312,36 +320,58 @@ export class AssistantVoiceClient {
             event.error?.code === "response_cancel_not_active"
           )
             return;
+          if (
+            event.type === "error" &&
+            event.error?.code === "input_audio_buffer_commit_empty"
+          ) {
+            run.awaitingResponse = false;
+            run.inputId = undefined;
+            if (!run.interrupting) this.state.set("listening");
+            return;
+          }
           if (event.type === "error") {
             fail("provider_error");
             return;
           }
-          if (this.state() === "muted") return;
-          if (event.type === "input_audio_buffer.speech_started") {
-            this.problem.set(null);
-            if (!event.item_id || run.seen.has(event.item_id)) return;
+          if (event.type === "input_audio_buffer.committed") {
+            if (
+              this.state() !== "querying" ||
+              !event.item_id ||
+              run.seen.has(event.item_id)
+            )
+              return;
             if (run.seen.size >= 24) {
               fail();
               return;
             }
             run.seen.add(event.item_id);
             activity();
-            this.interrupt();
-            interrupt();
-            this.state.set("listening");
             run.inputId = event.item_id;
+            const pending = run.pendingOutput;
+            if (pending?.item === event.item_id) {
+              run.outputId = pending.id;
+              run.pendingOutput = undefined;
+              run.responding = true;
+              run.awaitingResponse = false;
+              run.audio.muted = false;
+            }
           }
-          if (event.type === "input_audio_buffer.speech_stopped")
-            this.state.set("querying");
           if (
             event.type === "response.created" &&
             event.response &&
-            run.inputId &&
-            event.response?.metadata?.voiceItem === run.inputId
+            event.response.metadata?.voiceItem &&
+            run.awaitingResponse &&
+            (!run.inputId || run.inputId === event.response.metadata.voiceItem)
           ) {
-            run.outputId = event.response.id;
-            run.responding = true;
-            run.audio.muted = false;
+            const item = event.response.metadata.voiceItem;
+            if (run.inputId === item) {
+              run.outputId = event.response.id;
+              run.responding = true;
+              run.audio.muted = false;
+            } else {
+              run.pendingOutput = { id: event.response.id, item };
+            }
+            run.awaitingResponse = false;
           }
           if (
             event.type === "response.done" &&
@@ -349,6 +379,10 @@ export class AssistantVoiceClient {
             event.response?.id === run.outputId
           ) {
             run.responding = false;
+            run.outputId = undefined;
+            run.pendingOutput = undefined;
+            run.inputId = undefined;
+            run.audio.muted = true;
             if (
               !["completed", "cancelled", "incomplete", "failed"].includes(
                 event.response?.status ?? "",
@@ -454,7 +488,8 @@ export class AssistantVoiceClient {
           if (event.type === "voice_error")
             throw new VoiceRequestError(event.code, event.retryAfterSeconds);
           if (event.type === "phase") {
-            if (this.state() !== "muted") this.state.set(event.state);
+            if (!run.interrupting && this.state() !== "recording")
+              this.state.set(event.state);
             continue;
           }
           if (event.type === "turn") run.turnId = event.turn.id;
@@ -490,6 +525,13 @@ export class AssistantVoiceClient {
     if (channel?.readyState === "open") channel.send(JSON.stringify(value));
   }
 
+  private touch(run: VoiceRun) {
+    clearTimeout(run.idle);
+    run.idle = setTimeout(() => {
+      if (this.run === run) void this.end();
+    }, 60_000);
+  }
+
   acknowledgeScreen(selection: AssistantVoiceScreenSelection) {
     const run = this.run;
     const session = run?.session;
@@ -507,28 +549,87 @@ export class AssistantVoiceClient {
       .catch(() => {});
   }
 
-  interrupt() {
+  speak() {
     const run = this.run;
-    if (!run) return;
-    run.audio.muted = true;
-    const hadOutput = !!run.outputId;
-    run.outputId = undefined;
-    if (run.responding) {
-      this.send({ type: "response.cancel" });
-      run.responding = false;
-    }
-    if (hadOutput) this.send({ type: "output_audio_buffer.clear" });
+    if (!run || this.state() !== "listening") return;
+    this.send({ type: "input_audio_buffer.clear" });
+    run.inputId = undefined;
+    run.pendingOutput = undefined;
+    run.awaitingResponse = false;
+    for (const track of run.microphone?.getAudioTracks() ?? [])
+      track.enabled = true;
+    this.problem.set(null);
+    this.state.set("recording");
+    this.touch(run);
   }
 
-  mute() {
-    if (!this.run || this.state() === "connecting") return;
-    const muted = this.state() !== "muted";
-    this.run.inputId = undefined;
-    for (const track of this.run.microphone?.getTracks() ?? [])
-      track.enabled = !muted;
-    this.interrupt();
+  submit() {
+    const run = this.run;
+    if (!run || this.state() !== "recording") return;
+    for (const track of run.microphone?.getAudioTracks() ?? [])
+      track.enabled = false;
+    run.awaitingResponse = true;
+    this.state.set("querying");
+    this.touch(run);
+    this.send({ type: "input_audio_buffer.commit" });
+  }
+
+  discardRecording() {
+    const run = this.run;
+    if (!run || this.state() !== "recording") return;
+    for (const track of run.microphone?.getAudioTracks() ?? [])
+      track.enabled = false;
+    run.inputId = undefined;
+    run.awaitingResponse = false;
     this.send({ type: "input_audio_buffer.clear" });
-    this.state.set(muted ? "muted" : "listening");
+    this.state.set("listening");
+    this.touch(run);
+  }
+
+  async stopAndSpeak() {
+    const run = this.run;
+    if (!run || (this.state() !== "querying" && this.state() !== "responding"))
+      return;
+    run.interrupting = true;
+    run.audio.muted = true;
+    run.outputId = undefined;
+    run.pendingOutput = undefined;
+    run.inputId = undefined;
+    run.awaitingResponse = false;
+    run.responding = false;
+    this.send({ type: "response.cancel" });
+    this.send({ type: "output_audio_buffer.clear" });
+    this.state.set("interrupting");
+    try {
+      if (!run.session) throw new Error("Voice session unavailable");
+      await this.request(run.owner, "interrupt", {
+        method: "POST",
+        body: JSON.stringify({ id: run.session }),
+        signal: AbortSignal.any([
+          run.owner.signal,
+          run.controller.signal,
+          AbortSignal.timeout(10_000),
+        ]),
+      });
+    } catch (error) {
+      if (this.run !== run) return;
+      const code =
+        error instanceof VoiceRequestError ? error.code : "connection_lost";
+      const retry =
+        error instanceof VoiceRequestError
+          ? error.retryAfterSeconds
+          : undefined;
+      this.end();
+      this.showProblem(code, retry);
+      return;
+    }
+    if (this.run !== run || run.controller.signal.aborted) return;
+    this.send({ type: "input_audio_buffer.clear" });
+    for (const track of run.microphone?.getAudioTracks() ?? [])
+      track.enabled = true;
+    run.interrupting = false;
+    this.state.set("recording");
+    this.touch(run);
   }
 
   play() {

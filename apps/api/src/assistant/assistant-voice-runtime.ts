@@ -104,7 +104,6 @@ type ProviderEvent = z.infer<typeof eventSchema>;
 const handledEvents = new Set([
   "error",
   "session.updated",
-  "input_audio_buffer.speech_started",
   "input_audio_buffer.committed",
   "response.created",
   "response.output_audio_transcript.delta",
@@ -155,7 +154,6 @@ export class AssistantVoiceRuntime {
 export class RealtimeConversation {
   private queue: Promise<void> = Promise.resolve();
   private active?: VoiceTurn;
-  private speech?: string;
   private readonly seen = new Set<string>();
   private readonly calls = new Set<string>();
   private readonly events: AssistantVoiceEvent[] = [];
@@ -218,16 +216,6 @@ export class RealtimeConversation {
           const event = eventSchema.parse(value);
           if (event.type === "session.updated") this.ready?.resolve();
           if (++this.queued > 128) throw new Error("Voice event backlog");
-          // Barge-in invalidates in-flight tools synchronously, not behind their promises.
-          if (
-            event.type === "input_audio_buffer.speech_started" &&
-            event.item_id
-          ) {
-            this.speech = event.item_id;
-            this.active?.controller.abort();
-            this.send({ type: "response.cancel" });
-            this.send({ type: "output_audio_buffer.clear" });
-          }
           this.queue = this.queue
             .then(() => this.handle(event))
             .catch(() =>
@@ -456,6 +444,22 @@ export class RealtimeConversation {
     this.idle.unref();
   }
 
+  interrupt() {
+    const active = this.active;
+    if (active) active.controller.abort();
+    this.send({ type: "response.cancel" });
+    this.send({ type: "output_audio_buffer.clear" });
+    if (active) {
+      const ending = this.queue
+        .catch(() => {})
+        .then(() => this.finish("interrupted"));
+      this.queue = ending.catch(() =>
+        this.fail("turn_unconfirmed", "interrupt_unconfirmed"),
+      );
+    }
+    return Promise.resolve();
+  }
+
   private publish(event: AssistantVoiceEvent) {
     if (this.closed) return;
     if (this.events.length >= 256) {
@@ -494,20 +498,22 @@ export class RealtimeConversation {
     if (this.closed) return;
     if (
       event.type === "error" &&
+      event.error?.code === "input_audio_buffer_commit_empty"
+    ) {
+      this.touch();
+      this.publish({ type: "phase", state: "listening" });
+      return;
+    }
+    if (
+      event.type === "error" &&
       event.error?.code !== "response_cancel_not_active"
     ) {
       this.fail("provider_error", safeReason(event.error?.code));
       return;
     }
-    if (event.type === "input_audio_buffer.speech_started") {
-      this.touch();
-      await this.finish("interrupted");
-      this.publish({ type: "phase", state: "listening" });
-    }
     if (
       event.type === "input_audio_buffer.committed" &&
       event.item_id &&
-      event.item_id === this.speech &&
       !this.seen.has(event.item_id)
     ) {
       if (this.seen.size >= 24) throw new Error("Voice turn limit");
@@ -542,7 +548,7 @@ export class RealtimeConversation {
         65_000,
       );
       timeout.unref();
-      this.active = {
+      const active: VoiceTurn = {
         item,
         lease,
         turn: started.turn,
@@ -552,10 +558,15 @@ export class RealtimeConversation {
         answer: "",
         presentationCalls: 0,
       };
-      this.publish({ type: "turn", turn: started.turn });
+      this.active = active;
+      this.publish({ type: "turn", turn: active.turn });
       // The response consumes the committed AUDIO item; transcription is not an input to generation.
-      if (this.closed || this.speech !== item) {
-        controller.abort();
+      if (
+        this.closed ||
+        this.active !== active ||
+        active.controller.signal.aborted
+      ) {
+        active.controller.abort();
         await this.finish("interrupted");
         return;
       }

@@ -130,13 +130,8 @@ export class AssistantVoiceService implements OnModuleDestroy {
         audio: {
           input: {
             // Input transcription is intentionally unwired to avoid a separate
-            // paid speech-to-text call. Native audio drives the conversation.
-            turn_detection: {
-              type: "semantic_vad",
-              eagerness: "low",
-              create_response: false,
-              interrupt_response: true,
-            },
+            // paid speech-to-text call. The client explicitly commits each turn.
+            turn_detection: null,
           },
           output: { voice: this.environment.get("ASSISTANT_VOICE_NAME") },
         },
@@ -312,6 +307,20 @@ export class AssistantVoiceService implements OnModuleDestroy {
       throw new ForbiddenException();
     await this.assistant.requireConsent(owner);
     if (!lease.runtime.selectScreen(selection)) throw new ForbiddenException();
+  }
+
+  async interrupt(owner: string, id: string) {
+    const lease = this.sessions.get(id);
+    if (
+      !lease ||
+      lease.owner !== owner ||
+      !lease.runtime ||
+      !lease.observing ||
+      lease.stopRequested
+    )
+      throw new ForbiddenException();
+    await this.assistant.requireConsent(owner);
+    await lease.runtime.interrupt();
   }
 
   private async hangup(id: string, lease: VoiceLease): Promise<boolean> {

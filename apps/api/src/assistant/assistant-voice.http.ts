@@ -79,6 +79,19 @@ export class AssistantVoiceHttp {
     return { requested: true };
   }
 
+  @Post("interrupt")
+  async interrupt(
+    @Body() body: unknown,
+    @Req() req: AuthenticatedRequest,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const parsed = AssistantVoiceEndSchema.safeParse(body);
+    if (!parsed.success) throw new BadRequestException("Invalid voice session");
+    res.set("Cache-Control", "private, no-store");
+    await this.voice.interrupt(req.principal.userId, parsed.data.id);
+    return { interrupted: true };
+  }
+
   @Post("events")
   async events(
     @Body() body: unknown,

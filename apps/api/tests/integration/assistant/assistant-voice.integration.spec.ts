@@ -27,6 +27,7 @@ describe("first-party voice HTTP authentication and strict transport", () => {
     }),
   );
   const end = vi.fn(async (_owner: string, _id: string) => {});
+  const interrupt = vi.fn<AssistantVoiceService["interrupt"]>(async () => {});
   const selectScreen = vi.fn<AssistantVoiceService["selectScreen"]>(
     async () => {},
   );
@@ -58,6 +59,7 @@ describe("first-party voice HTTP authentication and strict transport", () => {
             configuration: () => ({ enabled: false }),
             start,
             end,
+            interrupt,
             listen,
             selectScreen,
           },
@@ -91,9 +93,31 @@ describe("first-party voice HTTP authentication and strict transport", () => {
       .post("/assistant/voice/screen")
       .send({})
       .expect(401);
+    await request(app.getHttpServer())
+      .post("/assistant/voice/interrupt")
+      .send({})
+      .expect(401);
     expect(start).not.toHaveBeenCalled();
     expect(end).not.toHaveBeenCalled();
     expect(selectScreen).not.toHaveBeenCalled();
+    expect(interrupt).not.toHaveBeenCalled();
+  });
+
+  it("interrupts only the identified session for the authenticated owner", async () => {
+    const id = "00000000-0000-4000-8000-000000000009";
+    await request(app.getHttpServer())
+      .post("/assistant/voice/interrupt")
+      .set("authorization", "Bearer accepted")
+      .send({ id, owner: "forged" })
+      .expect(400);
+    expect(interrupt).not.toHaveBeenCalled();
+
+    await request(app.getHttpServer())
+      .post("/assistant/voice/interrupt")
+      .set("authorization", "Bearer accepted")
+      .send({ id })
+      .expect(201, { interrupted: true });
+    expect(interrupt).toHaveBeenCalledExactlyOnceWith("verified-owner", id);
   });
 
   it("validates session-scoped screen state and uses only the authenticated owner", async () => {

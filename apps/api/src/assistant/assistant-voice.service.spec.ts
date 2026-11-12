@@ -18,6 +18,7 @@ async function setup(
   const listen = vi.fn<RealtimeConversation["listen"]>(async () => {});
   const stop = vi.fn<RealtimeConversation["close"]>(async () => {});
   const selectScreen = vi.fn<RealtimeConversation["selectScreen"]>(() => true);
+  const interrupt = vi.fn<RealtimeConversation["interrupt"]>(async () => {});
   const get = vi.fn(async (_input: { id: string }) => ({ mode: "voice" }));
   const conversations = vi.fn((_owner: string) => ({ get: { query: get } }));
   const requireConsent = vi.fn<AssistantService["requireConsent"]>(
@@ -40,6 +41,7 @@ async function setup(
             close: stop,
             listen,
             selectScreen,
+            interrupt,
           })),
         },
       },
@@ -66,6 +68,7 @@ async function setup(
     listen,
     stop,
     selectScreen,
+    interrupt,
     request,
     conversations,
     requireConsent,
@@ -117,9 +120,9 @@ describe("voice admission, provider privacy and owner-bound termination", () => 
       await f.voice.start("owner", origin, input, signal());
       const body = f.request.mock.calls[0][1]?.body;
       if (!(body instanceof FormData)) throw new Error("Expected call setup");
-      expect(JSON.parse(String(body.get("session"))).audio.output.voice).toBe(
-        "cedar",
-      );
+      const session = JSON.parse(String(body.get("session")));
+      expect(session.audio.output.voice).toBe("cedar");
+      expect(session.audio.input.turn_detection).toBeNull();
     } finally {
       await f.close();
     }
@@ -196,6 +199,43 @@ describe("voice admission, provider privacy and owner-bound termination", () => 
         f.voice.selectScreen("owner", session.id, selection),
       ).rejects.toThrow("Consent refused");
       expect(f.selectScreen).toHaveBeenCalledOnce();
+      controller.abort();
+      await observation;
+    } finally {
+      controller.abort();
+      await f.close();
+    }
+  });
+
+  it("interrupts only the consented owner turn in the observed voice session", async () => {
+    const f = await setup();
+    const controller = new AbortController();
+    f.listen.mockImplementation(async (signal) => {
+      if (!signal.aborted)
+        await new Promise<void>((resolve) =>
+          signal.addEventListener("abort", () => resolve(), { once: true }),
+        );
+    });
+    try {
+      const session = await f.voice.start("owner", origin, input, signal());
+      await expect(f.voice.interrupt("foreign", session.id)).rejects.toThrow();
+      expect(f.interrupt).not.toHaveBeenCalled();
+
+      const observation = f.voice.listen(
+        "owner",
+        session.id,
+        controller.signal,
+        async () => {},
+      );
+      await vi.waitFor(() => expect(f.listen).toHaveBeenCalledOnce());
+      await f.voice.interrupt("owner", session.id);
+      expect(f.interrupt).toHaveBeenCalledOnce();
+
+      f.requireConsent.mockRejectedValue(new Error("Consent refused"));
+      await expect(f.voice.interrupt("owner", session.id)).rejects.toThrow(
+        "Consent refused",
+      );
+      expect(f.interrupt).toHaveBeenCalledOnce();
       controller.abort();
       await observation;
     } finally {
@@ -365,12 +405,7 @@ describe("voice admission, provider privacy and owner-bound termination", () => 
       max_output_tokens: 1024,
       audio: {
         input: {
-          turn_detection: {
-            type: "semantic_vad",
-            eagerness: "low",
-            create_response: false,
-            interrupt_response: true,
-          },
+          turn_detection: null,
         },
         output: { voice: "marin" },
       },

@@ -153,7 +153,6 @@ async function setup(history: AssistantTurn[] = [], attachObserver = true) {
     socket.sent.filter((event) => event.type === "response.create");
   const begin = async (item = "audio-1") => {
     const count = responses().length;
-    socket.event({ type: "input_audio_buffer.speech_started", item_id: item });
     socket.event({ type: "input_audio_buffer.committed", item_id: item });
     await vi.waitFor(() => expect(responses().length).toBe(count + 1));
     socket.event({
@@ -497,10 +496,11 @@ describe("server-owned native audio conversation", () => {
     expect(f.unobserve).toHaveBeenCalledOnce();
   });
 
-  it("ignores delayed or failed input transcription after interruption without saving speech or losing the next turn", async () => {
+  it("ignores delayed or failed input transcription after explicit interruption without saving speech or losing the next turn", async () => {
     const f = await setup();
     try {
       await f.begin();
+      f.run.interrupt();
       await f.begin("correction");
       expect(f.saved[0]).toMatchObject({
         question: "Consulta por voz",
@@ -663,7 +663,7 @@ describe("server-owned native audio conversation", () => {
     }
   });
 
-  it("interrupts a slow tool without ending the session, discards late evidence and accepts a correction", async () => {
+  it("interrupts a slow tool explicitly without ending the session, discards late evidence and accepts a correction", async () => {
     const f = await setup();
     let resolve: (value: { accounts: never[] }) => void = () => {};
     f.execute.mockImplementationOnce(
@@ -685,20 +685,57 @@ describe("server-owned native audio conversation", () => {
         },
       });
       await vi.waitFor(() => expect(f.execute).toHaveBeenCalledOnce());
-      f.socket.event({
-        type: "input_audio_buffer.speech_started",
-        item_id: "correction",
-      });
-      f.socket.event({
-        type: "input_audio_buffer.committed",
-        item_id: "correction",
-      });
+      const interrupted = f.run.interrupt();
       resolve({ accounts: [] });
+      await interrupted;
+      await f.begin("correction");
       await vi.waitFor(() => expect(f.responses()).toHaveLength(2));
       expect(f.saved[0].status).toBe("interrupted");
       expect(f.saved[0].sources).toEqual([]);
       expect(f.socket.readyState).toBe(WebSocket.OPEN);
       expect(f.events.filter((event) => event.type === "error")).toEqual([]);
+    } finally {
+      await f.close();
+    }
+  });
+
+  it("does not cancel a response on acoustic speech detection alone", async () => {
+    const f = await setup();
+    try {
+      await f.begin();
+      f.socket.event({
+        type: "input_audio_buffer.speech_started",
+        item_id: "unsubmitted-speech",
+      });
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      expect(f.saved[0].status).toBe("pending");
+      expect(
+        f.socket.sent.some((event) => event.type === "response.cancel"),
+      ).toBe(false);
+      await f.finish();
+    } finally {
+      await f.close();
+    }
+  });
+
+  it("treats an empty manual audio commit as a retryable listening state", async () => {
+    const f = await setup();
+    try {
+      f.socket.event({
+        type: "error",
+        error: { code: "input_audio_buffer_commit_empty" },
+      });
+      await vi.waitFor(() =>
+        expect(f.events).toContainEqual({
+          type: "phase",
+          state: "listening",
+        }),
+      );
+      expect(f.saved).toEqual([]);
+      expect(f.socket.readyState).toBe(WebSocket.OPEN);
+      expect(f.events.some((event) => event.type === "voice_error")).toBe(
+        false,
+      );
     } finally {
       await f.close();
     }
