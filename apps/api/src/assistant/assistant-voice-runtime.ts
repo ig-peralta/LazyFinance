@@ -65,9 +65,33 @@ const diagnosticReasons = new Set([
   "response_cancel_not_active",
   "conversation_already_has_active_response",
   "invalid_request_error",
+  "invalid_json_schema",
+  "invalid_function_parameters",
+  "invalid_value",
+  "invalid_type",
+  "unknown_parameter",
+  "unsupported_parameter",
+  "model_not_found",
 ]);
 const safeReason = (value?: string) =>
   value && diagnosticReasons.has(value) ? value : "unknown";
+const diagnosticTypes = new Set([
+  "invalid_request_error",
+  "server_error",
+  "authentication_error",
+  "permission_error",
+  "rate_limit_error",
+]);
+const safeProviderType = (value?: string) =>
+  value && diagnosticTypes.has(value) ? value : undefined;
+const safeProviderParameter = (value?: string) =>
+  value &&
+  value.length <= 200 &&
+  /^(?:session\.)?tools\[\d+\](?:\.function)?\.parameters(?:\.[a-z][a-z0-9_]*|\[\d+\])*$/i.test(
+    value,
+  )
+    ? value
+    : undefined;
 const eventSchema = z.object({
   type: z.string(),
   item_id: z.string().optional(),
@@ -98,7 +122,13 @@ const eventSchema = z.object({
       arguments: z.string().max(24_000).optional(),
     })
     .optional(),
-  error: z.object({ code: z.string().optional() }).optional(),
+  error: z
+    .object({
+      type: z.string().optional(),
+      code: z.string().optional(),
+      param: z.string().optional(),
+    })
+    .optional(),
 });
 type ProviderEvent = z.infer<typeof eventSchema>;
 const handledEvents = new Set([
@@ -508,7 +538,10 @@ export class RealtimeConversation {
       event.type === "error" &&
       event.error?.code !== "response_cancel_not_active"
     ) {
-      this.fail("provider_error", safeReason(event.error?.code));
+      this.fail("provider_error", safeReason(event.error?.code), {
+        providerType: safeProviderType(event.error?.type),
+        providerParam: safeProviderParameter(event.error?.param),
+      });
       return;
     }
     if (
@@ -811,6 +844,7 @@ export class RealtimeConversation {
   private fail(
     code: AssistantVoiceProblemCode = "connection_lost",
     reason = "runtime_error",
+    diagnostics: { providerType?: string; providerParam?: string } = {},
   ) {
     if (this.closed) return;
     // Only our fixed categories/allowlisted provider codes and internal IDs. Never
@@ -820,6 +854,7 @@ export class RealtimeConversation {
         event: "voice_session_stopped",
         code,
         reason,
+        ...diagnostics,
         conversationId: this.conversationId,
         turnId: this.active?.turn.id,
       }),

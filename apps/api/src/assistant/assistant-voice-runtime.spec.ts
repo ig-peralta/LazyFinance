@@ -314,6 +314,44 @@ describe("server-owned native audio conversation", () => {
     }
   });
 
+  it("logs allowlisted provider schema diagnostics without its free-text message", async () => {
+    const warn = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => {});
+    const f = await setup();
+    try {
+      await f.begin();
+      f.socket.event({
+        type: "error",
+        error: {
+          type: "invalid_request_error",
+          code: "invalid_json_schema",
+          param: "session.tools[5].parameters.oneOf",
+          message: "private prompt or provider details must not be logged",
+        },
+      });
+      await vi.waitFor(() =>
+        expect(f.events).toContainEqual({
+          type: "voice_error",
+          code: "provider_error",
+        }),
+      );
+      expect(
+        warn.mock.calls.map(([message]) => JSON.parse(String(message))),
+      ).toContainEqual(
+        expect.objectContaining({
+          reason: "invalid_json_schema",
+          providerType: "invalid_request_error",
+          providerParam: "session.tools[5].parameters.oneOf",
+        }),
+      );
+      expect(JSON.stringify(warn.mock.calls)).not.toContain("private prompt");
+    } finally {
+      await f.close();
+      warn.mockRestore();
+    }
+  });
+
   it("drains a terminal problem queued before the browser attaches its observation stream", async () => {
     const f = await setup([], false);
     try {
