@@ -65,9 +65,12 @@ for cost; new voice turns retain sources, proposals and status, not spoken text.
 Native output-text metadata is transiently checked for grounding, never streamed
 or persisted. Existing transcript records are not deleted. The active native call
 keeps audio context; resumed calls restore owned action state, not speech history.
-A dedicated stage shows listening,
-querying and responding, **Silenciar** and **Terminar voz**. Subtitles are
-removed pending redesign. A large central entry promotes voice in empty chats
+A dedicated stage shows listening, recording, querying and responding, with
+**Hablar**, **Enviar consulta**, **Descartar turno**, **Detener y hablar** and
+**Terminar voz** controls. The mic track is disabled outside an explicit recording
+turn; speech detection alone neither submits nor interrupts. There are no speech
+captions or saved transcripts: users inspect server-owned source/proposal cards.
+A large central entry promotes voice in empty chats
 without bypassing the explicit start disclosure.
 The compact **Texto / Voz** segmented switch shares the assistant header with
 icon-only history/new/options actions; it adds no separate toolbar row. Its

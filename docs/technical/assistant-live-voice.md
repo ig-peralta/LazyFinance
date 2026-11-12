@@ -12,18 +12,17 @@ Capability documentation reviewed 2026-11-11, **not live-provider evidence**:
 
 - [Unified WebRTC](https://developers.openai.com/api/docs/guides/voice-webrtc?api=realtime).
 - [Realtime server controls](https://developers.openai.com/api/docs/guides/voice-server-controls): the Realtime sideband uses `wss://api.openai.com/v1/realtime?call_id=…`, authenticated by the server.
-- [Realtime conversations](https://developers.openai.com/api/docs/guides/realtime-conversations): audio input, VAD commits, manual response creation, tools, transcript events and cancellation.
-- [Semantic turn detection](https://developers.openai.com/api/docs/guides/realtime-vad): low eagerness allows pauses inside a user's request instead of splitting on silence alone.
+- [Realtime conversations](https://developers.openai.com/api/docs/guides/realtime-conversations): audio input, manual buffer commits, response creation, tools, transcript events and cancellation.
 - [Call hangup](https://developers.openai.com/api/reference/resources/realtime/subresources/calls/methods/hangup).
 
 This replaces the previous transcription → ordinary text request → literal
-read-aloud adapter. Semantic VAD uses low eagerness and keeps `create_response:false` so the **server** acquires
-a history lease before requesting a response to the committed **audio item**.
-Separate input transcription is intentionally disabled for cost: no
+read-aloud adapter. Input turn detection is disabled (`turn_detection: null`):
+the browser commits one audio buffer only after **Enviar consulta**, and the
+**server** acquires a history lease before requesting a response to that committed
+audio item. Separate input transcription is intentionally disabled for cost: no
 `audio.input.transcription` configuration, ASR request or input-transcript handler.
-Native audio is the model input and generation trigger. Automatic
-interruption is enabled; local output mute/clear and server cancellation also
-invalidate the old response immediately.
+Native audio is the model input and generation trigger. Speech detection alone
+neither submits a turn nor interrupts a response.
 
 The API waits for sideband configuration acknowledgement before returning usable
 SDP. It restores owned proposal state, but never replays saved speech. It installs
@@ -36,7 +35,10 @@ text. There is no approval/execution/cancellation tool for the model.
 `POST /assistant/voice/events` accepts only the opaque session ID. Its authenticated,
 no-store NDJSON stream carries validated sources, proposals, proposal revisions, turn
 completion, typed problems and listening/querying/responding states, not spoken
-text. Browser data-channel events are used for local playback/interruption, not financial authority. A
+text. Browser data-channel events are used for manual audio controls and local playback,
+not financial authority. `POST /assistant/voice/interrupt` verifies the session owner,
+active observer and processing consent before the server cancels the response and
+aborts the active turn. A
 second observer is rejected; stream loss ends the session, with no reconnect or
 tool replay. Foreign IDs neither read nor terminate another owner's session.
 
@@ -65,8 +67,16 @@ remain explicitly selectable; new turns and delayed history do not displace them
 Spoken replies favor one
 or two natural sentences; exact figures, dates, review states, charts and proposal
 fields remain available. **Ver consultas** on the voice stage opens its latest
-observations without ending capture. Correction/barge-in cancels the old generation and
-discards late tool results without ending a healthy session. Already-started
+observations without ending the session. The model can request a typed presentation
+of a source or proposal from its current turn; the UI selects the existing
+server-owned card rather than rendering model-authored data. UI selection is sent
+back as only a bounded turn/source/proposal ID. Server validation checks that it
+belongs to the voice conversation, and the model is explicitly told that selection
+does not prove the user read or approved the card. **Hablar** arms the microphone;
+**Enviar consulta** submits that turn, while **Descartar turno** clears its audio
+without creating a request. **Detener y hablar** mutes output, asks the authenticated
+server session to cancel the active generation/tool turn, then starts a new recording
+turn in the healthy session. Late tool results are discarded. Already-started
 proposal preparation may have committed: it is retained as unapproved and never
 replayed. If its exact saved card is attached to an interrupted voice turn, the
 user may explicitly approve, edit or cancel it after reviewing its fields. This
@@ -111,9 +121,12 @@ evaluation remains a release gate.
 Text stays the default and is fully supported. Empty conversations promote voice
 with a large central entry, alongside text suggestions; it opens the explicit start
 disclosure and never captures automatically. Voice has a dedicated stage,
-restrained decorative waveform and persistent **Silenciar / Terminar voz** controls,
-including while reviewing a proposal. Ending capture leaves the separate session's
-requests and query results reviewable. **Texto / Voz** switches views; returning
+restrained decorative waveform and persistent **Hablar**, **Enviar consulta**,
+**Descartar turno**, **Detener y hablar** and **Terminar voz** controls, including
+while reviewing a proposal. The audio track remains disabled except during an
+explicit recording turn. There are no speech captions or retained transcripts;
+users review server-owned source and proposal cards instead. Ending capture leaves
+the separate session's requests and query results reviewable. **Texto / Voz** switches views; returning
 to text also ends capture. Returning to the voice view does not restart capture.
 The waveform illustrates state, not measured microphone amplitude. Returning to
 text stops capture without clearing its original draft or selected text conversation.
@@ -133,8 +146,10 @@ workflow, automatic microphone activation, reconnect or transcription replay.
 
 Startup has a cancellation generation before conversation creation. Cancellation,
 withdrawal, navigation, minimize/reopen, hidden tabs, owner changes and destruction
-invalidate that same generation at each asynchronous boundary. Mute disables tracks,
-clears pending input and silences output. End stops tracks immediately, closes
+invalidate that same generation at each asynchronous boundary. Discarding a recording
+clears its pending input. **Detener y hablar** silences output before server
+cancellation; a failed interruption ends the session rather than suggesting it was
+confirmed. End stops tracks immediately, closes
 transport and requests server hangup. Navigation, hidden tabs, device loss, logout,
 credential replacement and conversation replacement end voice. Text generation
 may survive ordinary navigation, never hidden microphone capture.
@@ -214,15 +229,16 @@ unconfirmed. Provider lifetime and project controls remain the fallback, not a
 guaranteed application five-minute cost cap. HTTP redirects are rejected and SDP
 is decoded with a 64,000-byte stream limit.
 
-Targets, not measured SLAs: local output mute/track stop within 100 ms of a control
-or barge-in; remote cancellation under 500 ms; speech-end to first relevant audio
-under two seconds when no financial lookup is needed. Measure lookup response,
-spoken-number accuracy and interruption fidelity separately.
+Targets, not measured SLAs: local output mute within 100 ms of **Detener y hablar**;
+remote cancellation under 500 ms; submit-to-first relevant audio under two seconds
+when no financial lookup is needed. Measure lookup response, spoken-number accuracy,
+manual turn fidelity and interruption latency separately.
 
-Deterministic tests cover native-audio triggering/completion without ASR, ignored
+Deterministic tests cover explicit audio commit/completion without ASR, ignored
 transcript events, no speech-text retention/history replay, owned tool execution,
-late evidence, interruption/correction, incomplete-answer recovery, duplicate calls,
-approval isolation, typed HTTP admission/cooldowns and media cleanup. Mocked browser
+validated presentation and screen selection, authenticated interruption, late
+evidence, correction, incomplete-answer recovery, duplicate calls, approval isolation,
+typed HTTP admission/cooldowns and media cleanup. Mocked browser
 checks do not capture a real microphone or invoke a live model. Current/previous
 Chrome/Edge, Android Chrome and Safari iOS/macOS remain the target live matrix;
 Firefox is best-effort pending device validation. Denied permissions, autoplay,
@@ -250,3 +266,18 @@ admission, connection loss and truncated replies in home/docked, light/dark and
 unhandled requests. These checks used synthetic media and transport responses,
 not a microphone, provider or financial mutation. Read-only runtime checks also
 confirmed that legacy voice records remain stored and excluded from text history.
+
+## Explicit voice turns and screen context — 2026-11-12
+
+The interaction now uses manual **Hablar → Enviar consulta** turns and deliberate
+**Detener y hablar** interruption. The mic track is disabled outside a recording
+turn, acoustic speech detection does not cancel playback, and the interruption route
+is authenticated and session-owned. Typed presentation requests can reveal only
+sources/proposals already produced by the current turn; validated screen selection
+is short-lived session context, not evidence of reading or approval.
+
+Validation: API typecheck and 42 focused API voice unit/HTTP tests passed; 82 focused
+UI voice/assistant tests and Biome checks passed. No live microphone, provider call,
+financial mutation or remote cancellation was exercised. Browser/device fidelity,
+spoken grounding, stop latency, provider cost and remote shutdown remain separate
+authorized live-evaluation gates.

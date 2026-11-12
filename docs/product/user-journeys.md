@@ -157,8 +157,10 @@ change clears private state. **Issues:** LAZ-93, LAZ-91, LAZ-92, LAZ-96.
 
 **Situation:** I want to speak naturally with the same grounded financial assistant.
 
-**Journey:** Explicitly start the microphone, speak and interrupt, inspect the
-transcript/references, mute/end or return to text.
+**Journey:** Explicitly start the microphone, press **Hablar**, then submit or
+discard each turn. Use **Detener y hablar** to interrupt a lookup or response.
+Inspect source/proposal cards in the workspace; voice does not retain a transcript.
+End the session or return to text when finished.
 
 **Observable outcome:** Visible capture controls and defined session/response/stop
 bounds apply on documented supported browsers. Denied permission or an outage
