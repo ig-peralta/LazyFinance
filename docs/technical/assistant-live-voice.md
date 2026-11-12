@@ -90,7 +90,7 @@ request**, not separate tag and objective approvals. After preparation the assis
 offers to accept the request in its card or correct it by voice or **Editar**.
 Text-chat requests have their own text corrections and manual editing; switching
 to text does not import voice messages or proposal context into that chat.
-`corregir_propuesta_financiera` revises that same pending ID/version, preserving
+`revise_financial_proposal` revises that same pending ID/version, preserving
 unchanged fields. It cannot accept, execute, change action kind or revise an applied
 or cancelled request. A new request waits until the current review is resolved.
 

@@ -28,7 +28,7 @@ describe.skipIf(!integration)(
               // transport adapter, but receives its own server/transport instance.
               const response = await f
                 .mcp(token, "tools/call", {
-                  name: "consultar_saldos_cuentas",
+                  name: "get_account_balances",
                   arguments: {},
                 })
                 .expect(200);
@@ -270,7 +270,7 @@ describe.skipIf(!integration)(
         ]) {
           const result = await f
             .mcp(token, "tools/call", {
-              name: "consultar_saldos_cuentas",
+              name: "get_account_balances",
               arguments: { userId: "ignored-owner" },
             })
             .expect(200);

@@ -195,7 +195,7 @@ describe.skipIf(!integration)(
             jsonrpc: "2.0",
             id: 1,
             method: "tools/call",
-            params: { name: "consultar_avance_ahorro", arguments: input },
+            params: { name: "get_savings_progress", arguments: input },
           }),
         });
         expect(await response.text()).toContain('"netContributions":"90.00"');

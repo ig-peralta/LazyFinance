@@ -15,7 +15,7 @@ export const assistantSource = (
   overrides: Partial<AssistantSource> = {},
 ): AssistantSource => ({
   id: "F1",
-  tool: "consultar_saldos_cuentas",
+  tool: "get_account_balances",
   title: "Cuentas y saldos",
   status: "available",
   queriedAt: "2026-11-09T15:00:00.000Z",

@@ -180,9 +180,9 @@ with the stored grant, and each write checks its required scopes again. An
 objective with `newTags` also requires `finance:tags:write`. Reconnect with fresh
 explicit consent to change capabilities; refresh cannot upgrade a read-only grant.
 
-`previsualizar_accion_financiera({ action })` returns owned current context and a
+`preview_financial_action({ action })` returns owned current context and a
 selection fingerprint without changing finance. It is read-only but requires the
-action's write permissions. `ejecutar_accion_financiera` executes directly with
+action's write permissions. `execute_financial_action` executes directly with
 those permissions: it does **not** create a chat approval request or require
 LazyFinance's card buttons. The external host owns its confirmation UX. Tool
 annotations identify execution as destructive/write and idempotent.

@@ -278,7 +278,7 @@ describe.skipIf(!integration)(
             id: 1,
             method: "tools/call",
             params: {
-              name: "consultar_ingresos",
+              name: "get_income_summary",
               arguments: { month: "2026-09" },
             },
           })

@@ -56,72 +56,72 @@ const sections: Record<
   AssistantReadName,
   { name: string; icon: IconName; action: string }
 > = {
-  consultar_etiquetas: {
+  list_tags: {
     name: "Etiquetas",
     icon: "tag",
     action: "Ver etiquetas",
   },
-  buscar_movimientos: {
+  search_transactions: {
     name: "Movimientos",
     icon: "activity",
     action: "Ver movimientos",
   },
-  consultar_movimiento: {
+  get_transaction_details: {
     name: "Movimientos",
     icon: "activity",
     action: "Ver movimiento",
   },
-  consultar_saldos_cuentas: {
+  get_account_balances: {
     name: "Cuentas",
     icon: "wallet",
     action: "Ver cuentas",
   },
-  consultar_movimientos_recientes: {
+  get_recent_transactions: {
     name: "Movimientos",
     icon: "activity",
     action: "Ver movimientos",
   },
-  consultar_presupuestos_y_metas: {
+  get_budgets_and_goals: {
     name: "Planificación",
     icon: "target",
     action: "Ver planificación",
   },
-  consultar_avance_presupuestos: {
+  get_budget_progress: {
     name: "Presupuestos",
     icon: "target",
     action: "Ver presupuestos",
   },
-  consultar_resumen_gastos_mensuales: {
+  get_monthly_spending_summary: {
     name: "Gastos",
     icon: "activity",
     action: "Ver movimientos",
   },
-  comparar_gastos_mensuales: {
+  compare_monthly_spending: {
     name: "Gastos",
     icon: "trend",
     action: "Ver movimientos",
   },
-  consultar_ingresos: {
+  get_income_summary: {
     name: "Ingresos",
     icon: "income",
     action: "Ver ingresos",
   },
-  consultar_avance_ahorro: {
+  get_savings_progress: {
     name: "Ahorro",
     icon: "target",
     action: "Ver metas de ahorro",
   },
-  consultar_aportes_ahorro: {
+  get_savings_contributions: {
     name: "Ahorro",
     icon: "target",
     action: "Ver metas de ahorro",
   },
-  consultar_compras_del_gasto: {
+  get_spending_evidence: {
     name: "Compras",
     icon: "activity",
     action: "Ver movimientos",
   },
-  consultar_compras_presupuesto: {
+  get_budget_spending_evidence: {
     name: "Presupuestos",
     icon: "target",
     action: "Ver presupuestos",
@@ -200,7 +200,7 @@ export function assistantReferenceView(
   }
 
   switch (source.tool) {
-    case "consultar_saldos_cuentas": {
+    case "get_account_balances": {
       const result = accountsSchema.safeParse(source.data);
       if (!result.success) break;
       view.rows = result.data.accounts.map((account) => ({
@@ -220,15 +220,15 @@ export function assistantReferenceView(
       ];
       break;
     }
-    case "buscar_movimientos":
-    case "consultar_movimiento":
-    case "consultar_movimientos_recientes": {
+    case "search_transactions":
+    case "get_transaction_details":
+    case "get_recent_transactions": {
       const page =
-        source.tool === "buscar_movimientos"
+        source.tool === "search_transactions"
           ? TransactionsPageSchema.safeParse(source.data)
           : null;
       const detail =
-        source.tool === "consultar_movimiento"
+        source.tool === "get_transaction_details"
           ? TransactionDetailSchema.safeParse(source.data)
           : null;
       const result = movementsSchema.safeParse(
@@ -250,7 +250,7 @@ export function assistantReferenceView(
         ? null
         : "No hay movimientos recientes guardados.";
       view.notices = [
-        source.tool === "consultar_movimiento"
+        source.tool === "get_transaction_details"
           ? "Clasificación consultada; una etiqueta no confirma ingresos ni identifica transferencias internas."
           : "Una vista de los movimientos seleccionados, no del historial completo.",
       ];
@@ -258,7 +258,7 @@ export function assistantReferenceView(
       if (detail?.success) view.link = `/movimientos/${detail.data.id}`;
       break;
     }
-    case "consultar_etiquetas": {
+    case "list_tags": {
       const result = z
         .object({ tags: z.array(TagSummarySchema) })
         .safeParse(source.data);
@@ -275,7 +275,7 @@ export function assistantReferenceView(
         : "No hay etiquetas activas guardadas.";
       break;
     }
-    case "consultar_presupuestos_y_metas": {
+    case "get_budgets_and_goals": {
       const result = objectivesSchema.safeParse(source.data);
       if (!result.success) break;
       view.rows = result.data.objectives.map((objective) => ({
@@ -299,7 +299,7 @@ export function assistantReferenceView(
       ];
       break;
     }
-    case "consultar_avance_presupuestos": {
+    case "get_budget_progress": {
       const result = budgetsSchema.safeParse(source.data);
       if (!result.success) break;
       view.period = period(result.data.budgets[0]?.month ?? source.month);
@@ -319,7 +319,7 @@ export function assistantReferenceView(
       ];
       break;
     }
-    case "consultar_resumen_gastos_mensuales": {
+    case "get_monthly_spending_summary": {
       const result = spendingSchema.safeParse(source.data);
       if (!result.success) break;
       const data = result.data;
@@ -343,7 +343,7 @@ export function assistantReferenceView(
       ];
       break;
     }
-    case "comparar_gastos_mensuales": {
+    case "compare_monthly_spending": {
       const result = comparisonSchema.safeParse(source.data);
       if (!result.success) break;
       const data = result.data;
@@ -361,7 +361,7 @@ export function assistantReferenceView(
       ];
       break;
     }
-    case "consultar_ingresos": {
+    case "get_income_summary": {
       const result = IncomeSummarySchema.safeParse(source.data);
       if (!result.success) break;
       const data = result.data;
@@ -386,7 +386,7 @@ export function assistantReferenceView(
       ];
       break;
     }
-    case "consultar_avance_ahorro": {
+    case "get_savings_progress": {
       const result = SavingsProgressSchema.safeParse(source.data);
       if (!result.success) break;
       const data = result.data;
@@ -411,7 +411,7 @@ export function assistantReferenceView(
       ];
       break;
     }
-    case "consultar_aportes_ahorro": {
+    case "get_savings_contributions": {
       const result = SavingsEvidencePageSchema.safeParse(source.data);
       if (!result.success) break;
       const data = result.data;
@@ -436,8 +436,8 @@ export function assistantReferenceView(
       }
       break;
     }
-    case "consultar_compras_del_gasto":
-    case "consultar_compras_presupuesto": {
+    case "get_spending_evidence":
+    case "get_budget_spending_evidence": {
       const result = SpendingContributionsPageSchema.safeParse(source.data);
       if (!result.success) break;
       const data = result.data;
@@ -461,7 +461,7 @@ export function assistantReferenceView(
         `Los totales abarcan toda la consulta, no solo esta página. Corte de ajustes: ${date(data.tracking.adjustmentsAsOf)}.${data.totals.unresolvedAdjustmentCount ? " Hay ajustes por revisar." : ""}`,
       ];
       if (
-        source.tool === "consultar_compras_presupuesto" &&
+        source.tool === "get_budget_spending_evidence" &&
         source.recordId &&
         data.tracking.revisionId
       ) {

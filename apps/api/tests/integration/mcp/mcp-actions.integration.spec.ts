@@ -38,7 +38,7 @@ describe.skipIf(!integration)(
         };
         const denied = await f
           .mcp(auth.access_token, "tools/call", {
-            name: "ejecutar_accion_financiera",
+            name: "execute_financial_action",
             arguments: input,
           })
           .expect(200);
@@ -83,7 +83,7 @@ describe.skipIf(!integration)(
         };
         const first = await f
           .mcp(auth.token, "tools/call", {
-            name: "ejecutar_accion_financiera",
+            name: "execute_financial_action",
             arguments: input,
           })
           .expect(200);
@@ -97,7 +97,7 @@ describe.skipIf(!integration)(
         });
         const replay = await f
           .mcp(auth.token, "tools/call", {
-            name: "ejecutar_accion_financiera",
+            name: "execute_financial_action",
             arguments: input,
           })
           .expect(200);
@@ -124,7 +124,7 @@ describe.skipIf(!integration)(
         expect(await f.api.client().tags.list.query()).toHaveLength(1);
         const changed = await f
           .mcp(auth.token, "tools/call", {
-            name: "ejecutar_accion_financiera",
+            name: "execute_financial_action",
             arguments: {
               ...input,
               action: {
@@ -155,7 +155,7 @@ describe.skipIf(!integration)(
         const auth = await authorized(f, ["finance:tags:write"], []);
         const result = await f
           .mcp(auth.token, "tools/call", {
-            name: "ejecutar_accion_financiera",
+            name: "execute_financial_action",
             arguments: {
               requestId: randomUUID(),
               action: { kind: "create_tag", tag: { name: "Not delegated" } },
@@ -184,7 +184,7 @@ describe.skipIf(!integration)(
         };
         const preview = await f
           .mcp(auth.token, "tools/call", {
-            name: "previsualizar_accion_financiera",
+            name: "preview_financial_action",
             arguments: { action },
           })
           .expect(200);
@@ -193,7 +193,7 @@ describe.skipIf(!integration)(
         await own.tags.update.mutate({ id: tag.id, name: "Newer manual edit" });
         const stale = await f
           .mcp(auth.token, "tools/call", {
-            name: "ejecutar_accion_financiera",
+            name: "execute_financial_action",
             arguments: { requestId: randomUUID(), action, expectedFingerprint },
           })
           .expect(200);
@@ -204,7 +204,7 @@ describe.skipIf(!integration)(
           .tags.create.mutate({ name: "Other owner" });
         const foreign = await f
           .mcp(auth.token, "tools/call", {
-            name: "previsualizar_accion_financiera",
+            name: "preview_financial_action",
             arguments: {
               action: {
                 ...action,
@@ -217,7 +217,7 @@ describe.skipIf(!integration)(
         const budgetAuth = await authorized(f, ["finance:budgets:write"]);
         const denied = await f
           .mcp(budgetAuth.token, "tools/call", {
-            name: "ejecutar_accion_financiera",
+            name: "execute_financial_action",
             arguments: {
               requestId: randomUUID(),
               action: {

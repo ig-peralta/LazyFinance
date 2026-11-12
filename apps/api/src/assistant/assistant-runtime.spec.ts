@@ -17,7 +17,7 @@ type Chunk = StreamResult["stream"] extends ReadableStream<infer T> ? T : never;
 type Finish = Extract<Chunk, { type: "finish" }>;
 const source: AssistantSource = {
   id: "F1",
-  tool: "consultar_saldos_cuentas",
+  tool: "get_account_balances",
   title: "Cuentas",
   status: "available",
   queriedAt: "2026-11-09T03:00:00.000Z",
@@ -28,7 +28,7 @@ const source: AssistantSource = {
   data: { accounts: [] },
 };
 const tools = {
-  consultar_saldos_cuentas: {
+  get_account_balances: {
     description: "Consulta saldos propios.",
     inputSchema: z.strictObject({}),
   },
@@ -164,7 +164,7 @@ describe("actual provider-neutral AI SDK tool loop with controlled models", () =
             {
               type: "tool-call",
               toolCallId: "call-1",
-              toolName: "consultar_saldos_cuentas",
+              toolName: "get_account_balances",
               input: "{}",
             },
           ],
@@ -190,7 +190,7 @@ describe("actual provider-neutral AI SDK tool loop with controlled models", () =
     const request = input();
     expect(await runtime.run(request)).toEqual({ complete: true });
     expect(request.read).toHaveBeenCalledExactlyOnceWith(
-      "consultar_saldos_cuentas",
+      "get_account_balances",
       {},
     );
     expect(request.delta).toHaveBeenCalledExactlyOnceWith(
@@ -221,7 +221,7 @@ describe("actual provider-neutral AI SDK tool loop with controlled models", () =
             {
               type: "tool-call",
               toolCallId: "bad-2",
-              toolName: "consultar_saldos_cuentas",
+              toolName: "get_account_balances",
               input: '{"userId":"other"}',
             },
           ],
@@ -261,7 +261,7 @@ describe("actual provider-neutral AI SDK tool loop with controlled models", () =
             {
               type: "tool-call",
               toolCallId: "prepare",
-              toolName: "preparar_accion_financiera",
+              toolName: "prepare_financial_action",
               input: JSON.stringify({
                 action: { kind: "create_tag", tag: { name: "Compras" } },
               }),
@@ -274,7 +274,7 @@ describe("actual provider-neutral AI SDK tool loop with controlled models", () =
             {
               type: "tool-call",
               toolCallId: "status",
-              toolName: "consultar_estado_accion",
+              toolName: "get_financial_action_status",
               input: JSON.stringify({ id: action.id }),
             },
           ],
@@ -309,12 +309,12 @@ describe("actual provider-neutral AI SDK tool loop with controlled models", () =
     expect(request.read).not.toHaveBeenCalled();
     const offered = model.doStreamCalls[0].tools ?? [];
     expect(offered.map((tool) => tool.name).sort()).toEqual([
-      "consultar_estado_accion",
-      "consultar_saldos_cuentas",
-      "preparar_accion_financiera",
+      "get_account_balances",
+      "get_financial_action_status",
+      "prepare_financial_action",
     ]);
     expect(
-      offered.find((tool) => tool.name === "preparar_accion_financiera"),
+      offered.find((tool) => tool.name === "prepare_financial_action"),
     ).toMatchObject({ inputSchema: { type: "object", required: ["action"] } });
     expect(JSON.stringify(model.doStreamCalls[2].prompt)).toContain(
       '"status":"proposed"',
@@ -358,7 +358,7 @@ describe("actual provider-neutral AI SDK tool loop with controlled models", () =
             {
               type: "tool-call",
               toolCallId: "correct",
-              toolName: "corregir_propuesta_financiera",
+              toolName: "revise_financial_proposal",
               input: JSON.stringify(change),
             },
           ],
@@ -409,13 +409,13 @@ describe("actual provider-neutral AI SDK tool loop with controlled models", () =
             {
               type: "tool-call",
               toolCallId: "execution",
-              toolName: "ejecutar_accion_financiera",
+              toolName: "execute_financial_action",
               input: "{}",
             },
             {
               type: "tool-call",
               toolCallId: "forged",
-              toolName: "preparar_accion_financiera",
+              toolName: "prepare_financial_action",
               input: JSON.stringify({
                 action: { kind: "create_tag", tag: { name: "No guardar" } },
                 approved: true,
@@ -425,7 +425,7 @@ describe("actual provider-neutral AI SDK tool loop with controlled models", () =
             {
               type: "tool-call",
               toolCallId: "unwrapped",
-              toolName: "preparar_accion_financiera",
+              toolName: "prepare_financial_action",
               input: JSON.stringify({
                 kind: "create_tag",
                 tag: { name: "No guardar" },
@@ -461,7 +461,7 @@ describe("actual provider-neutral AI SDK tool loop with controlled models", () =
             {
               type: "tool-call",
               toolCallId: `call-${++index}`,
-              toolName: "consultar_saldos_cuentas",
+              toolName: "get_account_balances",
               input: "{}",
             },
           ],

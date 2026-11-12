@@ -290,7 +290,7 @@ describe.skipIf(!integration)("traceable spending and budget totals", () => {
           jsonrpc: "2.0",
           id: 1,
           method: "tools/call",
-          params: { name: "consultar_compras_del_gasto", arguments: selection },
+          params: { name: "get_spending_evidence", arguments: selection },
         }),
       });
       expect((await mcp.json()).result.structuredContent.totals).toEqual(

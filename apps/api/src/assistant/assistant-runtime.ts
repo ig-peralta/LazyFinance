@@ -92,7 +92,7 @@ export class AiSdkAssistantRuntime implements AssistantRuntime {
     }
     const propose = input.propose;
     if (propose)
-      tools.preparar_accion_financiera = tool({
+      tools.prepare_financial_action = tool({
         description: assistantProposalDescription,
         inputSchema: FinancialActionInputSchema,
         outputSchema: FinancialActionSchema,
@@ -101,14 +101,14 @@ export class AiSdkAssistantRuntime implements AssistantRuntime {
     const actionStatus = input.actionStatus;
     const revise = input.revise;
     if (revise)
-      tools.corregir_propuesta_financiera = tool({
+      tools.revise_financial_proposal = tool({
         description: assistantRevisionDescription,
         inputSchema: ReviseFinancialActionSchema,
         outputSchema: FinancialActionSchema,
         execute: (args) => revise(args),
       });
     if (actionStatus)
-      tools.consultar_estado_accion = tool({
+      tools.get_financial_action_status = tool({
         description:
           "Lee el estado real de una propuesta de esta conversación. Solo status:applied y sus results prueban ejecución; proposed no significa creado. Reconsulta antes de afirmar un resultado histórico.",
         inputSchema: FinancialActionIdSchema,
@@ -150,16 +150,16 @@ export class DemonstrationAssistantRuntime implements AssistantRuntime {
     input.signal.throwIfAborted();
     const question = input.messages.at(-1)?.content.toLowerCase() ?? "";
     const name: FinancialReadName = /ingreso|sueldo/.test(question)
-      ? "consultar_ingresos"
+      ? "get_income_summary"
       : /compar|anterior/.test(question)
-        ? "comparar_gastos_mensuales"
+        ? "compare_monthly_spending"
         : /presupuesto/.test(question)
-          ? "consultar_avance_presupuestos"
+          ? "get_budget_progress"
           : /meta|ahorr/.test(question)
-            ? "consultar_presupuestos_y_metas"
+            ? "get_budgets_and_goals"
             : /gast|compr/.test(question)
-              ? "consultar_resumen_gastos_mensuales"
-              : "consultar_saldos_cuentas";
+              ? "get_monthly_spending_summary"
+              : "get_account_balances";
     const source = await input.read(name, {});
     await input.delta(
       source.status === "available"

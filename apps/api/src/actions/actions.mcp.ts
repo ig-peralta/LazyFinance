@@ -52,9 +52,9 @@ export class ActionsMcpController {
   }
 
   @Tool({
-    name: "previsualizar_accion_financiera",
+    name: "preview_financial_action",
     description:
-      "Valida una acción propia y devuelve su selección exacta y fingerprint, sin ejecutarla ni crear una solicitud de aprobación. Requiere permisos de escritura para la acción. Antes de cambiar etiquetas existentes o decisiones de movimientos usa este fingerprint en ejecutar_accion_financiera.",
+      "Valida una acción propia y devuelve su selección exacta y fingerprint, sin ejecutarla ni crear una solicitud de aprobación. Requiere permisos de escritura para la acción. Antes de cambiar etiquetas existentes o decisiones de movimientos usa este fingerprint en execute_financial_action.",
     parameters: FinancialActionInputSchema,
     outputSchema: FinancialActionPreviewSchema,
     annotations: { title: "Previsualizar cambio financiero", ...readOnlyTool },
@@ -68,7 +68,7 @@ export class ActionsMcpController {
   }
 
   @Tool({
-    name: "ejecutar_accion_financiera",
+    name: "execute_financial_action",
     description:
       "Ejecuta directamente una acción dentro de los permisos OAuth explícitos de esta conexión: crear presupuesto/meta, gestionar etiquetas o etiquetar UN movimiento. No usa la aprobación del chat. requestId debe ser un UUID estable por intención: reintentos idénticos devuelven el recibo, nunca duplican el cambio; no cambies requestId tras un resultado incierto. Para editar/archivar/etiquetar exige expectedFingerprint de la previsualización actual. newTags y objetivo se guardan juntos. No mueve dinero, confirma ingresos ni crea reglas automáticas.",
     parameters: DirectFinancialActionSchema,
@@ -92,7 +92,7 @@ export class ActionsMcpController {
   }
 
   @Tool({
-    name: "consultar_etiquetas",
+    name: "list_tags",
     description:
       "Lista etiquetas propias activas con IDs reales para presupuestos, metas y decisiones de etiquetado.",
     outputSchema: z.object({ tags: z.array(TagSummarySchema).max(10000) }),
@@ -103,7 +103,7 @@ export class ActionsMcpController {
   }
 
   @Tool({
-    name: "buscar_movimientos",
+    name: "search_transactions",
     description:
       "Busca una página de movimientos propios por cuenta, fechas, comercio y etiqueta. No sumes páginas como totales; tagId:null también incluye decisiones manuales deliberadas sin etiqueta. Respeta tagDecisionOrigin y conserva el cursor y filtros al continuar.",
     parameters: TransactionsInputSchema,
@@ -118,7 +118,7 @@ export class ActionsMcpController {
   }
 
   @Tool({
-    name: "consultar_movimiento",
+    name: "get_transaction_details",
     description:
       "Consulta el detalle actual de un movimiento propio y su clasificación antes de proponer cambios. Etiquetar no confirma ingresos ni identifica transferencias internas.",
     parameters: z.strictObject({ id: z.uuid() }),

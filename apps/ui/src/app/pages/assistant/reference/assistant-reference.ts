@@ -23,7 +23,7 @@ export class AssistantReference {
     if (
       !this.expanded() ||
       source.status !== "available" ||
-      source.tool !== "consultar_resumen_gastos_mensuales"
+      source.tool !== "get_monthly_spending_summary"
     )
       return;
     const parsed = MonthlySummarySchema.pick({

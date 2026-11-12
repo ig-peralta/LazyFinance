@@ -387,30 +387,30 @@ describe("Dashboard MCP tools", () => {
     }>;
     expect(tools.map(({ name }) => name).sort()).toEqual(
       [
-        "buscar_movimientos",
-        "comparar_gastos_mensuales",
-        "consultar_aportes_ahorro",
-        "consultar_avance_ahorro",
-        "consultar_avance_presupuestos",
-        "consultar_compras_del_gasto",
-        "consultar_compras_presupuesto",
-        "consultar_ingresos",
-        "consultar_etiquetas",
-        "consultar_movimiento",
-        "consultar_movimientos_recientes",
-        "consultar_presupuestos_y_metas",
-        "consultar_resumen_gastos_mensuales",
-        "consultar_saldos_cuentas",
-        "ejecutar_accion_financiera",
-        "previsualizar_accion_financiera",
+        "search_transactions",
+        "compare_monthly_spending",
+        "get_savings_contributions",
+        "get_savings_progress",
+        "get_budget_progress",
+        "get_spending_evidence",
+        "get_budget_spending_evidence",
+        "get_income_summary",
+        "list_tags",
+        "get_transaction_details",
+        "get_recent_transactions",
+        "get_budgets_and_goals",
+        "get_monthly_spending_summary",
+        "get_account_balances",
+        "execute_financial_action",
+        "preview_financial_action",
       ].sort(),
     );
 
     for (const tool of tools) {
       expect(tool.description.length).toBeGreaterThan(90);
       expect(tool.annotations).toMatchObject({
-        readOnlyHint: tool.name !== "ejecutar_accion_financiera",
-        destructiveHint: tool.name === "ejecutar_accion_financiera",
+        readOnlyHint: tool.name !== "execute_financial_action",
+        destructiveHint: tool.name === "execute_financial_action",
       });
       expect(tool.annotations.title.length).toBeGreaterThan(5);
       expect(tool.outputSchema, JSON.stringify(tool)).toBeDefined();
@@ -418,17 +418,17 @@ describe("Dashboard MCP tools", () => {
     }
 
     expect(
-      tools.find(({ name }) => name === "consultar_resumen_gastos_mensuales")
+      tools.find(({ name }) => name === "get_monthly_spending_summary")
         ?.inputSchema.properties?.month?.description,
     ).toContain("America/Santiago");
     expect(
-      tools.find(({ name }) => name === "consultar_saldos_cuentas")
-        ?.outputSchema.type,
+      tools.find(({ name }) => name === "get_account_balances")?.outputSchema
+        .type,
     ).toBe("object");
 
     for (const name of [
-      "consultar_resumen_gastos_mensuales",
-      "comparar_gastos_mensuales",
+      "get_monthly_spending_summary",
+      "compare_monthly_spending",
     ]) {
       const tool = tools.find((item) => item.name === name);
       expect(tool?.description).toContain("compra original");
@@ -441,7 +441,7 @@ describe("Dashboard MCP tools", () => {
       );
     }
     const spending = tools.find(
-      ({ name }) => name === "consultar_resumen_gastos_mensuales",
+      ({ name }) => name === "get_monthly_spending_summary",
     );
     expect(spending?.description).toContain("no son ingresos");
     for (const field of [
@@ -457,26 +457,26 @@ describe("Dashboard MCP tools", () => {
 
   it("scopes every tool call to the caller and returns validated structured results", async () => {
     const calls: Array<[string, string, object]> = [
-      ["consultar_saldos_cuentas", "bob", {}],
-      ["consultar_movimientos_recientes", "alice", {}],
-      ["consultar_presupuestos_y_metas", "alice", {}],
-      ["consultar_avance_presupuestos", "bob", { month: "2026-09" }],
-      ["consultar_resumen_gastos_mensuales", "alice", { month: "2026-09" }],
-      ["comparar_gastos_mensuales", "bob", { month: "2026-09" }],
-      ["consultar_ingresos", "alice", { month: "2026-09" }],
+      ["get_account_balances", "bob", {}],
+      ["get_recent_transactions", "alice", {}],
+      ["get_budgets_and_goals", "alice", {}],
+      ["get_budget_progress", "bob", { month: "2026-09" }],
+      ["get_monthly_spending_summary", "alice", { month: "2026-09" }],
+      ["compare_monthly_spending", "bob", { month: "2026-09" }],
+      ["get_income_summary", "alice", { month: "2026-09" }],
       [
-        "consultar_avance_ahorro",
+        "get_savings_progress",
         "bob",
         { id: savingsResult.goal.id, month: "2026-09" },
       ],
       [
-        "consultar_aportes_ahorro",
+        "get_savings_contributions",
         "alice",
         { id: savingsResult.goal.id, month: "2026-09" },
       ],
-      ["consultar_compras_del_gasto", "alice", { month: "2026-09" }],
+      ["get_spending_evidence", "alice", { month: "2026-09" }],
       [
-        "consultar_compras_presupuesto",
+        "get_budget_spending_evidence",
         "bob",
         {
           id: savingsResult.goal.id,
@@ -492,19 +492,19 @@ describe("Dashboard MCP tools", () => {
       expect(response.body.result.isError).not.toBe(true);
       expect(response.body.result.structuredContent).toBeDefined();
 
-      if (name === "consultar_saldos_cuentas") {
+      if (name === "get_account_balances") {
         expect(response.body.result.structuredContent.accounts[0].alias).toBe(
           token,
         );
       }
 
-      if (name === "consultar_movimientos_recientes") {
+      if (name === "get_recent_transactions") {
         expect(response.body.result.structuredContent.transactions).toEqual(
           recent,
         );
       }
 
-      if (name === "consultar_ingresos") {
+      if (name === "get_income_summary") {
         expect(
           response.body.result.structuredContent.expectedIncome.amount,
         ).toBe("1500000.00");
@@ -519,7 +519,7 @@ describe("Dashboard MCP tools", () => {
         ).toEqual({ amount: "4000.00", count: 1, needsReviewCount: 0 });
       }
 
-      if (name === "consultar_avance_presupuestos") {
+      if (name === "get_budget_progress") {
         expect(response.body.result.structuredContent.budgets[0]).toMatchObject(
           {
             grossSpent: "18000.00",
@@ -530,7 +530,7 @@ describe("Dashboard MCP tools", () => {
         );
       }
 
-      if (name === "consultar_resumen_gastos_mensuales") {
+      if (name === "get_monthly_spending_summary") {
         expect(response.body.result.structuredContent).toMatchObject({
           grossSpending: "18000.00",
           refunds: "2000.00",
@@ -541,8 +541,8 @@ describe("Dashboard MCP tools", () => {
       }
 
       if (
-        name === "consultar_resumen_gastos_mensuales" ||
-        name === "comparar_gastos_mensuales"
+        name === "get_monthly_spending_summary" ||
+        name === "compare_monthly_spending"
       ) {
         expect(response.body.result.structuredContent).not.toHaveProperty(
           "income",
@@ -592,7 +592,7 @@ describe("Dashboard MCP tools", () => {
   });
 
   it("allows future income expectations while keeping received income separate", async () => {
-    const response = await call("alice", "consultar_ingresos", {
+    const response = await call("alice", "get_income_summary", {
       month: "9999-12",
     }).expect(200);
     expect(response.body.result.isError).not.toBe(true);
@@ -604,22 +604,21 @@ describe("Dashboard MCP tools", () => {
   });
 
   it("defaults to the current Santiago month and rejects invalid or future months", async () => {
-    const current = await call(
-      "alice",
-      "consultar_resumen_gastos_mensuales",
-    ).expect(200);
+    const current = await call("alice", "get_monthly_spending_summary").expect(
+      200,
+    );
     const month = new Intl.DateTimeFormat("en-CA", {
       timeZone: "America/Santiago",
       year: "numeric",
       month: "2-digit",
     }).format(new Date());
     expect(current.body.result.structuredContent.month).toBe(month);
-    const invalid = await call("alice", "consultar_avance_presupuestos", {
+    const invalid = await call("alice", "get_budget_progress", {
       month: "2026-13",
     }).expect(200);
     expect(invalid.body.result.isError).toBe(true);
     const callsBefore = summaries.getComparisonForUser.mock.calls.length;
-    const future = await call("alice", "comparar_gastos_mensuales", {
+    const future = await call("alice", "compare_monthly_spending", {
       month: "9999-12",
     }).expect(200);
     expect(future.body.result.isError).toBe(true);

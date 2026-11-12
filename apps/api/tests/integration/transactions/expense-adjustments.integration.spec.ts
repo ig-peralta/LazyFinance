@@ -212,7 +212,7 @@ describe.skipIf(!integration)(
             id: 1,
             method: "tools/call",
             params: {
-              name: "consultar_resumen_gastos_mensuales",
+              name: "get_monthly_spending_summary",
               arguments: { month: "2026-10" },
             },
           }),

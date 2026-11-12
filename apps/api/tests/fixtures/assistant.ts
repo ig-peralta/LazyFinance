@@ -12,7 +12,7 @@ import { fixture, startApi } from "./persistence";
 
 export async function assistantFixture(
   run: AssistantRuntime["run"] = async (input) => {
-    await input.read("consultar_saldos_cuentas", {});
+    await input.read("get_account_balances", {});
     await input.delta(
       "Estos son los saldos reportados, con sus fechas de sincronización. Puedes revisarlos en la referencia adjunta.",
     );

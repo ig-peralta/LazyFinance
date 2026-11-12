@@ -14,7 +14,7 @@ export class SpendingEvidenceMcpController {
   constructor(private readonly evidence: SpendingEvidenceService) {}
 
   @Tool({
-    name: "consultar_compras_del_gasto",
+    name: "get_spending_evidence",
     description:
       "Traza el gasto mensual propio hasta sus compras: costo bruto, devoluciones, reembolsos y neto atribuidos a la compra original. Incluye importes sin etiqueta en el total general; tagId null consulta solo esos movimientos. Los totales son completos, no la suma de una página. Conserva mes, filtros, asOf y adjustmentsAsOf de tracking para continuar; usa el adjustmentsAsOf del resumen para explicar ese resultado.",
     parameters: SpendingContributionsInputSchema,
@@ -32,7 +32,7 @@ export class SpendingEvidenceMcpController {
   }
 
   @Tool({
-    name: "consultar_compras_presupuesto",
+    name: "get_budget_spending_evidence",
     description:
       "Traza el gasto de un presupuesto propio usando id, revisionId y mes de su avance. Reutiliza las etiquetas históricas y los límites exactos de activación y archivo; recuperaciones posteriores siguen la compra original. No incluye compras sin etiqueta. Conserva asOf y adjustmentsAsOf de tracking al paginar, y usa el corte del avance para reconciliar sus totales completos de bruto, recuperaciones y neto.",
     parameters: BudgetContributionsInputSchema,

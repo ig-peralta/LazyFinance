@@ -253,7 +253,7 @@ incomplete-answer warning remain visible.
 
 ## Confirmed actions and independent MCP delegation
 
-`preparar_accion_financiera` accepts `{ action }` with a typed, bounded command.
+`prepare_financial_action` accepts `{ action }` with a typed, bounded command.
 Missing or ambiguous amounts, periods, dates and tag selections require clarification;
 owned reads supply real IDs. Every budget/goal requires at least one existing or
 new tag; the model's JSON schema exposes nonempty alternatives, not only a runtime
@@ -279,7 +279,7 @@ version, expiry and current financial facts. Editing stores a new version and
 requires fresh approval. Each revision expires after 15 minutes; stale/expired
 proposals must be reviewed again. At most four proposals belong to one stored turn;
 current generation prepares at most one new request per turn.
-`corregir_propuesta_financiera` accepts the same saved ID, current version and full
+`revise_financial_proposal` accepts the same saved ID, current version and full
 corrected request. Text corrects requests in its text conversation; voice corrects
 requests in its separate voice session. Both also support manual **Editar**.
 Correction changes only a pending proposal, not finance, and cannot change action
@@ -305,7 +305,7 @@ transaction, including dependent tags and decision events. Database/output-valid
 failures roll back together. Duplicate approvals return the same receipt. Cancel
 after a committed approval reports the applied outcome, not an undo. Ambiguous
 responses require an explicit status read; the UI never automatically retries a
-mutation. Approval makes no additional model call. `consultar_estado_accion` is
+mutation. Approval makes no additional model call. `get_financial_action_status` is
 restricted to the current conversation, and only `applied` proves execution.
 Confirmed receipts also appear in the originating reply and survive reloading
 that conversation. Both modes get authoritative outcomes from their own
@@ -326,7 +326,7 @@ at consent and are checked against both token and stored grant; execution rechec
 the grant under a row lock. A budget/goal with new tags also needs tag-write
 permission. Direct requests require a stable request UUID; reuse with another
 payload/client grant conflicts. Existing-record changes require the fingerprint
-from `previsualizar_accion_financiera`. This pins selection, not human approval:
+from `preview_financial_action`. This pins selection, not human approval:
 the external host controls its own confirmation UX. See [MCP permissions](mcp-authorization.md).
 
 ## Dedicated schema and bounded persistence
@@ -354,6 +354,9 @@ Public text reads reject voice IDs and the separate `assistant.voiceConversation
 read rejects text IDs. Turn admission checks the persisted mode before replay or
 lease creation. Retention and independent action receipts are unchanged. Apply the
 additive migration before using the rebuilt API/persistence; no seed/reset is needed.
+Migration **034** renames assistant tool identifiers to English and updates the
+stored source metadata in retained conversations. It does not alter answers,
+financial facts or approval records.
 
 A claim commits a pending turn and a 90-second lease. Model/network work happens
 outside SQL. Completion is a separate transaction and must match the current

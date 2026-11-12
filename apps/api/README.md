@@ -187,7 +187,7 @@ The executable [eligibility policy](src/objectives/savings-policy.ts) and its
 allocations**, not bank balances, new wealth or earned income. LAZ-35 defines and
 tests the rule; LAZ-42 adds owned target management below. LAZ-40 connects measured
 `objectives.savingsProgress` and paginated `savingsContributions` reads, also exposed
-by the read-only MCP tools `consultar_avance_ahorro` / `consultar_aportes_ahorro`.
+by the read-only MCP tools `get_savings_progress` / `get_savings_contributions`.
 They share exact eligibility/cutoffs, disclose pending-review counts and cash-account
 history coverage, preserve negative net observations and never infer a bank balance.
 Monthly/yearly goals reset by calendar period; lifetime/fixed views accumulate

@@ -10,7 +10,7 @@ export class AccountsMcpController {
   constructor(private readonly accounts: AccountsService) {}
 
   @Tool({
-    name: "consultar_saldos_cuentas",
+    name: "get_account_balances",
     description:
       "Consulta los saldos guardados de las cuentas del usuario en CLP y su seguimiento activo, en pausa o sin acceso. Incluye el tipo para distinguir deuda de tarjeta de dinero disponible; null significa saldo desconocido. Los saldos en pausa son últimos valores conocidos. La fecha de origen puede ser desconocida; no asumas datos actuales. No calcula cuánto queda para gastar.",
     annotations: { title: "Consultar saldos de cuentas", ...readOnlyTool },

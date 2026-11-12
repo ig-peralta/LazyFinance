@@ -103,7 +103,7 @@ describe("human-readable financial reference projections", () => {
   it("presents income plans, included estimates and received amounts separately, with unknowns and the receipt cutoff", () => {
     const view = assistantReferenceView(
       assistantSource({
-        tool: "consultar_ingresos",
+        tool: "get_income_summary",
         path: "/ingresos",
         data: {
           ...incomeSummary,
@@ -133,7 +133,7 @@ describe("human-readable financial reference projections", () => {
   it("shows gross/net spending and recoveries from the service without summing tag rows or hiding untagged coverage", () => {
     const view = assistantReferenceView(
       assistantSource({
-        tool: "consultar_resumen_gastos_mensuales",
+        tool: "get_monthly_spending_summary",
         path: "/movimientos",
         data: { ...emptySummary, ...totals },
       }),
@@ -152,7 +152,7 @@ describe("human-readable financial reference projections", () => {
   it("retains partial-equivalent comparison periods and backend-calculated changes", () => {
     const view = assistantReferenceView(
       assistantSource({
-        tool: "comparar_gastos_mensuales",
+        tool: "compare_monthly_spending",
         data: {
           ...emptyComparison,
           partial: true,
@@ -175,7 +175,7 @@ describe("human-readable financial reference projections", () => {
   it("does not turn a declared goal into measured savings or combine overlapping budgets", () => {
     const declarations = assistantReferenceView(
       assistantSource({
-        tool: "consultar_presupuestos_y_metas",
+        tool: "get_budgets_and_goals",
         data: { objectives: [savingsGoal] },
       }),
     );
@@ -185,7 +185,7 @@ describe("human-readable financial reference projections", () => {
     });
     const budgets = assistantReferenceView(
       assistantSource({
-        tool: "consultar_avance_presupuestos",
+        tool: "get_budget_progress",
         data: { budgets: [budgetProgress] },
       }),
     );
@@ -201,7 +201,7 @@ describe("human-readable financial reference projections", () => {
   it("shows measured savings separately from balances and keeps pending/partial coverage visible", () => {
     const view = assistantReferenceView(
       assistantSource({
-        tool: "consultar_avance_ahorro",
+        tool: "get_savings_progress",
         path: "/metas",
         data: savingsProgress,
       }),
@@ -223,7 +223,7 @@ describe("human-readable financial reference projections", () => {
     }));
     const view = assistantReferenceView(
       assistantSource({
-        tool: "consultar_movimientos_recientes",
+        tool: "get_recent_transactions",
         data: { transactions: rows },
       }),
     );
@@ -236,7 +236,7 @@ describe("human-readable financial reference projections", () => {
   it("projects action-supporting reads into tag and movement cards, keeping page bounds and current detail links", () => {
     const catalog = assistantReferenceView(
       assistantSource({
-        tool: "consultar_etiquetas",
+        tool: "list_tags",
         path: "/etiquetas",
         data: { tags: [tag] },
       }),
@@ -247,7 +247,7 @@ describe("human-readable financial reference projections", () => {
     });
     const page = assistantReferenceView(
       assistantSource({
-        tool: "buscar_movimientos",
+        tool: "search_transactions",
         path: "/movimientos",
         data: transactionPage([movement], "more"),
       }),
@@ -256,7 +256,7 @@ describe("human-readable financial reference projections", () => {
     expect(page.preview).toBe(true);
     const detail = assistantReferenceView(
       assistantSource({
-        tool: "consultar_movimiento",
+        tool: "get_transaction_details",
         path: "/movimientos",
         data: transactionDetail,
       }),
@@ -266,14 +266,14 @@ describe("human-readable financial reference projections", () => {
   });
 
   it.each([
-    "consultar_compras_del_gasto",
-    "consultar_compras_presupuesto",
+    "get_spending_evidence",
+    "get_budget_spending_evidence",
   ] as const)("uses complete service totals and pinned evidence for %s without summing the displayed page", (tool) => {
     const view = assistantReferenceView(
       assistantSource({
         tool,
         path:
-          tool === "consultar_compras_presupuesto"
+          tool === "get_budget_spending_evidence"
             ? "/presupuestos-y-metas"
             : "/movimientos",
         recordId: budgetProgress.id,
@@ -287,7 +287,7 @@ describe("human-readable financial reference projections", () => {
     expect(view.preview).toBe(true);
     expect(view.rows[0].value).toBe("$12.000");
     expect(view.notices[0]).toContain("no solo esta página");
-    if (tool === "consultar_compras_presupuesto") {
+    if (tool === "get_budget_spending_evidence") {
       expect(view.link).toBe(`/presupuestos/${budgetProgress.id}/movimientos`);
       expect(view.query).toEqual({
         month: spendingPage.month,
@@ -302,7 +302,7 @@ describe("human-readable financial reference projections", () => {
     const { account, tagDecisionOrigin, tagRuleId, ...facts } = movement;
     const view = assistantReferenceView(
       assistantSource({
-        tool: "consultar_aportes_ahorro",
+        tool: "get_savings_contributions",
         path: "/metas",
         recordId: savingsGoal.id,
         data: {
@@ -350,10 +350,10 @@ describe("human-readable financial reference projections", () => {
   it("distinguishes genuine empty collections from unknown/unavailable results", () => {
     const cases: { tool: FinancialReadName; data: AssistantSource["data"] }[] =
       [
-        { tool: "consultar_saldos_cuentas", data: { accounts: [] } },
-        { tool: "consultar_movimientos_recientes", data: { transactions: [] } },
-        { tool: "consultar_presupuestos_y_metas", data: { objectives: [] } },
-        { tool: "consultar_avance_presupuestos", data: { budgets: [] } },
+        { tool: "get_account_balances", data: { accounts: [] } },
+        { tool: "get_recent_transactions", data: { transactions: [] } },
+        { tool: "get_budgets_and_goals", data: { objectives: [] } },
+        { tool: "get_budget_progress", data: { budgets: [] } },
       ];
     for (const entry of cases)
       expect(assistantReferenceView(assistantSource(entry)).empty).toMatch(

@@ -10,7 +10,7 @@ export class IncomeMcpController {
   constructor(private readonly income: IncomeService) {}
 
   @Tool({
-    name: "consultar_ingresos",
+    name: "get_income_summary",
     description:
       "Consulta ingresos esperados del mes completo e ingresos recibidos confirmados hasta asOf, en CLP. Distingue créditos sin clasificar y abonos por devoluciones o reembolsos de gastos: estos abonos no son ingresos. Incluye fechas de pago, estimaciones e importes desconocidos. Lo esperado no es dinero disponible ni se suma a lo recibido. Permite meses futuros para expectativas sin inventar ingresos recibidos.",
     parameters: z.object({

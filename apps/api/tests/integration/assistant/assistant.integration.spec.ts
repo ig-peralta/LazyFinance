@@ -198,7 +198,7 @@ describe.skipIf(!integration)(
         const completedExecution = f.runtime.run.mock.calls[0][0];
         expect(completedExecution.signal.aborted).toBe(true);
         await expect(
-          completedExecution.read("consultar_saldos_cuentas", {}),
+          completedExecution.read("get_account_balances", {}),
         ).rejects.toThrow();
         await f.send(chat.id, "¿Qué tan actualizados están esos datos?");
         const context = f.runtime.run.mock.calls[1][0].messages;
@@ -283,7 +283,7 @@ describe.skipIf(!integration)(
     it("records successful owned targets for reference links without trusting failed or foreign IDs", async () => {
       let id: string = randomUUID();
       const f = await assistantFixture(async (input) => {
-        const source = await input.read("consultar_avance_ahorro", {
+        const source = await input.read("get_savings_progress", {
           id,
           month: "2026-09",
         });
@@ -335,7 +335,7 @@ describe.skipIf(!integration)(
 
     it("returns missing/failed tool evidence explicitly and does not accept invented source citations", async () => {
       const f = await assistantFixture(async (input) => {
-        await input.read("consultar_saldos_cuentas", {});
+        await input.read("get_account_balances", {});
         await input.delta("El saldo es desconocido [F8].");
         return { complete: true };
       });
@@ -363,11 +363,11 @@ describe.skipIf(!integration)(
 
     it("validates tool arguments and caps reads before executing an extra financial query", async () => {
       const f = await assistantFixture(async (input) => {
-        await input.read("consultar_saldos_cuentas", {
+        await input.read("get_account_balances", {
           userId: "someone-else",
         });
         for (let i = 0; i < 10; i++)
-          await input.read("consultar_saldos_cuentas", {});
+          await input.read("get_account_balances", {});
         await input.delta("never");
         return { complete: true };
       });
@@ -393,15 +393,15 @@ describe.skipIf(!integration)(
         const client = f.api.client();
         expect(Object.keys(reads)).toHaveLength(14);
         const month = "2026-09";
+        expect(await reads.get_account_balances.execute(f.userId, {})).toEqual({
+          accounts: await client.accounts.list.query(),
+        });
         expect(
-          await reads.consultar_saldos_cuentas.execute(f.userId, {}),
-        ).toEqual({ accounts: await client.accounts.list.query() });
-        expect(
-          await reads.consultar_movimientos_recientes.execute(f.userId, {}),
+          await reads.get_recent_transactions.execute(f.userId, {}),
         ).toEqual({ transactions: await client.transactions.recent.query() });
         const comparison = await client.summaries.comparison.query({ month });
         expect(
-          await reads.comparar_gastos_mensuales.execute(f.userId, { month }),
+          await reads.compare_monthly_spending.execute(f.userId, { month }),
         ).toEqual({
           month,
           previousMonth: comparison.previousMonth,
@@ -414,7 +414,7 @@ describe.skipIf(!integration)(
           adjustmentsAsOf: "2026-11-01T00:00:00.000Z",
         };
         expect(
-          await reads.consultar_compras_del_gasto.execute(f.userId, cuts),
+          await reads.get_spending_evidence.execute(f.userId, cuts),
         ).toEqual(await client.summaries.spendingContributions.query(cuts));
         const tag = await client.tags.create.mutate({
           name: "Ahorro y presupuesto",
@@ -427,10 +427,10 @@ describe.skipIf(!integration)(
         });
         const savingsInput = { id: goal.id, month, asOf: cuts.asOf };
         expect(
-          await reads.consultar_avance_ahorro.execute(f.userId, savingsInput),
+          await reads.get_savings_progress.execute(f.userId, savingsInput),
         ).toEqual(await client.objectives.savingsProgress.query(savingsInput));
         expect(
-          await reads.consultar_aportes_ahorro.execute(f.userId, savingsInput),
+          await reads.get_savings_contributions.execute(f.userId, savingsInput),
         ).toEqual(
           await client.objectives.savingsContributions.query(savingsInput),
         );
@@ -451,7 +451,7 @@ describe.skipIf(!integration)(
           revisionId: budget.effective.id,
         };
         expect(
-          await reads.consultar_compras_presupuesto.execute(
+          await reads.get_budget_spending_evidence.execute(
             f.userId,
             budgetInput,
           ),
@@ -459,23 +459,23 @@ describe.skipIf(!integration)(
           await client.objectives.budgetContributions.query(budgetInput),
         );
         expect(
-          await reads.consultar_avance_presupuestos.execute(f.userId, {
+          await reads.get_budget_progress.execute(f.userId, {
             month,
           }),
         ).toEqual({
           budgets: await client.objectives.progress.query({ month }),
         });
+        expect(await reads.get_budgets_and_goals.execute(f.userId, {})).toEqual(
+          { objectives: await client.objectives.list.query() },
+        );
         expect(
-          await reads.consultar_presupuestos_y_metas.execute(f.userId, {}),
-        ).toEqual({ objectives: await client.objectives.list.query() });
-        expect(
-          await reads.consultar_ingresos.execute(f.userId, { month }),
+          await reads.get_income_summary.execute(f.userId, { month }),
         ).toEqual({
           ...(await client.income.summary.query({ month })),
           asOf: expect.any(String),
         });
         const summary = await client.summaries.monthly.query({ month });
-        const spend = await reads.consultar_resumen_gastos_mensuales.execute(
+        const spend = await reads.get_monthly_spending_summary.execute(
           f.userId,
           { month },
         );
@@ -485,10 +485,10 @@ describe.skipIf(!integration)(
           grossSpending: summary.grossSpending,
         });
         await expect(
-          reads.consultar_avance_ahorro.execute(f.userId, { id: randomUUID() }),
+          reads.get_savings_progress.execute(f.userId, { id: randomUUID() }),
         ).rejects.toThrow();
         await expect(
-          reads.consultar_resumen_gastos_mensuales.execute(f.userId, {
+          reads.get_monthly_spending_summary.execute(f.userId, {
             month: "2999-01",
           }),
         ).rejects.toThrow();
@@ -547,7 +547,7 @@ describe.skipIf(!integration)(
 
     it("reports oversized source data as limited rather than silently truncating it into a false complete result", async () => {
       const f = await assistantFixture(async (input) => {
-        await input.read("consultar_saldos_cuentas", {});
+        await input.read("get_account_balances", {});
         await input.delta(
           "La fuente excede el límite del asistente. Abre la sección original para consultar el resultado completo.",
         );
@@ -590,10 +590,10 @@ describe.skipIf(!integration)(
     it("persists an interrupted answer after cancellation and never executes another read for that operation", async () => {
       const controller = new AbortController();
       const f = await assistantFixture(async (input) => {
-        await input.read("consultar_saldos_cuentas", {});
+        await input.read("get_account_balances", {});
         await input.delta("Respuesta parcial");
         controller.abort();
-        await input.read("consultar_saldos_cuentas", {});
+        await input.read("get_account_balances", {});
         return { complete: true };
       });
       try {

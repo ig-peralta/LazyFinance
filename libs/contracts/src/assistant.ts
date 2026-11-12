@@ -6,24 +6,24 @@ export const ASSISTANT_MAX_INPUT = 2000;
 export const ASSISTANT_MAX_OUTPUT = 16000;
 
 export const FinancialReadNameSchema = z.enum([
-  "consultar_saldos_cuentas",
-  "consultar_movimientos_recientes",
-  "consultar_presupuestos_y_metas",
-  "consultar_avance_presupuestos",
-  "consultar_resumen_gastos_mensuales",
-  "comparar_gastos_mensuales",
-  "consultar_ingresos",
-  "consultar_avance_ahorro",
-  "consultar_aportes_ahorro",
-  "consultar_compras_del_gasto",
-  "consultar_compras_presupuesto",
+  "get_account_balances",
+  "get_recent_transactions",
+  "get_budgets_and_goals",
+  "get_budget_progress",
+  "get_monthly_spending_summary",
+  "compare_monthly_spending",
+  "get_income_summary",
+  "get_savings_progress",
+  "get_savings_contributions",
+  "get_spending_evidence",
+  "get_budget_spending_evidence",
 ]);
 
 export const AssistantReadNameSchema = z.enum([
   ...FinancialReadNameSchema.options,
-  "consultar_etiquetas",
-  "buscar_movimientos",
-  "consultar_movimiento",
+  "list_tags",
+  "search_transactions",
+  "get_transaction_details",
 ]);
 export type AssistantReadName = z.infer<typeof AssistantReadNameSchema>;
 

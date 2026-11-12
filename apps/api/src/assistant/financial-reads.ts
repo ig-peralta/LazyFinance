@@ -80,7 +80,7 @@ export class FinancialReads {
   ) {}
 
   readonly tools = {
-    consultar_etiquetas: read(
+    list_tags: read(
       "Etiquetas disponibles",
       "Catálogo de etiquetas propias activas. Usa IDs reales al preparar presupuestos, metas o decisiones; no inventes IDs ni confundas sin etiqueta con una decisión pendiente.",
       empty,
@@ -88,7 +88,7 @@ export class FinancialReads {
       "/etiquetas",
       async (userId) => ({ tags: await this.tagging.listTagsForUser(userId) }),
     ),
-    buscar_movimientos: read(
+    search_transactions: read(
       "Movimientos seleccionados",
       "Busca movimientos propios por cuenta, fechas, comercio, dirección y etiqueta. tagId:null incluye decisiones deliberadas sin etiqueta: revisa tagDecisionOrigin antes de proponer cambios. Una página no es el historial completo ni un total.",
       TransactionsInputSchema,
@@ -96,7 +96,7 @@ export class FinancialReads {
       "/movimientos",
       (userId, input) => this.transactions.listForUser(userId, input),
     ),
-    consultar_movimiento: read(
+    get_transaction_details: read(
       "Detalle del movimiento",
       "Hechos actuales de un movimiento propio, incluida su decisión de etiqueta y estado. Consulta antes de proponer una nueva decisión. Etiquetar no confirma ingresos ni identifica transferencias internas.",
       z.strictObject({ id: z.uuid() }),
@@ -104,7 +104,7 @@ export class FinancialReads {
       "/movimientos",
       (userId, input) => this.transactions.detailForUser(userId, input.id),
     ),
-    consultar_saldos_cuentas: read(
+    get_account_balances: read(
       "Cuentas y saldos",
       "Saldos reportados, tipo de cuenta, fecha de origen y seguimiento activo/en pausa/sin acceso. Los saldos en pausa son últimos valores conocidos, no datos actuales. null es desconocido; tarjetas son deuda. No reconstruyas saldos ni uses ingresos esperados como efectivo.",
       empty,
@@ -114,7 +114,7 @@ export class FinancialReads {
         accounts: await this.accounts.getActiveForUser(userId),
       }),
     ),
-    consultar_movimientos_recientes: read(
+    get_recent_transactions: read(
       "Movimientos recientes",
       "Hasta diez movimientos propios; no es un historial completo ni detección de anomalías. Conserva fechas, etiquetas y estados de revisión.",
       empty,
@@ -124,7 +124,7 @@ export class FinancialReads {
         transactions: await this.transactions.getRecentForUser(userId),
       }),
     ),
-    consultar_presupuestos_y_metas: read(
+    get_budgets_and_goals: read(
       "Presupuestos y metas",
       "Objetivos declarados, límites y etiquetas; NO es avance medido de ahorro. Usa sus IDs para consultar avance/evidencia.",
       empty,
@@ -134,7 +134,7 @@ export class FinancialReads {
         objectives: await this.objectives.getForUser(userId),
       }),
     ),
-    consultar_avance_presupuestos: read(
+    get_budget_progress: read(
       "Avance de presupuestos",
       "Gasto neto, bruto, recuperaciones y restante del período de cada presupuesto. Presupuestos superpuestos no se suman. No mide ahorro.",
       monthInput,
@@ -147,7 +147,7 @@ export class FinancialReads {
         ),
       }),
     ),
-    consultar_resumen_gastos_mensuales: read(
+    get_monthly_spending_summary: read(
       "Gastos del mes",
       "Compras brutas, devoluciones, reembolsos y gasto neto por período/etiqueta de la compra original. Total incluye sin etiqueta. Recuperaciones no son ingresos; ajustes por revisar no reducen gasto.",
       monthInput,
@@ -166,7 +166,7 @@ export class FinancialReads {
       async (userId, input) =>
         this.summaries.getMonthlyForUser(userId, month(input.month)),
     ),
-    comparar_gastos_mensuales: read(
+    compare_monthly_spending: read(
       "Comparación de gastos",
       "Compara el mes solicitado con el anterior. partial=true compara períodos parciales equivalentes; no es proyección al cierre. Recuperaciones siguen la compra original.",
       monthInput,
@@ -180,7 +180,7 @@ export class FinancialReads {
       async (userId, input) =>
         this.summaries.getComparisonForUser(userId, month(input.month)),
     ),
-    consultar_ingresos: read(
+    get_income_summary: read(
       "Ingresos esperados y recibidos",
       "Esperados cubren el mes completo; recibidos son créditos confirmados hasta asOf. Se permiten expectativas futuras. No sumes esperados+recibidos ni los presentes como dinero disponible. Distingue estimaciones, desconocidos y recuperaciones.",
       monthInput,
@@ -189,7 +189,7 @@ export class FinancialReads {
       async (userId, input) =>
         this.income.getSummaryForUser(userId, input.month),
     ),
-    consultar_avance_ahorro: read(
+    get_savings_progress: read(
       "Avance de ahorro",
       "Aportes, retiros y asignación neta medidos para una meta propia. No es saldo, ingresos ni nueva riqueza. Cobertura incompleta y metas superpuestas deben explicarse.",
       SavingsProgressInputSchema,
@@ -197,7 +197,7 @@ export class FinancialReads {
       "/metas",
       async (userId, input) => this.savings.progress(userId, input),
     ),
-    consultar_aportes_ahorro: read(
+    get_savings_contributions: read(
       "Evidencia del ahorro",
       "Movimientos que explican la meta. Conserva id, mes y tracking.asOf al paginar. No sumes páginas como saldos ni ocultes pendientes/cobertura.",
       SavingsEvidenceInputSchema,
@@ -205,7 +205,7 @@ export class FinancialReads {
       "/metas",
       async (userId, input) => this.savings.evidence(userId, input),
     ),
-    consultar_compras_del_gasto: read(
+    get_spending_evidence: read(
       "Compras que explican el gasto",
       "Evidencia paginada del gasto propio; totales completos no se calculan sumando páginas. Conserva filtros, asOf y adjustmentsAsOf. tagId null selecciona sin etiqueta.",
       SpendingContributionsInputSchema,
@@ -213,7 +213,7 @@ export class FinancialReads {
       "/movimientos",
       async (userId, input) => this.evidence.summary(userId, input),
     ),
-    consultar_compras_presupuesto: read(
+    get_budget_spending_evidence: read(
       "Compras del presupuesto",
       "Evidencia del presupuesto propio. Usa id, revisionId, mes y adjustmentsAsOf del avance. Conserva cortes al paginar; recuperaciones se atribuyen a la compra.",
       BudgetContributionsInputSchema,

@@ -18,7 +18,7 @@ export class SummariesMcpController {
   constructor(private readonly summaries: SummariesService) {}
 
   @Tool({
-    name: "consultar_resumen_gastos_mensuales",
+    name: "get_monthly_spending_summary",
     description:
       "Resume compras brutas, devoluciones, reembolsos y gasto neto del mes en CLP. Los ajustes confirmados se atribuyen al período y etiqueta de la compra original, aunque el abono llegue después; los abonos recibidos se muestran aparte y no son ingresos. Usa America/Santiago y excluye movimientos internos. Cada compra tiene como máximo una etiqueta; el total incluye compras sin etiqueta. Los ajustes por revisar no reducen el gasto.",
     parameters: monthParameters,
@@ -60,7 +60,7 @@ export class SummariesMcpController {
   }
 
   @Tool({
-    name: "comparar_gastos_mensuales",
+    name: "compare_monthly_spending",
     description:
       "Compara el gasto neto de compras de un mes con el anterior en CLP. Devoluciones y reembolsos confirmados se atribuyen al período de la compra original con la información disponible ahora, no a la fecha del abono. Para el mes actual usa fechas comparables; los meses pasados se comparan completos. No proyecta el fin de mes.",
     parameters: monthParameters,

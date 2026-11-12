@@ -46,7 +46,7 @@ describe.skipIf(!integration)(
             jsonrpc: "2.0",
             id: 1,
             method: "tools/call",
-            params: { name: "consultar_saldos_cuentas", arguments: {} },
+            params: { name: "get_account_balances", arguments: {} },
           })
           .expect(200);
         const accounts = await f.api.client().accounts.list.query();

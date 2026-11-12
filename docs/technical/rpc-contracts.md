@@ -25,15 +25,22 @@ not change answer status, actions, lease or an existing transcript. This adds on
 private procedure, not a public transcript-edit endpoint. It is intentionally
 unwired from current native voice; no data migration/deletion or procedure removal
 is required to disable transcription.
-Deploy migration 033, the API, persistence and rebuilt shared contracts together.
+Deploy migrations 033 and 034, the API, persistence and rebuilt shared contracts
+together.
 `CreateAssistantConversationSchema` accepts an optional `mode` defaulting to `text`.
 Private `get`/`create`/`begin` return required stored mode; `begin` checks its
 expected mode before replay or lease admission. Lists are text-only. Public
 `assistant.conversation` rejects voice IDs and hides legacy voice turns;
 `assistant.voiceConversation` is an owned voice-only read for current-session
 results, not an entry in text history. The public conversation shape is unchanged.
-`action_updated` streams a revised or explicitly queried existing proposal without assigning it to the
-correcting turn. Its conversation and original action identity remain validated.
+`action_updated` streams a revised or explicitly queried existing proposal without
+assigning it to the correcting turn. Its conversation and original action identity
+remain validated.
+Migration 034 renames assistant/MCP tool identifiers to English and updates saved
+`AssistantSource.tool` values without changing financial facts. External MCP clients
+must use the new English names after deployment; the MCP server reports version
+2.0.0 for this breaking tool-name change. Tool schemas and OAuth scopes are otherwise
+unchanged.
 
 ## Package boundaries
 
@@ -101,14 +108,14 @@ shapes; counts/tables here are a navigation aid, not a second schema definition.
 
 The API's ordinary `GET /` is a liveness check. `/mcp` is authenticated Streamable
 HTTP exposing sixteen tools through the same services. Fourteen are reads:
-`consultar_saldos_cuentas`, `consultar_movimientos_recientes`,
-`consultar_presupuestos_y_metas`, `consultar_avance_presupuestos`,
-`consultar_resumen_gastos_mensuales`, `comparar_gastos_mensuales`, and
-`consultar_ingresos`, `consultar_avance_ahorro`, `consultar_aportes_ahorro`,
-`consultar_compras_del_gasto`, `consultar_compras_presupuesto`,
-`consultar_etiquetas`, `buscar_movimientos`, and `consultar_movimiento`, plus
-read-only `previsualizar_accion_financiera` and destructive-write
-`ejecutar_accion_financiera`. Preview and execution require the action's explicitly
+`get_account_balances`, `get_recent_transactions`,
+`get_budgets_and_goals`, `get_budget_progress`,
+`get_monthly_spending_summary`, `compare_monthly_spending`, and
+`get_income_summary`, `get_savings_progress`, `get_savings_contributions`,
+`get_spending_evidence`, `get_budget_spending_evidence`,
+`list_tags`, `search_transactions`, and `get_transaction_details`, plus
+read-only `preview_financial_action` and destructive-write
+`execute_financial_action`. Preview and execution require the action's explicitly
 granted write scopes. Preview takes `{ action }`; execution takes a stable
 `requestId`, `action` and, for existing records, `expectedFingerprint`.
 External clients use separate OAuth grants, never Firebase/development app bearers.

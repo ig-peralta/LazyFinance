@@ -26,7 +26,7 @@ export class ObjectivesMcpController {
   ) {}
 
   @Tool({
-    name: "consultar_avance_ahorro",
+    name: "get_savings_progress",
     description:
       "Consulta una meta propia por id: aportes, retiros, asignación neta, restante y porcentaje exactos según movimientos de efectivo etiquetados. No representa saldo bancario, ingresos ni nueva riqueza. Incluye período, corte y cobertura de historia incompleta; las metas con etiquetas compartidas se superponen y no deben sumarse.",
     parameters: SavingsProgressInputSchema,
@@ -44,7 +44,7 @@ export class ObjectivesMcpController {
   }
 
   @Tool({
-    name: "consultar_aportes_ahorro",
+    name: "get_savings_contributions",
     description:
       "Pagina la evidencia de una meta propia: movimientos etiquetados de cuentas corrientes/ahorro, con aportes, retiros y pendientes de revisión. Usa los mismos cortes y reglas del avance; excluye tarjetas y eliminados. Para continuar conserva id, mes y el asOf de tracking de la página anterior; no sumes páginas como si fueran saldos bancarios.",
     parameters: SavingsEvidenceInputSchema,
@@ -62,7 +62,7 @@ export class ObjectivesMcpController {
   }
 
   @Tool({
-    name: "consultar_presupuestos_y_metas",
+    name: "get_budgets_and_goals",
     description:
       "Lista los presupuestos de gasto y las metas de ahorro definidos por el usuario, con importes, períodos y etiquetas. Úsala para conocer los límites y objetivos configurados; no incluye el avance ni los aportes de las metas de ahorro.",
     annotations: { title: "Consultar presupuestos y metas", ...readOnlyTool },
@@ -73,7 +73,7 @@ export class ObjectivesMcpController {
   }
 
   @Tool({
-    name: "consultar_avance_presupuestos",
+    name: "get_budget_progress",
     description:
       "Calcula por presupuesto el límite, compras brutas, devoluciones, reembolsos, gasto neto y saldo restante en CLP. Los ajustes confirmados siguen el período y etiqueta de la compra original, incluso en presupuestos archivados; no admiten compras posteriores al archivo. Usa el mes actual en America/Santiago por defecto. Cada compra cuenta una vez por presupuesto; no calcula avance de ahorro.",
     parameters: monthParameters,

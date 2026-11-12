@@ -1528,7 +1528,7 @@ describe("first-party chat page lifetimes and confirmed history", () => {
           sources: [
             {
               id: "F1",
-              tool: "consultar_saldos_cuentas",
+              tool: "get_account_balances",
               title: "Cuentas",
               status: "available",
               path: "/cuentas",

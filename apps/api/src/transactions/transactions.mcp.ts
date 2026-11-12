@@ -10,7 +10,7 @@ export class TransactionsMcpController {
   constructor(private readonly transactions: TransactionsService) {}
 
   @Tool({
-    name: "consultar_movimientos_recientes",
+    name: "get_recent_transactions",
     description:
       "Devuelve hasta diez movimientos bancarios recientes del usuario, ordenados del más nuevo al más antiguo, con importe, fecha, cuenta y una etiqueta o null si no está clasificado. Úsala para identificar compras recientes; no sirve para buscar todo el historial ni para detectar automáticamente anomalías o duplicados.",
     annotations: { title: "Consultar movimientos recientes", ...readOnlyTool },

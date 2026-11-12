@@ -26,7 +26,7 @@ const cases: EvaluationCase[] = [
   {
     name: "reported balance with unknown freshness",
     question: "¿Qué saldo reporta mi cuenta y qué tan actualizada está?",
-    tool: "consultar_saldos_cuentas",
+    tool: "get_account_balances",
     answer:
       "Tu cuenta corriente reporta $500.000 CLP. La fecha de sincronización es desconocida; no puedo afirmar que esté actualizada.",
     required: [/500[. ,]?000/, /sincroniz|actualiz/],
@@ -36,7 +36,7 @@ const cases: EvaluationCase[] = [
     name: "untagged spending rather than account balance",
     question:
       "¿Cuánto gasté en septiembre de 2026? Incluye las compras sin etiqueta.",
-    tool: "consultar_resumen_gastos_mensuales",
+    tool: "get_monthly_spending_summary",
     answer:
       "En septiembre de 2026 registraste $12.000 CLP de gasto neto; incluye la compra sin etiqueta. No es tu saldo bancario.",
     required: [/12[. ,]?000/, /septiembre|2026-09/, /sin etiqueta/],
@@ -51,7 +51,7 @@ const cases: EvaluationCase[] = [
     name: "full-month plan versus confirmed income",
     question:
       "Distingue mis ingresos esperados de septiembre de 2026 y los que ya recibí. ¿Son dinero disponible?",
-    tool: "consultar_ingresos",
+    tool: "get_income_summary",
     answer:
       "Para septiembre de 2026 esperabas $1.500.000 CLP y recibiste $1.480.000 CLP confirmados hasta el corte. No se suman ni representan dinero disponible; para eso hay que consultar los saldos.",
     required: [
@@ -70,7 +70,7 @@ const cases: EvaluationCase[] = [
     name: "partial equivalent-month comparison",
     question:
       "Compara el gasto de este mes con el anterior. Explica si son meses completos o períodos parciales equivalentes, sin hacer una proyección.",
-    tool: "comparar_gastos_mensuales",
+    tool: "compare_monthly_spending",
     answer:
       "La comparación de este mes usa períodos parciales equivalentes, no dos meses completos ni una proyección de cierre.",
     required: [/parcial/, /equivalente/],
@@ -90,8 +90,8 @@ function controlledModel(example: EvaluationCase) {
               toolCallId: "fixture-read",
               toolName: example.tool,
               input: JSON.stringify(
-                example.tool === "consultar_saldos_cuentas" ||
-                  example.tool === "comparar_gastos_mensuales"
+                example.tool === "get_account_balances" ||
+                  example.tool === "compare_monthly_spending"
                   ? {}
                   : { month: "2026-09" },
               ),

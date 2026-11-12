@@ -45,7 +45,7 @@ export const voiceSocket: VoiceSocketFactory = (call, key) =>
     },
   );
 
-const voiceInstructions = `\nModo voz: escuchas audio nativo. Habla en español neutral, con pronunciación clara, tono cordial y ritmo tranquilo; sin acento regional deliberado, jerga chilena ni modismos locales. Responde en una o dos frases cortas, sin listas, Markdown, informes ni despedidas repetidas. No narres que vas a consultar: usa las herramientas en silencio y habla después del resultado. Si falta un dato, pregunta solo por ese dato y conserva lo que el usuario ya indicó. Las consultas actualizan el espacio en pantalla. Si la persona pide ver una fuente o propuesta, usa presentar_en_pantalla con el ID de una fuente o propuesta recibida en este turno; no inventes IDs ni interfaces. No navegues fuera del espacio. Decir sí NUNCA aprueba: deben revisar y pulsar el botón en pantalla. Conserva fechas, limitaciones y cifras exactas en las fuentes visibles. No afirmes cantidades personales antes de recibir herramientas de este turno. Nunca inventes un resultado visual ni un cambio aplicado.`;
+const voiceInstructions = `\nModo voz: escuchas audio nativo. Habla en español neutral, con pronunciación clara, tono cordial y ritmo tranquilo; sin acento regional deliberado, jerga chilena ni modismos locales. Responde en una o dos frases cortas, sin listas, Markdown, informes ni despedidas repetidas. No narres que vas a consultar: usa las herramientas en silencio y habla después del resultado. Si falta un dato, pregunta solo por ese dato y conserva lo que el usuario ya indicó. Las consultas actualizan el espacio en pantalla. Si la persona pide ver una fuente o propuesta, usa present_assistant_item con el ID de una fuente o propuesta recibida en este turno; no inventes IDs ni interfaces. No navegues fuera del espacio. Decir sí NUNCA aprueba: deben revisar y pulsar el botón en pantalla. Conserva fechas, limitaciones y cifras exactas en las fuentes visibles. No afirmes cantidades personales antes de recibir herramientas de este turno. Nunca inventes un resultado visual ni un cambio aplicado.`;
 const actionStates = {
   proposed: 0,
   stale: 1,
@@ -374,7 +374,7 @@ export class RealtimeConversation {
       })),
       {
         type: "function",
-        name: "preparar_accion_financiera",
+        name: "prepare_financial_action",
         description: assistantProposalDescription,
         parameters: z.toJSONSchema(FinancialActionInputSchema, {
           unrepresentable: "any",
@@ -382,7 +382,7 @@ export class RealtimeConversation {
       },
       {
         type: "function",
-        name: "corregir_propuesta_financiera",
+        name: "revise_financial_proposal",
         description: assistantRevisionDescription,
         parameters: z.toJSONSchema(ReviseFinancialActionSchema, {
           unrepresentable: "any",
@@ -390,14 +390,14 @@ export class RealtimeConversation {
       },
       {
         type: "function",
-        name: "consultar_estado_accion",
+        name: "get_financial_action_status",
         description:
           "Estado real de una propuesta de esta conversación. applied y results confirman ejecución.",
         parameters: z.toJSONSchema(FinancialActionIdSchema),
       },
       {
         type: "function",
-        name: "presentar_en_pantalla",
+        name: "present_assistant_item",
         description:
           "Muestra en el espacio visual una fuente o propuesta que ya recibiste en este turno. Envía kind, sourceId y actionId; el ID que no corresponda debe ser null. No crea contenido visual nuevo.",
         parameters: voicePresentationToolParameters,
@@ -758,19 +758,19 @@ export class RealtimeConversation {
     let result: unknown;
     try {
       const raw: unknown = JSON.parse(item.arguments ?? "{}");
-      if (item.name === "preparar_accion_financiera")
+      if (item.name === "prepare_financial_action")
         result = await active.tools.propose(
           FinancialActionInputSchema.parse(raw).action,
         );
-      else if (item.name === "corregir_propuesta_financiera")
+      else if (item.name === "revise_financial_proposal")
         result = await active.tools.revise(
           ReviseFinancialActionSchema.parse(raw),
         );
-      else if (item.name === "consultar_estado_accion")
+      else if (item.name === "get_financial_action_status")
         result = await active.tools.actionStatus(
           FinancialActionIdSchema.parse(raw).id,
         );
-      else if (item.name === "presentar_en_pantalla")
+      else if (item.name === "present_assistant_item")
         result = this.present(active, this.presentationRequest(raw));
       else
         result = await active.tools.read(

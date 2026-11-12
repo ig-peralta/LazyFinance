@@ -95,7 +95,7 @@ async function setup(history: AssistantTurn[] = [], attachObserver = true) {
     accounts: [],
   }));
   const tools = {
-    consultar_saldos_cuentas: {
+    get_account_balances: {
       title: "Cuentas y saldos",
       description: "Saldos propios",
       inputSchema: z.strictObject({}),
@@ -401,8 +401,8 @@ describe("server-owned native audio conversation", () => {
           newTags: [{ name: "Burger King", color: "#ef4444" }],
         },
       };
-      await f.tool("preparar_accion_financiera", { action: request });
-      await f.tool("preparar_accion_financiera", {
+      await f.tool("prepare_financial_action", { action: request });
+      await f.tool("prepare_financial_action", {
         action: { kind: "create_tag", tag: { name: "Separate", color: null } },
       });
       expect(f.prepare).toHaveBeenCalledOnce();
@@ -411,7 +411,7 @@ describe("server-owned native audio conversation", () => {
       expect(f.saved[0].actions[0].request).toEqual(request);
       expect(f.saved[0].actions[0].status).toBe("proposed");
       await f.begin("second");
-      await f.tool("preparar_accion_financiera", { action: request }, "second");
+      await f.tool("prepare_financial_action", { action: request }, "second");
       expect(f.prepare).toHaveBeenCalledOnce();
       expect(JSON.stringify(f.responses().at(-1))).toContain("UNA A LA VEZ");
     } finally {
@@ -470,7 +470,7 @@ describe("server-owned native audio conversation", () => {
     });
     try {
       await f.begin();
-      await f.tool("corregir_propuesta_financiera", {
+      await f.tool("revise_financial_proposal", {
         id: original.id,
         version: 1,
         action: revised.request,
@@ -580,7 +580,7 @@ describe("server-owned native audio conversation", () => {
         item: {
           type: "function_call",
           call_id: "read-1",
-          name: "consultar_saldos_cuentas",
+          name: "get_account_balances",
           arguments: "{}",
         },
       });
@@ -592,7 +592,7 @@ describe("server-owned native audio conversation", () => {
         status: "complete",
         question: "Consulta por voz",
         text: "",
-        sources: [{ tool: "consultar_saldos_cuentas" }],
+        sources: [{ tool: "get_account_balances" }],
       });
       expect(f.saved[0]).not.toHaveProperty("voice");
       expect(f.store.recordVoiceQuestion.mutate).not.toHaveBeenCalled();
@@ -604,7 +604,7 @@ describe("server-owned native audio conversation", () => {
       const config = JSON.stringify(
         f.socket.sent.find((event) => event.type === "session.update"),
       );
-      expect(config).toContain("preparar_accion_financiera");
+      expect(config).toContain("prepare_financial_action");
       expect(config).not.toContain("aprobar_accion");
       expect(config).not.toContain("server-key");
     } finally {
@@ -632,31 +632,31 @@ describe("server-owned native audio conversation", () => {
     );
     try {
       await f.begin();
-      await f.tool("consultar_saldos_cuentas", {});
-      await f.tool("preparar_accion_financiera", {
+      await f.tool("get_account_balances", {});
+      await f.tool("prepare_financial_action", {
         action: { kind: "create_tag", tag: { name: "Casa", color: null } },
       });
-      await f.tool("presentar_en_pantalla", {
+      await f.tool("present_assistant_item", {
         kind: "source",
         sourceId: "F1",
         actionId: null,
       });
-      await f.tool("presentar_en_pantalla", {
+      await f.tool("present_assistant_item", {
         kind: "proposal",
         sourceId: null,
         actionId,
       });
-      await f.tool("presentar_en_pantalla", {
+      await f.tool("present_assistant_item", {
         kind: "source",
         sourceId: "F1",
         actionId: randomUUID(),
       });
-      await f.tool("presentar_en_pantalla", {
+      await f.tool("present_assistant_item", {
         kind: "source",
         sourceId: "F2",
         actionId: null,
       });
-      await f.tool("presentar_en_pantalla", {
+      await f.tool("present_assistant_item", {
         kind: "proposal",
         sourceId: null,
         actionId: randomUUID(),
@@ -680,7 +680,7 @@ describe("server-owned native audio conversation", () => {
         JSON.stringify(
           f.socket.sent.find((event) => event.type === "session.update"),
         ),
-      ).toContain("presentar_en_pantalla");
+      ).toContain("present_assistant_item");
       const configuration = z
         .object({
           session: z.object({
@@ -691,7 +691,7 @@ describe("server-owned native audio conversation", () => {
         })
         .parse(f.socket.sent.find((event) => event.type === "session.update"));
       const presentationTool = configuration.session.tools.find(
-        (tool) => tool.name === "presentar_en_pantalla",
+        (tool) => tool.name === "present_assistant_item",
       );
       expect(presentationTool?.parameters).toMatchObject({
         type: "object",
@@ -715,7 +715,7 @@ describe("server-owned native audio conversation", () => {
     const f = await setup();
     try {
       await f.begin();
-      await f.tool("consultar_saldos_cuentas", {});
+      await f.tool("get_account_balances", {});
       const selected = {
         kind: "source",
         turnId: f.saved[0].id,
@@ -752,7 +752,7 @@ describe("server-owned native audio conversation", () => {
         item: {
           type: "function_call",
           call_id: "slow",
-          name: "consultar_saldos_cuentas",
+          name: "get_account_balances",
           arguments: "{}",
         },
       });

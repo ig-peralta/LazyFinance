@@ -107,9 +107,9 @@ describe("provider-neutral assistant configuration and bounded context", () => {
     expect(instructions).toContain("America/Santiago");
     expect(instructions).toContain("Moneda CLP");
     expect(instructions).toContain("sin etiquetas NO es una opción");
-    expect(instructions).toContain("consultar_etiquetas no prepara nada");
+    expect(instructions).toContain("list_tags no prepara nada");
     expect(instructions).toContain(
-      "consultar_estado_accion vuelve a mostrar su tarjeta actual",
+      "get_financial_action_status vuelve a mostrar su tarjeta actual",
     );
   });
   it("requires the current turn and source shapes instead of upgrading earlier development formats", () => {
@@ -119,7 +119,7 @@ describe("provider-neutral assistant configuration and bounded context", () => {
     expect(AssistantTurnSchema.safeParse(missingActions).success).toBe(false);
     const source = {
       id: "F1",
-      tool: "consultar_etiquetas",
+      tool: "list_tags",
       title: "Etiquetas",
       status: "available",
       queriedAt: current.createdAt,
@@ -257,7 +257,7 @@ describe("provider-neutral assistant configuration and bounded context", () => {
     expect(prompt).toContain("UNA A LA VEZ");
     expect(prompt).toContain("budget.newTags");
     expect(prompt).toContain("pregunta qué color quiere");
-    expect(prompt).toContain("corregir_propuesta_financiera");
+    expect(prompt).toContain("revise_financial_proposal");
     expect(prompt).toContain(
       "Puedes aceptarla en la tarjeta o decirme qué corregir",
     );

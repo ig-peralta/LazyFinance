@@ -77,7 +77,7 @@ describe("shared text/voice request review authority", () => {
       f.tools.observeHistory([]);
       f.tools.sources.push({
         id: "F1",
-        tool: "consultar_etiquetas",
+        tool: "list_tags",
         title: "Etiquetas",
         status: "available",
         queriedAt: f.current.createdAt,

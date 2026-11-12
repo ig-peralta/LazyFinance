@@ -55,7 +55,7 @@ describe.skipIf(!integration)(
                     {
                       type: "tool-call",
                       toolCallId: "catalog",
-                      toolName: "consultar_etiquetas",
+                      toolName: "list_tags",
                       input: "{}",
                     },
                   ]
@@ -64,7 +64,7 @@ describe.skipIf(!integration)(
                       {
                         type: "tool-call",
                         toolCallId: "prepare",
-                        toolName: "preparar_accion_financiera",
+                        toolName: "prepare_financial_action",
                         input: JSON.stringify({
                           action: {
                             kind: "create_tag",
@@ -122,7 +122,7 @@ describe.skipIf(!integration)(
         );
         expect(turn.status).toBe("complete");
         expect(turn.sources[0]).toMatchObject({
-          tool: "consultar_etiquetas",
+          tool: "list_tags",
           status: "available",
           recordId: null,
           data: { tags: [] },
