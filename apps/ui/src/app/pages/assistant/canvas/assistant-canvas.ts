@@ -5,8 +5,13 @@ import {
   input,
   output,
   signal,
+  untracked,
 } from "@angular/core";
-import type { AssistantTurn, FinancialAction } from "@lazyfinance/contracts";
+import type {
+  AssistantTurn,
+  AssistantVoicePresentationEvent,
+  FinancialAction,
+} from "@lazyfinance/contracts";
 import { latestAssistantAction } from "../../../features/assistant/assistant-action-state";
 import { actionLabels } from "../action/action-presentation";
 import { AssistantActionCard } from "../action/assistant-action-card";
@@ -50,6 +55,7 @@ export class AssistantCanvas {
   readonly showQuestions = input(true);
   readonly voiceMode = input(false);
   readonly selection = input<string>();
+  readonly presentation = input<AssistantVoicePresentationEvent | null>(null);
   readonly actionChanged = output<FinancialAction>();
   readonly selected = output<string>();
   protected readonly labels = actionLabels;
@@ -122,6 +128,28 @@ export class AssistantCanvas {
   });
 
   constructor() {
+    effect(() => {
+      const request = this.presentation();
+      if (!request) return;
+      const presentation = request.presentation;
+      untracked(() => {
+        const turn = this.turns().find((value) => value.id === request.turnId);
+        if (!turn) return;
+        if (presentation.kind === "source") {
+          if (
+            turn.sources.some((source) => source.id === presentation.sourceId)
+          )
+            this.sourceSelection.set({
+              turn: turn.id,
+              source: presentation.sourceId,
+            });
+        } else if (
+          turn.actions.some((action) => action.id === presentation.actionId)
+        ) {
+          this.proposalId.set(presentation.actionId);
+        }
+      });
+    });
     effect(() => {
       const proposals = this.proposals();
       const current = proposals.find(

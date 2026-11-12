@@ -32,8 +32,30 @@ export const AssistantVoiceProblemSchema = z.object({
 export type AssistantVoiceProblemCode = z.infer<
   typeof AssistantVoiceProblemCodeSchema
 >;
+export const AssistantVoicePresentationRequestSchema = z.discriminatedUnion(
+  "kind",
+  [
+    z.strictObject({
+      kind: z.literal("source"),
+      sourceId: z.string().regex(/^F[1-8]$/),
+    }),
+    z.strictObject({ kind: z.literal("proposal"), actionId: z.uuid() }),
+  ],
+);
+export type AssistantVoicePresentationRequest = z.infer<
+  typeof AssistantVoicePresentationRequestSchema
+>;
+export const AssistantVoicePresentationEventSchema = z.strictObject({
+  type: z.literal("presentation"),
+  turnId: z.uuid(),
+  presentation: AssistantVoicePresentationRequestSchema,
+});
+export type AssistantVoicePresentationEvent = z.infer<
+  typeof AssistantVoicePresentationEventSchema
+>;
 export const AssistantVoiceEventSchema = z.union([
   AssistantEventSchema,
+  AssistantVoicePresentationEventSchema,
   AssistantVoiceProblemSchema.extend({ type: z.literal("voice_error") }),
   z.object({
     type: z.literal("voice_warning"),

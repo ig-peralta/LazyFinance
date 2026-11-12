@@ -1,6 +1,10 @@
 import { TestBed } from "@angular/core/testing";
 import { afterEach, describe, expect, it } from "vitest";
-import { assistantAction, assistantReply } from "../../../../testing/assistant";
+import {
+  assistantAction,
+  assistantReply,
+  assistantSource,
+} from "../../../../testing/assistant";
 import { setupRpc } from "../../../../testing/rpc";
 import { AssistantCanvas } from "./assistant-canvas";
 
@@ -50,6 +54,51 @@ describe("on-demand assistant query details", () => {
     const root: HTMLElement = fixture.nativeElement;
     expect(root.querySelector("select")?.value).toBe(proposal.id);
     expect(root.querySelector("assistant-action-card")).not.toBeNull();
+  });
+
+  it("selects only the requested server-owned source or proposal card", () => {
+    setupRpc();
+    const fixture = TestBed.createComponent(AssistantCanvas);
+    const first = assistantAction();
+    const second = assistantAction({
+      id: "00000000-0000-4000-8000-000000000010",
+    });
+    const turn = {
+      ...assistantReply,
+      actions: [first, second],
+      sources: [
+        assistantSource(),
+        assistantSource({ id: "F2", title: "Otra consulta" }),
+      ],
+    };
+    fixture.componentRef.setInput("turns", [turn]);
+    fixture.componentRef.setInput("showActions", true);
+    fixture.componentRef.setInput("voiceMode", true);
+    fixture.componentRef.setInput("presentation", {
+      type: "presentation",
+      turnId: turn.id,
+      presentation: { kind: "source", sourceId: "F1" },
+    });
+    fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement;
+    const sources = () =>
+      root.querySelectorAll<HTMLButtonElement>(
+        '[aria-label="Consultas mostradas"] button',
+      );
+    expect(sources()[0].getAttribute("aria-pressed")).toBe("true");
+    expect(sources()[1].getAttribute("aria-pressed")).toBe("false");
+
+    fixture.componentRef.setInput("presentation", {
+      type: "presentation",
+      turnId: turn.id,
+      presentation: { kind: "proposal", actionId: second.id },
+    });
+    fixture.detectChanges();
+    const proposals = () =>
+      root.querySelectorAll<HTMLButtonElement>(
+        '[aria-label="Solicitudes de cambio"] button',
+      );
+    expect(proposals()[1].getAttribute("aria-pressed")).toBe("true");
   });
 
   it("reviews one request at a time without losing other requests or coupling approval to source selection", () => {

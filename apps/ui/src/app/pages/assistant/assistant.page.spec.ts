@@ -469,6 +469,16 @@ describe("first-party chat page lifetimes and confirmed history", () => {
       turnId: second.id,
     });
     receive?.({ type: "turn", turn: first });
+    receive?.({ type: "source", source: assistantSource() });
+    receive?.({
+      type: "presentation",
+      turnId: first.id,
+      presentation: { kind: "source", sourceId: "F1" },
+    });
+    f.fixture.detectChanges();
+    expect(f.root.querySelector(".chat-details assistant-reference")).not.toBe(
+      null,
+    );
     receive?.({ type: "action", action: budget });
     receive?.({
       type: "done",

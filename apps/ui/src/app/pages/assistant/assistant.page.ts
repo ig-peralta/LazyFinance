@@ -17,8 +17,9 @@ import {
   ASSISTANT_MAX_INPUT,
   type AssistantConsentDecision,
   type AssistantConversation,
-  type AssistantEvent,
   type AssistantTurn,
+  type AssistantVoiceEvent,
+  type AssistantVoicePresentationEvent,
   type FinancialAction,
 } from "@lazyfinance/contracts";
 import {
@@ -120,6 +121,8 @@ export class AssistantPage {
   protected readonly optionsOpen = signal(false);
   protected readonly canvasOpen = signal(false);
   protected readonly resultSelection = signal<string | undefined>(undefined);
+  protected readonly voicePresentation =
+    signal<AssistantVoicePresentationEvent | null>(null);
   private readonly consentReview = signal(false);
   protected readonly processingAccepted = computed(
     () => !this.consentReview() && this.consent.allowed(),
@@ -900,7 +903,19 @@ export class AssistantPage {
     if (!this.voiceId()) this.voiceDisclosure.set(true);
   }
 
-  private receiveVoice(event: AssistantEvent) {
+  private receiveVoice(event: AssistantVoiceEvent) {
+    if (event.type === "presentation") {
+      if (this.live()?.turn.id !== event.turnId) return;
+      this.voicePresentation.set(event);
+      this.showResult(event.turnId, false);
+      return;
+    }
+    if (
+      event.type === "phase" ||
+      event.type === "voice_warning" ||
+      event.type === "voice_error"
+    )
+      return;
     const scope = this.rpc.authenticatedScope(),
       conversationId = this.voiceId();
     if (!scope || !conversationId) return;

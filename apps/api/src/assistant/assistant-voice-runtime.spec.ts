@@ -574,6 +574,71 @@ describe("server-owned native audio conversation", () => {
     }
   });
 
+  it("presents only source and proposal cards owned by the active voice turn", async () => {
+    const f = await setup();
+    const actionId = randomUUID();
+    f.prepare.mockImplementation(
+      async (_owner, conversationId, turnId, request) => ({
+        id: actionId,
+        conversationId,
+        turnId,
+        version: 1,
+        origin: "assistant",
+        request: FinancialActionRequestSchema.parse(request),
+        context: { tags: [], movement: null },
+        status: "proposed",
+        createdAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 900_000).toISOString(),
+        results: [],
+      }),
+    );
+    try {
+      await f.begin();
+      await f.tool("consultar_saldos_cuentas", {});
+      await f.tool("preparar_accion_financiera", {
+        action: { kind: "create_tag", tag: { name: "Casa", color: null } },
+      });
+      await f.tool("presentar_en_pantalla", {
+        kind: "source",
+        sourceId: "F1",
+      });
+      await f.tool("presentar_en_pantalla", {
+        kind: "proposal",
+        actionId,
+      });
+      await f.tool("presentar_en_pantalla", {
+        kind: "source",
+        sourceId: "F2",
+      });
+      await f.tool("presentar_en_pantalla", {
+        kind: "proposal",
+        actionId: randomUUID(),
+      });
+
+      expect(f.events.filter((event) => event.type === "presentation")).toEqual(
+        [
+          {
+            type: "presentation",
+            turnId: f.saved[0].id,
+            presentation: { kind: "source", sourceId: "F1" },
+          },
+          {
+            type: "presentation",
+            turnId: f.saved[0].id,
+            presentation: { kind: "proposal", actionId },
+          },
+        ],
+      );
+      expect(
+        JSON.stringify(
+          f.socket.sent.find((event) => event.type === "session.update"),
+        ),
+      ).toContain("presentar_en_pantalla");
+    } finally {
+      await f.close();
+    }
+  });
+
   it("interrupts a slow tool without ending the session, discards late evidence and accepts a correction", async () => {
     const f = await setup();
     let resolve: (value: { accounts: never[] }) => void = () => {};

@@ -6,8 +6,8 @@ import {
   signal,
 } from "@angular/core";
 import {
-  type AssistantEvent,
   AssistantVoiceConfigurationSchema,
+  type AssistantVoiceEvent,
   AssistantVoiceEventSchema,
   AssistantVoiceProblemSchema,
   AssistantVoiceSessionSchema,
@@ -176,7 +176,7 @@ export class AssistantVoiceClient {
   async start(
     owner: VerifiedCredentials,
     conversationId: string,
-    receive: (event: AssistantEvent) => void,
+    receive: (event: AssistantVoiceEvent) => void,
     interrupt: () => void,
     startupSignal?: AbortSignal,
   ) {
@@ -406,7 +406,7 @@ export class AssistantVoiceClient {
   private async listen(
     run: VoiceRun,
     conversationId: string,
-    receive: (event: AssistantEvent) => void,
+    receive: (event: AssistantVoiceEvent) => void,
   ) {
     const response = await this.request(run.owner, "events", {
       method: "POST",

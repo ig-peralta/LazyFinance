@@ -4,6 +4,7 @@ import {
   AssistantReadNameSchema,
   type AssistantTurn,
   type AssistantVoiceEvent,
+  AssistantVoicePresentationRequestSchema,
   type AssistantVoiceProblemCode,
   type FinancialAction,
   FinancialActionIdSchema,
@@ -43,7 +44,7 @@ export const voiceSocket: VoiceSocketFactory = (call, key) =>
     },
   );
 
-const voiceInstructions = `\nModo voz: escuchas audio nativo. Habla en español neutral, con pronunciación clara, tono cordial y ritmo tranquilo; sin acento regional deliberado, jerga chilena ni modismos locales. Responde en una o dos frases cortas, sin listas, Markdown, informes ni despedidas repetidas. No narres que vas a consultar: usa las herramientas en silencio y habla después del resultado. Si falta un dato, pregunta solo por ese dato y conserva lo que el usuario ya indicó. Las consultas actualizan el espacio en pantalla: para mostrar gráficos usa el resumen o comparación, para acotar por etiqueta usa compras del gasto, y para mostrar compras usa evidencia o buscar_movimientos. No navegues fuera del espacio. Si te interrumpen, acepta la corrección sin reiniciar la tarea. Decir sí NUNCA aprueba: deben revisar y pulsar el botón en pantalla. Conserva fechas, limitaciones y cifras exactas en las fuentes visibles. No afirmes cantidades personales antes de recibir herramientas de este turno. Nunca inventes un resultado visual ni un cambio aplicado.`;
+const voiceInstructions = `\nModo voz: escuchas audio nativo. Habla en español neutral, con pronunciación clara, tono cordial y ritmo tranquilo; sin acento regional deliberado, jerga chilena ni modismos locales. Responde en una o dos frases cortas, sin listas, Markdown, informes ni despedidas repetidas. No narres que vas a consultar: usa las herramientas en silencio y habla después del resultado. Si falta un dato, pregunta solo por ese dato y conserva lo que el usuario ya indicó. Las consultas actualizan el espacio en pantalla. Si la persona pide ver una fuente o propuesta, usa presentar_en_pantalla con el ID de una fuente o propuesta recibida en este turno; no inventes IDs ni interfaces. No navegues fuera del espacio. Decir sí NUNCA aprueba: deben revisar y pulsar el botón en pantalla. Conserva fechas, limitaciones y cifras exactas en las fuentes visibles. No afirmes cantidades personales antes de recibir herramientas de este turno. Nunca inventes un resultado visual ni un cambio aplicado.`;
 const actionStates = {
   proposed: 0,
   stale: 1,
@@ -117,6 +118,7 @@ interface VoiceTurn {
   controller: AbortController;
   response?: string;
   answer: string;
+  presentationCalls: number;
   timeout: ReturnType<typeof setTimeout>;
 }
 
@@ -340,6 +342,15 @@ export class RealtimeConversation {
           "Estado real de una propuesta de esta conversación. applied y results confirman ejecución.",
         parameters: z.toJSONSchema(FinancialActionIdSchema),
       },
+      {
+        type: "function",
+        name: "presentar_en_pantalla",
+        description:
+          "Muestra en el espacio visual una fuente o propuesta que ya recibiste en este turno. No crea contenido visual nuevo.",
+        parameters: z.toJSONSchema(AssistantVoicePresentationRequestSchema, {
+          unrepresentable: "any",
+        }),
+      },
     ];
   }
 
@@ -460,6 +471,7 @@ export class RealtimeConversation {
         controller,
         timeout,
         answer: "",
+        presentationCalls: 0,
       };
       this.publish({ type: "turn", turn: started.turn });
       // The response consumes the committed AUDIO item; transcription is not an input to generation.
@@ -604,6 +616,11 @@ export class RealtimeConversation {
         result = await active.tools.actionStatus(
           FinancialActionIdSchema.parse(raw).id,
         );
+      else if (item.name === "presentar_en_pantalla")
+        result = this.present(
+          active,
+          AssistantVoicePresentationRequestSchema.parse(raw),
+        );
       else
         result = await active.tools.read(
           AssistantReadNameSchema.parse(item.name),
@@ -629,6 +646,36 @@ export class RealtimeConversation {
         output: JSON.stringify(result),
       },
     });
+  }
+
+  private present(
+    active: VoiceTurn,
+    presentation: z.infer<typeof AssistantVoicePresentationRequestSchema>,
+  ) {
+    if (++active.presentationCalls > 4)
+      return {
+        status: "unavailable",
+        note: "Límite de presentaciones alcanzado.",
+      };
+    const available =
+      presentation.kind === "source"
+        ? active.tools.sources.some(
+            (source) => source.id === presentation.sourceId,
+          )
+        : [...active.tools.actions, ...active.tools.revisions].some(
+            (action) => action.id === presentation.actionId,
+          );
+    if (!available)
+      return {
+        status: "unavailable",
+        note: "Ese elemento no pertenece a las fuentes o propuestas de este turno.",
+      };
+    this.publish({
+      type: "presentation",
+      turnId: active.turn.id,
+      presentation,
+    });
+    return { status: "shown", kind: presentation.kind };
   }
 
   private async finish(status: AssistantTurn["status"]) {
