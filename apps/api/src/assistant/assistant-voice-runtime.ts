@@ -92,6 +92,39 @@ const safeProviderParameter = (value?: string) =>
   )
     ? value
     : undefined;
+const voicePresentationToolInputSchema = z.strictObject({
+  kind: z.enum(["source", "proposal"]),
+  sourceId: z
+    .string()
+    .regex(/^F[1-8]$/)
+    .nullable(),
+  actionId: z.uuid().nullable(),
+});
+// Realtime rejected the generated discriminated-union parameters for this tool.
+// Use a strict-compatible flat object at the provider boundary, then normalize
+// and validate it against the public discriminated union before presenting.
+const voicePresentationToolParameters = {
+  type: "object",
+  properties: {
+    kind: {
+      type: "string",
+      enum: ["source", "proposal"],
+      description: "Choose source or proposal.",
+    },
+    sourceId: {
+      type: ["string", "null"],
+      pattern: "^F[1-8]$",
+      description: "Use an F1-F8 source ID for source; otherwise null.",
+    },
+    actionId: {
+      type: ["string", "null"],
+      format: "uuid",
+      description: "Use a proposal UUID for proposal; otherwise null.",
+    },
+  },
+  required: ["kind", "sourceId", "actionId"],
+  additionalProperties: false,
+} as const;
 const eventSchema = z.object({
   type: z.string(),
   item_id: z.string().optional(),
@@ -366,10 +399,8 @@ export class RealtimeConversation {
         type: "function",
         name: "presentar_en_pantalla",
         description:
-          "Muestra en el espacio visual una fuente o propuesta que ya recibiste en este turno. No crea contenido visual nuevo.",
-        parameters: z.toJSONSchema(AssistantVoicePresentationRequestSchema, {
-          unrepresentable: "any",
-        }),
+          "Muestra en el espacio visual una fuente o propuesta que ya recibiste en este turno. Envía kind, sourceId y actionId; el ID que no corresponda debe ser null. No crea contenido visual nuevo.",
+        parameters: voicePresentationToolParameters,
       },
     ];
   }
@@ -740,10 +771,7 @@ export class RealtimeConversation {
           FinancialActionIdSchema.parse(raw).id,
         );
       else if (item.name === "presentar_en_pantalla")
-        result = this.present(
-          active,
-          AssistantVoicePresentationRequestSchema.parse(raw),
-        );
+        result = this.present(active, this.presentationRequest(raw));
       else
         result = await active.tools.read(
           AssistantReadNameSchema.parse(item.name),
@@ -768,6 +796,24 @@ export class RealtimeConversation {
         call_id: item.call_id,
         output: JSON.stringify(result),
       },
+    });
+  }
+
+  private presentationRequest(raw: unknown) {
+    const input = voicePresentationToolInputSchema.parse(raw);
+    if (input.kind === "source") {
+      if (input.actionId !== null)
+        throw new Error("Unexpected proposal ID for source presentation");
+      return AssistantVoicePresentationRequestSchema.parse({
+        kind: input.kind,
+        sourceId: input.sourceId,
+      });
+    }
+    if (input.sourceId !== null)
+      throw new Error("Unexpected source ID for proposal presentation");
+    return AssistantVoicePresentationRequestSchema.parse({
+      kind: input.kind,
+      actionId: input.actionId,
     });
   }
 

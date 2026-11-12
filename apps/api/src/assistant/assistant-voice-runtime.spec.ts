@@ -639,17 +639,26 @@ describe("server-owned native audio conversation", () => {
       await f.tool("presentar_en_pantalla", {
         kind: "source",
         sourceId: "F1",
+        actionId: null,
       });
       await f.tool("presentar_en_pantalla", {
         kind: "proposal",
+        sourceId: null,
         actionId,
       });
       await f.tool("presentar_en_pantalla", {
         kind: "source",
+        sourceId: "F1",
+        actionId: randomUUID(),
+      });
+      await f.tool("presentar_en_pantalla", {
+        kind: "source",
         sourceId: "F2",
+        actionId: null,
       });
       await f.tool("presentar_en_pantalla", {
         kind: "proposal",
+        sourceId: null,
         actionId: randomUUID(),
       });
 
@@ -672,6 +681,31 @@ describe("server-owned native audio conversation", () => {
           f.socket.sent.find((event) => event.type === "session.update"),
         ),
       ).toContain("presentar_en_pantalla");
+      const configuration = z
+        .object({
+          session: z.object({
+            tools: z.array(
+              z.object({ name: z.string(), parameters: z.unknown() }),
+            ),
+          }),
+        })
+        .parse(f.socket.sent.find((event) => event.type === "session.update"));
+      const presentationTool = configuration.session.tools.find(
+        (tool) => tool.name === "presentar_en_pantalla",
+      );
+      expect(presentationTool?.parameters).toMatchObject({
+        type: "object",
+        properties: {
+          kind: { type: "string", enum: ["source", "proposal"] },
+          sourceId: { type: ["string", "null"], pattern: "^F[1-8]$" },
+          actionId: { type: ["string", "null"], format: "uuid" },
+        },
+        required: ["kind", "sourceId", "actionId"],
+        additionalProperties: false,
+      });
+      expect(JSON.stringify(presentationTool?.parameters)).not.toContain(
+        "oneOf",
+      );
     } finally {
       await f.close();
     }
