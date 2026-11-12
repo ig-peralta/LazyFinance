@@ -10,6 +10,7 @@ import {
   type AssistantVoiceEvent,
   AssistantVoiceEventSchema,
   AssistantVoiceProblemSchema,
+  type AssistantVoiceScreenSelection,
   AssistantVoiceSessionSchema,
 } from "@lazyfinance/contracts";
 import { z } from "zod";
@@ -84,6 +85,7 @@ interface VoiceRun {
   outputId?: string;
   responding?: boolean;
   turnId?: string;
+  screenQueue: Promise<void>;
 }
 
 /** Native conversational audio without a separate transcription service or captions. */
@@ -203,6 +205,7 @@ export class AssistantVoiceClient {
         peer: this.media.peer(),
         audio,
         seen: new Set(),
+        screenQueue: Promise.resolve(),
       };
     } catch {
       this.state.set("off");
@@ -485,6 +488,23 @@ export class AssistantVoiceClient {
   private send(value: unknown) {
     const channel = this.run?.channel;
     if (channel?.readyState === "open") channel.send(JSON.stringify(value));
+  }
+
+  acknowledgeScreen(selection: AssistantVoiceScreenSelection) {
+    const run = this.run;
+    const session = run?.session;
+    if (!run || !session || run.controller.signal.aborted) return;
+    run.screenQueue = run.screenQueue
+      .catch(() => {})
+      .then(async () => {
+        if (this.run !== run || run.controller.signal.aborted) return;
+        await this.request(run.owner, "screen", {
+          method: "POST",
+          body: JSON.stringify({ id: session, selection }),
+          signal: AbortSignal.any([run.owner.signal, run.controller.signal]),
+        });
+      })
+      .catch(() => {});
   }
 
   interrupt() {

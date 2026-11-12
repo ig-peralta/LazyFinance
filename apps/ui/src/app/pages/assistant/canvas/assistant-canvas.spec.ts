@@ -1,4 +1,5 @@
 import { TestBed } from "@angular/core/testing";
+import type { AssistantVoiceScreenSelection } from "@lazyfinance/contracts";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   assistantAction,
@@ -74,6 +75,10 @@ describe("on-demand assistant query details", () => {
     fixture.componentRef.setInput("turns", [turn]);
     fixture.componentRef.setInput("showActions", true);
     fixture.componentRef.setInput("voiceMode", true);
+    const selections: AssistantVoiceScreenSelection[] = [];
+    fixture.componentInstance.screenSelected.subscribe((selection) =>
+      selections.push(selection),
+    );
     fixture.componentRef.setInput("presentation", {
       type: "presentation",
       turnId: turn.id,
@@ -87,6 +92,11 @@ describe("on-demand assistant query details", () => {
       );
     expect(sources()[0].getAttribute("aria-pressed")).toBe("true");
     expect(sources()[1].getAttribute("aria-pressed")).toBe("false");
+    expect(selections).toContainEqual({
+      kind: "source",
+      turnId: turn.id,
+      sourceId: "F1",
+    });
 
     fixture.componentRef.setInput("presentation", {
       type: "presentation",
@@ -99,6 +109,10 @@ describe("on-demand assistant query details", () => {
         '[aria-label="Solicitudes de cambio"] button',
       );
     expect(proposals()[1].getAttribute("aria-pressed")).toBe("true");
+    expect(selections).toContainEqual({
+      kind: "proposal",
+      actionId: second.id,
+    });
   });
 
   it("reviews one request at a time without losing other requests or coupling approval to source selection", () => {

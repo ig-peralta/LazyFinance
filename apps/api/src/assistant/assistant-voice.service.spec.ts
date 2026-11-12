@@ -17,6 +17,7 @@ async function setup(
 ) {
   const listen = vi.fn<RealtimeConversation["listen"]>(async () => {});
   const stop = vi.fn<RealtimeConversation["close"]>(async () => {});
+  const selectScreen = vi.fn<RealtimeConversation["selectScreen"]>(() => true);
   const get = vi.fn(async (_input: { id: string }) => ({ mode: "voice" }));
   const conversations = vi.fn((_owner: string) => ({ get: { query: get } }));
   const requireConsent = vi.fn<AssistantService["requireConsent"]>(
@@ -38,6 +39,7 @@ async function setup(
           connect: vi.fn(async () => ({
             close: stop,
             listen,
+            selectScreen,
           })),
         },
       },
@@ -63,6 +65,7 @@ async function setup(
     voice: module.get(AssistantVoiceService),
     listen,
     stop,
+    selectScreen,
     request,
     conversations,
     requireConsent,
@@ -151,6 +154,50 @@ describe("voice admission, provider privacy and owner-bound termination", () => 
       await observation;
       expect(f.stop).toHaveBeenCalledOnce();
       expect(f.request.mock.calls.at(-1)?.[0]).toContain("/hangup");
+    } finally {
+      controller.abort();
+      await f.close();
+    }
+  });
+
+  it("accepts bounded screen selections only from the observed, consented owner session", async () => {
+    const f = await setup();
+    const controller = new AbortController();
+    f.listen.mockImplementation(async (signal) => {
+      if (!signal.aborted)
+        await new Promise<void>((resolve) =>
+          signal.addEventListener("abort", () => resolve(), { once: true }),
+        );
+    });
+    try {
+      const session = await f.voice.start("owner", origin, input, signal());
+      const selection = {
+        kind: "source",
+        turnId: "00000000-0000-4000-8000-000000000010",
+        sourceId: "F1",
+      } as const;
+      await expect(
+        f.voice.selectScreen("foreign", session.id, selection),
+      ).rejects.toThrow();
+      expect(f.selectScreen).not.toHaveBeenCalled();
+
+      const observation = f.voice.listen(
+        "owner",
+        session.id,
+        controller.signal,
+        async () => {},
+      );
+      await vi.waitFor(() => expect(f.listen).toHaveBeenCalledOnce());
+      await f.voice.selectScreen("owner", session.id, selection);
+      expect(f.selectScreen).toHaveBeenCalledExactlyOnceWith(selection);
+
+      f.requireConsent.mockRejectedValue(new Error("Consent refused"));
+      await expect(
+        f.voice.selectScreen("owner", session.id, selection),
+      ).rejects.toThrow("Consent refused");
+      expect(f.selectScreen).toHaveBeenCalledOnce();
+      controller.abort();
+      await observation;
     } finally {
       controller.abort();
       await f.close();

@@ -53,6 +53,26 @@ export const AssistantVoicePresentationEventSchema = z.strictObject({
 export type AssistantVoicePresentationEvent = z.infer<
   typeof AssistantVoicePresentationEventSchema
 >;
+export const AssistantVoiceScreenSelectionSchema = z.discriminatedUnion(
+  "kind",
+  [
+    z.strictObject({ kind: z.literal("none") }),
+    z.strictObject({ kind: z.literal("turn"), turnId: z.uuid() }),
+    z.strictObject({
+      kind: z.literal("source"),
+      turnId: z.uuid(),
+      sourceId: z.string().regex(/^F[1-8]$/),
+    }),
+    z.strictObject({ kind: z.literal("proposal"), actionId: z.uuid() }),
+  ],
+);
+export type AssistantVoiceScreenSelection = z.infer<
+  typeof AssistantVoiceScreenSelectionSchema
+>;
+export const AssistantVoiceScreenUpdateSchema = z.strictObject({
+  id: z.uuid(),
+  selection: AssistantVoiceScreenSelectionSchema,
+});
 export const AssistantVoiceEventSchema = z.union([
   AssistantEventSchema,
   AssistantVoicePresentationEventSchema,

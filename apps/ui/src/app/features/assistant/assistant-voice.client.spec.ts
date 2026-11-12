@@ -1,8 +1,5 @@
 import { TestBed } from "@angular/core/testing";
-import type {
-  AssistantEvent,
-  AssistantVoiceEvent,
-} from "@lazyfinance/contracts";
+import type { AssistantVoiceEvent } from "@lazyfinance/contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { deferred } from "../../../testing/deferred";
 import { principal, setupRpc } from "../../../testing/rpc";
@@ -97,7 +94,7 @@ function setup() {
   const voice = TestBed.inject(AssistantVoiceClient);
   const owner = f.credentials.current();
   if (!owner) throw new Error("Missing credentials");
-  const receive = vi.fn<(event: AssistantEvent) => void>(),
+  const receive = vi.fn<(event: AssistantVoiceEvent) => void>(),
     interrupt = vi.fn();
   const start = () =>
     voice.start(
@@ -189,6 +186,42 @@ describe("continuous live voice media and session lifetimes", () => {
     expect(
       f.channel.send.mock.calls.every(([value]) => !value.includes("pregunta")),
     ).toBe(true);
+  });
+
+  it("sends ordered, session-scoped screen selections without sending financial contents", async () => {
+    const f = setup();
+    await f.start();
+    f.channel.onopen?.();
+    const turnId = "00000000-0000-4000-8000-000000000020";
+    f.voice.acknowledgeScreen({ kind: "source", turnId, sourceId: "F1" });
+    f.voice.acknowledgeScreen({
+      kind: "proposal",
+      actionId: "00000000-0000-4000-8000-000000000021",
+    });
+
+    await vi.waitFor(() =>
+      expect(
+        f.request.mock.calls.filter(([url]) => String(url).endsWith("/screen")),
+      ).toHaveLength(2),
+    );
+    const calls = f.request.mock.calls.filter(([url]) =>
+      String(url).endsWith("/screen"),
+    );
+    expect(JSON.parse(String(calls[0][1]?.body))).toEqual({
+      id: "00000000-0000-4000-8000-000000000009",
+      selection: { kind: "source", turnId, sourceId: "F1" },
+    });
+    expect(JSON.parse(String(calls[1][1]?.body))).toEqual({
+      id: "00000000-0000-4000-8000-000000000009",
+      selection: {
+        kind: "proposal",
+        actionId: "00000000-0000-4000-8000-000000000021",
+      },
+    });
+    expect(calls[0][1]?.headers).toMatchObject({
+      authorization: expect.stringMatching(/^Bearer /),
+    });
+    await f.voice.end();
   });
 
   it("waits for asynchronous session closure, exposes reconciliation once and never reconnects", async () => {

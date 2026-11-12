@@ -20,6 +20,7 @@ import {
   type AssistantTurn,
   type AssistantVoiceEvent,
   type AssistantVoicePresentationEvent,
+  type AssistantVoiceScreenSelection,
   type FinancialAction,
 } from "@lazyfinance/contracts";
 import {
@@ -752,6 +753,11 @@ export class AssistantPage {
     this.focusResult = false;
     this.restoreResultFocus = true;
     this.canvasOpen.set(false);
+    if (this.voiceMode()) this.voice.acknowledgeScreen({ kind: "none" });
+  }
+
+  protected acknowledgeVoiceScreen(selection: AssistantVoiceScreenSelection) {
+    if (this.voiceMode()) this.voice.acknowledgeScreen(selection);
   }
 
   protected escape(event: Event) {

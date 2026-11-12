@@ -3,6 +3,7 @@ import {
   type AssistantVoiceEvent,
   type AssistantVoiceProblemCode,
   AssistantVoiceProblemSchema,
+  type AssistantVoiceScreenSelection,
 } from "@lazyfinance/contracts";
 import {
   ForbiddenException,
@@ -293,6 +294,24 @@ export class AssistantVoiceService implements OnModuleDestroy {
     } finally {
       await this.end(owner, id);
     }
+  }
+
+  async selectScreen(
+    owner: string,
+    id: string,
+    selection: AssistantVoiceScreenSelection,
+  ) {
+    const lease = this.sessions.get(id);
+    if (
+      !lease ||
+      lease.owner !== owner ||
+      !lease.runtime ||
+      !lease.observing ||
+      lease.stopRequested
+    )
+      throw new ForbiddenException();
+    await this.assistant.requireConsent(owner);
+    if (!lease.runtime.selectScreen(selection)) throw new ForbiddenException();
   }
 
   private async hangup(id: string, lease: VoiceLease): Promise<boolean> {

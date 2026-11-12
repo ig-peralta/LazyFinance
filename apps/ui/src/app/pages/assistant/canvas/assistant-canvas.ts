@@ -10,6 +10,7 @@ import {
 import type {
   AssistantTurn,
   AssistantVoicePresentationEvent,
+  AssistantVoiceScreenSelection,
   FinancialAction,
 } from "@lazyfinance/contracts";
 import { latestAssistantAction } from "../../../features/assistant/assistant-action-state";
@@ -26,7 +27,7 @@ import { AssistantReference } from "../reference/assistant-reference";
       @if (showActions() && proposals().length) {
         <section class="conversation-proposals" aria-labelledby="conversation-proposals-title">
           <h4 id="conversation-proposals-title">Revisar solicitud</h4>
-          @if (proposals().length > 1) { <details class="proposal-list"><summary>Solicitudes de esta conversación · {{ proposals().length }}</summary><nav class="result-tabs" aria-label="Solicitudes de cambio">@for (proposal of proposals(); track proposal.action.id; let index = $index) { <button type="button" [attr.aria-pressed]="proposal.action.id === proposalId()" (click)="proposalId.set(proposal.action.id)">{{ index + 1 }} · {{ proposal.name }}<small>Versión {{ proposal.action.version }} · {{ statuses[proposal.action.status] }}</small></button> }</nav></details> }
+          @if (proposals().length > 1) { <details class="proposal-list"><summary>Solicitudes de esta conversación · {{ proposals().length }}</summary><nav class="result-tabs" aria-label="Solicitudes de cambio">@for (proposal of proposals(); track proposal.action.id; let index = $index) { <button type="button" [attr.aria-pressed]="proposal.action.id === proposalId()" (click)="chooseProposal(proposal.action.id)">{{ index + 1 }} · {{ proposal.name }}<small>Versión {{ proposal.action.version }} · {{ statuses[proposal.action.status] }}</small></button> }</nav></details> }
           @if (proposal(); as current) {
             <p class="result-question">Una solicitud a la vez. Puedes aceptarla o corregirla por voz o con Editar. Versión {{ current.action.version }}.</p>
             <assistant-action-card [action]="current.action" [approvableTurn]="current.approvable" [interruptedVoiceTurn]="current.interruptedVoice" [busy]="busy()" (changed)="actionChanged.emit($event)" />
@@ -38,7 +39,7 @@ import { AssistantReference } from "../reference/assistant-reference";
         @if (showQuestions()) { <p class="result-question">{{ turn.voice?.question ?? turn.question }}</p> }
         @if (turn.status !== 'complete') { <p class="notice warning" role="status">{{ turn.status === 'pending' ? 'Consultando. Las propuestas solo se pueden aprobar cuando termine la respuesta.' : 'Respuesta incompleta. Las consultas adjuntas no confirman sus afirmaciones.' }}</p> }
         @if (turn.sources.length > 1) {
-          <nav class="result-tabs" aria-label="Consultas mostradas">@for (source of turn.sources; track source.id) { <button type="button" [attr.aria-pressed]="source.id === sourceId()" (click)="sourceSelection.set({ turn: turn.id, source: source.id })">{{ source.title }}</button> }</nav>
+          <nav class="result-tabs" aria-label="Consultas mostradas">@for (source of turn.sources; track source.id) { <button type="button" [attr.aria-pressed]="source.id === sourceId()" (click)="chooseSource(turn.id, source.id)">{{ source.title }}</button> }</nav>
         }
         @for (source of turn.sources; track source.id) { @if (source.id === sourceId()) { <assistant-reference [source]="source" [expanded]="true" /> } }
       } @else {
@@ -58,6 +59,7 @@ export class AssistantCanvas {
   readonly presentation = input<AssistantVoicePresentationEvent | null>(null);
   readonly actionChanged = output<FinancialAction>();
   readonly selected = output<string>();
+  readonly screenSelected = output<AssistantVoiceScreenSelection>();
   protected readonly labels = actionLabels;
   protected readonly statuses = {
     proposed: "Pendiente",
@@ -105,6 +107,10 @@ export class AssistantCanvas {
   protected readonly sourceSelection = signal<
     { turn: string; source: string } | undefined
   >(undefined);
+  private readonly screenFocus = signal<AssistantVoiceScreenSelection | null>(
+    null,
+  );
+  private lastScreenSelection = "";
   protected readonly results = computed(() =>
     this.turns().filter(
       (turn) =>
@@ -143,12 +149,48 @@ export class AssistantCanvas {
               turn: turn.id,
               source: presentation.sourceId,
             });
+          this.screenFocus.set({
+            kind: "source",
+            turnId: turn.id,
+            sourceId: presentation.sourceId,
+          });
         } else if (
           turn.actions.some((action) => action.id === presentation.actionId)
         ) {
           this.proposalId.set(presentation.actionId);
+          this.screenFocus.set({
+            kind: "proposal",
+            actionId: presentation.actionId,
+          });
         }
       });
+    });
+    effect(() => {
+      if (!this.voiceMode()) return;
+      const focus = this.screenFocus();
+      if (focus) {
+        this.reportScreenSelection(focus);
+        return;
+      }
+      const turn = this.active();
+      const proposal = this.proposal();
+      if (proposal)
+        this.reportScreenSelection({
+          kind: "proposal",
+          actionId: proposal.action.id,
+        });
+      else {
+        const sourceId = this.sourceId();
+        if (turn && sourceId)
+          this.reportScreenSelection({
+            kind: "source",
+            turnId: turn.id,
+            sourceId,
+          });
+        else if (turn)
+          this.reportScreenSelection({ kind: "turn", turnId: turn.id });
+        else this.reportScreenSelection({ kind: "none" });
+      }
     });
     effect(() => {
       const proposals = this.proposals();
@@ -179,7 +221,26 @@ export class AssistantCanvas {
   }
 
   protected choose(event: Event) {
-    if (event.target instanceof HTMLSelectElement)
+    if (event.target instanceof HTMLSelectElement) {
       this.selected.emit(event.target.value);
+      this.screenFocus.set({ kind: "turn", turnId: event.target.value });
+    }
+  }
+
+  protected chooseSource(turnId: string, sourceId: string) {
+    this.sourceSelection.set({ turn: turnId, source: sourceId });
+    this.screenFocus.set({ kind: "source", turnId, sourceId });
+  }
+
+  protected chooseProposal(actionId: string) {
+    this.proposalId.set(actionId);
+    this.screenFocus.set({ kind: "proposal", actionId });
+  }
+
+  private reportScreenSelection(selection: AssistantVoiceScreenSelection) {
+    const next = JSON.stringify(selection);
+    if (next === this.lastScreenSelection) return;
+    this.lastScreenSelection = next;
+    this.screenSelected.emit(selection);
   }
 }

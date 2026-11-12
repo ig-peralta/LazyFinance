@@ -639,6 +639,30 @@ describe("server-owned native audio conversation", () => {
     }
   });
 
+  it("keeps a validated screen selection in bounded session context without granting approval", async () => {
+    const f = await setup();
+    try {
+      await f.begin();
+      await f.tool("consultar_saldos_cuentas", {});
+      const selected = {
+        kind: "source",
+        turnId: f.saved[0].id,
+        sourceId: "F1",
+      } as const;
+      expect(f.run.selectScreen(selected)).toBe(true);
+      expect(f.run.selectScreen({ ...selected, sourceId: "F8" })).toBe(false);
+      await f.finish();
+      await f.begin("second");
+
+      const instructions = JSON.stringify(f.responses().at(-1));
+      expect(instructions).toContain("Cuentas y saldos");
+      expect(instructions).toContain("no prueba de lectura ni aprobación");
+      expect(instructions).not.toContain('"accounts"');
+    } finally {
+      await f.close();
+    }
+  });
+
   it("interrupts a slow tool without ending the session, discards late evidence and accepts a correction", async () => {
     const f = await setup();
     let resolve: (value: { accounts: never[] }) => void = () => {};

@@ -99,7 +99,7 @@
         }
       </div>
 
-      @if (canvasOpen()) { <aside #resultPanel class="chat-details" tabindex="-1" aria-labelledby="details-title"><header class="details-heading"><h3 id="details-title">{{ voiceMode() ? 'Solicitudes y consultas de voz' : 'Detalle de la respuesta' }}</h3><button type="button" class="assistant-toolbar-button" aria-label="Cerrar detalles" title="Cerrar detalles" (click)="closeResults()"><app-icon name="close" /></button></header><assistant-canvas [turns]="turns()" [voiceMode]="voiceMode()" [showActions]="voiceMode()" [showQuestions]="!voiceMode()" [busy]="busy()" [selection]="resultSelection()" [presentation]="voicePresentation()" (selected)="resultSelection.set($event)" (actionChanged)="actionChanged($event)" /></aside> }
+      @if (canvasOpen()) { <aside #resultPanel class="chat-details" tabindex="-1" aria-labelledby="details-title"><header class="details-heading"><h3 id="details-title">{{ voiceMode() ? 'Solicitudes y consultas de voz' : 'Detalle de la respuesta' }}</h3><button type="button" class="assistant-toolbar-button" aria-label="Cerrar detalles" title="Cerrar detalles" (click)="closeResults()"><app-icon name="close" /></button></header><assistant-canvas [turns]="turns()" [voiceMode]="voiceMode()" [showActions]="voiceMode()" [showQuestions]="!voiceMode()" [busy]="busy()" [selection]="resultSelection()" [presentation]="voicePresentation()" (selected)="resultSelection.set($event)" (screenSelected)="acknowledgeVoiceScreen($event)" (actionChanged)="actionChanged($event)" /></aside> }
     </div>
   }
 </section>

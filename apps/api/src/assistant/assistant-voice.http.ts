@@ -4,6 +4,7 @@ import {
   AssistantVoiceEventSchema,
   AssistantVoiceOfferSchema,
   AssistantVoiceProblemSchema,
+  AssistantVoiceScreenUpdateSchema,
   AssistantVoiceSessionSchema,
 } from "@lazyfinance/contracts";
 import {
@@ -121,5 +122,22 @@ export class AssistantVoiceHttp {
       res.off("close", close);
       if (res.headersSent && !res.destroyed) res.end();
     }
+  }
+
+  @Post("screen")
+  async screen(
+    @Body() body: unknown,
+    @Req() req: AuthenticatedRequest,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const parsed = AssistantVoiceScreenUpdateSchema.safeParse(body);
+    if (!parsed.success) throw new BadRequestException("Invalid screen state");
+    res.set("Cache-Control", "private, no-store");
+    await this.voice.selectScreen(
+      req.principal.userId,
+      parsed.data.id,
+      parsed.data.selection,
+    );
+    return { selected: true };
   }
 }

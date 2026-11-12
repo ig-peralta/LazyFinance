@@ -27,6 +27,9 @@ describe("first-party voice HTTP authentication and strict transport", () => {
     }),
   );
   const end = vi.fn(async (_owner: string, _id: string) => {});
+  const selectScreen = vi.fn<AssistantVoiceService["selectScreen"]>(
+    async () => {},
+  );
   const listen = vi.fn<AssistantVoiceService["listen"]>(
     async (_owner, _id, _signal, emit) => {
       await emit({ type: "phase", state: "listening" });
@@ -56,6 +59,7 @@ describe("first-party voice HTTP authentication and strict transport", () => {
             start,
             end,
             listen,
+            selectScreen,
           },
         },
       ],
@@ -83,8 +87,32 @@ describe("first-party voice HTTP authentication and strict transport", () => {
       .post("/assistant/voice/events")
       .send({})
       .expect(401);
+    await request(app.getHttpServer())
+      .post("/assistant/voice/screen")
+      .send({})
+      .expect(401);
     expect(start).not.toHaveBeenCalled();
     expect(end).not.toHaveBeenCalled();
+    expect(selectScreen).not.toHaveBeenCalled();
+  });
+
+  it("validates session-scoped screen state and uses only the authenticated owner", async () => {
+    const id = "00000000-0000-4000-8000-000000000009";
+    await request(app.getHttpServer())
+      .post("/assistant/voice/screen")
+      .set("authorization", "Bearer accepted")
+      .send({ id, selection: { kind: "none" }, owner: "forged" })
+      .expect(400);
+    expect(selectScreen).not.toHaveBeenCalled();
+
+    await request(app.getHttpServer())
+      .post("/assistant/voice/screen")
+      .set("authorization", "Bearer accepted")
+      .send({ id, selection: { kind: "none" } })
+      .expect(201, { selected: true });
+    expect(selectScreen).toHaveBeenCalledExactlyOnceWith("verified-owner", id, {
+      kind: "none",
+    });
   });
 
   it("streams only server-owned observations for the authenticated session and rejects browser tool payloads", async () => {
