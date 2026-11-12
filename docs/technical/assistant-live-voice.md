@@ -50,7 +50,7 @@ Completion requires a completed provider response and the shared evidence check,
 never a speech-to-text result. Realtime's native output-text metadata is used only
 transiently for grounding; it is neither a separately requested ASR service nor
 streamed/persisted speech text. Unsupported claims, incomplete responses and
-interruption never confirm a proposal. No audio is stored.
+interruption never confirm the spoken answer. No audio is stored.
 
 The active provider call retains native audio context. A resumed call receives
 owned action state, not transcripts or synthetic user messages. The user may need
@@ -67,8 +67,12 @@ or two natural sentences; exact figures, dates, review states, charts and propos
 fields remain available. **Ver consultas** on the voice stage opens its latest
 observations without ending capture. Correction/barge-in cancels the old generation and
 discards late tool results without ending a healthy session. Already-started
-proposal preparation may have committed: it is retained as unapproved, never
-replayed, and an interrupted turn cannot authorize it.
+proposal preparation may have committed: it is retained as unapproved and never
+replayed. If its exact saved card is attached to an interrupted voice turn, the
+user may explicitly approve, edit or cancel it after reviewing its fields. This
+does not validate the incomplete spoken answer. Failed turns and interrupted text
+turns remain blocked; the server requires the saved action-to-turn link and
+rechecks ownership, version, expiry and current financial facts.
 
 The shared flow gathers one missing detail at a time, including a new tag's color
 or explicit no-color choice. A budget/goal and its new tags form **one atomic

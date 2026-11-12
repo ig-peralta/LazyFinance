@@ -36,7 +36,8 @@
       <ul class="action-results">@for (result of current().results; track $index) { <li><a [routerLink]="result.path">{{ result.title }} →</a></li> }</ul>
       <p class="action-note">Este cambio ya se guardó. Detener el chat o eliminar la conversación no lo revierte.</p>
     } @else if (current().status !== 'cancelled') {
-      @if (!confirmedTurn()) { <p class="action-note">Esta propuesta pertenece a una respuesta sin completar. No se puede aprobar.</p> }
+      @if (interruptedVoiceTurn()) { <p class="action-note" role="status">La respuesta de voz se interrumpió. Revisa todos los campos de esta propuesta antes de aprobarla.</p> }
+      @else if (!approvableTurn()) { <p class="action-note">Esta propuesta pertenece a una respuesta sin completar. No se puede aprobar.</p> }
       @if (current().status === 'stale' || expired()) { <p class="action-note">Revisa y guarda una nueva versión antes de aprobar. No se aplicó ningún cambio.</p> }
       <div class="action-buttons"><button type="button" class="primary" [disabled]="!mutable() || expired() || current().status !== 'proposed'" (click)="approve()">{{ label().approve }}</button><button type="button" [disabled]="!mutable()" (click)="edit()">{{ current().status === 'stale' || expired() ? 'Revisar propuesta' : 'Editar' }}</button><button type="button" [disabled]="!mutable()" (click)="cancel()">Cancelar</button></div>
       <p class="action-note">Solo el botón aplica esta propuesta exacta. Una respuesta en el chat no es aprobación. Las propuestas vencen en 15 minutos.</p>

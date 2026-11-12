@@ -267,11 +267,15 @@ income confirmation and banking operations are outside this action slice.
 
 Cards show exact fields, current decisions, impact notes and **Approve / Edit /
 Cancel** controls. Conversational “yes” is not approval. Approval sends only the
-saved ID/version and requires a completed saved turn in an available owned chat.
-Failed/interrupted generations cannot authorize proposals. Editing stores a new
-version and requires fresh approval. Each revision expires after 15 minutes;
-stale/expired proposals must be reviewed again. At most four proposals belong to
-one stored turn; current generation prepares at most one new request per turn.
+saved ID/version and normally requires a completed saved turn in an available
+owned chat. An attached proposal from an **interrupted voice turn** may also be
+approved or edited from its exact review card after a warning; this does not
+confirm the interrupted answer. Failed turns and incomplete text responses remain
+blocked. The server checks the turn/action link and still revalidates ownership,
+version, expiry and current financial facts. Editing stores a new version and
+requires fresh approval. Each revision expires after 15 minutes; stale/expired
+proposals must be reviewed again. At most four proposals belong to one stored turn;
+current generation prepares at most one new request per turn.
 `corregir_propuesta_financiera` accepts the same saved ID, current version and full
 corrected request. Text corrects requests in its text conversation; voice corrects
 requests in its separate voice session. Both also support manual **Editar**.

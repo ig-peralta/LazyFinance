@@ -30,7 +30,8 @@ import {
 })
 export class AssistantActionCard {
   readonly action = input.required<FinancialAction>();
-  readonly confirmedTurn = input(false);
+  readonly approvableTurn = input(false);
+  readonly interruptedVoiceTurn = input(false);
   readonly busy = input(false);
   readonly changed = output<FinancialAction>();
   private readonly rpc = inject(RpcClient);
@@ -71,7 +72,7 @@ export class AssistantActionCard {
   );
   protected readonly mutable = computed(
     () =>
-      this.confirmedTurn() &&
+      this.approvableTurn() &&
       !this.busy() &&
       !this.command.pending() &&
       !this.needsReconciliation() &&

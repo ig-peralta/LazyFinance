@@ -11,7 +11,7 @@
       @if (turn().status === 'failed' || turn().status === 'interrupted') { <p class="incomplete-note">Esta respuesta no se completó. No tomes sus afirmaciones como un resultado confirmado.</p> }
       @if (canvas()) { @for (action of turn().actions; track action.id) { @if (action.status === 'applied' && action.results.length) { <p class="action-receipt" role="status"><app-icon name="check" /> Resultado confirmado: @for (result of action.results; track result.id) { <span>{{ result.title }}{{ $last ? '.' : ',' }}</span> } Disponible para las próximas respuestas.</p> } } }
       @if (!canvas()) { @for (action of turn().actions; track action.id) {
-        <assistant-action-card [action]="action" [confirmedTurn]="turn().status === 'complete'" [busy]="busy()" (changed)="actionChanged.emit($event)" />
+        <assistant-action-card [action]="action" [approvableTurn]="turn().status === 'complete'" [busy]="busy()" (changed)="actionChanged.emit($event)" />
       } }
       @if (turn().sources.length && !detailsPanel()) {
         <details class="reply-sources">

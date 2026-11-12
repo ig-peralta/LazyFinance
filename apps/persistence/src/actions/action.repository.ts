@@ -95,7 +95,7 @@ export class ActionRepository {
     return row;
   }
 
-  private async ready(row: ActionRow, complete: boolean) {
+  private async ready(row: ActionRow, authorize: boolean) {
     if (row.origin !== "assistant" || !row.conversationId || !row.turnId)
       throw new TRPCError({
         code: "BAD_REQUEST",
@@ -103,15 +103,17 @@ export class ActionRepository {
       });
     const conversation = await this.conversation(row.conversationId);
     const turn = conversation.turns.find((turn) => turn.id === row.turnId);
-    if (
-      !turn ||
-      (complete &&
-        (turn.status !== "complete" ||
-          !turn.actions.some((action) => action.id === row.id)))
-    )
+    const attached = turn?.actions.some((action) => action.id === row.id);
+    const completed = turn?.status === "complete" && attached;
+    const interruptedVoice =
+      conversation.mode === "voice" &&
+      turn?.status === "interrupted" &&
+      attached;
+    if (!turn || (authorize && !completed && !interruptedVoice))
       throw new TRPCError({
         code: "CONFLICT",
-        message: "Only a completed saved turn can authorize its proposal",
+        message:
+          "Only a completed turn or an attached interrupted voice proposal can be authorized",
       });
     return conversation;
   }

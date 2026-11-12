@@ -24,6 +24,7 @@ describe("on-demand assistant query details", () => {
     expect(root.querySelector("select")).toBeNull();
 
     fixture.componentRef.setInput("showActions", true);
+    fixture.componentRef.setInput("voiceMode", true);
     fixture.componentRef.setInput("selection", proposal.id);
     fixture.detectChanges();
     expect(root.querySelector("assistant-action-card")).not.toBeNull();
@@ -35,6 +36,7 @@ describe("on-demand assistant query details", () => {
     const fixture = TestBed.createComponent(AssistantCanvas);
     fixture.componentRef.setInput("turns", [assistantReply]);
     fixture.componentRef.setInput("showActions", true);
+    fixture.componentRef.setInput("voiceMode", true);
     fixture.detectChanges();
     const proposal = {
       ...assistantReply,
@@ -78,6 +80,7 @@ describe("on-demand assistant query details", () => {
     } as const;
     fixture.componentRef.setInput("turns", [first, second]);
     fixture.componentRef.setInput("showActions", true);
+    fixture.componentRef.setInput("voiceMode", true);
     fixture.componentRef.setInput("selection", second.id);
     fixture.detectChanges();
     const root: HTMLElement = fixture.nativeElement;
@@ -108,5 +111,32 @@ describe("on-demand assistant query details", () => {
     fixture.detectChanges();
     expect(cards()).toHaveLength(1);
     expect(requests()).toHaveLength(2);
+  });
+
+  it("allows approval of an interrupted voice proposal with a clear warning", () => {
+    setupRpc();
+    const fixture = TestBed.createComponent(AssistantCanvas);
+    const turnId = "00000000-0000-4000-8000-000000000011";
+    const interrupted = {
+      ...assistantReply,
+      id: turnId,
+      text: "",
+      status: "interrupted" as const,
+      sources: [],
+      actions: [assistantAction({ turnId })],
+    };
+    fixture.componentRef.setInput("turns", [interrupted]);
+    fixture.componentRef.setInput("voiceMode", true);
+    fixture.componentRef.setInput("showActions", true);
+    fixture.componentRef.setInput("selection", turnId);
+    fixture.detectChanges();
+
+    const root: HTMLElement = fixture.nativeElement;
+    const card = root.querySelector("assistant-action-card");
+    expect(card?.textContent).toContain("La respuesta de voz se interrumpió");
+    expect(card?.querySelector<HTMLButtonElement>(".primary")?.disabled).toBe(
+      false,
+    );
+    expect(root.textContent).toContain("Respuesta incompleta");
   });
 });

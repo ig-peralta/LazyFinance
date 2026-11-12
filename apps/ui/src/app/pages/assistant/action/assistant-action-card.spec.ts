@@ -18,7 +18,7 @@ function setup(overrides: RpcHandlers = {}, action = assistantAction()) {
   const rpc = setupRpc({ "financialActions.get": () => action, ...overrides });
   const fixture = TestBed.createComponent(AssistantActionCard);
   fixture.componentRef.setInput("action", action);
-  fixture.componentRef.setInput("confirmedTurn", true);
+  fixture.componentRef.setInput("approvableTurn", true);
   fixture.detectChanges();
   const root = fixture.nativeElement as HTMLElement;
   const render = async () => {
@@ -222,10 +222,10 @@ describe("explicit, scope-bound assistant approval cards", () => {
       action,
     );
     expect(f.calls).toEqual([]);
-    f.fixture.componentRef.setInput("confirmedTurn", false);
+    f.fixture.componentRef.setInput("approvableTurn", false);
     f.fixture.detectChanges();
     expect(f.button("Guardar etiqueta").disabled).toBe(true);
-    f.fixture.componentRef.setInput("confirmedTurn", true);
+    f.fixture.componentRef.setInput("approvableTurn", true);
     f.fixture.detectChanges();
     f.button("Guardar etiqueta").click();
     f.button("Guardar etiqueta").click();
@@ -251,6 +251,30 @@ describe("explicit, scope-bound assistant approval cards", () => {
     expect(f.root.textContent).toContain("Cambio confirmado");
     expect(f.root.querySelector('a[href="/etiquetas"]')).not.toBeNull();
     expect(f.root.textContent).not.toContain("Pendiente de tu aprobación");
+  });
+
+  it("allows explicit approval of a saved interrupted-voice proposal after warning the user", async () => {
+    const action = assistantAction();
+    const f = setup(
+      {
+        "financialActions.approve": (input) => ({
+          ...action,
+          version: input.version,
+          status: "applied",
+        }),
+      },
+      action,
+    );
+    f.fixture.componentRef.setInput("approvableTurn", true);
+    f.fixture.componentRef.setInput("interruptedVoiceTurn", true);
+    await f.render();
+
+    expect(f.root.textContent).toContain("La respuesta de voz se interrumpió");
+    expect(f.button("Guardar etiqueta").disabled).toBe(false);
+    f.button("Guardar etiqueta").click();
+    await f.render();
+    expect(f.callsTo("financialActions.approve")).toHaveLength(1);
+    expect(f.root.textContent).toContain("Cambio confirmado");
   });
 
   it("edits a proposal without executing, then approves its new version", async () => {

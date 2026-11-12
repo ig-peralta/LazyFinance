@@ -377,7 +377,7 @@ describe.skipIf(!ownerUrl)(
           .filter((name) => !name.startsWith("failure."))
           .sort(),
       ).toEqual(expected.sort());
-      expect(expected).toHaveLength(105);
+      expect(expected).toHaveLength(106);
 
       for (const name of expected)
         expect(procedures[name]._def.meta).toMatchObject({
@@ -1795,6 +1795,108 @@ describe.skipIf(!ownerUrl)(
       expect(await client.tags.list.query()).toHaveLength(1);
     });
 
+    it("allows explicit approval of an attached interrupted voice proposal but rejects failed and interrupted text turns", async () => {
+      const client = purposeClient(ctx(a));
+      const chat = await client.assistantConversations.create.mutate({
+        mode: "voice",
+      });
+      const lease = randomUUID();
+      let createdTagId: string | undefined;
+      try {
+        const started = await client.assistantConversations.begin.mutate({
+          conversationId: chat.id,
+          requestId: randomUUID(),
+          text: "Consulta por voz",
+          lease,
+          mode: "voice",
+        });
+        const request = {
+          kind: "create_tag" as const,
+          tag: { name: `Interrupted voice ${randomUUID()}`, color: null },
+        };
+        const proposal = await client.financialActions.prepare.mutate({
+          conversationId: chat.id,
+          turnId: started.turn.id,
+          action: request,
+          command: request,
+        });
+        await client.assistantConversations.finish.mutate({
+          conversationId: chat.id,
+          lease,
+          turn: {
+            ...started.turn,
+            status: "interrupted",
+            actions: [proposal],
+          },
+        });
+
+        const applied = await client.financialActions.apply.mutate({
+          id: proposal.id,
+          version: proposal.version,
+          command: request,
+        });
+        createdTagId = applied.results[0]?.id;
+        expect(applied.status).toBe("applied");
+      } finally {
+        if (createdTagId)
+          await sql`DELETE FROM finance.tag WHERE id=${createdTagId} AND user_id=${a}`.execute(
+            owner,
+          );
+        await client.assistantConversations.remove.mutate({ id: chat.id });
+      }
+
+      for (const scenario of [
+        { mode: "voice" as const, status: "failed" as const },
+        { mode: "text" as const, status: "interrupted" as const },
+      ]) {
+        const blockedChat = await client.assistantConversations.create.mutate({
+          mode: scenario.mode,
+        });
+        const blockedLease = randomUUID();
+        try {
+          const started = await client.assistantConversations.begin.mutate({
+            conversationId: blockedChat.id,
+            requestId: randomUUID(),
+            text:
+              scenario.mode === "voice" ? "Consulta por voz" : "Crear etiqueta",
+            lease: blockedLease,
+            mode: scenario.mode,
+          });
+          const request = {
+            kind: "create_tag" as const,
+            tag: { name: `Blocked ${randomUUID()}`, color: null },
+          };
+          const proposal = await client.financialActions.prepare.mutate({
+            conversationId: blockedChat.id,
+            turnId: started.turn.id,
+            action: request,
+            command: request,
+          });
+          await client.assistantConversations.finish.mutate({
+            conversationId: blockedChat.id,
+            lease: blockedLease,
+            turn: {
+              ...started.turn,
+              text: "",
+              status: scenario.status,
+              actions: [proposal],
+            },
+          });
+          await expect(
+            client.financialActions.apply.mutate({
+              id: proposal.id,
+              version: proposal.version,
+              command: request,
+            }),
+          ).rejects.toMatchObject({ data: { code: "CONFLICT" } });
+        } finally {
+          await client.assistantConversations.remove.mutate({
+            id: blockedChat.id,
+          });
+        }
+      }
+    });
+
     it("claims assistant turns once, bounds concurrent conversations and rejects stale finishers", async () => {
       const client = purposeClient(ctx(a)).assistantConversations;
       const chat = await client.create.mutate();
@@ -1862,11 +1964,12 @@ describe.skipIf(!ownerUrl)(
       }
     });
 
-    it("fills a delayed native question without approving its interrupted proposal or changing the next lease", async () => {
+    it("fills a delayed native question without auto-approving its interrupted proposal", async () => {
       const client = purposeClient(ctx(a));
       const chats = client.assistantConversations;
       const chat = await chats.create.mutate({ mode: "voice" });
       const lease = randomUUID();
+      let createdTagId: string | undefined;
       try {
         const first = await chats.begin.mutate({
           conversationId: chat.id,
@@ -1936,13 +2039,13 @@ describe.skipIf(!ownerUrl)(
         });
         expect(saved.turns[0].voice?.transcriptionPending).toBeUndefined();
         expect(saved.turns[1].status).toBe("pending");
-        await expect(
-          client.financialActions.apply.mutate({
-            id: proposal.id,
-            version: 1,
-            command: request,
-          }),
-        ).rejects.toMatchObject({ data: { code: "CONFLICT" } });
+        const applied = await client.financialActions.apply.mutate({
+          id: proposal.id,
+          version: 1,
+          command: request,
+        });
+        createdTagId = applied.results[0]?.id;
+        expect(applied.status).toBe("applied");
         expect(
           await chats.finish.mutate({
             conversationId: chat.id,
@@ -1955,6 +2058,10 @@ describe.skipIf(!ownerUrl)(
           }),
         ).toEqual({ saved: true });
       } finally {
+        if (createdTagId)
+          await sql`DELETE FROM finance.tag WHERE id=${createdTagId} AND user_id=${a}`.execute(
+            owner,
+          );
         await chats.remove.mutate({ id: chat.id });
       }
     });

@@ -24,7 +24,7 @@ import { AssistantReference } from "../reference/assistant-reference";
           @if (proposals().length > 1) { <details class="proposal-list"><summary>Solicitudes de esta conversación · {{ proposals().length }}</summary><nav class="result-tabs" aria-label="Solicitudes de cambio">@for (proposal of proposals(); track proposal.action.id; let index = $index) { <button type="button" [attr.aria-pressed]="proposal.action.id === proposalId()" (click)="proposalId.set(proposal.action.id)">{{ index + 1 }} · {{ proposal.name }}<small>Versión {{ proposal.action.version }} · {{ statuses[proposal.action.status] }}</small></button> }</nav></details> }
           @if (proposal(); as current) {
             <p class="result-question">Una solicitud a la vez. Puedes aceptarla o corregirla por voz o con Editar. Versión {{ current.action.version }}.</p>
-            <assistant-action-card [action]="current.action" [confirmedTurn]="current.confirmed" [busy]="busy()" (changed)="actionChanged.emit($event)" />
+            <assistant-action-card [action]="current.action" [approvableTurn]="current.approvable" [interruptedVoiceTurn]="current.interruptedVoice" [busy]="busy()" (changed)="actionChanged.emit($event)" />
           }
         </section>
       }
@@ -48,6 +48,7 @@ export class AssistantCanvas {
   readonly busy = input(false);
   readonly showActions = input(false);
   readonly showQuestions = input(true);
+  readonly voiceMode = input(false);
   readonly selection = input<string>();
   readonly actionChanged = output<FinancialAction>();
   readonly selected = output<string>();
@@ -63,7 +64,7 @@ export class AssistantCanvas {
   private knownProposals = new Set<string>();
   protected readonly proposals = computed(() => {
     const turns = this.turns();
-    const statuses = new Map(turns.map((turn) => [turn.id, turn.status]));
+    const turnById = new Map(turns.map((turn) => [turn.id, turn]));
     const actions = new Map<string, FinancialAction>();
     for (const turn of turns)
       for (const action of turn.actions) {
@@ -73,18 +74,24 @@ export class AssistantCanvas {
           previous ? latestAssistantAction(previous, action) : action,
         );
       }
-    return [...actions.values()].map((action) => ({
-      action,
-      confirmed: !!action.turnId && statuses.get(action.turnId) === "complete",
-      name:
-        action.request.kind === "create_budget"
-          ? action.request.budget.name
-          : action.request.kind === "create_savings_goal"
-            ? action.request.goal.name
-            : action.request.kind === "create_tag"
-              ? action.request.tag.name
-              : this.labels[action.request.kind].title,
-    }));
+    return [...actions.values()].map((action) => {
+      const turn = action.turnId ? turnById.get(action.turnId) : undefined;
+      const interruptedVoice =
+        this.voiceMode() && turn?.status === "interrupted";
+      return {
+        action,
+        approvable: turn?.status === "complete" || interruptedVoice,
+        interruptedVoice,
+        name:
+          action.request.kind === "create_budget"
+            ? action.request.budget.name
+            : action.request.kind === "create_savings_goal"
+              ? action.request.goal.name
+              : action.request.kind === "create_tag"
+                ? action.request.tag.name
+                : this.labels[action.request.kind].title,
+      };
+    });
   });
   protected readonly proposal = computed(() =>
     this.proposals().find((value) => value.action.id === this.proposalId()),
