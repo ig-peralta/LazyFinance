@@ -1,0 +1,197 @@
+name: Main Branch Deployment
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: main-deployment
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  check-changes:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      ci_changed: ${{ steps.filter.outputs.ci }}
+      api_changed: ${{ steps.filter.outputs.api }}
+      persistence_changed: ${{ steps.filter.outputs.persistence }}
+      ui_changed: ${{ steps.filter.outputs.ui }}
+      shared_changed: ${{ steps.filter.outputs.shared }}
+      docker_changed: ${{ steps.filter.outputs.docker }}
+      apps_matrix: ${{ steps.apps-matrix.outputs.apps }}
+      deploy_changed: ${{ steps.apps-matrix.outputs.deploy }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for changes
+        if: github.event_name != 'workflow_dispatch'
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            ci:
+              - '.github/workflows/main-branch-deploy.yml'
+            api:
+              - 'apps/api/**'
+            persistence:
+              - 'apps/persistence/**'
+            ui:
+              - 'apps/ui/**'
+            shared:
+              - 'libs/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'turbo.json'
+              - 'tsconfig*.json'
+              - '.dockerignore'
+            docker:
+              - 'docker/dev/**'
+
+      - name: Compute changed app matrix
+        id: apps-matrix
+        shell: bash
+        env:
+          FORCE_ALL: ${{ github.event_name == 'workflow_dispatch' }}
+          CI_CHANGED: ${{ steps.filter.outputs.ci }}
+          API_CHANGED: ${{ steps.filter.outputs.api }}
+          PERSISTENCE_CHANGED: ${{ steps.filter.outputs.persistence }}
+          UI_CHANGED: ${{ steps.filter.outputs.ui }}
+          SHARED_CHANGED: ${{ steps.filter.outputs.shared }}
+          DOCKER_CHANGED: ${{ steps.filter.outputs.docker }}
+        run: |
+          changed=()
+          if [[ "$FORCE_ALL" == 'true' || "$CI_CHANGED" == 'true' || "$SHARED_CHANGED" == 'true' ]]; then
+            changed=(api persistence ui)
+          else
+            [[ "$API_CHANGED" == 'true' ]] && changed+=(api)
+            [[ "$PERSISTENCE_CHANGED" == 'true' ]] && changed+=(persistence)
+            [[ "$UI_CHANGED" == 'true' ]] && changed+=(ui)
+          fi
+          matrix_json=$(printf '%s\n' "${changed[@]}" | jq -R . | jq -cs 'map(select(length > 0))')
+          deploy=false
+          if [[ "$FORCE_ALL" == 'true' || "$CI_CHANGED" == 'true' || "$API_CHANGED" == 'true' || "$PERSISTENCE_CHANGED" == 'true' || "$UI_CHANGED" == 'true' || "$SHARED_CHANGED" == 'true' || "$DOCKER_CHANGED" == 'true' ]]; then
+            deploy=true
+          fi
+          printf 'apps=%s\n' "$matrix_json" >> "$GITHUB_OUTPUT"
+          printf 'deploy=%s\n' "$deploy" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: check-changes
+    if: needs.check-changes.outputs.apps_matrix != '[]'
+    name: build-${{ matrix.app }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: ${{ fromJSON(needs.check-changes.outputs.apps_matrix) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKER_USERNAME || 'igperalta' }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push ${{ matrix.app }} image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/${{ matrix.app }}/Dockerfile
+          push: true
+          tags: ${{ vars.DOCKER_USERNAME || 'igperalta' }}/lazyfinance-${{ matrix.app }}:latest
+          cache-from: type=registry,ref=${{ vars.DOCKER_USERNAME || 'igperalta' }}/lazyfinance-${{ matrix.app }}:cache
+          cache-to: type=registry,ref=${{ vars.DOCKER_USERNAME || 'igperalta' }}/lazyfinance-${{ matrix.app }}:cache,mode=max
+
+  deploy:
+    needs: [check-changes, build]
+    if: |
+      always() &&
+      needs.check-changes.result == 'success' &&
+      needs.check-changes.outputs.deploy_changed == 'true' &&
+      (needs.build.result == 'success' || needs.build.result == 'skipped')
+    runs-on: [self-hosted, deploy, development]
+    environment: development
+    env:
+      DOCKER_USERNAME: ${{ vars.DOCKER_USERNAME || 'igperalta' }}
+      IMAGE_TAG: latest
+      ACME_EMAIL: ${{ vars.ACME_EMAIL }}
+      WEB_DOMAIN: ${{ vars.WEB_DOMAIN }}
+      POSTGRES_USER: ${{ vars.POSTGRES_USER || 'lazyfinance_owner' }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      POSTGRES_DB: ${{ vars.POSTGRES_DB || 'lazyfinance' }}
+      PERSISTENCE_DATABASE_USER: ${{ vars.PERSISTENCE_DATABASE_USER || 'lazyfinance_app' }}
+      PERSISTENCE_DATABASE_PASSWORD: ${{ secrets.PERSISTENCE_DATABASE_PASSWORD }}
+      PERSISTENCE_RPC_PRIVATE_KEY: ${{ secrets.PERSISTENCE_RPC_PRIVATE_KEY }}
+      PERSISTENCE_RPC_PUBLIC_KEY: ${{ secrets.PERSISTENCE_RPC_PUBLIC_KEY }}
+      PERSISTENCE_RPC_KEY_ID: ${{ vars.PERSISTENCE_RPC_KEY_ID || 'primary' }}
+      FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID || 'lazyfinance-dev' }}
+      FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+      FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+      ASSISTANT_PROVIDER: ${{ vars.ASSISTANT_PROVIDER }}
+      ASSISTANT_MODEL: ${{ vars.ASSISTANT_MODEL }}
+      ASSISTANT_API_KEY: ${{ secrets.ASSISTANT_API_KEY }}
+      ASSISTANT_VOICE_ENABLED: ${{ vars.ASSISTANT_VOICE_ENABLED }}
+      ASSISTANT_VOICE_API_KEY: ${{ secrets.ASSISTANT_VOICE_API_KEY }}
+      ASSISTANT_VOICE_MODEL: ${{ vars.ASSISTANT_VOICE_MODEL }}
+      ASSISTANT_VOICE_NAME: ${{ vars.ASSISTANT_VOICE_NAME || 'marin' }}
+      FINTOC_PUBLIC_KEY: ${{ vars.FINTOC_PUBLIC_KEY }}
+      FINTOC_SECRET_KEY: ${{ secrets.FINTOC_SECRET_KEY }}
+      FINTOC_TOKEN_ENCRYPTION_KEY: ${{ secrets.FINTOC_TOKEN_ENCRYPTION_KEY }}
+      MCP_OAUTH_ISSUER: ${{ vars.MCP_OAUTH_ISSUER }}
+      MCP_OAUTH_UI_ORIGIN: ${{ vars.MCP_OAUTH_UI_ORIGIN }}
+      MCP_OAUTH_STATE_KEY: ${{ secrets.MCP_OAUTH_STATE_KEY }}
+      MCP_OAUTH_JWKS: ${{ secrets.MCP_OAUTH_JWKS }}
+      MCP_OAUTH_TRUST_PROXY: ${{ vars.MCP_OAUTH_TRUST_PROXY || 'true' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKER_USERNAME || 'igperalta' }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Pull images
+        run: docker compose -f docker/dev/compose.yml pull
+
+      - name: Start edge and database
+        run: docker compose -f docker/dev/compose.yml up -d --pull always --wait --wait-timeout 120 traefik postgres
+
+      - name: Apply migrations and provision the runtime login
+        run: docker compose -f docker/dev/compose.yml up --pull always init
+
+      - name: Start application services
+        run: docker compose -f docker/dev/compose.yml up -d --pull always --wait --wait-timeout 180 persistence api ui
+
+      - name: Verify public endpoints
+        shell: bash
+        run: |
+          curl --fail --silent --show-error \
+            --retry 12 --retry-all-errors --retry-delay 5 \
+            --connect-timeout 5 --max-time 10 \
+            "https://api.lazyfinance.online/"
+          curl --fail --silent --show-error \
+            --retry 12 --retry-all-errors --retry-delay 5 \
+            --connect-timeout 5 --max-time 10 \
+            "https://${WEB_DOMAIN}/"
+
+      - name: Show service diagnostics on failure
+        if: failure()
+        run: |
+          docker compose -f docker/dev/compose.yml ps -a
+          docker compose -f docker/dev/compose.yml logs --no-color --tail 100 traefik postgres init persistence api ui

@@ -119,8 +119,7 @@ reading order and distinction between implementation, evidence and targets.
   provider facts, sync preparation/commit, tombstones and correction review.
 - [Tag decisions and rules](apps/api/src/transactions/tagging/README.md): single
   tag/no-tag/reset, matching, approved rules and atomic decision/event commands.
-- Configuration examples: [Compose](.env.example), [API](apps/api/.env.example),
-  [persistence](apps/persistence/.env.example); only public placeholders/demo defaults.
+- Configuration examples: [local Compose](.env.example), [development deployment](docker/dev/.env.example), [API](apps/api/.env.example) and [persistence](apps/persistence/.env.example); only public placeholders/demo defaults.
 
 ### Planning, delivery and dated evidence
 
@@ -242,12 +241,13 @@ Markdown and YAML remain manually formatted with this Biome version.
 - **Resources:** PostgreSQL 18 on loopback port `5432`, default fresh database `lazyfinance`, owner `user` / `password`. No named volume; do not treat it as durable production storage.
 - **Apps on resources:** `docker/local/apps.yml` expects the external `lazyfinance` network. Its owner-only `init` job migrates/provisions, then private persistence, API and UI start.
 - **Full local deployment:** copy `.env.example` to `.env`, generate keys, then `pnpm deploy:local:up`. The `init` job must succeed before persistence starts. PostgreSQL/persistence have no published ports; the API cannot join the data network. Data uses a named volume. This remains a local demonstration setup, not production secret management or TLS.
+- **Development deployment:** `docker/dev/compose.yml` runs PostgreSQL, private persistence, API and UI behind Traefik HTTPS. The main-branch workflow publishes changed images to `igperalta/lazyfinance-{api,persistence,ui}`, applies migrations/provisions the runtime role, and updates the stack. See the [development deployment runbook](docs/technical/technical-manual.md#development-deployment).
 
 Demo seeding is explicit: `pnpm deploy:local --profile tools run --rm seed`. It is not a migration or startup side effect. Existing volumes are not reset or upgraded from the old schema; choose a fresh database. Use Firebase plus `API_NODE_ENV=production` for a production-mode rehearsal; mock auth is development-only.
 
 The production UI serves static files through unprivileged Nginx on port `4000`.
 Its browser API base URL comes directly from the Angular environment files:
-`http://localhost:3000` in development and `https://api.lazyfinance.cl` in production.
+`http://localhost:3000` in development and `https://api.lazyfinance.online` in production.
 Nginx only serves UI files; no API proxy or URL rewriting is involved. A fully
 local Docker rehearsal needs a browser-reachable local API URL selected before
 building the UI. No API/database request is needed to serve the landing or neutral

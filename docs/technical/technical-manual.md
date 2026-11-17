@@ -294,6 +294,9 @@ maps their containers, networks, ports and remaining deployment decisions.
   owner-only init job, private persistence, API and static UI. No database/persistence
   published ports. Copy root `.env.example`, set keys/runtime password, then run
   `pnpm deploy:local:up`.
+- `docker/dev/compose.yml`: development deployment topology with Traefik HTTPS,
+  PostgreSQL on a named volume, private persistence, API and static UI. Only ports
+  80/443 are published; the API and database are not directly published.
 - Demo data is opt-in: `pnpm deploy:local --profile tools run --rm seed`.
   Migrations/provisioning are init-job work, never runtime startup side effects.
 
@@ -302,10 +305,88 @@ key rotation, backups and public OAuth abuse controls remain operator work.
 Browser API URLs remain environment-specific build configuration. Change
 `CORS_ORIGINS` to allow the actual UI origin in each environment.
 
+### Development deployment
+
+`.github/workflows/main-branch-deploy.yml` runs on pushes to `main` (and supports
+manual dispatch). It rebuilds only changed app images unless shared build inputs
+change, then deploys the `latest` images from Docker Hub. The image repositories are
+`igperalta/lazyfinance-api`, `igperalta/lazyfinance-persistence` and
+`igperalta/lazyfinance-ui`. The UI uses its checked-in production API URL,
+`https://api.lazyfinance.online`, and Compose routes that same hostname to the API.
+The UI Dockerfile remains a plain monorepo build with no source rewriting or URL
+build argument.
+
+Configure this repository variable for Docker Hub image publishing:
+
+| Repository variable | Requirement |
+| --- | --- |
+| `DOCKER_USERNAME` | Optional; defaults to `igperalta` |
+
+Add the `DOCKER_PASSWORD` registry credential as a repository secret. Configure a
+GitHub Actions environment named `development` with these deployment variables:
+
+| Variable | Requirement |
+| --- | --- |
+| `WEB_DOMAIN` | Required UI hostname, with DNS pointing to the deployment host |
+| `ACME_EMAIL` | Required email for Traefik/Let's Encrypt certificate requests |
+| `POSTGRES_USER`, `POSTGRES_DB` | Optional; default to `lazyfinance_owner` and `lazyfinance` |
+| `PERSISTENCE_DATABASE_USER`, `PERSISTENCE_RPC_KEY_ID` | Optional; default to `lazyfinance_app` and `primary` |
+| `FIREBASE_PROJECT_ID` | Optional; defaults to `lazyfinance-dev`, matching the checked-in UI configuration |
+| `ASSISTANT_PROVIDER`, `ASSISTANT_MODEL` | Configured text assistant provider and model |
+| `ASSISTANT_VOICE_ENABLED`, `ASSISTANT_VOICE_MODEL`, `ASSISTANT_VOICE_NAME` | Voice settings; voice is billable and defaults to `marin` |
+| `FINTOC_PUBLIC_KEY` | Fintoc publishable key; its mode must match the secret key |
+| `MCP_OAUTH_ISSUER`, `MCP_OAUTH_UI_ORIGIN` | Public API/UI origins; must match the deployed domains |
+| `MCP_OAUTH_TRUST_PROXY` | `true` only because Traefik terminates TLS and replaces forwarded headers |
+
+Required `development` environment secrets are `POSTGRES_PASSWORD`,
+`PERSISTENCE_DATABASE_PASSWORD`, `PERSISTENCE_RPC_PRIVATE_KEY` and
+`PERSISTENCE_RPC_PUBLIC_KEY`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`,
+`ASSISTANT_API_KEY`, `ASSISTANT_VOICE_API_KEY`, `FINTOC_SECRET_KEY`,
+`FINTOC_TOKEN_ENCRYPTION_KEY`, `MCP_OAUTH_STATE_KEY` and `MCP_OAUTH_JWKS`.
+Generate the matching RPC signing pair with
+`pnpm rpc:keys`; the private key is passed only to API and the public key only to
+persistence. Keep provider credentials, Firebase private key, OAuth state key and
+private JWKS signing material in Actions secrets. Use URL-safe owner/runtime
+database passwords because Compose constructs PostgreSQL URLs from these values;
+use a 16+-character runtime password. Automatic banking sync is explicitly kept
+disabled in Compose, even though Fintoc credentials are configured. The configured
+Fintoc key pair is test-mode; replace both keys together before testing against
+live banking connections.
+Image builds and change detection run on GitHub-hosted `ubuntu-latest` runners.
+The deploy runner needs Docker Compose and must match
+`[self-hosted, deploy, development]`. Keep it pinned to the host that owns this
+stack's Docker volumes. Ports 80/443 must be reachable for
+Traefik and ACME TLS challenges. The `api.lazyfinance.online` DNS record must also
+point to this host; it is the API origin already embedded in the UI source.
+
+The workflow starts PostgreSQL, runs the owner-only migration/provision CLI, and
+then starts persistence/API/UI. Manual dispatch is restricted to the `main` ref.
+Owner credentials are passed only to PostgreSQL initialization and the one-shot
+CLI, not to the running persistence or API
+containers. Automatic demo seeding remains disabled. The named database volume is
+preserved by ordinary Compose updates; never add `down --volumes` or reset it as a
+deployment recovery shortcut. This is a development deployment, not a production
+backup, recovery, secret-rotation or release-hardening plan.
+
+For a manual deployment from a machine with Docker Compose, copy
+`docker/dev/.env.example` to `docker/dev/.env`, set real domains/credentials and
+generate the RPC key pair, then use:
+
+```sh
+docker compose --env-file docker/dev/.env -f docker/dev/compose.yml build
+docker compose --env-file docker/dev/.env -f docker/dev/compose.yml up -d --wait traefik postgres
+docker compose --env-file docker/dev/.env -f docker/dev/compose.yml up init
+docker compose --env-file docker/dev/.env -f docker/dev/compose.yml up -d --wait persistence api ui
+```
+
+To stop services without deleting stored data, run the same Compose command with
+`down` and do not pass `--volumes`. Optional demo data can be requested explicitly
+with `--profile tools run --rm seed` after initialization.
+
 ### Browser and static hosting destinations
 
 `apps/ui/src/environments/environment.development.ts` embeds
-`http://localhost:3000`; `environment.ts` embeds `https://api.lazyfinance.cl`.
+`http://localhost:3000`; `environment.ts` embeds `https://api.lazyfinance.online`.
 `RpcClient` appends `/trpc` to the selected API base, without an extra `/api` prefix
 or UI-host proxy. The API's `CORS_ORIGINS` must include the actual browser UI origin.
 Static startup and the public landing do not wait for API health or database readiness.
