@@ -1,6 +1,6 @@
 export const environment = {
   production: true,
-  apiUrl: "https://api.lazyfinance.cl",
+  apiUrl: "https://api.lazyfinance.online",
   firebaseConfig: {
     apiKey: "AIzaSyBAS2B7q01I1qwQnMCUr9rnnbARlMwPVok",
     authDomain: "lazyfinance-dev.firebaseapp.com",

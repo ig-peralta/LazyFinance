@@ -1,0 +1,154 @@
+name: lazyfinance-dev
+
+services:
+  traefik:
+    image: traefik:v3.6.1
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=lazyfinance-dev-edge
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.websecure.address=:443
+      - --certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:?Set ACME_EMAIL}
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-certs:/letsencrypt
+    networks: [edge]
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-lazyfinance_owner}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-lazyfinance}
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [data]
+    restart: unless-stopped
+
+  init:
+    image: ${DOCKER_USERNAME:-igperalta}/lazyfinance-persistence:${IMAGE_TAG:-latest}
+    environment:
+      POSTGRES_MIGRATION_URL: postgresql://${POSTGRES_USER:-lazyfinance_owner}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-lazyfinance}
+      PERSISTENCE_DATABASE_USER: ${PERSISTENCE_DATABASE_USER:-lazyfinance_app}
+      PERSISTENCE_DATABASE_PASSWORD: ${PERSISTENCE_DATABASE_PASSWORD:?Set PERSISTENCE_DATABASE_PASSWORD}
+    command: ['sh', '-ec', 'node dist/database/cli.js migrate && node dist/database/cli.js provision']
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [data]
+    restart: 'no'
+
+  seed:
+    image: ${DOCKER_USERNAME:-igperalta}/lazyfinance-persistence:${IMAGE_TAG:-latest}
+    profiles: [tools]
+    environment:
+      POSTGRES_MIGRATION_URL: postgresql://${POSTGRES_USER:-lazyfinance_owner}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-lazyfinance}
+    command: ['node', 'dist/database/cli.js', 'seed']
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    networks: [data]
+
+  persistence:
+    image: ${DOCKER_USERNAME:-igperalta}/lazyfinance-persistence:${IMAGE_TAG:-latest}
+    build:
+      context: ../..
+      dockerfile: apps/persistence/Dockerfile
+    environment:
+      HOST: 0.0.0.0
+      PORT: '3001'
+      POSTGRES_RUNTIME_URL: postgresql://${PERSISTENCE_DATABASE_USER:-lazyfinance_app}:${PERSISTENCE_DATABASE_PASSWORD:?Set PERSISTENCE_DATABASE_PASSWORD}@postgres:5432/${POSTGRES_DB:-lazyfinance}
+      PERSISTENCE_RPC_PUBLIC_KEY: ${PERSISTENCE_RPC_PUBLIC_KEY:?Set PERSISTENCE_RPC_PUBLIC_KEY}
+      PERSISTENCE_RPC_KEY_ID: ${PERSISTENCE_RPC_KEY_ID:-primary}
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    networks: [data, services]
+    restart: unless-stopped
+
+  api:
+    image: ${DOCKER_USERNAME:-igperalta}/lazyfinance-api:${IMAGE_TAG:-latest}
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+    environment:
+      NODE_ENV: production
+      AUTH_PROVIDER: firebase
+      PORT: '3000'
+      PERSISTENCE_RPC_URL: http://persistence:3001
+      PERSISTENCE_RPC_PRIVATE_KEY: ${PERSISTENCE_RPC_PRIVATE_KEY:?Set PERSISTENCE_RPC_PRIVATE_KEY}
+      PERSISTENCE_RPC_KEY_ID: ${PERSISTENCE_RPC_KEY_ID:-primary}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-lazyfinance-dev}
+      FIREBASE_CLIENT_EMAIL: ${FIREBASE_CLIENT_EMAIL:?Set FIREBASE_CLIENT_EMAIL}
+      FIREBASE_PRIVATE_KEY: ${FIREBASE_PRIVATE_KEY:?Set FIREBASE_PRIVATE_KEY}
+      CORS_ORIGINS: https://${WEB_DOMAIN:?Set WEB_DOMAIN}
+      ASSISTANT_PROVIDER: ${ASSISTANT_PROVIDER:?Set ASSISTANT_PROVIDER}
+      ASSISTANT_MODEL: ${ASSISTANT_MODEL:?Set ASSISTANT_MODEL}
+      ASSISTANT_API_KEY: ${ASSISTANT_API_KEY:?Set ASSISTANT_API_KEY}
+      ASSISTANT_VOICE_ENABLED: ${ASSISTANT_VOICE_ENABLED:?Set ASSISTANT_VOICE_ENABLED}
+      ASSISTANT_VOICE_API_KEY: ${ASSISTANT_VOICE_API_KEY:?Set ASSISTANT_VOICE_API_KEY}
+      ASSISTANT_VOICE_MODEL: ${ASSISTANT_VOICE_MODEL:?Set ASSISTANT_VOICE_MODEL}
+      ASSISTANT_VOICE_NAME: ${ASSISTANT_VOICE_NAME:-marin}
+      FINTOC_PUBLIC_KEY: ${FINTOC_PUBLIC_KEY:?Set FINTOC_PUBLIC_KEY}
+      FINTOC_SECRET_KEY: ${FINTOC_SECRET_KEY:?Set FINTOC_SECRET_KEY}
+      FINTOC_TOKEN_ENCRYPTION_KEY: ${FINTOC_TOKEN_ENCRYPTION_KEY:?Set FINTOC_TOKEN_ENCRYPTION_KEY}
+      MCP_OAUTH_ISSUER: ${MCP_OAUTH_ISSUER:?Set MCP_OAUTH_ISSUER}
+      MCP_OAUTH_UI_ORIGIN: ${MCP_OAUTH_UI_ORIGIN:?Set MCP_OAUTH_UI_ORIGIN}
+      MCP_OAUTH_STATE_KEY: ${MCP_OAUTH_STATE_KEY:?Set MCP_OAUTH_STATE_KEY}
+      MCP_OAUTH_JWKS: ${MCP_OAUTH_JWKS:?Set MCP_OAUTH_JWKS}
+      MCP_OAUTH_TRUST_PROXY: ${MCP_OAUTH_TRUST_PROXY:-true}
+      BANKING_AUTOMATIC_SYNC_ENABLED: 'false'
+    depends_on:
+      persistence:
+        condition: service_healthy
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.lazyfinance-api.rule=Host(`api.lazyfinance.online`)
+      - traefik.http.routers.lazyfinance-api.entrypoints=websecure
+      - traefik.http.routers.lazyfinance-api.tls.certresolver=letsencrypt
+      - traefik.http.services.lazyfinance-api.loadbalancer.server.port=3000
+      - traefik.docker.network=lazyfinance-dev-edge
+    networks: [services, edge]
+    restart: unless-stopped
+
+  ui:
+    image: ${DOCKER_USERNAME:-igperalta}/lazyfinance-ui:${IMAGE_TAG:-latest}
+    build:
+      context: ../..
+      dockerfile: apps/ui/Dockerfile
+    labels:
+      - traefik.enable=true
+      - 'traefik.http.routers.lazyfinance-ui.rule=Host(`${WEB_DOMAIN:?Set WEB_DOMAIN}`)'
+      - traefik.http.routers.lazyfinance-ui.entrypoints=websecure
+      - traefik.http.routers.lazyfinance-ui.tls.certresolver=letsencrypt
+      - traefik.http.services.lazyfinance-ui.loadbalancer.server.port=4000
+      - traefik.docker.network=lazyfinance-dev-edge
+    networks: [edge]
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  traefik-certs:
+
+networks:
+  data:
+    internal: true
+  services:
+    internal: true
+  edge:
+    name: lazyfinance-dev-edge
+    driver: bridge

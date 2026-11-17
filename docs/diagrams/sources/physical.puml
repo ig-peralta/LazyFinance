@@ -54,7 +54,7 @@ Fintoc -[hidden]down-> Model
 legend bottom
   Private persistence and PostgreSQL publish no host ports. Network membership is written on each node.
   Browser Firebase SDK / explicit Fintoc Widget exchanges are omitted here; they do not pass through UI Nginx.
-  The UI build's api.lazyfinance.cl is configuration, not deployment evidence; local builds need a reachable API origin / CORS.
+  The UI build's api.lazyfinance.online is configuration, not deployment evidence; local builds need a reachable API origin / CORS.
   Hosting, DNS/TLS, protected private transport, production auth/secrets, rotation, backup/restore, monitoring and image validation remain pending.
   Compose defaults are development settings. No cloud provider or replica count is assumed; a volume is not a backup.
 endlegend
