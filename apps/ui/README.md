@@ -537,7 +537,7 @@ legacy `lazyfinance-session` cookie without reading it. Mock mode stores only it
 demo token in tab-local `sessionStorage`, revalidates it on reload, and clears it
 on logout. No principal, permissions or financial results are persisted there.
 Development uses <http://localhost:3000>; production uses
-<https://api.lazyfinance.cl>. `RpcClient` appends `/trpc` to that base URL. The API's
+<https://api.lazyfinance.online>. `RpcClient` appends `/trpc` to that base URL. The API's
 `CORS_ORIGINS` must allow the actual UI origin. Production URLs are compiled into
 the Docker UI too; choose a browser-reachable local API URL and rebuild for an
 entirely local container rehearsal.

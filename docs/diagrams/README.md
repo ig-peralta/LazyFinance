@@ -202,7 +202,7 @@ containers, with separate owner-only initialization and opt-in seed jobs.
   container `3000`. They are configuration defaults, not reachable-endpoint claims.
 - UI Nginx serves static assets only, with no request-time Angular/Node process or
   API proxy. Browser requests go directly to the build-configured API origin.
-  The production build's `https://api.lazyfinance.cl` is **not deployment evidence**;
+  The production build's `https://api.lazyfinance.online` is **not deployment evidence**;
   an entirely local rehearsal needs an appropriate browser build URL and CORS.
 - Owner credentials belong to explicit init/seed jobs. Persistence uses its
   restricted SQL login; the API alone holds private signing/provider/OAuth secrets.

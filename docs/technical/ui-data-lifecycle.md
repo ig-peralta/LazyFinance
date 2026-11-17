@@ -572,7 +572,7 @@ no transfer-cache `id`, and components never write financial `TransferState`.
 No module-global authenticated client, batch queue or financial response cache is
 used. Static HTML is non-personalized/revalidated; only fingerprinted assets are
 immutable. Both environments call their explicit API base URL directly:
-`http://localhost:3000` in development and `https://api.lazyfinance.cl` in production.
+`http://localhost:3000` in development and `https://api.lazyfinance.online` in production.
 `RpcClient` appends `/trpc`; Nginx does no API proxying or prefix rewriting. API CORS
 must allow the UI origin, and browser API/Firebase build identifiers must match deployment.
 
