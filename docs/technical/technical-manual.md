@@ -359,14 +359,17 @@ stack's Docker volumes. Ports 80/443 must be reachable for
 Traefik and ACME TLS challenges. The `api.lazyfinance.online` DNS record must also
 point to this host; it is the API origin already embedded in the UI source.
 
-The workflow starts PostgreSQL, runs the owner-only migration/provision CLI, and
-then starts persistence/API/UI. Manual dispatch is restricted to the `main` ref.
-Owner credentials are passed only to PostgreSQL initialization and the one-shot
-CLI, not to the running persistence or API
-containers. Automatic demo seeding remains disabled. The named database volume is
-preserved by ordinary Compose updates; never add `down --volumes` or reset it as a
-deployment recovery shortcut. This is a development deployment, not a production
-backup, recovery, secret-rotation or release-hardening plan.
+The workflow starts PostgreSQL, runs the owner-only migration/provision CLI, seeds
+the stable demo fixtures, and then starts persistence/API/UI. Manual dispatch is
+restricted to the `main` ref. Owner credentials are passed only to PostgreSQL
+initialization and one-shot CLI jobs, not to the running persistence or API
+containers. Seeding runs explicitly on every deployment and refreshes the stable
+demo records; it is not part of app startup or migrations. The fixtures are bound
+to the mock identity and are not visible to Firebase-authenticated users. The named
+database volume is preserved by ordinary Compose updates; never add `down
+--volumes` or reset it as a deployment recovery shortcut. This is a development
+deployment, not a production backup, recovery, secret-rotation or release-hardening
+plan.
 
 For a manual deployment from a machine with Docker Compose, copy
 `docker/dev/.env.example` to `docker/dev/.env`, set real domains/credentials and
@@ -376,12 +379,12 @@ generate the RPC key pair, then use:
 docker compose --env-file docker/dev/.env -f docker/dev/compose.yml build
 docker compose --env-file docker/dev/.env -f docker/dev/compose.yml up -d --wait traefik postgres
 docker compose --env-file docker/dev/.env -f docker/dev/compose.yml up init
+docker compose --env-file docker/dev/.env --profile tools -f docker/dev/compose.yml run --rm seed
 docker compose --env-file docker/dev/.env -f docker/dev/compose.yml up -d --wait persistence api ui
 ```
 
 To stop services without deleting stored data, run the same Compose command with
-`down` and do not pass `--volumes`. Optional demo data can be requested explicitly
-with `--profile tools run --rm seed` after initialization.
+`down` and do not pass `--volumes`.
 
 ### Browser and static hosting destinations
 

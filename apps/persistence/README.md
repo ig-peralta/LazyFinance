@@ -51,10 +51,13 @@ not a financial-data bypass or a login credential.
 5. Start persistence with `POSTGRES_RUNTIME_URL` using the provisioned login and
    **without `POSTGRES_MIGRATION_URL`**. Startup rejects owner/BYPASSRLS credentials.
 
-Optionally run `pnpm --filter persistence db:seed` with **CLI-only** owner credentials
-to create/update the stable demo fixtures. Seeding is not automatic. The compiled
-image includes `node dist/database/cli.js migrate|provision|seed`; the runtime never
-receives the owner URL. Do not source the root Compose `.env` into app processes.
+Run `pnpm --filter persistence db:seed` only as an explicit CLI operation with
+**CLI-only** owner credentials to create/update the stable demo fixtures. The
+development deployment invokes this command after migration/provisioning; it is
+not an app-startup or migration side effect. These fixtures use the mock identity
+and are not visible to Firebase-authenticated users. The compiled image includes
+`node dist/database/cli.js migrate|provision|seed`; the runtime never receives the
+owner URL. Do not source the root Compose `.env` into app processes.
 
 `pnpm --filter persistence dev` listens on `127.0.0.1:3001` by default. Only an
 authenticated service may call `/trpc`; do not publish it to browsers. Use a

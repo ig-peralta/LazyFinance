@@ -175,6 +175,9 @@ jobs:
       - name: Apply migrations and provision the runtime login
         run: docker compose -f docker/dev/compose.yml up --pull always init
 
+      - name: Seed development demo data
+        run: docker compose --profile tools -f docker/dev/compose.yml run --rm seed
+
       - name: Start application services
         run: docker compose -f docker/dev/compose.yml up -d --pull always --wait --wait-timeout 180 persistence api ui
 
