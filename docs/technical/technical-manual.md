@@ -322,6 +322,10 @@ There is no extra Angular environment or build configuration for demo tools. The
 same UI build shows their menu entry only when the API reports
 `config.get.demoTools.enabled=true`. The API and persistence each require an
 explicit `DEMO_TOOLS_ENABLED=true` environment variable.
+The menu can reset/reseed the signed-in account and then generate an untagged
+internal transfer or external movement from server-side templates. Generation
+requires the three reset-created demo accounts; it never writes to a linked bank
+account. Neither button accepts an account or user selector.
 
 Configure this repository variable for Docker Hub image publishing:
 

@@ -7,6 +7,7 @@ import { sql } from "kysely";
 import type { AssistantTables } from "../../assistant/assistant.tables";
 import type { FinanceTables } from "../../finance/finance.tables";
 import { objectives, tags } from "./catalog";
+import { userFixtureId } from "./demo-fixture-ids";
 import { clp, seedId } from "./helpers";
 import {
   buildIncomeReceipts,
@@ -22,10 +23,6 @@ import {
 } from "./profile";
 
 type DemoToolsTables = FinanceTables & AssistantTables;
-
-function userFixtureId(userId: string, fixtureId: string) {
-  return seedId(`development-account-reset:v1:${userId}:${fixtureId}`);
-}
 
 function requiredId(ids: ReadonlyMap<string, string>, key: string) {
   const id = ids.get(key);

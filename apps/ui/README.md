@@ -42,9 +42,10 @@ the selected Angular environment. Static startup never waits for API/database
 readiness. Other UI hosting only needs equivalent static fallback/caching.
 
 The ordinary UI build includes a **Herramientas demo** route, but shows its menu
-entry and reset controls only when the API returns `demoTools.enabled: true` from
-`config.get`. Reset uses the authenticated API RPC, never a separate browser
-endpoint or a browser-supplied target user ID. API and persistence each require
+entry and reset/transaction controls only when the API returns `demoTools.enabled: true` from
+`config.get`. Reset and the two untagged demo transaction buttons use authenticated
+API RPC, never a separate browser endpoint or browser-supplied owner/account ID.
+Generation requires reset-created demo accounts. API and persistence each require
 their own explicit `DEMO_TOOLS_ENABLED=true` setting.
 
 ## Authenticated workspace
