@@ -73,10 +73,11 @@ Entity titles use qualified SQL `schema.table` names.
 
 The four banking operational tables added by migration `202611100030` are listed
 above but not drawn in that baseline image. Selection and schedules each reference
-the owned connection and user. Migration 032's consent table also references the
-user, bringing the current schema to 33 tables and 49 foreign keys. Neither
-addition is drawn in the baseline image. The transport tables contain no
-financial-owner references.
+the owned connection and user. Migration 032's consent table references the user.
+Migration 034 temporarily added a one-time seed marker; migration 035 drops that
+obsolete table while preserving migration history. The current schema has 33 tables
+and 49 foreign keys. Neither migration is represented in the baseline image. The
+transport tables contain no financial-owner references.
 
 ![Implemented relationships across identity, finance and assistant](../diagrams/er.png)
 
@@ -259,10 +260,14 @@ insert, column-limited updates and forced RLS. Runtime cannot delete or reassign
 records. It changes no existing data and needs no reseed/reset; apply it only to
 an authorized target. Destructive rollback requires an explicit recovery plan.
 
-Seeding is explicit owner-only demo tooling, never startup or migration work.
-Stable fixture IDs allow repeatable updates and preserve existing transaction
-tag decisions; it also rewrites declared demo fixtures and recomputes demo
-balances, so it is **not** a generic import or a safe operation on real user data.
-The seeded `fintoc` catalog identifier is not evidence of a working Fintoc adapter.
+The explicit owner-only CLI seed creates the fixed local mock account and its
+initial fixtures; it is never startup or migration work. Stable fixture IDs allow
+repeatable updates while preserving existing transaction tag decisions. The
+separate confirmed development reset clears the authenticated user's finance and
+assistant data before rebuilding demo finance fixtures; it does not accept a target
+user ID and preserves all identity data, including MCP grants. Deleting assistant
+receipts does not undo financial changes. Neither operation is a generic import or
+safe for real user data. The seeded `fintoc` catalog identifier is not evidence of
+a working Fintoc adapter.
 Follow the [persistence setup](../../apps/persistence/README.md) and
 [test-database precautions](development-workflow.md#verification-tiers).

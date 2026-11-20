@@ -2,7 +2,7 @@
 
 Private NestJS/tRPC service using Kysely, `pg`, `identity`/`finance`/`assistant` schemas and
 PostgreSQL scoped RLS. The API and UI now use the matching RPC boundaries; no API
-database fallback remains. Its 106 private procedures expose identity resolution,
+database fallback remains. Its 107 private procedures expose identity resolution,
 bounded financial facts, revisioned budget/income commands, expense-adjustment
 allocations, tag decisions/rules, owned onboarding/banking lifecycle and prepared
 atomic provider sync, plus purpose-isolated OAuth artifacts, owned grants and
@@ -46,18 +46,46 @@ silently changed or password-rotated. Unsafe/unmanaged collisions are refused.
 `lazyfinance_identity_bootstrap` is a separate restricted NOLOGIN function owner,
 not a financial-data bypass or a login credential.
 
+The opt-in `demo-tools` module uses a separate login. Only the owner-only CLI
+provisions it, with `DEMO_TOOLS_DATABASE_USER` and a
+`DEMO_TOOLS_DATABASE_PASSWORD` of at least 24 characters:
+
+```sh
+pnpm --filter persistence db:provision-demo-tools
+```
+
+That role has `BYPASSRLS` but only provider-catalog reads and scoped DML on
+finance/assistant owner-data tables. It cannot read/write identity rows, MCP grants
+or artifacts. The owner-only init job receives the password to provision the role;
+only enabled development persistence receives its database URL, plus expected
+database/login variables. Its separate connection is opened only when
+`DEMO_TOOLS_ENABLED=true` and startup checks the role/database/grants. Never supply
+the credential to API or production persistence.
+
 4. Generate keys with `pnpm rpc:keys`. Put the private key **only in the API**
    environment and the public key in persistence. Keys/secrets must not enter Git.
 5. Start persistence with `POSTGRES_RUNTIME_URL` using the provisioned login and
    **without `POSTGRES_MIGRATION_URL`**. Startup rejects owner/BYPASSRLS credentials.
 
 Run `pnpm --filter persistence db:seed` only as an explicit CLI operation with
-**CLI-only** owner credentials to create/update the stable demo fixtures. The
-development deployment invokes this command after migration/provisioning; it is
-not an app-startup or migration side effect. These fixtures use the mock identity
+**CLI-only** owner credentials to create/update the stable demo fixtures. Deployment
+does not invoke this command; it is not an app-startup or migration side effect.
+These fixtures use the mock identity
 and are not visible to Firebase-authenticated users. The compiled image includes
-`node dist/database/cli.js migrate|provision|seed`; the runtime never receives the
+`node dist/database/cli.js migrate|provision|provision-demo-tools|seed`; the runtime never receives the
 owner URL. Do not source the root Compose `.env` into app processes.
+
+Migration 034 temporarily introduced the demo-seed marker table; migration 035
+drops that obsolete marker while retaining migration history. The confirmed
+**Preparar demo** action is an authenticated API RPC forwarded with the signed
+internal user context to the persistence `demo-tools` module. Its separate database
+connection atomically clears that user's finance and assistant rows before
+re-seeding demo finance data. No user ID is accepted from the browser. The tool
+leaves every identity row (including MCP grants) untouched, and deleting assistant
+action receipts does not reverse their prior financial effects. This operation
+does not alter application RLS or runtime grants. The owner-only CLI seed remains
+an explicit initial setup for the fixed local mock account; deployment never runs
+it automatically.
 
 `pnpm --filter persistence dev` listens on `127.0.0.1:3001` by default. Only an
 authenticated service may call `/trpc`; do not publish it to browsers. Use a
@@ -165,7 +193,7 @@ pnpm --filter persistence test
 
 Database integration tests require `TEST_POSTGRES_OWNER_URL` pointing to a
 **disposable database whose name ends in `_test`**. They create test-owned rows
-and provision a separate runtime login. Without that variable, database tests
+and provision separate runtime/demo-tools logins. Without that variable, database tests
 are explicitly skipped; unit tests still run. Never use real user data.
 
 Configured PostgreSQL integration tests open test HTTP listeners. The root

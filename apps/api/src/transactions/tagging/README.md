@@ -21,8 +21,9 @@ null protects the deliberate choice from automation. Decision changes append a
 `tag_decision_event` in the **same** persistence transaction. Repeating an identical
 manual choice or resetting an already-unreviewed movement does not add a duplicate
 change event. This is a fresh schema, not a migration/backfill of legacy rows.
-Explicit demo seeding initializes tagged fixtures as manual and preserves existing
-transaction decisions on rerun.
+The explicit owner CLI seed initializes tagged fixtures as manual and preserves
+existing transaction decisions on rerun. The separate confirmed account-reset
+tool clears old decisions with the user's finance data before reseeding.
 
 ## Public procedures
 

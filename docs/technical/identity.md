@@ -53,7 +53,7 @@ The currently implemented API modes are:
 | `firebase` | Firebase Admin verifies a Firebase Auth ID token against the configured project/issuer/audience | Resolve by Firebase UID; provision a new application user only with verified email |
 | `mock` | Local hardcoded demo credentials/token; issuer `https://mock.lazyfinance.cl`, subject `demo` | Existing seeded mapping only; never create a replacement demo owner |
 
-**One mode is selected per API process.** The UI reads `auth.config` and presents
+**One mode is selected per API process.** The UI reads `config.get.auth.provider` and presents
 that mode's login. This is multi-provider-ready identity modelling with two
 implemented verifiers, not simultaneous arbitrary provider login, an automatic
 plugin registry, or email-based federation. The current real-provider browser
