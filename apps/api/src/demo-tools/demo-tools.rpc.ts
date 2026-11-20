@@ -1,6 +1,6 @@
 import {
+  DemoDataResetInputSchema,
   DemoDataResetResultSchema,
-  RpcEmptySchema,
 } from "@lazyfinance/contracts";
 import { Ctx, Mutation, Router } from "nestjs-trpc";
 import { type ApiRequestContext, rpcUser } from "../rpc/context";
@@ -11,7 +11,7 @@ export class DemoToolsRpc {
   constructor(private readonly tools: DemoToolsService) {}
 
   @Mutation({
-    input: RpcEmptySchema,
+    input: DemoDataResetInputSchema,
     output: DemoDataResetResultSchema,
     meta: { auth: "user" },
   })

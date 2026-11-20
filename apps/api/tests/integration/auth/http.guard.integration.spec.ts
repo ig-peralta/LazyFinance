@@ -7,11 +7,12 @@ import {
 } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppModule } from "../../../src/app.module";
 import type { AuthenticatedRequest } from "../../../src/auth/auth.types";
 import { mockIdentity } from "../../../src/auth/mock/mock-auth.constants";
 import { configureCors } from "../../../src/cors";
+import { DemoToolsService } from "../../../src/demo-tools/demo-tools.service";
 import { ENV_SCHEMA } from "../../../src/environment/environment.schema";
 import { EnvironmentService } from "../../../src/environment/environment.service";
 import { PersistenceClient } from "../../../src/persistence/persistence.client";
@@ -139,6 +140,27 @@ describe("HTTP authentication", () => {
     expect(response.headers["cache-control"]).toBe("private, no-store");
     expect(queries).toBe(0);
     await request(app.getHttpServer()).get("/trpc/auth.config").expect(404);
+  });
+
+  it("accepts only empty authenticated demo reset requests", async () => {
+    const reset = vi
+      .spyOn(app.get(DemoToolsService), "resetDemoData")
+      .mockResolvedValue({ transactionCount: 42 });
+    const endpoint = "/trpc/demoTools.resetDemoData";
+    await request(app.getHttpServer()).post(endpoint).send({}).expect(401);
+
+    const response = await request(app.getHttpServer())
+      .post(endpoint)
+      .set("Authorization", "Bearer lazyfinance-demo-token")
+      .send({})
+      .expect(200);
+    expect(response.body.result.data).toEqual({ transactionCount: 42 });
+    await request(app.getHttpServer())
+      .post(endpoint)
+      .set("Authorization", "Bearer lazyfinance-demo-token")
+      .send({ userId: demoUser.id })
+      .expect(400);
+    expect(reset).toHaveBeenCalledExactlyOnceWith(demoUser.id);
   });
 
   it("logs in with local credentials only when the demo user is seeded", async () => {

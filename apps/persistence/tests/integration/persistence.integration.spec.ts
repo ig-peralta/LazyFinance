@@ -393,10 +393,6 @@ describe.skipIf(!ownerUrl)(
           providerUpdate: boolean;
           providerDelete: boolean;
           identityUsage: boolean;
-          userSelect: boolean;
-          identitySelect: boolean;
-          mcpGrantSelect: boolean;
-          mcpArtifactSelect: boolean;
           runtimeMembership: boolean;
         }>`select
           current_user as "currentUser",
@@ -409,11 +405,7 @@ describe.skipIf(!ownerUrl)(
            has_table_privilege(current_user,'finance.provider','insert') as "providerInsert",
            has_table_privilege(current_user,'finance.provider','update') as "providerUpdate",
            has_table_privilege(current_user,'finance.provider','delete') as "providerDelete",
-           has_schema_privilege(current_user,'identity','usage') as "identityUsage",
-           has_table_privilege(current_user,'identity."user"','select') as "userSelect",
-           has_table_privilege(current_user,'identity.external_identity','select') as "identitySelect",
-          has_table_privilege(current_user,'identity.mcp_grant','select') as "mcpGrantSelect",
-          has_table_privilege(current_user,'identity.mcp_artifact','select') as "mcpArtifactSelect"`.execute(
+           has_schema_privilege(current_user,'identity','usage') as "identityUsage"`.execute(
           reset,
         );
         expect(role).toEqual({
@@ -428,11 +420,22 @@ describe.skipIf(!ownerUrl)(
           providerUpdate: false,
           providerDelete: false,
           identityUsage: false,
-          userSelect: false,
-          identitySelect: false,
-          mcpGrantSelect: false,
-          mcpArtifactSelect: false,
         });
+        const { rows: identityPrivileges } = await sql<{
+          name: string;
+          canRead: boolean;
+        }>`select relation.relname as name,
+          has_table_privilege(current_user, relation.oid, 'select') as "canRead"
+          from pg_class relation
+          join pg_namespace namespace on namespace.oid = relation.relnamespace
+          where namespace.nspname = 'identity'
+            and relation.relname in ('user', 'external_identity', 'mcp_grant', 'mcp_artifact')
+          order by relation.relname`.execute(reset);
+        expect(identityPrivileges).toEqual(
+          ["external_identity", "mcp_artifact", "mcp_grant", "user"].map(
+            (name) => ({ name, canRead: false }),
+          ),
+        );
         await expect(
           sql`select * from identity.mcp_grant`.execute(reset),
         ).rejects.toThrow(/permission denied/);
@@ -1538,7 +1541,7 @@ describe.skipIf(!ownerUrl)(
         db: owner,
         provider: migrationProvider(),
       }).migrateDown();
-      expect(String(rollback.error)).toMatch(/explicit .*recovery plan/);
+      expect(String(rollback.error)).toMatch(/demo-tools reset operation/);
       expect(await migrate(owner, migrationProvider())).toEqual([]);
       expect(
         (await sql`select * from finance.account order by id`.execute(owner))

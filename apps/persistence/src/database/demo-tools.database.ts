@@ -71,10 +71,12 @@ export class DemoToolsDatabase implements OnModuleInit, OnModuleDestroy {
         and has_table_privilege(current_user, 'assistant.action', 'delete')
         and has_table_privilege(current_user, 'finance.provider', 'select')
         and not has_table_privilege(current_user, 'finance.provider', 'insert, update, delete, truncate')
-        and not has_table_privilege(current_user, 'identity."user"', 'select')
-        and not has_table_privilege(current_user, 'identity.external_identity', 'select')
-        and not has_table_privilege(current_user, 'identity.mcp_grant', 'select')
-        and not has_table_privilege(current_user, 'identity.mcp_artifact', 'select')
+        and (select count(*) = 4
+          and bool_and(not has_table_privilege(current_user, relation.oid, 'select'))
+          from pg_class relation
+          join pg_namespace namespace on namespace.oid = relation.relnamespace
+          where namespace.nspname = 'identity'
+            and relation.relname in ('user', 'external_identity', 'mcp_grant', 'mcp_artifact'))
         as safe`.execute(db);
       if (!boundary?.safe)
         throw new Error("Demo tools database login does not meet its boundary");

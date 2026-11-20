@@ -1,5 +1,7 @@
-import { DemoDataResetResultSchema } from "@lazyfinance/contracts";
-import { EmptyInputSchema } from "@lazyfinance/contracts/internal";
+import {
+  DemoDataResetInputSchema,
+  DemoDataResetResultSchema,
+} from "@lazyfinance/contracts";
 import { Ctx, Mutation, Router } from "nestjs-trpc";
 import type { PersistenceRequestContext } from "../rpc/persistence.context";
 import { DemoToolsService } from "./demo-tools.service";
@@ -9,7 +11,7 @@ export class DemoToolsRpc {
   constructor(private readonly tools: DemoToolsService) {}
 
   @Mutation({
-    input: EmptyInputSchema,
+    input: DemoDataResetInputSchema,
     output: DemoDataResetResultSchema,
     meta: { context: "user" },
   })
