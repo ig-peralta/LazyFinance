@@ -15,6 +15,7 @@ import {
 import { API_URL } from "../../tokens/api-url";
 import { AuthApi } from "../auth/auth-api";
 import { AuthCredentials } from "../auth/auth-credentials";
+import { ConfigApi } from "../config/config-api";
 import { RPC_FETCH, RpcClient } from "./rpc-client";
 import { isCancelled } from "./rpc-error";
 
@@ -23,26 +24,29 @@ describe("scoped native tRPC transport", () => {
 
   it("calls the environment API origin directly, appending only the RPC path", async () => {
     const fetch = vi.fn<typeof globalThis.fetch>(async () =>
-      rpcResponse({ provider: "mock" }),
+      rpcResponse({
+        auth: { provider: "mock" },
+        demoTools: { enabled: false },
+      }),
     );
     TestBed.configureTestingModule({
       providers: [{ provide: RPC_FETCH, useValue: fetch }],
     });
-    await TestBed.inject(AuthApi).config();
+    await TestBed.inject(ConfigApi).get();
     expect(TestBed.inject(API_URL)).toBe(environment.apiUrl);
     const url = new URL(String(fetch.mock.calls[0][0]));
     expect(url.origin).toBe(new URL(environment.apiUrl).origin);
-    expect(url.pathname).toBe("/trpc/auth.config");
+    expect(url.pathname).toBe("/trpc/config.get");
     expect(fetch.mock.calls[0][1]?.cache).toBe("no-store");
   });
 
   it("keeps public calls anonymous and candidate verification separate from the accepted session", async () => {
     const { callsTo, credentials } = setupRpc();
     const auth = TestBed.inject(AuthApi);
-    await auth.config();
+    await TestBed.inject(ConfigApi).get();
     await auth.loginMock("demo@lazyfinance.cl", "password");
     await auth.verifyPrincipal("candidate");
-    expect(callsTo("auth.config")[0].authorization).toBeNull();
+    expect(callsTo("config.get")[0].authorization).toBeNull();
     expect(callsTo("auth.loginMock")[0]).toMatchObject({
       authorization: null,
       input: { email: "demo@lazyfinance.cl", password: "password" },

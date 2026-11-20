@@ -1,5 +1,4 @@
 import {
-  type AuthConfig,
   type AuthPrincipal,
   MockLoginInputSchema,
   type MockLoginResult,
@@ -24,12 +23,9 @@ export class AuthService {
     private readonly persistence: PersistenceClient,
   ) {}
 
-  config(): AuthConfig {
-    return { provider: this.environment.get("AUTH_PROVIDER") };
-  }
-
   async loginMock(body: unknown): Promise<MockLoginResult> {
-    if (this.config().provider !== "mock") throw new NotFoundException();
+    if (this.environment.get("AUTH_PROVIDER") !== "mock")
+      throw new NotFoundException();
 
     const parsed = MockLoginInputSchema.safeParse(body);
     if (!parsed.success) throw new BadRequestException("Invalid login request");
@@ -50,7 +46,7 @@ export class AuthService {
       throw new UnauthorizedException("Missing or invalid bearer token");
     }
 
-    switch (this.config().provider) {
+    switch (this.environment.get("AUTH_PROVIDER")) {
       case "mock":
         return this.persistence.resolveExisting(this.mock.verify(match[1]));
       case "firebase": {

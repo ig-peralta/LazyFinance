@@ -1,12 +1,13 @@
 import "@angular/compiler";
 import { TestBed } from "@angular/core/testing";
 import { provideRouter } from "@angular/router";
-import type { AuthConfig } from "@lazyfinance/contracts";
+import type { AppConfig } from "@lazyfinance/contracts";
 import type { User as FirebaseUser } from "firebase/auth";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { deferred } from "../../../testing/deferred";
 import { firebaseUser } from "../../../testing/firebase";
 import { FirebaseService } from "../../services/firebase/firebase.service";
+import { ConfigApi } from "../config/config-api";
 import { AuthApi } from "./auth-api";
 import { SessionService } from "./session.service";
 
@@ -102,8 +103,11 @@ function setup() {
       onTokenChanged(null);
     }),
   };
-  const getAuthConfig = vi.fn(
-    async (): Promise<AuthConfig> => ({ provider: "firebase" }),
+  const getConfig = vi.fn(
+    async (): Promise<AppConfig> => ({
+      auth: { provider: "firebase" },
+      demoTools: { enabled: false },
+    }),
   );
   const getPrincipal = vi.fn<
     (
@@ -115,8 +119,9 @@ function setup() {
       provideRouter([]),
       {
         provide: AuthApi,
-        useValue: { config: getAuthConfig, verifyPrincipal: getPrincipal },
+        useValue: { verifyPrincipal: getPrincipal },
       },
+      { provide: ConfigApi, useValue: { get: getConfig } },
       { provide: FirebaseService, useValue: firebase },
     ],
   });

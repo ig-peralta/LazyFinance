@@ -263,7 +263,7 @@ Changing code does not enable these Firebase Console settings automatically.
 directly. `GET /` on API and `GET /health` on persistence are liveness endpoints,
 not proof of every provider integration's readiness.
 
-Business calls use tRPC under `/trpc`: `auth.config`, `auth.loginMock`,
+Business calls use tRPC under `/trpc`: `config.get`, `auth.loginMock`,
 `auth.principal`, accounts, transactions, objectives/progress, summaries, income,
 tags and rules. The checked-in [public generated router](../../libs/rpc-api/src/generated/server.ts)
 is the procedure inventory. Business REST routes were retired. `/mcp` exposes
@@ -291,13 +291,18 @@ maps their containers, networks, ports and remaining deployment decisions.
   resources network. Start resources first; only persistence/init/seed join that
   database network, with API/UI on separate service/edge networks.
 - `deploy.yml`: separate data/service/edge networks, named PostgreSQL volume,
-  owner-only init job, private persistence, API and static UI. No database/persistence
-  published ports. Copy root `.env.example`, set keys/runtime password, then run
+  owner-only init job, private persistence, API and static UI. No
+  database/persistence published ports. Copy root `.env.example`, set
+  keys/runtime/demo-tools passwords, then run
   `pnpm deploy:local:up`.
 - `docker/dev/compose.yml`: development deployment topology with Traefik HTTPS,
   PostgreSQL on a named volume, private persistence, API and static UI. Only ports
-  80/443 are published; the API and database are not directly published.
-- Demo data is opt-in: `pnpm deploy:local --profile tools run --rm seed`.
+  80/443 are published; the API and database are not directly
+  published.
+- Initial fixed-mock demo data is opt-in:
+  `pnpm deploy:local --profile tools run --rm seed`. The in-app **Preparar demo**
+  action is a confirmed reset-and-reseed of only the signed-in user's
+  finance and assistant data; it is never invoked at startup or during deployment.
   Migrations/provisioning are init-job work, never runtime startup side effects.
 
 The local deployment uses development defaults. Production TLS, secret management,
@@ -313,8 +318,10 @@ change, then deploys the `latest` images from Docker Hub. The image repositories
 `igperalta/lazyfinance-api`, `igperalta/lazyfinance-persistence` and
 `igperalta/lazyfinance-ui`. The UI uses its checked-in production API URL,
 `https://api.lazyfinance.online`, and Compose routes that same hostname to the API.
-The UI Dockerfile remains a plain monorepo build with no source rewriting or URL
-build argument.
+There is no extra Angular environment or build configuration for demo tools. The
+same UI build shows their menu entry only when the API reports
+`config.get.demoTools.enabled=true`. The API and persistence each require an
+explicit `DEMO_TOOLS_ENABLED=true` environment variable.
 
 Configure this repository variable for Docker Hub image publishing:
 
@@ -331,6 +338,7 @@ GitHub Actions environment named `development` with these deployment variables:
 | `ACME_EMAIL` | Required email for Traefik/Let's Encrypt certificate requests |
 | `POSTGRES_USER`, `POSTGRES_DB` | Optional; default to `lazyfinance_owner` and `lazyfinance` |
 | `PERSISTENCE_DATABASE_USER`, `PERSISTENCE_RPC_KEY_ID` | Optional; default to `lazyfinance_app` and `primary` |
+| `DEMO_TOOLS_DATABASE_USER` | Optional; defaults to the dedicated `lazyfinance_demo_tools` login |
 | `FIREBASE_PROJECT_ID` | Optional; defaults to `lazyfinance-dev`, matching the checked-in UI configuration |
 | `ASSISTANT_PROVIDER`, `ASSISTANT_MODEL` | Configured text assistant provider and model |
 | `ASSISTANT_VOICE_ENABLED`, `ASSISTANT_VOICE_MODEL`, `ASSISTANT_VOICE_NAME` | Voice settings; voice is billable and defaults to `marin` |
@@ -339,7 +347,8 @@ GitHub Actions environment named `development` with these deployment variables:
 | `MCP_OAUTH_TRUST_PROXY` | `true` only because Traefik terminates TLS and replaces forwarded headers |
 
 Required `development` environment secrets are `POSTGRES_PASSWORD`,
-`PERSISTENCE_DATABASE_PASSWORD`, `PERSISTENCE_RPC_PRIVATE_KEY` and
+`PERSISTENCE_DATABASE_PASSWORD`, `DEMO_TOOLS_DATABASE_PASSWORD`,
+`PERSISTENCE_RPC_PRIVATE_KEY` and
 `PERSISTENCE_RPC_PUBLIC_KEY`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`,
 `ASSISTANT_API_KEY`, `ASSISTANT_VOICE_API_KEY`, `FINTOC_SECRET_KEY`,
 `FINTOC_TOKEN_ENCRYPTION_KEY`, `MCP_OAUTH_STATE_KEY` and `MCP_OAUTH_JWKS`.
@@ -348,7 +357,12 @@ Generate the matching RPC signing pair with
 persistence. Keep provider credentials, Firebase private key, OAuth state key and
 private JWKS signing material in Actions secrets. Use URL-safe owner/runtime
 database passwords because Compose constructs PostgreSQL URLs from these values;
-use a 16+-character runtime password. Automatic banking sync is explicitly kept
+use a 16+-character runtime password and 24+-character demo-tools password. The
+owner-only init job receives the demo-tools password for provisioning; the enabled
+development persistence container receives the login URL, never API. The init job
+provisions its `BYPASSRLS` role with scoped
+finance/assistant grants and provider catalog reads; it has no identity or MCP
+grant/artifact access. Automatic banking sync is explicitly kept
 disabled in Compose, even though Fintoc credentials are configured. The configured
 Fintoc key pair is test-mode; replace both keys together before testing against
 live banking connections.
@@ -359,13 +373,16 @@ stack's Docker volumes. Ports 80/443 must be reachable for
 Traefik and ACME TLS challenges. The `api.lazyfinance.online` DNS record must also
 point to this host; it is the API origin already embedded in the UI source.
 
-The workflow starts PostgreSQL, runs the owner-only migration/provision CLI, seeds
-the stable demo fixtures, and then starts persistence/API/UI. Manual dispatch is
+The workflow starts PostgreSQL, runs the owner-only migration/provision CLI, and
+then starts persistence/API/UI. It does not seed or reset user data on
+deployment. Manual dispatch is
 restricted to the `main` ref. Owner credentials are passed only to PostgreSQL
-initialization and one-shot CLI jobs, not to the running persistence or API
-containers. Seeding runs explicitly on every deployment and refreshes the stable
-demo records; it is not part of app startup or migrations. The fixtures are bound
-to the mock identity and are not visible to Firebase-authenticated users. The named
+initialization and one-shot CLI jobs, not to running application containers. The
+API verifies the Firebase bearer and passes a signed internal user context to
+persistence; no target user ID is accepted from the UI. Reset is atomic, leaves
+every identity row including MCP grants untouched,
+and deletes assistant action receipts without reversing their historical financial
+effects. The named
 database volume is preserved by ordinary Compose updates; never add `down
 --volumes` or reset it as a deployment recovery shortcut. This is a development
 deployment, not a production backup, recovery, secret-rotation or release-hardening
@@ -379,7 +396,6 @@ generate the RPC key pair, then use:
 docker compose --env-file docker/dev/.env -f docker/dev/compose.yml build
 docker compose --env-file docker/dev/.env -f docker/dev/compose.yml up -d --wait traefik postgres
 docker compose --env-file docker/dev/.env -f docker/dev/compose.yml up init
-docker compose --env-file docker/dev/.env --profile tools -f docker/dev/compose.yml run --rm seed
 docker compose --env-file docker/dev/.env -f docker/dev/compose.yml up -d --wait persistence api ui
 ```
 
@@ -395,6 +411,12 @@ or UI-host proxy. The API's `CORS_ORIGINS` must include the actual browser UI or
 Static startup and the public landing do not wait for API health or database readiness.
 The API remains directly exposed on its configured port for API/MCP consumers.
 There is no `API_INTERNAL_URL` or request-time Angular server.
+
+The UI discovers demo-tools availability from `config.get` after browser startup,
+not a special build. It sends the confirmed mutation through the existing API RPC
+client with its accepted bearer. API and persistence both gate the feature with
+`DEMO_TOOLS_ENABLED=true`. Only persistence receives the privileged database URL;
+it does not create that connection when the flag is absent or false.
 
 The Docker UI uses the production environment too. For an entirely local browser
 rehearsal, select a browser-reachable local API URL in the chosen Angular build
@@ -438,8 +460,9 @@ fixture safety and live-Firebase distinctions. No real user database is a fixtur
 - API unavailable: inspect persistence URL/reachability, service key pair/key ID,
   then runtime-role safety and migration state. Do not supply owner credentials
   to bypass RLS or restore direct API SQL.
-- Empty demo: check that seeding was requested and the mock identity points to
-  the seeded user. A token is not stored as a database user API key.
+- Empty local mock account: run the explicit initial CLI seed once. Firebase users
+  provision their own identity and can use the development-only confirmed reset
+  action to create their own demo fixtures.
 - Browser/API failure: check the selected environment's API base URL, browser
   reachability/TLS, API port and allowed CORS origin. The neutral
   frame must remain available during an API outage; session failure offers retry.

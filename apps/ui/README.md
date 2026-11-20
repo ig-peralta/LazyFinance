@@ -41,6 +41,12 @@ backend/Docker DNS dependency. Browser requests use the explicit API base URL fr
 the selected Angular environment. Static startup never waits for API/database
 readiness. Other UI hosting only needs equivalent static fallback/caching.
 
+The ordinary UI build includes a **Herramientas demo** route, but shows its menu
+entry and reset controls only when the API returns `demoTools.enabled: true` from
+`config.get`. Reset uses the authenticated API RPC, never a separate browser
+endpoint or a browser-supplied target user ID. API and persistence each require
+their own explicit `DEMO_TOOLS_ENABLED=true` setting.
+
 ## Authenticated workspace
 
 The authenticated workspace offers system/light/dark themes and three text sizes

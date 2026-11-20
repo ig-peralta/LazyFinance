@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { TRPCModule } from "nestjs-trpc";
 import { AssistantModule } from "./assistant/assistant.module";
 import { DatabaseModule } from "./database/database.module";
+import { DemoToolsModule } from "./demo-tools/demo-tools.module";
 import { FinanceModule } from "./finance/finance.module";
 import { HealthHttp } from "./health.http";
 import { IdentityModule } from "./identity/identity.module";
@@ -11,6 +12,7 @@ import { RlsMiddleware } from "./rpc/rls.middleware";
 @Module({
   imports: [
     DatabaseModule,
+    DemoToolsModule,
     FinanceModule,
     IdentityModule,
     AssistantModule,

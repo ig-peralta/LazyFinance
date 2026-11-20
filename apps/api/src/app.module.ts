@@ -9,6 +9,8 @@ import { HttpAuthGuard } from "./auth/http.guard";
 import { BankingIngestionModule } from "./banking/ingestion/banking-ingestion.module";
 import { BankingLinksModule } from "./banking/linking/banking-links.module";
 import { BankingSchedulingModule } from "./banking/scheduling/banking-scheduling.module";
+import { ConfigModule } from "./config/config.module";
+import { DemoToolsModule } from "./demo-tools/demo-tools.module";
 import { EnvironmentModule } from "./environment/environment.module";
 import { IncomeModule } from "./income/income.module";
 import { McpModule } from "./mcp/mcp.module";
@@ -23,6 +25,8 @@ import { TransactionsModule } from "./transactions/transactions.module";
 @Module({
   imports: [
     EnvironmentModule,
+    ConfigModule,
+    DemoToolsModule,
     AssistantModule,
     McpModule,
     AuthModule,

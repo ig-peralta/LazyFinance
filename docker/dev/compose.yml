@@ -45,7 +45,9 @@ services:
       POSTGRES_MIGRATION_URL: postgresql://${POSTGRES_USER:-lazyfinance_owner}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-lazyfinance}
       PERSISTENCE_DATABASE_USER: ${PERSISTENCE_DATABASE_USER:-lazyfinance_app}
       PERSISTENCE_DATABASE_PASSWORD: ${PERSISTENCE_DATABASE_PASSWORD:?Set PERSISTENCE_DATABASE_PASSWORD}
-    command: ['sh', '-ec', 'node dist/database/cli.js migrate && node dist/database/cli.js provision']
+      DEMO_TOOLS_DATABASE_USER: ${DEMO_TOOLS_DATABASE_USER:-lazyfinance_demo_tools}
+      DEMO_TOOLS_DATABASE_PASSWORD: ${DEMO_TOOLS_DATABASE_PASSWORD:?Set DEMO_TOOLS_DATABASE_PASSWORD}
+    command: ['sh', '-ec', 'node dist/database/cli.js migrate && node dist/database/cli.js provision && node dist/database/cli.js provision-demo-tools']
     depends_on:
       postgres:
         condition: service_healthy
@@ -72,6 +74,10 @@ services:
       HOST: 0.0.0.0
       PORT: '3001'
       POSTGRES_RUNTIME_URL: postgresql://${PERSISTENCE_DATABASE_USER:-lazyfinance_app}:${PERSISTENCE_DATABASE_PASSWORD:?Set PERSISTENCE_DATABASE_PASSWORD}@postgres:5432/${POSTGRES_DB:-lazyfinance}
+      DEMO_TOOLS_ENABLED: 'true'
+      DEMO_TOOLS_DATABASE_URL: postgresql://${DEMO_TOOLS_DATABASE_USER:-lazyfinance_demo_tools}:${DEMO_TOOLS_DATABASE_PASSWORD:?Set DEMO_TOOLS_DATABASE_PASSWORD}@postgres:5432/${POSTGRES_DB:-lazyfinance}
+      DEMO_TOOLS_DATABASE_NAME: ${POSTGRES_DB:-lazyfinance}
+      DEMO_TOOLS_DATABASE_USER: ${DEMO_TOOLS_DATABASE_USER:-lazyfinance_demo_tools}
       PERSISTENCE_RPC_PUBLIC_KEY: ${PERSISTENCE_RPC_PUBLIC_KEY:?Set PERSISTENCE_RPC_PUBLIC_KEY}
       PERSISTENCE_RPC_KEY_ID: ${PERSISTENCE_RPC_KEY_ID:-primary}
     depends_on:
@@ -88,6 +94,7 @@ services:
     environment:
       NODE_ENV: production
       AUTH_PROVIDER: firebase
+      DEMO_TOOLS_ENABLED: 'true'
       PORT: '3000'
       PERSISTENCE_RPC_URL: http://persistence:3001
       PERSISTENCE_RPC_PRIVATE_KEY: ${PERSISTENCE_RPC_PRIVATE_KEY:?Set PERSISTENCE_RPC_PRIVATE_KEY}

@@ -316,7 +316,10 @@ export function rpcFailure(
 
 export function createRpcFetch(overrides: RpcHandlers = {}) {
   const handlers: RpcHandlers = {
-    "auth.config": () => ({ provider: "mock" }),
+    "config.get": () => ({
+      auth: { provider: "mock" },
+      demoTools: { enabled: false },
+    }),
     "auth.principal": () => principal,
     "auth.loginMock": () => ({ token: "mock-token" }),
     "assistant.consent": () => assistantConsent,

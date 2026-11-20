@@ -1,0 +1,58 @@
+<section class="stack">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">HERRAMIENTAS DEMO</p>
+      <h1>Herramientas demo</h1>
+      <p class="page-description">Deja tu espacio financiero limpio y vuelve a cargar los datos de ejemplo.</p>
+    </div>
+  </header>
+
+  @if (!session.demoToolsEnabled()) {
+    <p class="notice">Esta herramienta no está disponible en este entorno.</p>
+  } @else {
+    <section class="panel stack" aria-labelledby="reset-demo-details">
+      <h2 id="reset-demo-details">Restablecer datos para la demo</h2>
+      <p>Se eliminarán las conexiones bancarias, cuentas, movimientos, etiquetas, presupuestos, metas, ingresos y el historial del asistente de tu usuario. Luego se crearán tres cuentas y movimientos de ejemplo desde 2024 hasta el mes actual.</p>
+      <p class="notice danger">Esta acción no se puede deshacer. Tu identidad de inicio de sesión y las autorizaciones MCP se conservarán. El restablecimiento se aplica únicamente a la cuenta con la que iniciaste sesión.</p>
+      <button
+        type="button"
+        class="button danger"
+        data-testid="reset-demo-account"
+        [disabled]="command.pending()"
+        (click)="requestReset()"
+      >
+        Preparar datos de demostración
+      </button>
+
+      @if (confirmationRequired()) {
+        <div class="panel stack" role="group" aria-labelledby="confirm-reset-title">
+          <h3 id="confirm-reset-title">¿Eliminar y volver a crear los datos?</h3>
+          <p>También se borrarán los datos importados del banco y los recibos de acciones anteriores del asistente y MCP. Borrar esos recibos no revierte los cambios financieros que esas acciones ya realizaron.</p>
+          <div class="button-row">
+            <button
+              type="button"
+              class="button danger"
+              data-testid="confirm-reset-demo-account"
+              [disabled]="command.pending()"
+              (click)="reset()"
+            >
+              {{ command.pending() ? 'Restableciendo…' : 'Sí, restablecer mi cuenta' }}
+            </button>
+            <button type="button" class="button secondary" (click)="cancelReset()">
+              Cancelar
+            </button>
+          </div>
+        </div>
+      }
+
+      @if (command.error(); as error) {
+        <p class="notice danger" role="alert">{{ error }}</p>
+      }
+      @if (confirmation(); as result) {
+        <p class="notice" role="status">
+          Se limpiaron los datos financieros y el historial del asistente. Se cargaron {{ result.transactionCount }} movimientos de demostración.
+        </p>
+      }
+    </section>
+  }
+</section>

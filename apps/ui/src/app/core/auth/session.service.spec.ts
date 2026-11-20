@@ -1,11 +1,12 @@
 import "@angular/compiler";
 import { PLATFORM_ID } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
-import type { AuthConfig } from "@lazyfinance/contracts";
+import type { AppConfig } from "@lazyfinance/contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { deferred } from "../../../testing/deferred";
 import { rpcFailure } from "../../../testing/rpc";
 import { FirebaseService } from "../../services/firebase/firebase.service";
+import { ConfigApi } from "../config/config-api";
 import { RPC_FETCH } from "../rpc/rpc-client";
 import { AuthApi } from "./auth-api";
 import { SessionService } from "./session.service";
@@ -18,8 +19,9 @@ const principal = {
 const tokenKey = "lazyfinance-mock-token";
 
 function setup() {
-  const config = vi.fn<() => Promise<AuthConfig>>(async () => ({
-    provider: "mock",
+  const config = vi.fn<() => Promise<AppConfig>>(async () => ({
+    auth: { provider: "mock" },
+    demoTools: { enabled: false },
   }));
   const verify = vi.fn<
     (
@@ -29,7 +31,8 @@ function setup() {
   const firebase = { init: vi.fn(), auth: () => null };
   TestBed.configureTestingModule({
     providers: [
-      { provide: AuthApi, useValue: { config, verifyPrincipal: verify } },
+      { provide: ConfigApi, useValue: { get: config } },
+      { provide: AuthApi, useValue: { verifyPrincipal: verify } },
       { provide: FirebaseService, useValue: firebase },
     ],
   });
@@ -52,17 +55,32 @@ describe("browser-owned session startup", () => {
 
   it("shares pending startup and does not bootstrap again across navigation", async () => {
     const f = setup();
-    const pending = deferred<AuthConfig>();
+    const pending = deferred<AppConfig>();
     f.config.mockReturnValueOnce(pending.promise);
     const first = f.session.start();
     expect(f.session.start()).toBe(first);
     expect(f.session.status()).toBe("loading");
-    pending.resolve({ provider: "mock" });
+    pending.resolve({
+      auth: { provider: "mock" },
+      demoTools: { enabled: false },
+    });
     await first;
     await f.session.start();
     expect(f.config).toHaveBeenCalledOnce();
     expect(f.session.status()).toBe("anonymous");
     expect(f.firebase.init).not.toHaveBeenCalled();
+  });
+
+  it("shows demo tools only when the API enables them", async () => {
+    const f = setup();
+    await f.session.start();
+    expect(f.session.demoToolsEnabled()).toBe(false);
+    f.config.mockResolvedValueOnce({
+      auth: { provider: "mock" },
+      demoTools: { enabled: true },
+    });
+    await f.session.retry();
+    expect(f.session.demoToolsEnabled()).toBe(true);
   });
 
   it("exposes provider discovery failures as retryable errors, not a selected mock provider", async () => {
@@ -165,11 +183,14 @@ describe("browser-owned session startup", () => {
 
   it("does not install provider discovery after logout has invalidated startup", async () => {
     const f = setup();
-    const pending = deferred<AuthConfig>();
+    const pending = deferred<AppConfig>();
     f.config.mockReturnValueOnce(pending.promise);
     const startup = f.session.start();
     await f.session.logout();
-    pending.resolve({ provider: "firebase" });
+    pending.resolve({
+      auth: { provider: "firebase" },
+      demoTools: { enabled: false },
+    });
     await startup;
     expect(f.firebase.init).not.toHaveBeenCalled();
     expect(f.session.active()).toBe(false);
@@ -193,9 +214,16 @@ describe("browser-owned session startup", () => {
         {
           provide: RPC_FETCH,
           useValue: async (url: string | URL | Request) =>
-            String(url).includes("auth.config")
+            String(url).includes("config.get")
               ? new Response(
-                  JSON.stringify({ result: { data: { provider: "mock" } } }),
+                  JSON.stringify({
+                    result: {
+                      data: {
+                        auth: { provider: "mock" },
+                        demoTools: { enabled: false },
+                      },
+                    },
+                  }),
                   { headers: { "Content-Type": "application/json" } },
                 )
               : rpcFailure("UNAUTHORIZED", 401),

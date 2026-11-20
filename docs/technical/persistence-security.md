@@ -22,7 +22,7 @@ Only persistence executes application SQL. There is one database, fixed
 `identity`, `finance` and `assistant` schemas, and user-level ownership: no tenant selection,
 organizations, shared accounts or general administrator context.
 
-The public tRPC middleware permits anonymous access only to `auth.config` and
+The public tRPC middleware permits anonymous access only to `config.get` and
 `auth.loginMock`. All other procedures require `meta: { auth: "user" }` and a
 verified principal. Missing metadata or another anonymously annotated procedure
 is denied globally, even if its router was accidentally registered. Ordinary
@@ -118,6 +118,7 @@ revocation limitations.
 | `lazyfinance_runtime` | NOLOGIN permission role holding application grants/RLS policies |
 | Provisioned runtime LOGIN | Inherits that permission role; supplied via `POSTGRES_RUNTIME_URL` |
 | `lazyfinance_identity_bootstrap` | Restricted NOLOGIN function owner, not a runtime login |
+| Demo-tools LOGIN | Optional second connection in development persistence only; `BYPASSRLS` with explicit grants on resettable finance/assistant tables |
 
 Provisioning validates a distinct login name and a password of at least 16
 characters. An existing safe managed login is accepted **without changing its
@@ -131,14 +132,26 @@ database driver or connection.
 Do not inject the root Compose environment wholesale into app processes. These
 checks are guardrails, not a substitute for keeping credentials separate.
 
+The demo-tools login is provisioned separately by the owner-only CLI and requires
+a 24+-character password. It is **not** a member of `lazyfinance_runtime`, the
+bootstrap role, a table owner or another role. It can select only the shared
+provider catalog and mutate the enumerated finance owner-data and assistant
+tables. It has no grants on `identity` (including MCP grants/artifacts) and no
+application-schema `CREATE` privilege. Because it has `BYPASSRLS`, it is powerful
+within those table grants. The owner-only CLI receives its provisioning password;
+only enabled development persistence receives its runtime database URL, never API.
+That URL creates a second connection only with `DEMO_TOOLS_ENABLED=true`.
+The normal runtime connection, application RLS and grants remain unchanged.
+
 ## One transaction per private procedure
 
 [`withRequestContext`](../../apps/persistence/src/database/rls.ts) opens the
 transaction and uses `set_config(..., true)` for `lazyfinance.context_kind`,
 `lazyfinance.user_id`, `lazyfinance.request_id` and transaction budgets. Settings
 are local to that transaction and do not survive commit/rollback or pool reuse.
-The connection pool is bounded to 10 connections with a five-second connection
-timeout; this is not an end-to-end admission/rate-limit policy.
+The normal connection pool is bounded to 10 connections; the optional demo-tools
+pool is bounded to three. Both have a five-second connection timeout. These are
+not end-to-end admission/rate-limit policies.
 
 Repositories inject **`RLS_DB`**, an async-local proxy to that transaction. Access
 outside a scope throws; nested scopes and repository use of `transaction`,
@@ -154,6 +167,19 @@ All user mutations acquire the same per-user advisory transaction lock. This
 serializes writes affecting prepared inputs, including rule insertion/removal
 that a row-only lock might miss. It is not a lock around provider network calls
 or a transaction spanning several RPCs.
+
+Ordinary application mutations use this user context and lock. The `demo-tools`
+API RPC authenticates the browser bearer and forwards only a signed internal user
+context to the private persistence RPC. No browser-supplied user ID is accepted.
+With `DEMO_TOOLS_ENABLED=true` on both services, the private procedure skips the
+ordinary runtime transaction (holding its per-user lock would deadlock the second
+connection). The demo-tools module validates the separate database role and runs
+an atomic cleanup-and-reseed transaction with that same per-user advisory lock.
+It clears only that user's finance and assistant records (including MCP-origin
+assistant receipts), then writes namespaced demo fixtures. Every `identity` row,
+including MCP grants/artifacts, remains untouched. Deleting an action receipt does
+not undo its prior financial effect. The flag defaults to false; without it,
+persistence opens no privileged connection and the API advertises no demo tools.
 
 The middleware awaits the resolver **and output validation** before commit.
 tRPC may resolve an error as `{ ok: false, error }`; middleware throws that error
@@ -175,8 +201,9 @@ needs both owned ends. FKs alone cannot establish this. Tag decision events allo
 runtime SELECT/INSERT but not UPDATE/DELETE. Budget revisions check a spending
 parent owner and permit runtime updates only to supersession metadata; their tag
 links are append-only and check both owners. Savings revisions and their tag links
-are append-only and require an owned saving objective and owned tags. Identity mappings remain
-bootstrap-only rather than becoming a user-readable identity directory.
+are append-only and require an owned saving objective and owned tags. Identity
+mappings remain bootstrap-only; demo tools use the API-verified signed user
+context, not a second lookup. Identity and MCP rows are not part of reset.
 
 `identity.onboarding` permits self-read/insert and column-limited updates to its
 status/completion time. Runtime cannot delete or reassign those records, and

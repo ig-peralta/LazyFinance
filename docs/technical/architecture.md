@@ -53,7 +53,7 @@ assistant stream at `POST /assistant/turns`. Inventories and schema-change rules
 
 ## Authentication, sessions and ownership
 
-Only `auth.config` and `auth.loginMock` are anonymous public procedures. The API
+Only `config.get` and `auth.loginMock` are anonymous public procedures. The API
 verifies Firebase/mock bearers and resolves the stable provider/issuer/subject to
 an internal UUID. First Firebase provisioning requires verified email and never
 links different subjects by email. Mock is existing-only and rejected in production.
@@ -260,8 +260,10 @@ description; executed local checks and browser limits live in the
 Fresh migrations only: table/types/constraints/indexes/grants/RLS apply together.
 There is no legacy migration adoption or automatic database reset. Owner credentials
 belong only to CLI/init/seed jobs; the API uses private RPC without a database
-connection, and persistence rejects owner/BYPASSRLS runtime roles. Demo seeding
-is explicit.
+connection, and persistence rejects owner/BYPASSRLS credentials for its normal
+runtime pool. Explicitly enabled demo tools use a separate, narrowly granted
+`BYPASSRLS` connection in development persistence only; their signed user context
+comes from API authentication. No demo reset or seed runs during deployment.
 
 Compose supports private persistence, separate runtime environments and an owner-only
 init job. Its full stack separates data/service/edge networks; database/persistence

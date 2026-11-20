@@ -556,7 +556,7 @@ frames during imports; failed imports have retry, and destroyed hosts cannot ado
 late imports. Screens still own resource loading/empty/error/populated states,
 not `@defer` data-readiness wrappers.
 
-Browser startup shares `auth.config`, lazy SDK initialization and restoration.
+Browser startup shares `config.get`, lazy SDK initialization and restoration.
 Firebase owns its persisted identity and refresh. Accepted credentials/principals
 stay in memory, never an application cookie or browser permission snapshot. The
 legacy `lazyfinance-session` bearer cookie is expired without reading it. Mock

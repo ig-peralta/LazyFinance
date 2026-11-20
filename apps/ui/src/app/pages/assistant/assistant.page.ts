@@ -393,8 +393,30 @@ export class AssistantPage {
       this.lifetime.abort();
       this.liveState()?.controller.abort();
       this.workspace.onMinimize = undefined;
+      this.workspace.onDemoDataReset = undefined;
     });
     this.workspace.onMinimize = () => this.endVoice();
+    this.workspace.onDemoDataReset = () => {
+      this.endVoice(true);
+      this.liveState()?.controller.abort();
+      this.liveState.set(null);
+      this.retainedHistory.set(null);
+      this.retainedVoiceHistory.set(null);
+      this.voiceSelection.set(null);
+      this.workspace.selection.set(undefined);
+      this.draft.set("");
+      this.voiceMode.set(false);
+      this.voiceDisclosure.set(false);
+      this.historyOnly.set(false);
+      this.historyOpen.set(false);
+      this.optionsOpen.set(false);
+      this.canvasOpen.set(false);
+      this.resultSelection.set(undefined);
+      this.consentReview.set(false);
+      this.confirmDelete.set(false);
+      this.conversations.reload();
+      this.consent.reload();
+    };
     // Navigation may preserve text generation, but never hidden microphone capture.
     const navigation = inject(Router).events.subscribe(() => this.endVoice());
     const visibility = () => {

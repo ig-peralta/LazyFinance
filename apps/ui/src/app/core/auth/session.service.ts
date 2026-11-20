@@ -13,6 +13,7 @@ import {
 import type { AuthPrincipal, AuthProvider } from "@lazyfinance/contracts";
 import type { User as FirebaseUser } from "firebase/auth";
 import { FirebaseService } from "../../services/firebase/firebase.service";
+import { ConfigApi } from "../config/config-api";
 import { isCancelled, isUnauthorized } from "../rpc/rpc-error";
 import { AuthApi } from "./auth-api";
 import { AuthCredentials } from "./auth-credentials";
@@ -45,6 +46,7 @@ type FirebaseCommand = {
 @Injectable({ providedIn: "root" })
 export class SessionService {
   private readonly api = inject(AuthApi);
+  private readonly configApi = inject(ConfigApi);
   private readonly credentials = inject(AuthCredentials);
   private readonly firebase = inject(FirebaseService);
   private readonly document = inject(DOCUMENT);
@@ -52,6 +54,7 @@ export class SessionService {
   private readonly resolving = signal(false);
   private readonly failure = signal<string | null>(null);
   private readonly providerState = signal<AuthProvider | null>(null);
+  private readonly demoToolsEnabledState = signal(false);
   private started = false;
   private initialization?: Promise<void>;
   private restoration?: AbortController;
@@ -72,6 +75,7 @@ export class SessionService {
 
   readonly isResolving = this.resolving.asReadonly();
   readonly provider = this.providerState.asReadonly();
+  readonly demoToolsEnabled = this.demoToolsEnabledState.asReadonly();
   readonly user = computed(() => this.credentials.current()?.principal ?? null);
   readonly token = computed(() => this.credentials.current()?.token ?? null);
   readonly active = computed(() => this.user() !== null);
@@ -162,10 +166,11 @@ export class SessionService {
     revision: number,
     signal: AbortSignal,
   ): Promise<void> {
-    const config = await this.api.config(signal);
+    const config = await this.configApi.get(signal);
     if (revision !== this.revision || signal.aborted) return;
-    this.providerState.set(config.provider);
-    if (config.provider === "mock") {
+    this.providerState.set(config.auth.provider);
+    this.demoToolsEnabledState.set(config.demoTools.enabled);
+    if (config.auth.provider === "mock") {
       const token = this.mockToken();
       if (token) {
         const user = await this.api.verifyPrincipal(token, signal);

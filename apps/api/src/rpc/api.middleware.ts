@@ -21,7 +21,7 @@ export class ApiMiddleware
         const auth = options.meta?.auth;
 
         if (auth === "public") {
-          if (!["auth.config", "auth.loginMock"].includes(options.path))
+          if (!["config.get", "auth.loginMock"].includes(options.path))
             throw new TRPCError({ code: "FORBIDDEN" });
         } else if (auth === "user")
           options.ctx.principal = await options.ctx.authenticate();

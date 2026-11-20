@@ -31,6 +31,9 @@ Technical references: [architecture](../../docs/technical/architecture.md),
   Context is immutable per client, and public tRPC request IDs propagate privately.
 - **No database driver, pool or SQL access in the API.** Owner-only
   migration/seed commands belong to [persistence](../persistence/README.md).
+- The `demo-tools` module verifies the ordinary API bearer and forwards a signed
+  user context to persistence. The privileged database connection is conditional
+  in persistence; its credential is never available to this API.
 - Provider calls and preparation stay outside SQL transactions. A prepared sync
   commits facts, conflicts, decisions/events and checkpoint atomically. Known
   stale-input rejections may be recomputed; ambiguous network failures are not retried.
@@ -46,6 +49,7 @@ ignored `apps/api/.env`, and configure:
 | `PERSISTENCE_RPC_PRIVATE_KEY` | API-only Ed25519 PKCS8 PEM; generate with `pnpm rpc:keys`. |
 | `PERSISTENCE_RPC_KEY_ID` | Matching key identifier; default `primary`. |
 | `AUTH_PROVIDER` | `mock` locally, or `firebase`. |
+| `DEMO_TOOLS_ENABLED` | Default `false`; explicit `true` exposes demo tools and advertises availability under `config.get.demoTools.enabled`. Set it on persistence as well. |
 | `NODE_ENV` | Mock authentication is rejected in `production`. |
 | `PORT` | Default `3000`. |
 | `CORS_ORIGINS` | Allowed browser origins; default local Angular origins. |
@@ -90,10 +94,20 @@ See the [banking boundary](src/banking/README.md) for exact bounds, recovery and
 future-service extraction constraints.
 
 `pnpm --filter api dev` starts watch mode. `build`, `typecheck` and `test` are also
-available. Public auth procedures are `auth.config` and `auth.loginMock`; all
+available. Only `config.get` and `auth.loginMock` are anonymous; all
 others require a verified bearer. Mock login uses `demo@lazyfinance.cl` /
 `password` only after an explicit persistence demo seed. The SSR cookie is not
 accepted directly as API authentication.
+
+The local demo login uses `demo@lazyfinance.cl` / `password` after an explicit
+owner-only CLI seed. If `DEMO_TOOLS_ENABLED=true` on both API and persistence,
+**Mi cuenta → Herramientas demo** offers a confirmed reset-and-reseed action for
+the signed-in account. The API verifies the bearer and forwards the internal user
+in a signed persistence context; the browser sends no target user ID. Persistence
+uses its separately provisioned connection to clear only that user's finance and
+assistant data and restore demo fixtures. Identity rows and MCP grants survive;
+deleting assistant/MCP action receipts does not reverse prior financial effects.
+The normal persistence connection, RLS policies and runtime grants remain unchanged.
 
 External `/mcp` no longer accepts Firebase/development application tokens. It uses
 `oidc-provider@9.13.3` with S256 PKCE, resource binding, CIMD/DCR, ten-minute opaque

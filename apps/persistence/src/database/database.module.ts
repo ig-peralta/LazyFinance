@@ -2,6 +2,7 @@ import { Inject, Module, type OnModuleDestroy } from "@nestjs/common";
 import type { Kysely } from "kysely";
 import { RlsMiddleware } from "../rpc/rls.middleware";
 import { createDatabase } from "./connection";
+import { DemoToolsDatabase } from "./demo-tools.database";
 import { assertRuntimeRole } from "./provision";
 import { createRlsDbProxy } from "./rls";
 import { RLS_DB, RUNTIME_DB } from "./tokens";
@@ -9,6 +10,7 @@ import { RLS_DB, RUNTIME_DB } from "./tokens";
 @Module({
   providers: [
     RlsMiddleware,
+    DemoToolsDatabase,
     {
       provide: RUNTIME_DB,
       useFactory: async () => {
@@ -35,7 +37,7 @@ import { RLS_DB, RUNTIME_DB } from "./tokens";
     },
     { provide: RLS_DB, useFactory: () => createRlsDbProxy() },
   ],
-  exports: [RLS_DB, RlsMiddleware],
+  exports: [RLS_DB, RlsMiddleware, DemoToolsDatabase],
 })
 export class DatabaseModule implements OnModuleDestroy {
   constructor(

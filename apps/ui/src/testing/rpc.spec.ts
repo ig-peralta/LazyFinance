@@ -33,10 +33,10 @@ describe("typed RPC test transport", () => {
 
   it("keeps an absent query input undefined rather than inventing null", async () => {
     const mock = createRpcFetch();
-    await mock.fetch("http://api.test/trpc/auth.config");
+    await mock.fetch("http://api.test/trpc/config.get");
 
-    expect(mock.callsTo("auth.config")[0].input).toBeUndefined();
-    expectTypeOf(mock.callsTo("auth.config")[0].input).toEqualTypeOf<void>();
+    expect(mock.callsTo("config.get")[0].input).toBeUndefined();
+    expectTypeOf(mock.callsTo("config.get")[0].input).toEqualTypeOf<void>();
   });
 
   it("passes deliberate raw/error responses through and rejects unknown routes", async () => {

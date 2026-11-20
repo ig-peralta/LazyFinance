@@ -196,8 +196,9 @@ describe.skipIf(!integration)(
             providerSubject: mockIdentity.providerSubject,
           })
         )[0];
-        expect(await api.client().auth.config.query()).toEqual({
-          provider: "mock",
+        expect(await api.client().config.get.query()).toEqual({
+          auth: { provider: "mock" },
+          demoTools: { enabled: false },
         });
         expect(
           await api

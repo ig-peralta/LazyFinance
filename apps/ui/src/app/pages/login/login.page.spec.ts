@@ -95,17 +95,17 @@ function setup(
     return true;
   });
   const resetPassword = vi.fn<SessionService["resetPassword"]>(async () => {});
-  const getAuthConfig = vi.fn(async () => {
+  const getConfig = vi.fn(async () => {
     if (failConfig) throw new Error("offline");
 
-    return { provider };
+    return { auth: { provider }, demoTools: { enabled: false } };
   });
   const selectedProvider = signal<"firebase" | "mock" | null>(null);
   const sessionError = signal<string | null>(null);
   const start = vi.fn(async () => {
     isResolving.set(true);
     try {
-      selectedProvider.set((await getAuthConfig()).provider);
+      selectedProvider.set((await getConfig()).auth.provider);
     } catch {
       sessionError.set("No se pudieron cargar las opciones de acceso.");
     } finally {
@@ -146,7 +146,7 @@ function setup(
           logout,
         },
       },
-      { provide: AuthApi, useValue: { config: getAuthConfig, loginMock } },
+      { provide: AuthApi, useValue: { loginMock } },
     ],
   });
   const navigate = vi
@@ -170,7 +170,7 @@ function setup(
     resetPassword,
     clear,
     logout,
-    getAuthConfig,
+    getConfig,
     loginMock,
     navigate,
   };

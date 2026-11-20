@@ -56,14 +56,16 @@ export class AppShell {
     ),
     { initialValue: this.router.url },
   );
-  protected readonly location = computed(() => workspaceLocation(this.url()));
   protected readonly areas = workspaceNavigation;
+  protected readonly location = computed(() => workspaceLocation(this.url()));
   private readonly onboarding = inject(OnboardingData);
   protected readonly destinations = computed(() =>
     this.location().area.destinations.filter(
       (destination) =>
-        destination.path !== "/comenzar" ||
-        this.onboarding.status() === "skipped",
+        (destination.path !== "/comenzar" ||
+          this.onboarding.status() === "skipped") &&
+        (destination.path !== "/herramientas-demo" ||
+          this.session.demoToolsEnabled()),
     ),
   );
   private readonly dialog =

@@ -5,10 +5,6 @@ import { RpcClient } from "../rpc/rpc-client";
 export class AuthApi {
   private readonly rpc = inject(RpcClient);
 
-  config(signal?: AbortSignal) {
-    return this.rpc.anonymous.auth.config.query(undefined, { signal });
-  }
-
   loginMock(email: string, password: string, signal?: AbortSignal) {
     return this.rpc.anonymous.auth.loginMock.mutate(
       { email, password },
