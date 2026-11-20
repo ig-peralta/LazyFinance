@@ -32,6 +32,7 @@ import { z } from "zod";
 import { AppModule } from "../../src/app.module";
 import { createDatabase } from "../../src/database/connection";
 import { DatabaseModule } from "../../src/database/database.module";
+import { provisionDemoToolsRole } from "../../src/database/demo-tools-provision";
 import { up as addConversationModes } from "../../src/database/migrations/assistant/202611110033-assistant-conversation-modes";
 import { up as addGrantCallback } from "../../src/database/migrations/identity/202611110031-mcp-grant-callback";
 import { MultiMigrationProvider, migrate } from "../../src/database/migrator";
@@ -109,6 +110,7 @@ describe.skipIf(!ownerUrl)(
     let runtime: Kysely<Record<string, never>>;
     let app: INestApplication;
     let url: string;
+    let resetDatabaseUrl: string;
     let sign: Awaited<ReturnType<typeof createContextSigner>>;
     const a = randomUUID(),
       b = randomUUID();
@@ -225,19 +227,36 @@ describe.skipIf(!ownerUrl)(
     });
 
     beforeAll(async () => {
-      const target = new URL(ownerUrl!);
+      if (!ownerUrl)
+        throw new Error(
+          "Integration tests require a disposable _test database",
+        );
+      const target = new URL(ownerUrl);
       if (!target.pathname.endsWith("_test"))
         throw new Error(
           "Integration tests require a disposable database ending in _test",
         );
 
-      owner = createDatabase(ownerUrl!, false);
+      owner = createDatabase(ownerUrl, false);
       await migrate(owner, migrationProvider());
       await provisionRuntime(
         owner,
         "lazyfinance_test_runtime",
         "runtime-test-password-only",
       );
+      await provisionDemoToolsRole(
+        owner,
+        "lazyfinance_test_demo_tools",
+        "demo-tools-test-password-only",
+      );
+      const resetTarget = new URL(ownerUrl);
+      resetTarget.username = "lazyfinance_test_demo_tools";
+      resetTarget.password = "demo-tools-test-password-only";
+      resetDatabaseUrl = resetTarget.toString();
+      process.env.DEMO_TOOLS_ENABLED = "true";
+      process.env.DEMO_TOOLS_DATABASE_URL = resetDatabaseUrl;
+      process.env.DEMO_TOOLS_DATABASE_NAME = resetTarget.pathname.slice(1);
+      process.env.DEMO_TOOLS_DATABASE_USER = "lazyfinance_test_demo_tools";
       target.username = "lazyfinance_test_runtime";
       target.password = "runtime-test-password-only";
       runtime = createDatabase(target.toString(), false);
@@ -341,6 +360,10 @@ describe.skipIf(!ownerUrl)(
       await app?.close();
       await runtime?.destroy();
       await owner?.destroy();
+      delete process.env.DEMO_TOOLS_ENABLED;
+      delete process.env.DEMO_TOOLS_DATABASE_URL;
+      delete process.env.DEMO_TOOLS_DATABASE_NAME;
+      delete process.env.DEMO_TOOLS_DATABASE_USER;
     });
 
     it("uses a real non-owner login and rejects owner credentials", async () => {
@@ -352,6 +375,73 @@ describe.skipIf(!ownerUrl)(
           "a-different-password",
         ),
       ).toEqual({ created: false });
+    });
+
+    it("limits the demo tools login to scoped finance and assistant tables", async () => {
+      const reset = createDatabase(resetDatabaseUrl, false);
+      try {
+        const {
+          rows: [role],
+        } = await sql<{
+          currentUser: string;
+          bypassRls: boolean;
+          superuser: boolean;
+          financeDelete: boolean;
+          assistantDelete: boolean;
+          providerSelect: boolean;
+          providerInsert: boolean;
+          providerUpdate: boolean;
+          providerDelete: boolean;
+          identityUsage: boolean;
+          userSelect: boolean;
+          identitySelect: boolean;
+          mcpGrantSelect: boolean;
+          mcpArtifactSelect: boolean;
+          runtimeMembership: boolean;
+        }>`select
+          current_user as "currentUser",
+          pg_has_role(current_user,'lazyfinance_runtime','member') as "runtimeMembership",
+          exists(select 1 from pg_roles where rolname=current_user and rolbypassrls) as "bypassRls",
+          exists(select 1 from pg_roles where rolname=current_user and rolsuper) as "superuser",
+          has_table_privilege(current_user,'finance.account','delete') as "financeDelete",
+          has_table_privilege(current_user,'assistant.action','delete') as "assistantDelete",
+           has_table_privilege(current_user,'finance.provider','select') as "providerSelect",
+           has_table_privilege(current_user,'finance.provider','insert') as "providerInsert",
+           has_table_privilege(current_user,'finance.provider','update') as "providerUpdate",
+           has_table_privilege(current_user,'finance.provider','delete') as "providerDelete",
+           has_schema_privilege(current_user,'identity','usage') as "identityUsage",
+           has_table_privilege(current_user,'identity."user"','select') as "userSelect",
+           has_table_privilege(current_user,'identity.external_identity','select') as "identitySelect",
+          has_table_privilege(current_user,'identity.mcp_grant','select') as "mcpGrantSelect",
+          has_table_privilege(current_user,'identity.mcp_artifact','select') as "mcpArtifactSelect"`.execute(
+          reset,
+        );
+        expect(role).toEqual({
+          currentUser: "lazyfinance_test_demo_tools",
+          runtimeMembership: false,
+          bypassRls: true,
+          superuser: false,
+          financeDelete: true,
+          assistantDelete: true,
+          providerSelect: true,
+          providerInsert: false,
+          providerUpdate: false,
+          providerDelete: false,
+          identityUsage: false,
+          userSelect: false,
+          identitySelect: false,
+          mcpGrantSelect: false,
+          mcpArtifactSelect: false,
+        });
+        await expect(
+          sql`select * from identity.mcp_grant`.execute(reset),
+        ).rejects.toThrow(/permission denied/);
+        await expect(
+          sql`select * from identity.external_identity`.execute(reset),
+        ).rejects.toThrow(/permission denied/);
+      } finally {
+        await reset.destroy();
+      }
     });
     it("matches the committed private generated surface and requires context metadata everywhere", () => {
       const generated = readFileSync(
@@ -377,7 +467,7 @@ describe.skipIf(!ownerUrl)(
           .filter((name) => !name.startsWith("failure."))
           .sort(),
       ).toEqual(expected.sort());
-      expect(expected).toHaveLength(106);
+      expect(expected).toHaveLength(107);
 
       for (const name of expected)
         expect(procedures[name]._def.meta).toMatchObject({
@@ -2584,6 +2674,123 @@ describe.skipIf(!ownerUrl)(
         count: string;
       }>`select count(*)::text as count from finance.account`.execute(runtime);
       expect(row.count).toBe("0");
+    });
+
+    it("clears only the target user's finance and assistant data before reseeding", async () => {
+      const resetUserA = randomUUID();
+      const resetUserB = randomUUID();
+      const connectionResetA = randomUUID();
+      const connectionResetB = randomUUID();
+      const accountResetA = randomUUID();
+      const accountResetB = randomUUID();
+      const movementResetA = randomUUID();
+      const movementResetB = randomUUID();
+      const assistantConversationA = randomUUID();
+      const assistantConversationB = randomUUID();
+      const assistantTurnA = randomUUID();
+      const assistantActionA = randomUUID();
+      const mcpActionA = randomUUID();
+      const assistantActionB = randomUUID();
+      const subjectA = `reset-${resetUserA}`;
+      const subjectB = `reset-${resetUserB}`;
+      const grantId = `reset-grant-${resetUserA}`;
+      const interactionId = `reset-interaction-${resetUserA}`;
+      await sql`insert into identity."user"(id,email,name) values
+        (${resetUserA},${`${resetUserA}@example.test`},'Reset target'),
+        (${resetUserB},${`${resetUserB}@example.test`},'Reset untouched')`.execute(
+        owner,
+      );
+      await sql`insert into identity.external_identity(provider,issuer,provider_subject,user_id) values
+        ('mock','https://mock.lazyfinance.cl',${subjectA},${resetUserA}),
+        ('mock','https://mock.lazyfinance.cl',${subjectB},${resetUserB})`.execute(
+        owner,
+      );
+      const {
+        rows: [manualProvider],
+      } = await sql<{
+        id: string;
+      }>`select id from finance.provider where identifier='manual'`.execute(
+        owner,
+      );
+      expect(manualProvider).toBeDefined();
+      await sql`insert into finance.provider_connection(id,user_id,provider_id,mode) values
+        (${connectionResetA},${resetUserA},${manualProvider.id},'test'),
+        (${connectionResetB},${resetUserB},${manualProvider.id},'test')`.execute(
+        owner,
+      );
+      await sql`insert into finance.account(id,user_id,provider_connection_id,type,balance) values
+        (${accountResetA},${resetUserA},${connectionResetA},'checking',10),
+        (${accountResetB},${resetUserB},${connectionResetB},'checking',20)`.execute(
+        owner,
+      );
+      await sql`insert into finance."transaction"(id,account_id,booked_at,amount,type) values
+        (${movementResetA},${accountResetA},now(),1,'credit'),
+        (${movementResetB},${accountResetB},now(),1,'credit')`.execute(owner);
+      await sql`insert into identity.mcp_grant(id,interaction_id,user_id,client_id,client_name,resource,scopes)
+        values (${grantId},${interactionId},${resetUserA},'reset-client','Reset test client','https://api.example.test/mcp',ARRAY['finance:read'])`.execute(
+        owner,
+      );
+      await sql`insert into assistant.conversation(id,user_id,title,turns) values
+        (${assistantConversationA},${resetUserA},'A history','[]'),
+        (${assistantConversationB},${resetUserB},'B history','[]')`.execute(
+        owner,
+      );
+      await sql`insert into assistant.processing_consent(user_id,policy_key,decision,revision) values
+        (${resetUserA},${"a".repeat(64)},'accepted',1),
+        (${resetUserB},${"b".repeat(64)},'accepted',1)`.execute(owner);
+      await sql`insert into assistant.action(id,user_id,conversation_id,turn_id,origin,request_id,request,command,context,fingerprint)
+        values (${assistantActionA},${resetUserA},${assistantConversationA},${assistantTurnA},'assistant',${randomUUID()},'{}','{}','{}',${"a".repeat(64)}),
+          (${assistantActionB},${resetUserB},${assistantConversationB},${randomUUID()},'assistant',${randomUUID()},'{}','{}','{}',${"b".repeat(64)})`.execute(
+        owner,
+      );
+      await sql`insert into assistant.action(id,user_id,origin,request_id,grant_id,client_id,request,command,context,fingerprint,status,results)
+        values (${mcpActionA},${resetUserA},'mcp',${randomUUID()},${grantId},'reset-client','{}','{}','{}',${"c".repeat(64)},'applied','[]')`.execute(
+        owner,
+      );
+
+      const seededUser = purposeClient(ctx(resetUserA));
+      const untouchedUser = purposeClient(ctx(resetUserB));
+      const seeded = await seededUser.demoTools.resetDemoData.mutate();
+      expect(seeded.transactionCount).toBeGreaterThan(0);
+      expect(await seededUser.accounts.listActive.query()).toHaveLength(3);
+      expect(await untouchedUser.accounts.listActive.query()).toHaveLength(1);
+
+      const { rows } = await sql<{
+        target_accounts: string;
+        other_accounts: string;
+        target_transactions: string;
+        other_transactions: string;
+        target_assistant_rows: string;
+        other_assistant_rows: string;
+        retained_identity_rows: string;
+        retained_mcp_grants: string;
+        marker_table: string | null;
+      }>`select
+        (select count(*)::text from finance.account where user_id=${resetUserA}) as target_accounts,
+        (select count(*)::text from finance.account where user_id=${resetUserB}) as other_accounts,
+        (select count(*)::text from finance."transaction" t join finance.account account_row on account_row.id=t.account_id where account_row.user_id=${resetUserA}) as target_transactions,
+        (select count(*)::text from finance."transaction" t join finance.account account_row on account_row.id=t.account_id where account_row.user_id=${resetUserB}) as other_transactions,
+        (select (select count(*) from assistant.action where user_id=${resetUserA}) + (select count(*) from assistant.conversation where user_id=${resetUserA}) + (select count(*) from assistant.processing_consent where user_id=${resetUserA}))::text as target_assistant_rows,
+        (select (select count(*) from assistant.action where user_id=${resetUserB}) + (select count(*) from assistant.conversation where user_id=${resetUserB}) + (select count(*) from assistant.processing_consent where user_id=${resetUserB}))::text as other_assistant_rows,
+        (select count(*)::text from identity.external_identity where user_id=${resetUserA}) as retained_identity_rows,
+        (select count(*)::text from identity.mcp_grant where user_id=${resetUserA} and revoked_at is null) as retained_mcp_grants,
+        to_regclass('finance.development_demo_seed')::text as marker_table`.execute(
+        owner,
+      );
+      expect(rows[0]).toEqual({
+        target_accounts: "3",
+        other_accounts: "1",
+        target_transactions: String(seeded.transactionCount),
+        other_transactions: "1",
+        target_assistant_rows: "0",
+        other_assistant_rows: "3",
+        retained_identity_rows: "1",
+        retained_mcp_grants: "1",
+        marker_table: null,
+      });
+
+      const repeated = await seededUser.demoTools.resetDemoData.mutate();
+      expect(repeated).toEqual(seeded);
     });
 
     it("restricts identity access, shared catalog writes and audit mutations independently of RLS", async () => {

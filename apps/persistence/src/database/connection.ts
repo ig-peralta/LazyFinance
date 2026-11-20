@@ -7,12 +7,13 @@ types.setTypeParser(1082, (value) => value);
 export function createDatabase<Tables = Record<string, never>>(
   connectionString: string,
   camelCase = true,
+  poolSize = 10,
 ) {
   return new Kysely<Tables>({
     dialect: new PostgresDialect({
       pool: new Pool({
         connectionString,
-        max: 10,
+        max: poolSize,
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 5000,
       }),

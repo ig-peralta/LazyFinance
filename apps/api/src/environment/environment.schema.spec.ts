@@ -101,6 +101,16 @@ describe("authentication provider configuration", () => {
   });
 });
 
+describe("demo tools feature flag", () => {
+  it("requires an explicit true setting on the API", () => {
+    expect(ENV_SCHEMA.parse({}).DEMO_TOOLS_ENABLED).toBe(false);
+    expect(
+      ENV_SCHEMA.parse({ DEMO_TOOLS_ENABLED: "true" }).DEMO_TOOLS_ENABLED,
+    ).toBe(true);
+    expect(() => ENV_SCHEMA.parse({ DEMO_TOOLS_ENABLED: "yes" })).toThrow();
+  });
+});
+
 describe("Fintoc server credential configuration", () => {
   const keys = {
     FINTOC_PUBLIC_KEY: "pk_test_fixture",

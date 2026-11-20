@@ -68,6 +68,21 @@ export class RlsMiddleware implements TRPCMiddleware<ProcedureMeta> {
     }
 
     try {
+      if (options.path.startsWith("demoTools.")) {
+        if (
+          process.env.DEMO_TOOLS_ENABLED !== "true" ||
+          options.path !== "demoTools.resetDemoData"
+        )
+          throw new TRPCError({ code: "NOT_FOUND" });
+        if (options.type !== "mutation" || options.ctx.identity.kind !== "user")
+          throw new TRPCError({ code: "FORBIDDEN" });
+        // The tool owns its own transaction and connection. Holding a runtime
+        // transaction here would deadlock against the shared per-user write lock.
+        const result = await options.next();
+        if (!result.ok) throw result.error;
+        return result;
+      }
+
       return await withRequestContext(
         this.database,
         options.ctx.identity,

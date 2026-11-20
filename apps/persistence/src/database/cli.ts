@@ -2,6 +2,7 @@ import "dotenv/config";
 import type { FinanceTables } from "../finance/finance.tables";
 import type { IdentityTables } from "../identity/identity.tables";
 import { createDatabase } from "./connection";
+import { provisionDemoToolsRole } from "./demo-tools-provision";
 import { migrate } from "./migrator";
 import { provisionRuntime } from "./provision";
 import { seedDemo } from "./seed";
@@ -39,11 +40,29 @@ async function main() {
         );
         break;
       }
+      case "provision-demo-tools": {
+        const login = process.env.DEMO_TOOLS_DATABASE_USER;
+        const password = process.env.DEMO_TOOLS_DATABASE_PASSWORD;
+        if (!login || !password)
+          throw new Error(
+            "DEMO_TOOLS_DATABASE_USER and DEMO_TOOLS_DATABASE_PASSWORD are required",
+          );
+
+        const result = await provisionDemoToolsRole(db, login, password);
+        console.log(
+          result.created
+            ? "Demo tools login provisioned"
+            : "Demo tools login verified and privileges refreshed",
+        );
+        break;
+      }
       case "seed":
         console.log(await seedDemo(db));
         break;
       default:
-        throw new Error("Expected migrate, provision or seed");
+        throw new Error(
+          "Expected migrate, provision, provision-demo-tools or seed",
+        );
     }
   } finally {
     await db.destroy();

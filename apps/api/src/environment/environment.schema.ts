@@ -17,6 +17,10 @@ export const ENV_SCHEMA = z
       .enum(["development", "test", "production"])
       .default("development"),
     AUTH_PROVIDER: z.enum(["firebase", "mock"]).default("mock"),
+    DEMO_TOOLS_ENABLED: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((value) => value === "true"),
     PORT: z.coerce.number().positive().default(3000),
     PERSISTENCE_RPC_URL: z.url().default("http://127.0.0.1:3001"),
     PERSISTENCE_RPC_PRIVATE_KEY: z.string().min(1).optional(),

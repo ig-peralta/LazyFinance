@@ -69,6 +69,7 @@ export const workspaceNavigation: readonly NavigationArea[] = [
       },
       { path: "/conexiones-bancarias", label: "Conexiones bancarias" },
       { path: "/comenzar", label: "Configuración inicial" },
+      { path: "/herramientas-demo", label: "Herramientas demo" },
     ],
   },
 ];

@@ -1,5 +1,4 @@
 import {
-  AuthConfigSchema,
   AuthPrincipalSchema,
   type MockLoginInput,
   MockLoginInputSchema,
@@ -13,15 +12,6 @@ import { AuthService } from "./auth.service";
 @Router({ alias: "auth" })
 export class AuthRpc {
   constructor(private readonly auth: AuthService) {}
-
-  @Query({
-    input: RpcEmptySchema,
-    output: AuthConfigSchema,
-    meta: { auth: "public" },
-  })
-  config() {
-    return this.auth.config();
-  }
 
   @Mutation({
     input: MockLoginInputSchema,

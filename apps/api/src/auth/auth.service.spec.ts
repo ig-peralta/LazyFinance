@@ -100,7 +100,6 @@ describe("AuthService", () => {
   it("does not accept a demo bearer token in Firebase mode", async () => {
     const { service, mockVerify, verify, resolveOrCreate } =
       createService("firebase");
-    expect(service.config()).toEqual({ provider: "firebase" });
     await expect(
       service.authenticate("Bearer lazyfinance-demo-token"),
     ).rejects.toBeInstanceOf(UnauthorizedException);

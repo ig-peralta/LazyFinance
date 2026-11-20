@@ -5,6 +5,9 @@ import type {
 import type { ColumnType, Generated } from "kysely";
 
 export interface AssistantTables {
+  "assistant.action": {
+    userId: string;
+  };
   "assistant.processing_consent": {
     userId: string;
     policyKey: string;

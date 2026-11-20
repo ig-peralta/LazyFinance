@@ -48,10 +48,11 @@ describe("AppShell", () => {
     TestBed.resetTestingModule();
   });
 
-  async function setup(failLogout = false) {
+  async function setup(failLogout = false, demoResetEnabled = false) {
     const onboardingStatus = signal<
       "active" | "skipped" | "completed" | undefined
     >("skipped");
+    const demoResetEnabledState = signal(demoResetEnabled);
     const clear = vi.fn();
     const logout = vi.fn(async () => {
       if (failLogout) throw new Error("Firebase sign-out failed");
@@ -81,6 +82,7 @@ describe("AppShell", () => {
               { path: "metas/:id", component: ObjectivesStub },
               { path: "metas", component: ObjectivesStub },
               { path: "seguridad", component: SecurityStub },
+              { path: "herramientas-demo", component: SecurityStub },
               { path: "aplicaciones-conectadas", component: McpAccessStub },
               { path: "conexiones-bancarias", component: BankConnectionsStub },
               { path: "comenzar", component: SecurityStub },
@@ -89,7 +91,13 @@ describe("AppShell", () => {
         ]),
         {
           provide: SessionService,
-          useValue: { clear, logout, error: signal(null), retry: vi.fn() },
+          useValue: {
+            clear,
+            logout,
+            error: signal(null),
+            retry: vi.fn(),
+            demoToolsEnabled: demoResetEnabledState,
+          },
         },
         { provide: OnboardingData, useValue: { status: onboardingStatus } },
       ],
@@ -104,7 +112,14 @@ describe("AppShell", () => {
       dialog.open = false;
     };
 
-    return { harness, clear, logout, root, onboardingStatus };
+    return {
+      harness,
+      clear,
+      logout,
+      root,
+      onboardingStatus,
+      demoResetEnabled: demoResetEnabledState,
+    };
   }
 
   it("keeps the assistant and four financial areas with direct contextual links", async () => {
@@ -423,6 +438,24 @@ describe("AppShell", () => {
       );
       expect([...current].map((a) => a.textContent?.trim())).toEqual([label]);
     }
+  });
+
+  it("shows demo tools only when the build and API enable them", async () => {
+    const { harness, root, demoResetEnabled } = await setup();
+    await harness.navigateByUrl("/seguridad");
+    expect(
+      Array.from(root.querySelectorAll(".workspace-subnav a")).map((link) =>
+        link.textContent?.trim(),
+      ),
+    ).not.toContain("Herramientas demo");
+
+    demoResetEnabled.set(true);
+    harness.detectChanges();
+    expect(
+      Array.from(root.querySelectorAll(".workspace-subnav a")).map((link) =>
+        link.textContent?.trim(),
+      ),
+    ).toContain("Herramientas demo");
   });
 
   it("offers resumption only while skipped, never a permanent onboarding menu item", async () => {

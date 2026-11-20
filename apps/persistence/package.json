@@ -12,7 +12,8 @@
     "test": "vitest run",
     "db:migrate": "ts-node src/database/cli.ts migrate",
     "db:seed": "ts-node src/database/cli.ts seed",
-    "db:provision-runtime": "ts-node src/database/cli.ts provision"
+    "db:provision-runtime": "ts-node src/database/cli.ts provision",
+    "db:provision-demo-tools": "ts-node src/database/cli.ts provision-demo-tools"
   },
   "dependencies": {
     "@lazyfinance/contracts": "workspace:*",

@@ -98,6 +98,13 @@ export const routes: Routes = [
                 (m) => m.SecurityPage,
               ),
           }),
+          workspaceRoute("herramientas-demo", {
+            heading: "Herramientas demo",
+            load: () =>
+              import("./pages/demo-tools/demo-tools.page").then(
+                (m) => m.DemoToolsPage,
+              ),
+          }),
           workspaceRoute("aplicaciones-conectadas", {
             heading: "Aplicaciones conectadas",
             load: () =>

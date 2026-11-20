@@ -164,7 +164,12 @@ async function setupFirebase() {
     }),
   };
   const f = await setup({
-    handlers: { "auth.config": () => ({ provider: "firebase" }) },
+    handlers: {
+      "config.get": () => ({
+        auth: { provider: "firebase" },
+        demoTools: { enabled: false },
+      }),
+    },
     providers: [{ provide: FirebaseService, useValue: firebase }],
   });
   return { ...f, account, firebase, install };
@@ -203,9 +208,12 @@ describe("single-page MCP connection without the financial workspace", () => {
     expect(f.root.querySelector("app-shell")).toBeNull();
     expect(f.root.querySelector("workspace-loading")).toBeNull();
     expect(f.interaction).not.toHaveBeenCalled();
-    expect(f.calls.every((call) => call.procedure.startsWith("auth."))).toBe(
-      true,
-    );
+    expect(
+      f.calls.every(
+        (call) =>
+          call.procedure === "config.get" || call.procedure.startsWith("auth."),
+      ),
+    ).toBe(true);
   });
 
   it("logs in and previews permissions in place on the same request without approving", async () => {
@@ -227,9 +235,12 @@ describe("single-page MCP connection without the financial workspace", () => {
     expect(f.interaction).toHaveBeenCalledTimes(1);
     expect(f.interaction.mock.calls[0][1]?.credentials).toBe("include");
     expect(f.callback).not.toHaveBeenCalled();
-    expect(f.calls.every((call) => call.procedure.startsWith("auth."))).toBe(
-      true,
-    );
+    expect(
+      f.calls.every(
+        (call) =>
+          call.procedure === "config.get" || call.procedure.startsWith("auth."),
+      ),
+    ).toBe(true);
   });
 
   it("skips login for an accepted account, but still waits for explicit consent", async () => {
@@ -364,9 +375,12 @@ describe("single-page MCP connection without the financial workspace", () => {
     expect(f.root.querySelector("mcp-consent-page")).not.toBeNull();
     expect(f.router.url).toBe("/autorizar-mcp?interaction=connection-a");
     expect(f.callback).not.toHaveBeenCalled();
-    expect(f.calls.every((call) => call.procedure.startsWith("auth."))).toBe(
-      true,
-    );
+    expect(
+      f.calls.every(
+        (call) =>
+          call.procedure === "config.get" || call.procedure.startsWith("auth."),
+      ),
+    ).toBe(true);
   });
 
   it("waits for Firebase logout before exposing another sign-in on the same URL", async () => {

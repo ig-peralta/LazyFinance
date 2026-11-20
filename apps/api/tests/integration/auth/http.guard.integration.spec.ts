@@ -15,6 +15,7 @@ import { configureCors } from "../../../src/cors";
 import { ENV_SCHEMA } from "../../../src/environment/environment.schema";
 import { EnvironmentService } from "../../../src/environment/environment.service";
 import { PersistenceClient } from "../../../src/persistence/persistence.client";
+import { testEnvironment } from "../../fixtures/environment";
 
 @Controller("api/probe")
 class ProbeHttpController {
@@ -59,6 +60,8 @@ describe("HTTP authentication", () => {
           };
         },
       })
+      .overrideProvider(EnvironmentService)
+      .useValue(testEnvironment({ AUTH_PROVIDER: "mock" }))
       .compile();
 
     app = module.createNestApplication();
@@ -125,13 +128,17 @@ describe("HTTP authentication", () => {
     expect(response.body.result.data).not.toHaveProperty("providerSubject");
   });
 
-  it("advertises the mock provider publicly without disclosing credentials", async () => {
+  it("advertises only public grouped configuration without disclosing credentials", async () => {
     const response = await request(app.getHttpServer())
-      .get("/trpc/auth.config")
+      .get("/trpc/config.get")
       .expect(200);
-    expect(response.body.result.data).toEqual({ provider: "mock" });
+    expect(response.body.result.data).toEqual({
+      auth: { provider: "mock" },
+      demoTools: { enabled: false },
+    });
     expect(response.headers["cache-control"]).toBe("private, no-store");
     expect(queries).toBe(0);
+    await request(app.getHttpServer()).get("/trpc/auth.config").expect(404);
   });
 
   it("logs in with local credentials only when the demo user is seeded", async () => {
@@ -175,9 +182,11 @@ describe("HTTP authentication", () => {
         get: (key: string) =>
           key === "AUTH_PROVIDER"
             ? "firebase"
-            : key === "FIREBASE_PROJECT_ID"
-              ? "lazyfinance-dev"
-              : undefined,
+            : key === "DEMO_TOOLS_ENABLED"
+              ? false
+              : key === "FIREBASE_PROJECT_ID"
+                ? "lazyfinance-dev"
+                : undefined,
       })
       .compile();
     const firebaseApp = module.createNestApplication();
@@ -185,10 +194,13 @@ describe("HTTP authentication", () => {
 
     try {
       await request(firebaseApp.getHttpServer())
-        .get("/trpc/auth.config")
+        .get("/trpc/config.get")
         .expect(200)
         .expect((res) =>
-          expect(res.body.result.data).toEqual({ provider: "firebase" }),
+          expect(res.body.result.data).toEqual({
+            auth: { provider: "firebase" },
+            demoTools: { enabled: false },
+          }),
         );
       await request(firebaseApp.getHttpServer())
         .post("/trpc/auth.loginMock")

@@ -24,6 +24,7 @@ export class AssistantWorkspace {
   readonly modal = signal(false);
   private opener: HTMLElement | null = null;
   onMinimize: (() => void) | undefined;
+  onDemoDataReset: (() => void) | undefined;
 
   constructor() {
     effect(() => this.modal.set(this.narrow() && !this.home()));
@@ -59,6 +60,10 @@ export class AssistantWorkspace {
   minimize() {
     this.onMinimize?.();
     this.visible.set(false);
+  }
+
+  demoDataReset() {
+    this.onDemoDataReset?.();
   }
 
   /** Called by the host after hidden-state rendering, not while the opener is hidden. */
