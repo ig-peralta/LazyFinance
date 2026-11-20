@@ -3,7 +3,7 @@
     <div>
       <p class="eyebrow">HERRAMIENTAS DEMO</p>
       <h1>Herramientas demo</h1>
-      <p class="page-description">Deja tu espacio financiero limpio y vuelve a cargar los datos de ejemplo.</p>
+      <p class="page-description">Prepara datos de ejemplo o agrega movimientos para probar tu espacio financiero.</p>
     </div>
   </header>
 
@@ -45,14 +45,31 @@
         </div>
       }
 
-      @if (command.error(); as error) {
-        <p class="notice danger" role="alert">{{ error }}</p>
-      }
       @if (confirmation(); as result) {
         <p class="notice" role="status">
           Se limpiaron los datos financieros y el historial del asistente. Se cargaron {{ result.transactionCount }} movimientos de demostración.
         </p>
       }
     </section>
+
+    <section class="panel stack" aria-labelledby="demo-movement-details">
+      <h2 id="demo-movement-details">Crear movimiento de demostración</h2>
+      <p>Agrega un movimiento sin etiqueta a tus cuentas de ejemplo. Una transferencia interna crea un cargo y un abono entre tus cuentas; un movimiento externo simula una compra, un gasto o un ingreso.</p>
+      <p>Primero prepara los datos de demostración para crear las cuentas de ejemplo. No se modificarán tus cuentas bancarias vinculadas.</p>
+      <div class="button-row">
+        <button type="button" class="button secondary" data-testid="create-internal-demo-transaction" [disabled]="command.pending()" (click)="create('internal')">
+          Crear transferencia interna
+        </button>
+        <button type="button" class="button secondary" data-testid="create-external-demo-transaction" [disabled]="command.pending()" (click)="create('external')">
+          Crear movimiento externo
+        </button>
+      </div>
+      @if (created(); as movement) {
+        <p class="notice" role="status">{{ movement.description }}: ${{ movement.amount }} CLP. {{ movement.transactionCount }} {{ movement.transactionCount === 1 ? 'movimiento sin etiqueta' : 'movimientos sin etiqueta' }}.</p>
+      }
+    </section>
+    @if (command.error(); as error) {
+      <p class="notice danger" role="alert">{{ error }}</p>
+    }
   }
 </section>
