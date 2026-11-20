@@ -2,7 +2,7 @@
 
 Private NestJS/tRPC service using Kysely, `pg`, `identity`/`finance`/`assistant` schemas and
 PostgreSQL scoped RLS. The API and UI now use the matching RPC boundaries; no API
-database fallback remains. Its 107 private procedures expose identity resolution,
+database fallback remains. Its 109 private procedures expose identity resolution,
 bounded financial facts, revisioned budget/income commands, expense-adjustment
 allocations, tag decisions/rules, owned onboarding/banking lifecycle and prepared
 atomic provider sync, plus purpose-isolated OAuth artifacts, owned grants and
@@ -86,6 +86,11 @@ action receipts does not reverse their prior financial effects. This operation
 does not alter application RLS or runtime grants. The owner-only CLI seed remains
 an explicit initial setup for the fixed local mock account; deployment never runs
 it automatically.
+Two more demo-tools mutations generate curated untagged examples after reset:
+an internal checking/savings transfer (balanced debit/credit pair) or a single
+external expense, purchase or credit. They require the signed-in user's three
+reset-created demo accounts and update balances atomically; linked bank accounts
+and browser-supplied account IDs are never used.
 
 `pnpm --filter persistence dev` listens on `127.0.0.1:3001` by default. Only an
 authenticated service may call `/trpc`; do not publish it to browsers. Use a

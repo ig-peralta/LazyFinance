@@ -14,4 +14,20 @@ export class DemoToolsService {
       throw new NotFoundException("Demo tools are disabled");
     return this.persistence.user(userId).demoTools.resetDemoData.mutate();
   }
+
+  createInternalTransaction(userId: string) {
+    if (!this.environment.get("DEMO_TOOLS_ENABLED"))
+      throw new NotFoundException("Demo tools are disabled");
+    return this.persistence
+      .user(userId)
+      .demoTools.createInternalTransaction.mutate();
+  }
+
+  createExternalTransaction(userId: string) {
+    if (!this.environment.get("DEMO_TOOLS_ENABLED"))
+      throw new NotFoundException("Demo tools are disabled");
+    return this.persistence
+      .user(userId)
+      .demoTools.createExternalTransaction.mutate();
+  }
 }

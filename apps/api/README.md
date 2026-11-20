@@ -108,6 +108,9 @@ uses its separately provisioned connection to clear only that user's finance and
 assistant data and restore demo fixtures. Identity rows and MCP grants survive;
 deleting assistant/MCP action receipts does not reverse prior financial effects.
 The normal persistence connection, RLS policies and runtime grants remain unchanged.
+The same menu offers server-generated internal transfers and external movements
+without tags. Both require the reset-created demo accounts; the API forwards only
+the authenticated user, never a browser-selected account, amount or owner.
 
 External `/mcp` no longer accepts Firebase/development application tokens. It uses
 `oidc-provider@9.13.3` with S256 PKCE, resource binding, CIMD/DCR, ten-minute opaque

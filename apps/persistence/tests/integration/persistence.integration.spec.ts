@@ -470,7 +470,7 @@ describe.skipIf(!ownerUrl)(
           .filter((name) => !name.startsWith("failure."))
           .sort(),
       ).toEqual(expected.sort());
-      expect(expected).toHaveLength(107);
+      expect(expected).toHaveLength(109);
 
       for (const name of expected)
         expect(procedures[name]._def.meta).toMatchObject({
@@ -2794,6 +2794,175 @@ describe.skipIf(!ownerUrl)(
 
       const repeated = await seededUser.demoTools.resetDemoData.mutate();
       expect(repeated).toEqual(seeded);
+    });
+
+    it("creates untagged demo movements only in the signed-in user's demo accounts with matching balances", async () => {
+      const demoOwner = randomUUID();
+      const otherOwner = randomUUID();
+      const linkedConnection = randomUUID();
+      const linkedAccount = randomUUID();
+      await sql`insert into identity."user"(id,email,name) values
+        (${demoOwner},${`${demoOwner}@example.test`},'Demo owner'),
+        (${otherOwner},${`${otherOwner}@example.test`},'Other owner')`.execute(
+        owner,
+      );
+      const user = purposeClient(ctx(demoOwner));
+      const other = purposeClient(ctx(otherOwner));
+
+      await expect(
+        user.demoTools.createInternalTransaction.mutate(),
+      ).rejects.toMatchObject({
+        data: { code: "NOT_FOUND" },
+      });
+      await user.demoTools.resetDemoData.mutate();
+      await other.demoTools.resetDemoData.mutate();
+      await sql`insert into finance.provider_connection(id,user_id,provider_id,mode)
+        select ${linkedConnection},${demoOwner},id,'test' from finance.provider where identifier='fintoc'`.execute(
+        owner,
+      );
+      await sql`insert into finance.account(id,user_id,provider_connection_id,type,balance)
+        values (${linkedAccount},${demoOwner},${linkedConnection},'checking',750000)`.execute(
+        owner,
+      );
+
+      const { rows: before } = await sql<{
+        id: string;
+        balance: string;
+      }>`select id,balance::text as balance
+        from finance.account where user_id=${demoOwner} and id<>${linkedAccount}`.execute(
+        owner,
+      );
+      expect(before).toHaveLength(3);
+      const { rows: otherBefore } = await sql<{
+        count: string;
+      }>`select count(*)::text as count
+        from finance."transaction" t join finance.account a on a.id=t.account_id
+        where a.user_id=${otherOwner}`.execute(owner);
+
+      const internal = await user.demoTools.createInternalTransaction.mutate();
+      const external = await user.demoTools.createExternalTransaction.mutate();
+      expect(internal).toMatchObject({
+        transactionCount: 2,
+        amount: expect.stringMatching(/\.00$/),
+      });
+      expect(external).toMatchObject({
+        transactionCount: 1,
+        amount: expect.stringMatching(/\.00$/),
+      });
+
+      const { rows: created } = await sql<{
+        account_id: string;
+        amount: string;
+        type: string;
+        tag_id: string | null;
+        tag_decision_origin: string;
+        tag_rule_id: string | null;
+        tag_decided_at: Date | null;
+        is_internal_movement: boolean;
+        source: string;
+        booked_at: Date;
+        description: string;
+      }>`select t.account_id,t.amount::text as amount,t.type,t.tag_id,
+        t.tag_decision_origin,t.tag_rule_id,t.tag_decided_at,t.is_internal_movement,
+        t.source,t.booked_at,t.description
+        from finance."transaction" t join finance.account a on a.id=t.account_id
+        where a.user_id=${demoOwner} and t.external_id is null`.execute(owner);
+      expect(created).toHaveLength(3);
+      const pair = created.filter((row) => row.is_internal_movement);
+      const [single] = created.filter((row) => !row.is_internal_movement);
+      expect(pair).toHaveLength(2);
+      expect(Number(pair[0].amount) + Number(pair[1].amount)).toBe(0);
+      expect(pair[0].account_id).not.toBe(pair[1].account_id);
+      expect(pair[0].booked_at).toEqual(pair[1].booked_at);
+      expect(single).toBeDefined();
+      expect(
+        created.every(
+          (row) =>
+            row.tag_id === null &&
+            row.tag_rule_id === null &&
+            row.tag_decided_at === null &&
+            row.tag_decision_origin === "unreviewed" &&
+            row.source === "manual" &&
+            row.description.length > 0 &&
+            before.some((account) => account.id === row.account_id),
+        ),
+      ).toBe(true);
+      expect(
+        created.every(
+          (row) => (row.type === "debit") === Number(row.amount) < 0,
+        ),
+      ).toBe(true);
+
+      const { rows: after } = await sql<{
+        id: string;
+        balance: string;
+      }>`select id,balance::text as balance
+        from finance.account where user_id=${demoOwner} and id<>${linkedAccount}`.execute(
+        owner,
+      );
+      for (const account of before) {
+        const change = created
+          .filter((row) => row.account_id === account.id)
+          .reduce((total, row) => total + Number(row.amount), 0);
+        expect(
+          Number(after.find((row) => row.id === account.id)?.balance),
+        ).toBe(Number(account.balance) + change);
+      }
+      const { rows: isolation } = await sql<{
+        linked_balance: string;
+        other_count: string;
+      }>`select
+        (select balance::text from finance.account where id=${linkedAccount}) as linked_balance,
+        (select count(*)::text from finance."transaction" t join finance.account a on a.id=t.account_id where a.user_id=${otherOwner}) as other_count`.execute(
+        owner,
+      );
+      expect(isolation[0]).toEqual({
+        linked_balance: "750000.00",
+        other_count: otherBefore[0].count,
+      });
+
+      const raw = createTRPCUntypedClient({
+        links: [
+          httpLink({
+            url: `${url}/trpc`,
+            headers: async () => ({
+              authorization: `Bearer ${await sign(ctx(demoOwner))}`,
+            }),
+          }),
+        ],
+      });
+      for (const method of [
+        "createInternalTransaction",
+        "createExternalTransaction",
+      ]) {
+        await expect(
+          raw.mutation(`demoTools.${method}`, { accountId: linkedAccount }),
+        ).rejects.toMatchObject({ data: { code: "BAD_REQUEST" } });
+      }
+
+      // A credit-side overflow after the debit has been written must undo both rows
+      // and the first balance update, regardless of transfer direction.
+      await sql`update finance.account set balance=9999999999999.99
+        where user_id=${demoOwner} and type in ('checking','savings') and id<>${linkedAccount}`.execute(
+        owner,
+      );
+      await expect(
+        user.demoTools.createInternalTransaction.mutate(),
+      ).rejects.toMatchObject({
+        data: { code: "BAD_REQUEST" },
+      });
+      const { rows: rolledBack } = await sql<{
+        balance: string;
+        count: string;
+      }>`select
+        (select min(balance)::text from finance.account where user_id=${demoOwner} and type in ('checking','savings') and id<>${linkedAccount}) as balance,
+        (select count(*)::text from finance."transaction" t join finance.account a on a.id=t.account_id where a.user_id=${demoOwner} and t.external_id is null) as count`.execute(
+        owner,
+      );
+      expect(rolledBack[0]).toEqual({
+        balance: "9999999999999.99",
+        count: "3",
+      });
     });
 
     it("restricts identity access, shared catalog writes and audit mutations independently of RLS", async () => {

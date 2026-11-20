@@ -180,6 +180,12 @@ assistant receipts), then writes namespaced demo fixtures. Every `identity` row,
 including MCP grants/artifacts, remains untouched. Deleting an action receipt does
 not undo its prior financial effect. The flag defaults to false; without it,
 persistence opens no privileged connection and the API advertises no demo tools.
+The two demo transaction mutations use that same authenticated scope, role,
+per-user lock and atomic connection. They accept no owner/account selector and
+require the reset-created manual test connection and owned demo account IDs;
+linked bank accounts are not eligible. Transfers write two opposite untagged
+rows, external examples write one, and balances move with those rows or roll back
+together. Outgoing cash is limited by the demo account's available balance.
 
 The middleware awaits the resolver **and output validation** before commit.
 tRPC may resolve an error as `{ ok: false, error }`; middleware throws that error

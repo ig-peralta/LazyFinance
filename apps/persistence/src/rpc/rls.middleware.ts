@@ -71,7 +71,11 @@ export class RlsMiddleware implements TRPCMiddleware<ProcedureMeta> {
       if (options.path.startsWith("demoTools.")) {
         if (
           process.env.DEMO_TOOLS_ENABLED !== "true" ||
-          options.path !== "demoTools.resetDemoData"
+          ![
+            "demoTools.resetDemoData",
+            "demoTools.createInternalTransaction",
+            "demoTools.createExternalTransaction",
+          ].includes(options.path)
         )
           throw new TRPCError({ code: "NOT_FOUND" });
         if (options.type !== "mutation" || options.ctx.identity.kind !== "user")

@@ -163,6 +163,49 @@ describe("HTTP authentication", () => {
     expect(reset).toHaveBeenCalledExactlyOnceWith(demoUser.id);
   });
 
+  it("authenticates both demo transaction actions without accepting owner or account input", async () => {
+    const tools = app.get(DemoToolsService);
+    const internal = vi
+      .spyOn(tools, "createInternalTransaction")
+      .mockResolvedValue({
+        transactionCount: 2,
+        description: "Aporte al ahorro",
+        amount: "25000.00",
+      });
+    const external = vi
+      .spyOn(tools, "createExternalTransaction")
+      .mockResolvedValue({
+        transactionCount: 1,
+        description: "Compra en feria",
+        amount: "12000.00",
+      });
+    for (const [method, spy, count] of [
+      ["createInternalTransaction", internal, 2],
+      ["createExternalTransaction", external, 1],
+    ] as const) {
+      const endpoint = `/trpc/demoTools.${method}`;
+      await request(app.getHttpServer()).post(endpoint).send({}).expect(401);
+      const response = await request(app.getHttpServer())
+        .post(endpoint)
+        .set("Authorization", "Bearer lazyfinance-demo-token")
+        .send({})
+        .expect(200);
+      expect(response.body.result.data.transactionCount).toBe(count);
+      for (const input of [
+        { userId: demoUser.id },
+        { accountId: "other-account" },
+        { amount: "1.00" },
+      ]) {
+        await request(app.getHttpServer())
+          .post(endpoint)
+          .set("Authorization", "Bearer lazyfinance-demo-token")
+          .send(input)
+          .expect(400);
+      }
+      expect(spy).toHaveBeenCalledExactlyOnceWith(demoUser.id);
+    }
+  });
+
   it("logs in with local credentials only when the demo user is seeded", async () => {
     await request(app.getHttpServer())
       .post("/trpc/auth.loginMock")

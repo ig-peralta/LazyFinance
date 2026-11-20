@@ -75,13 +75,13 @@ inferred Promises; there is no cross-app source import or HTTP/Observable adapte
 ## Public surface
 
 The [generated public router](../../libs/rpc-api/src/generated/server.ts) currently
-contains **86 procedures**. Prefix each method below with its router name.
+contains **88 procedures**. Prefix each method below with its router name.
 
 | Router | Methods | Responsibility |
 | --- | --- | --- |
 | `config` | `get` | Public grouped application configuration: `{ auth: { provider }, demoTools: { enabled } }` |
 | `auth` | `loginMock`, `principal` | Local mock login and verified principal |
-| `demoTools` | `resetDemoData` | Explicitly enabled, authenticated and confirmed account-scoped demo-data reset/reseed |
+| `demoTools` | `resetDemoData`, `createInternalTransaction`, `createExternalTransaction` | Explicitly enabled, authenticated account-scoped demo-data reset/reseed and untagged example movements in demo-owned accounts |
 | `onboarding` | `state`, `finish` | Owned optional-guide state and terminal completion |
 | `assistant` | `configuration`, `consent`, `decideConsent`, `conversations`, `conversation`, `voiceConversation`, `createConversation`, `deleteConversation` | First-party authenticated configuration, account processing consent, text-only history and separate owned voice results |
 | `financialActions` | `get`, `approve`, `revise`, `cancel` | Owned saved proposals; approval accepts only the exact ID/version, never caller-supplied execution payloads |
@@ -97,8 +97,9 @@ contains **86 procedures**. Prefix each method below with its router name.
 
 Only `config.get` and `auth.loginMock` are anonymous. Mock login is available only
 in mock mode and is rejected in production. No public procedure accepts a caller's
-financial owner scope. `demoTools.resetDemoData` takes no owner selector; the
-API-derived signed user context determines the target. Its availability is
+financial owner scope. Demo-tools mutations accept only omitted or empty bodies;
+the API-derived signed user context determines the owner and persistence selects
+the demo accounts. Their availability is
 advertised by `config.get` under `demoTools.enabled` from the API's explicit flag.
 Method schemas in the generated file and
 [`libs/contracts/src/rpc`](../../libs/contracts/src/rpc/index.ts) define exact input
@@ -139,20 +140,20 @@ Optional bearer-only voice HTTP endpoints use shared strict public schemas:
 conversation ownership and admission are checked server-side. SDP negotiation
 exposes no provider key, owner selector, financial tools or execution authority.
 These are not tRPC procedures: the combined public/private inventories remain
-86/107. Account processing consent requires migration 032; mode isolation requires
+88/109. Account processing consent requires migration 032; mode isolation requires
 migration 033 and the separate public voice read. The voice HTTP adapter
 itself adds no procedures. See the [voice contract and live-validation gates](assistant-live-voice.md).
 
 ## Private surface
 
 The [generated private router](../../libs/rpc-persistence/src/generated/server.ts)
-currently contains **107 procedures**. They expose owned facts and authoritative
+currently contains **109 procedures**. They expose owned facts and authoritative
 commands rather than copying public screen calculations into persistence.
 
 | Router | Methods |
 | --- | --- |
 | `identity` | `resolve` (bootstrap only) |
-| `demoTools` | `resetDemoData` (signed user context, separate conditional demo-tools connection and atomic transaction) |
+| `demoTools` | `resetDemoData`, `createInternalTransaction`, `createExternalTransaction` (signed user context, separate conditional demo-tools connection and atomic transaction) |
 | `onboarding` | `state`, `finish` |
 | `assistantConversations` | `list`, `get`, `create`, `begin`, `finish`, `recordVoiceQuestion`, `remove` (user context only) |
 | `assistantConsent` | `get`, `decide` (user context only; account-owned revisioned processing decision) |
@@ -181,10 +182,14 @@ transport context can only admit/release requests and retain provider-mode backo
 Neither can read credentials, financial records or identity mappings, change
 selection or call another purpose's procedures. User contexts cannot call these
 privileged-purpose procedures.
-`demoTools.resetDemoData` requires an explicit enable flag on persistence and uses
+Demo-tools mutations require an explicit enable flag on persistence and use
 its separately provisioned connection instead of the ordinary runtime transaction;
 the normal RLS role cannot delete assistant receipts or call this operation on its
-own. The API never receives the privileged database credential.
+own. Transaction generation requires the user's reset-created demo accounts; it
+never selects a linked bank account. Internal transfers create balanced debit/credit
+rows; external templates create one debit or credit. Both leave `tag_id` null with
+`tag_decision_origin=unreviewed` and update affected balances in the same SQL
+transaction. The API never receives the privileged database credential.
 `GET /health` is liveness, not a database/admin RPC. Provider synchronization is an
 API-internal workflow; these procedures are not public bank-linking endpoints.
 `providerLinks` stores owner-bound intents, encrypted credentials and versioned
