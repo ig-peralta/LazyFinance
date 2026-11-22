@@ -117,6 +117,20 @@ export class AppShell {
   protected readonly logoutError = signal<string | null>(null);
 
   constructor() {
+    // The shell survives child-route changes. Do not treat its initial entry as
+    // navigation away from a conversation opened on the home page.
+    let previousUrl = this.router.navigated ? this.router.url : undefined;
+    const navigation = this.router.events
+      .pipe(filter((event) => event instanceof NavigationEnd))
+      .subscribe((event) => {
+        if (
+          previousUrl !== undefined &&
+          previousUrl !== event.urlAfterRedirects &&
+          this.assistantWorkspace.opened()
+        )
+          this.assistantWorkspace.minimize();
+        previousUrl = event.urlAfterRedirects;
+      });
     effect(() => {
       this.assistantWorkspace.home.set(
         this.url().split(/[?#]/, 1)[0] === "/asistente",
@@ -151,7 +165,10 @@ export class AppShell {
       // Programmatic navigation/back/forward must dismiss the native modal too.
       untracked(() => this.closeMenu());
     });
-    inject(DestroyRef).onDestroy(() => this.closeMenu());
+    inject(DestroyRef).onDestroy(() => {
+      navigation.unsubscribe();
+      this.closeMenu();
+    });
   }
 
   protected retrySession(): void {
@@ -211,6 +228,15 @@ export class AppShell {
       return;
     this.assistantWorkspace.minimize();
     event.stopPropagation();
+  }
+
+  protected dismissAssistantBackdrop(event: MouseEvent): void {
+    if (
+      event.target === event.currentTarget &&
+      this.assistantWorkspace.opened() &&
+      this.assistantWorkspace.modal()
+    )
+      this.assistantWorkspace.minimize();
   }
 
   protected async logout(): Promise<void> {

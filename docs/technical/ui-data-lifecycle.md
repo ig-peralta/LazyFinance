@@ -263,7 +263,8 @@ Setup destinations use only the fixed `from=onboarding` return to `/comenzar`.
 
 The shell mounts `AssistantPage` once on first open, outside the route outlet.
 Its persistent top-bar control remains mounted before and after deferred loading,
-and is hidden on home; there is no passive floating launcher over financial actions.
+and is hidden while home chat is open; it reappears if home is minimized. There
+is no passive floating launcher over financial actions before opening the chat.
 The shell passes that element as the focus-return fallback when the original
 invoker is unavailable.
 Before deferred code mounts, the shell owns loading/error cancellation focus and
@@ -276,9 +277,15 @@ The summary is a compact disclosure rather than a hero/card grid. The home shell
 uses the available viewport height, with scrolling owned by the message area and
 the composer kept on screen. No permanent result column or conversation/results tabs reduce that
 default chat area. The ordinary workspace footer and redundant home launcher do
-not occupy the conversation viewport.
-The same instance docks beside other pages. Minimize keeps the text draft/selection/generation in memory;
-Close panel clears them and stops generation without deleting server history.
+not occupy the open conversation viewport.
+The same instance opens in an overlay dialog on other pages, without reflowing their
+content. Every subsequent completed route change minimizes an open chat, including
+back/forward and navigation to home. The home entry opens the inline chat when
+there is no minimized session but does not reopen an already-minimized one.
+Financial reference and confirmed-action links also minimize it immediately
+when followed in the same tab. Clicking the overlay backdrop minimizes; clicks
+inside the dialog do not. Minimize keeps the text draft/selection/generation in
+memory; Close panel clears them and stops generation without deleting server history.
 Full reload discards private browser state and reads saved history through the API.
 Owner/credential changes clear private state; no chat cache/storage is introduced.
 The panel owns `AssistantConsentData`: account-scoped reads plus explicit revisioned
@@ -286,15 +293,20 @@ decisions, never a browser-stored permission. Missing/refused/outdated decisions
 show a dedicated entry screen. Reopening checks saved consent while retaining an
 already-authorized composer, selection, focus and opened query details; new sends
 wait for that check. Confirmed acceptance opens chat but never sends or starts
-voice. Refusal minimizes a docked panel, not the home snapshot; history-only entry
+voice. Refusal minimizes the dialog, not the home snapshot; history-only entry
 still permits owned reading/deletion.
 An uncertain save blocks local processing until an explicit causal state read;
 ordinary reopening or stale reads cannot reconcile it. Withdrawal immediately
 invalidates deferred creation and local text/voice, without claiming server rollback
 or remote cancellation on other devices.
-The inline/docked region leaves financial navigation available. Narrow screens
-outside home use a full-screen modal with inert background and Tab containment;
-both support Escape, focus return and safe areas. First-answer anchoring occurs
+The inline home leaves financial navigation available. Outside home, a centered
+dialog (up to 1200px wide, full-screen on narrow screens) leaves page widths
+unchanged, makes the background inert and contains Tab focus. Minimize restores
+navigation and focus; the bottom-right bubble appears only after a mounted assistant is minimized and
+shows text progress or live voice, with controls to mute or end the latter. A voice
+start in progress is cancelled on minimize/navigation, but an established session
+continues until explicitly ended, the tab is hidden or owner/consent is lost;
+both presentations support Escape and safe areas. First-answer anchoring occurs
 once; later streamed updates, history and requested query details preserve the
 reading position. An explicit jump control is separate from automatic anchoring.
 It is an icon-only down arrow centered at the bottom of the message pane, not a
@@ -324,9 +336,11 @@ work and suppress late callbacks. Stop/disconnection never implies rollback;
 failed/missing confirmation is reconciled through an explicit history read, not
 generation replay. Pending saved turns block another question. User/answer/source
 data and drafts are not stored in cookies, browser storage or transfer state.
-Ordinary authenticated route navigation retains text work, but ends live microphone
-capture. Voice also ends on minimize, hidden tab, device loss and session changes;
-late permission/events cannot revive capture or adopt another owner's transcript.
+Ordinary authenticated route navigation retains text work and established voice;
+minimization also retains voice with a visible stop control. Voice setup ends on
+navigation/minimize, and live capture ends on hidden tab, device loss and session
+changes; late permission/events cannot revive capture or adopt another owner's
+transcript.
 Native voice turns use an independent persisted conversation ID, separate
 authenticated observation stream, server-executed tools and the same lease policy
 and approvals. Text/voice have separate accepted-scope resources and retained turn

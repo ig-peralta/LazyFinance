@@ -26,7 +26,7 @@ export class AssistantWorkspace {
     () => !!this.credentials.current() && this.visible(),
   );
   readonly minimized = computed(
-    () => !!this.credentials.current() && this.collapsed() && !this.home(),
+    () => !!this.credentials.current() && this.collapsed(),
   );
   readonly selection = signal<string | undefined>(undefined);
   readonly focusRequest = signal(0);

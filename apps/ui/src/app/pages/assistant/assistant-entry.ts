@@ -19,7 +19,7 @@ import { RpcClient } from "../../core/rpc/rpc-client";
 import { AssistantWorkspace } from "../../features/assistant/assistant-workspace";
 import { Icon } from "../../shared/ui/icon";
 
-/** Deep links select history; ordinary navigation restores the existing session. */
+/** Home opens inline unless an existing session was minimized; deep links select history. */
 @Component({
   selector: "assistant-entry",
   imports: [RouterLink, Icon],
@@ -92,7 +92,9 @@ export class AssistantEntry {
       untracked(() => {
         if (query.has("conversacion"))
           this.workspace.selection.set(query.get("conversacion") ?? undefined);
-        this.workspace.open();
+        // Returning to home must not undo a route-change minimization.
+        if (!this.workspace.opened() && !this.workspace.minimized())
+          this.workspace.open();
       });
     });
   }

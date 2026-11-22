@@ -878,7 +878,7 @@ body:has(.assistant-modal-open) {
   flex: 0 0 auto;
   padding: 8px 32px 0;
 }
-.assistant-home .assistant-mount {
+.assistant-home .assistant-mount:not([hidden]) {
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -904,7 +904,7 @@ body:has(.assistant-modal-open) {
 }
 .assistant-modal-open .assistant-mount assistant-page {
   flex: none;
-  width: min(900px, 100%);
+  width: min(1200px, 100%);
   height: min(800px, calc(100dvh - 48px));
 }
 .assistant-modal-open .assistant-load-status {

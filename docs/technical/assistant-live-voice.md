@@ -133,11 +133,13 @@ workflow, automatic microphone activation, reconnect or transcription replay.
 
 Startup has a cancellation generation before conversation creation. Cancellation,
 withdrawal, navigation, minimize/reopen, hidden tabs, owner changes and destruction
-invalidate that same generation at each asynchronous boundary. Mute disables tracks,
+invalidate unfinished startup at each asynchronous boundary. Mute disables tracks,
 clears pending input and silences output. End stops tracks immediately, closes
-transport and requests server hangup. Navigation, hidden tabs, device loss, logout,
-credential replacement and conversation replacement end voice. Text generation
-may survive ordinary navigation, never hidden microphone capture.
+transport and requests server hangup. An established voice session can continue
+across in-app navigation and minimization; a bottom-right bubble visibly identifies
+live capture and offers mute/end controls. Hidden tabs, device loss, logout,
+credential replacement, consent withdrawal and conversation replacement still end
+voice. Text generation can also survive ordinary navigation.
 
 The server checks accepted consent at admission, observation attachment, native
 turn admission, tool execution and confirmed-action notifications. Withdrawal immediately stops local work and

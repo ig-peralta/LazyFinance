@@ -340,6 +340,14 @@ describe("AppShell", () => {
       await harness.fixture.whenStable();
       expect(workspace.opened()).toBe(false);
       expect(document.activeElement).toBe(trigger);
+      trigger?.click();
+      harness.detectChanges();
+      await harness.fixture.whenStable();
+      root.querySelector<HTMLElement>(".assistant-mount")?.click();
+      harness.detectChanges();
+      await harness.fixture.whenStable();
+      expect(workspace.opened()).toBe(false);
+      expect(document.activeElement).toBe(trigger);
     } finally {
       root.remove();
     }
