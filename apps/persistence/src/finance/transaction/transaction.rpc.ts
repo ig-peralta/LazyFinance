@@ -16,6 +16,7 @@ import {
 import {
   EmptyInputSchema,
   IdInputSchema,
+  MerchantSpendingFactsSchema,
   MovementAggregatesSchema,
   type PeriodInput,
   PeriodInputSchema,
@@ -132,5 +133,14 @@ export class TransactionRpc {
   })
   taggedAggregates(@Input() period: PeriodInput) {
     return this.repository.taggedAggregates(period);
+  }
+
+  @Query({
+    input: PeriodInputSchema,
+    output: MerchantSpendingFactsSchema,
+    meta: { context: "user" },
+  })
+  merchantSpending(@Input() period: PeriodInput) {
+    return this.repository.merchantSpending(period);
   }
 }

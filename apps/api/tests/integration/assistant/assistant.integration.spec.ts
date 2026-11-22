@@ -386,12 +386,12 @@ describe.skipIf(!integration)(
       }
     });
 
-    it("exposes the eleven existing financial reads with the authenticated owner and their original result semantics", async () => {
+    it("exposes the financial reads with the authenticated owner and their original result semantics", async () => {
       const f = await assistantFixture();
       try {
         const reads = f.api.app.get(FinancialReads).tools;
         const client = f.api.client();
-        expect(Object.keys(reads)).toHaveLength(14);
+        expect(Object.keys(reads)).toHaveLength(24);
         const month = "2026-09";
         expect(
           await reads.consultar_saldos_cuentas.execute(f.userId, {}),
@@ -407,6 +407,8 @@ describe.skipIf(!integration)(
           previousMonth: comparison.previousMonth,
           partial: comparison.partial,
           spending: comparison.spending,
+          receivedIncome: comparison.receivedIncome,
+          unresolvedMovementCount: comparison.unresolvedMovementCount,
         });
         const cuts = {
           month,

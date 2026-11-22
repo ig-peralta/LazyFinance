@@ -1,6 +1,6 @@
 import {
-  MonthlyComparisonSchema,
-  MonthlySummarySchema,
+  MonthlyComparisonReadSchema,
+  MonthlySpendingReadSchema,
 } from "@lazyfinance/contracts";
 import { Ctx, Payload } from "@nestjs/microservices";
 import { McpContext, McpController, Tool } from "@rekog/mcp-nest";
@@ -20,29 +20,19 @@ export class SummariesMcpController {
   @Tool({
     name: "consultar_resumen_gastos_mensuales",
     description:
-      "Resume compras brutas, devoluciones, reembolsos y gasto neto del mes en CLP. Los ajustes confirmados se atribuyen al período y etiqueta de la compra original, aunque el abono llegue después; los abonos recibidos se muestran aparte y no son ingresos. Usa America/Santiago y excluye movimientos internos. Cada compra tiene como máximo una etiqueta; el total incluye compras sin etiqueta. Los ajustes por revisar no reducen el gasto.",
+      "Gasto neto del mes calendario, compras brutas, devoluciones y reembolsos. Para 'mes pasado' indica el YYYY-MM anterior. La recuperación corresponde al mes de la compra; no es ingreso. El total incluye sin etiqueta y untaggedSpending lo muestra. Los ajustes por revisar no reducen el gasto.",
     parameters: monthParameters,
     annotations: {
       title: "Consultar gastos por mes y etiqueta",
       ...readOnlyTool,
     },
-    outputSchema: MonthlySummarySchema.pick({
-      month: true,
-      spending: true,
-      tags: true,
-      grossSpending: true,
-      refunds: true,
-      reimbursements: true,
-      unresolvedAdjustmentCount: true,
-      recoveredExpenseCredits: true,
-      adjustmentsAsOf: true,
-    }),
+    outputSchema: MonthlySpendingReadSchema,
   })
   async getMonthly(
     @Payload() { month }: z.infer<typeof monthParameters>,
     @Ctx() ctx: McpContext,
   ) {
-    const summary = await this.summaries.getMonthlyForUser(
+    const summary = await this.summaries.getSpendingForUser(
       mcpUserId(ctx),
       mcpMonth(month),
     );
@@ -56,24 +46,22 @@ export class SummariesMcpController {
       unresolvedAdjustmentCount: summary.unresolvedAdjustmentCount,
       recoveredExpenseCredits: summary.recoveredExpenseCredits,
       adjustmentsAsOf: summary.adjustmentsAsOf,
+      asOf: summary.asOf,
+      untaggedSpending: summary.untaggedSpending,
+      unresolvedMovementCount: summary.unresolvedMovementCount,
     };
   }
 
   @Tool({
     name: "comparar_gastos_mensuales",
     description:
-      "Compara el gasto neto de compras de un mes con el anterior en CLP. Devoluciones y reembolsos confirmados se atribuyen al período de la compra original con la información disponible ahora, no a la fecha del abono. Para el mes actual usa fechas comparables; los meses pasados se comparan completos. No proyecta el fin de mes.",
+      "Compara gasto neto e ingresos confirmados del mes con el anterior. Las recuperaciones siguen la compra original. Para el mes actual usa fechas comparables, no proyección al cierre.",
     parameters: monthParameters,
     annotations: {
       title: "Comparar gastos con el mes anterior",
       ...readOnlyTool,
     },
-    outputSchema: MonthlyComparisonSchema.pick({
-      month: true,
-      previousMonth: true,
-      partial: true,
-      spending: true,
-    }),
+    outputSchema: MonthlyComparisonReadSchema,
   })
   async getComparison(
     @Payload() { month }: z.infer<typeof monthParameters>,
@@ -84,10 +72,19 @@ export class SummariesMcpController {
       previousMonth,
       partial,
       spending,
+      receivedIncome,
+      unresolvedMovementCount,
     } = await this.summaries.getComparisonForUser(
       mcpUserId(ctx),
       mcpMonth(month),
     );
-    return { month: period, previousMonth, partial, spending };
+    return {
+      month: period,
+      previousMonth,
+      partial,
+      spending,
+      receivedIncome,
+      unresolvedMovementCount,
+    };
   }
 }

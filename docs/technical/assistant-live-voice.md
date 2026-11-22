@@ -75,7 +75,9 @@ turns remain blocked; the server requires the saved action-to-turn link and
 rechecks ownership, version, expiry and current financial facts.
 
 The shared flow gathers one missing detail at a time, including a new tag's color
-or explicit no-color choice. A budget/goal and its new tags form **one atomic
+or explicit no-color choice when unspecified. If the user names a color or shade,
+voice translates it to the internal value without requesting or narrating codes.
+A budget/goal and its new tags form **one atomic
 request**, not separate tag and objective approvals. After preparation the assistant
 offers to accept the request in its card or correct it by voice or **Editar**.
 Text-chat requests have their own text corrections and manual editing; switching

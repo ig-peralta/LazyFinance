@@ -11,6 +11,11 @@ schemes for ChatGPT, Claude, OpenCode or another client. Keep the original eleve
 financial read tools and their calculations unchanged. Three supporting reads and
 two explicitly scoped action tools extend that surface to sixteen tools.
 
+That is the November 2026 authorization baseline. The current read expansion
+adds ten read-only tools to the same `finance:read` grant (26 tools total);
+authorization, write scopes and owner derivation are unchanged. See the current
+[RPC/MCP inventory](rpc-contracts.md#public-surface).
+
 The baseline is the published [MCP authorization specification](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization),
 reviewed 8 November 2026. Authorization compatibility is separate from the MCP
 message/transport revision negotiated by the existing server. Do not claim that

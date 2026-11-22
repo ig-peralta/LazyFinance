@@ -1,12 +1,14 @@
 import {
   type AssistantSource,
   type FinancialAction,
+  FinancialActionInputSchema,
   FinancialActionRequestSchema,
 } from "@lazyfinance/contracts";
 import { MockLanguageModelV4 } from "ai/test";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { testEnvironment } from "../../tests/fixtures/environment";
+import { assistantInstructions } from "./assistant-policy";
 import {
   AiSdkAssistantRuntime,
   type AssistantRuntimeInput,
@@ -81,6 +83,15 @@ function input(): AssistantRuntimeInput {
 }
 
 describe("actual provider-neutral AI SDK tool loop with controlled models", () => {
+  it("describes color conversion as internal for new tags and recoloring in the model tool schema", () => {
+    const schema = JSON.stringify(
+      z.toJSONSchema(FinancialActionInputSchema, { io: "input" }),
+    );
+    expect(schema).toContain("sin pedirle códigos ni explicar la conversión");
+    expect(schema).toContain("Omite este campo para conservar el color actual");
+    expect(schema).toContain("#RRGGBB");
+  });
+
   it.each([
     {
       kind: "create_budget",
@@ -321,6 +332,95 @@ describe("actual provider-neutral AI SDK tool loop with controlled models", () =
     );
   });
 
+  it.each([
+    {
+      question: "Crea la etiqueta Comida roja",
+      action: { kind: "create_tag", tag: { name: "Comida", color: "#EF4444" } },
+      answer:
+        "Preparé la solicitud para crear la etiqueta Comida roja. Puedes aceptarla en la tarjeta o decirme qué corregir.",
+    },
+    {
+      question:
+        "Crea un presupuesto mensual de 100 mil para la nueva etiqueta Comida verde",
+      action: {
+        kind: "create_budget",
+        budget: {
+          name: "Comida",
+          amount: "100000.00",
+          schedule: { period: "monthly", startDate: "2026-12-01" },
+          tagIds: [],
+          newTags: [{ name: "Comida", color: "#22C55E" }],
+        },
+      },
+      answer:
+        "Preparé la solicitud para crear el presupuesto con la etiqueta Comida verde. Puedes aceptarla en la tarjeta o decirme qué corregir.",
+    },
+    {
+      question: "Cambia la etiqueta Comida a azul oscuro",
+      action: {
+        kind: "update_tag",
+        tag: { id: "00000000-0000-4000-8000-000000000081", color: "#1E3A8A" },
+      },
+      answer:
+        "Preparé la solicitud para cambiar la etiqueta Comida a azul oscuro. Puedes aceptarla en la tarjeta o decirme qué corregir.",
+    },
+  ])("uses a valid internal color while keeping the $question reply natural", async ({
+    question,
+    action,
+    answer,
+  }) => {
+    const proposal: FinancialAction = {
+      id: "00000000-0000-4000-8000-000000000091",
+      version: 1,
+      conversationId: "00000000-0000-4000-8000-000000000001",
+      turnId: "00000000-0000-4000-8000-000000000002",
+      origin: "assistant",
+      request: FinancialActionRequestSchema.parse(action),
+      context: { tags: [], movement: null },
+      status: "proposed",
+      createdAt: "2026-11-22T16:00:00Z",
+      expiresAt: "2026-11-22T16:15:00Z",
+      results: [],
+    };
+    const model = new MockLanguageModelV4({
+      doStream: [
+        response(
+          [
+            {
+              type: "tool-call",
+              toolCallId: "prepare",
+              toolName: "preparar_accion_financiera",
+              input: JSON.stringify({ action }),
+            },
+          ],
+          "tool-calls",
+        ),
+        response(text(answer)),
+      ],
+    });
+    const request = {
+      ...input(),
+      instructions: assistantInstructions(new Date("2026-11-22T16:00:00Z")),
+      messages: [{ role: "user" as const, content: question }],
+      propose: vi.fn(async () => proposal),
+    };
+    expect(
+      await new AiSdkAssistantRuntime(
+        testEnvironment(),
+        tools,
+        async () => model,
+      ).run(request),
+    ).toEqual({ complete: true });
+    expect(request.propose).toHaveBeenCalledExactlyOnceWith(
+      FinancialActionRequestSchema.parse(action),
+    );
+    expect(request.delta).toHaveBeenCalledExactlyOnceWith(answer);
+    expect(answer).not.toMatch(/#[0-9a-f]{6}|hexadecimal|código de color/i);
+    expect(JSON.stringify(model.doStreamCalls[1].prompt)).toContain(
+      '"status":"proposed"',
+    );
+  });
+
   it("offers a real correction tool that returns the next unapproved version without preparing a replacement", async () => {
     const original: FinancialAction = {
       id: "00000000-0000-4000-8000-000000000009",
@@ -343,7 +443,7 @@ describe("actual provider-neutral AI SDK tool loop with controlled models", () =
       version: 1,
       action: {
         kind: "create_tag",
-        tag: { name: "Burger King", color: "#112233" },
+        tag: { name: "Burger King", color: "#1E3A8A" },
       },
     };
     const updated: FinancialAction = {
@@ -366,13 +466,15 @@ describe("actual provider-neutral AI SDK tool loop with controlled models", () =
         ),
         response(
           text(
-            "Corregí el color de la solicitud. Puedes aceptarla o decirme qué más cambiar.",
+            "Cambié la etiqueta a azul oscuro. Puedes aceptarla o decirme qué más cambiar.",
           ),
         ),
       ],
     });
     const request = {
       ...input(),
+      instructions: assistantInstructions(new Date("2026-11-22T16:00:00Z")),
+      messages: [{ role: "user" as const, content: "Mejor ponla azul oscuro" }],
       propose: vi.fn(async () => original),
       revise: vi.fn(async () => updated),
     };
@@ -384,6 +486,9 @@ describe("actual provider-neutral AI SDK tool loop with controlled models", () =
       ).run(request),
     ).toEqual({ complete: true });
     expect(request.revise).toHaveBeenCalledExactlyOnceWith(change);
+    expect(request.delta).toHaveBeenCalledExactlyOnceWith(
+      "Cambié la etiqueta a azul oscuro. Puedes aceptarla o decirme qué más cambiar.",
+    );
     expect(request.propose).not.toHaveBeenCalled();
     expect(JSON.stringify(model.doStreamCalls[1].prompt)).toContain(
       '"version":2',

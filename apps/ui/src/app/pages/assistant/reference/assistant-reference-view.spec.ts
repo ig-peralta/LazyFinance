@@ -161,6 +161,11 @@ describe("human-readable financial reference projections", () => {
             previous: "120000.00",
             change: "-20000.00",
           },
+          receivedIncome: {
+            current: "130000.00",
+            previous: "110000.00",
+            change: "20000.00",
+          },
         },
       }),
     );
@@ -168,8 +173,188 @@ describe("human-readable financial reference projections", () => {
       "$100.000",
       "$120.000",
       "-$20.000",
+      "$130.000",
+      "$20.000",
     ]);
     expect(view.notices[0]).toContain("parciales equivalentes");
+  });
+
+  it("shows monthly budget limits without fabricating a total for overlapping tags", () => {
+    const view = assistantReferenceView(
+      assistantSource({
+        tool: "consultar_total_presupuestado_mes",
+        path: "/presupuestos-y-metas",
+        data: {
+          month: "2026-09",
+          asOf: "2026-11-01T00:00:00.000Z",
+          total: null,
+          totalReason: "overlapping_tags",
+          budgetCount: 1,
+          hasMore: false,
+          budgets: [
+            {
+              id: budgetProgress.id,
+              name: "Compras",
+              period: "monthly",
+              limit: "10000.00",
+              spent: "5000.00",
+              remaining: "5000.00",
+              tags: [tag],
+              start: "2026-09-01 00:00:00",
+              end: "2026-10-01 00:00:00",
+              archivedAt: null,
+            },
+          ],
+        },
+      }),
+    );
+    expect(view.metrics).toEqual([]);
+    expect(view.rows[0]).toMatchObject({
+      value: "$10.000",
+      link: `/presupuestos/${budgetProgress.id}`,
+    });
+    expect(view.notices.join(" ")).toContain("no hay un total mensual único");
+  });
+
+  it("keeps monthly goal allocations distinct from the income-spending difference", () => {
+    const monthly = assistantReferenceView(
+      assistantSource({
+        tool: "consultar_aportes_mensuales_meta",
+        path: "/metas",
+        data: {
+          id: savingsGoal.id,
+          name: savingsGoal.name,
+          month: "2026-09",
+          basis: "recorded_allocations",
+          tracking: {
+            start: "2026-09-01T04:00:00.000Z",
+            end: "2026-10-01T03:00:00.000Z",
+            asOf: "2026-11-01T00:00:00.000Z",
+            archivedAt: null,
+            empty: false,
+          },
+          historyCoverage: [],
+          incompleteCoverage: false,
+          contributions: "9000.00",
+          withdrawals: "1000.00",
+          netContributions: "8000.00",
+          pendingCount: 0,
+        },
+      }),
+    );
+    expect(monthly.metrics[0]).toEqual({
+      label: "Asignación neta del mes",
+      value: "$8.000",
+    });
+    expect(monthly.notices.join(" ")).toContain("No es un saldo bancario");
+    const difference = assistantReferenceView(
+      assistantSource({
+        tool: "consultar_diferencia_ingresos_gastos_mes",
+        path: "/movimientos",
+        data: {
+          ...totals,
+          month: "2026-09",
+          asOf: "2026-11-01T00:00:00.000Z",
+          adjustmentsAsOf: "2026-11-01T00:00:00.000Z",
+          receivedIncome: "15000.00",
+          difference: "3000.00",
+          unclassifiedCredits: { amount: "0.00", count: 0 },
+          unresolvedMovementCount: 0,
+          basis: "confirmed_income_minus_recorded_spending",
+        },
+      }),
+    );
+    expect(difference.metrics[2]).toEqual({
+      label: "Diferencia",
+      value: "$3.000",
+    });
+    expect(difference.notices.join(" ")).toContain(
+      "No representa efectivo ahorrado",
+    );
+  });
+
+  it("never calls an observed recurring pattern a verified subscription or upcoming bill", () => {
+    const view = assistantReferenceView(
+      assistantSource({
+        tool: "consultar_cargos_recurrentes_observados",
+        path: "/movimientos",
+        data: {
+          through: "2026-09",
+          months: 6,
+          asOf: "2026-11-01T00:00:00.000Z",
+          basis: "observed_merchant_pattern",
+          hasMore: false,
+          candidates: [
+            {
+              merchant: "streamflix",
+              observedMonths: 3,
+              total: "30000.00",
+              lastObservedMonth: "2026-09",
+            },
+          ],
+        },
+      }),
+    );
+    expect(view.rows[0].detail).toContain("Suma observada");
+    expect(view.notices[0]).toContain("no suscripciones verificadas");
+  });
+
+  it("shows partial calendar ranges and month-specific account coverage", () => {
+    const range = assistantReferenceView(
+      assistantSource({
+        tool: "consultar_gastos_rango_fechas",
+        path: "/movimientos",
+        data: {
+          from: "2026-11-01",
+          before: "2026-11-23",
+          partial: true,
+          asOf: "2026-11-22T16:00:00.000Z",
+          adjustmentsAsOf: "2026-11-22T16:00:00.000Z",
+          grossSpending: "20.00",
+          refunds: "0.00",
+          reimbursements: "0.00",
+          spending: "20.00",
+          unresolvedAdjustmentCount: 0,
+          unresolvedMovementCount: 0,
+        },
+      }),
+    );
+    expect(range.metrics[0]).toMatchObject({
+      label: "Gasto neto",
+      value: "$20",
+    });
+    expect(range.notices[0]).toContain("Hoy está incluido parcialmente");
+    const coverage = assistantReferenceView(
+      assistantSource({
+        tool: "consultar_cobertura_datos_financieros",
+        path: "/cuentas",
+        data: {
+          month: "2026-09",
+          asOf: "2026-11-22T16:00:00.000Z",
+          unresolvedMovementCount: 2,
+          unclassifiedCreditCount: 1,
+          accounts: [
+            {
+              id: assistantAccount.id,
+              alias: "Cuenta ahorro",
+              type: "savings",
+              trackingStatus: "paused",
+              lastSyncedAt: "2026-08-01T12:00:00.000Z",
+              historyCompleteness: "complete",
+              historyFrom: "2026-10-01",
+              historyThrough: "2026-11-22",
+              monthCovered: false,
+            },
+          ],
+        },
+      }),
+    );
+    expect(coverage.rows[0]).toMatchObject({
+      title: "Cuenta ahorro",
+      value: "Mes sin cobertura completa",
+    });
+    expect(coverage.rows[0].detail).toContain("pausado");
+    expect(coverage.notices[0]).toContain("2 movimientos sin resolver");
   });
 
   it("does not turn a declared goal into measured savings or combine overlapping budgets", () => {
