@@ -50,6 +50,22 @@ export class AccountRepository {
       .execute();
   }
 
+  async coverage() {
+    const rows = await this.db
+      .selectFrom("finance.account")
+      .select(["id", "historyCompleteness", "historyFrom", "historyThrough"])
+      .where("active", "=", true)
+      .orderBy("id")
+      .limit(1001)
+      .execute();
+    if (rows.length > 1000)
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Too many accounts for coverage",
+      });
+    return rows;
+  }
+
   async setAlias(input: SetAccountAlias) {
     const saved = await this.db
       .updateTable("finance.account")

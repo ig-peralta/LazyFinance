@@ -14,6 +14,7 @@ import type { IncomeReceiptTables } from "../income-receipt/income-receipt.table
 import type { IncomeSourceTables } from "../income-source/income-source.tables";
 import { budgetInstant, budgetTimestamp } from "../objective/budget-sql";
 import { movementPeriod } from "../query-period";
+import { eligibleSpending } from "../spending-evidence/spending-sql";
 import type { TagTables } from "../tag/tag.tables";
 import type { TransactionTables } from "./transaction.tables";
 import {
@@ -202,6 +203,43 @@ export class TransactionRepository {
       .groupBy("t.id")
       .limit(50001)
       .execute();
+  }
+
+  async merchantSpending(period: PeriodInput) {
+    const merchant = sql<string | null>`nullif(lower(btrim(m.merchant)), '')`;
+    const month = sql<string>`to_char(m.booked_at AT TIME ZONE 'America/Santiago', 'YYYY-MM')`;
+    const rows = await this.db
+      .selectFrom("finance.transaction as m")
+      .innerJoin("finance.account as oa", "oa.id", "m.accountId")
+      .leftJoinLateral(
+        purchaseRecovery(period.adjustmentsAsOf).as("pa"),
+        (join) => join.onTrue(),
+      )
+      .select([
+        merchant.as("merchant"),
+        month.as("month"),
+        sql<string>`sum(m.amount)::text`.as("amount"),
+        sql<string>`sum(pa.refund_amount::numeric)::text`.as("refundAmount"),
+        sql<string>`sum(pa.reimbursement_amount::numeric)::text`.as(
+          "reimbursementAmount",
+        ),
+        sql<number>`count(*)::int`.as("count"),
+      ])
+      .where("oa.userId", "=", sql<string>`(select identity.current_user_id())`)
+      .where(movementPeriod(period))
+      .where(eligibleSpending())
+      .groupBy(merchant)
+      .groupBy(month)
+      .orderBy(month)
+      .orderBy(merchant)
+      .limit(5001)
+      .execute();
+    if (rows.length > 5000)
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Too many merchant groups; narrow the period",
+      });
+    return rows;
   }
 
   private aggregateQuery(period: PeriodInput) {

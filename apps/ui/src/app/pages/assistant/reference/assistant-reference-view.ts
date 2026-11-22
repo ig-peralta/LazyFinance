@@ -3,15 +3,25 @@ import {
   type AssistantReadName,
   type AssistantSource,
   BudgetProgressSchema,
+  FinancialCoverageSchema,
   IncomeSummarySchema,
+  MerchantSpendingSchema,
+  MonthlyBudgetPlanSchema,
   MonthlyComparisonSchema,
+  MonthlyDifferenceSchema,
+  MonthlyGoalAllocationSchema,
   MonthlySummarySchema,
   MonthSchema,
   ObjectiveSummarySchema,
   RecentTransactionSchema,
+  RecurringCandidatesSchema,
   SavingsEvidencePageSchema,
+  SavingsGoalsOverviewSchema,
   SavingsProgressSchema,
   SpendingContributionsPageSchema,
+  SpendingRangeSchema,
+  SpendingTrendSchema,
+  SpendingVariationSchema,
   TagSummarySchema,
   TransactionDetailSchema,
   TransactionsPageSchema,
@@ -126,6 +136,56 @@ const sections: Record<
     icon: "target",
     action: "Ver presupuestos",
   },
+  consultar_total_presupuestado_mes: {
+    name: "Presupuestos",
+    icon: "target",
+    action: "Ver presupuestos",
+  },
+  consultar_aportes_mensuales_meta: {
+    name: "Ahorro",
+    icon: "target",
+    action: "Ver meta",
+  },
+  consultar_diferencia_ingresos_gastos_mes: {
+    name: "Ingresos y gastos",
+    icon: "trend",
+    action: "Ver movimientos",
+  },
+  consultar_tendencia_gastos: {
+    name: "Gastos",
+    icon: "trend",
+    action: "Ver movimientos",
+  },
+  consultar_variacion_gastos_por_etiqueta: {
+    name: "Gastos",
+    icon: "trend",
+    action: "Ver movimientos",
+  },
+  consultar_gasto_por_comercio: {
+    name: "Gastos",
+    icon: "activity",
+    action: "Ver movimientos",
+  },
+  consultar_panorama_metas_ahorro: {
+    name: "Ahorro",
+    icon: "target",
+    action: "Ver metas",
+  },
+  consultar_cobertura_datos_financieros: {
+    name: "Cuentas",
+    icon: "wallet",
+    action: "Ver cuentas",
+  },
+  consultar_gastos_rango_fechas: {
+    name: "Gastos",
+    icon: "activity",
+    action: "Ver movimientos",
+  },
+  consultar_cargos_recurrentes_observados: {
+    name: "Movimientos",
+    icon: "activity",
+    action: "Ver movimientos",
+  },
 };
 
 // Saved evidence may predate account tracking metadata; never strip a supplied status.
@@ -152,12 +212,18 @@ const spendingSchema = MonthlySummarySchema.pick({
   unresolvedAdjustmentCount: true,
   adjustmentsAsOf: true,
   tags: true,
+}).extend({
+  untaggedSpending: z.string().optional(),
+  asOf: z.iso.datetime().optional(),
+  unresolvedMovementCount: z.number().int().optional(),
 });
 const comparisonSchema = MonthlyComparisonSchema.pick({
   month: true,
   previousMonth: true,
   partial: true,
   spending: true,
+}).extend({
+  receivedIncome: MonthlyComparisonSchema.shape.receivedIncome.optional(),
 });
 
 const money = (label: string, value: string) => ({
@@ -338,7 +404,7 @@ export function assistantReferenceView(
       }));
       view.empty = null;
       view.notices = [
-        "El total incluye compras sin etiqueta. Las recuperaciones corresponden al mes de la compra original.",
+        `El total incluye compras sin etiqueta${data.untaggedSpending ? `: ${formatClp(data.untaggedSpending)}` : ""}. Las recuperaciones corresponden al mes de la compra original.${data.unresolvedMovementCount ? ` ${data.unresolvedMovementCount} movimientos sin resolver no se incluyen.` : ""}`,
         `Ajustes consultados hasta ${date(data.adjustmentsAsOf)}.${data.unresolvedAdjustmentCount ? ` ${data.unresolvedAdjustmentCount} por revisar; aún no reducen el gasto.` : ""}`,
       ];
       break;
@@ -352,6 +418,12 @@ export function assistantReferenceView(
         money(monthLabel(data.month), data.spending.current),
         money(monthLabel(data.previousMonth), data.spending.previous),
         money("Variación del gasto", data.spending.change),
+        ...(data.receivedIncome
+          ? [
+              money("Ingresos confirmados", data.receivedIncome.current),
+              money("Variación de ingresos", data.receivedIncome.change),
+            ]
+          : []),
       ];
       view.empty = null;
       view.notices = [
@@ -474,6 +546,228 @@ export function assistantReferenceView(
           adjustmentsAsOf: data.tracking.adjustmentsAsOf,
         };
       }
+      break;
+    }
+    case "consultar_total_presupuestado_mes": {
+      const result = MonthlyBudgetPlanSchema.safeParse(source.data);
+      if (!result.success) break;
+      const data = result.data;
+      view.period = monthLabel(data.month);
+      if (data.total !== null)
+        view.metrics = [money("Total mensual comparable", data.total)];
+      view.rows = data.budgets.map((budget) => ({
+        id: budget.id,
+        title: budget.name,
+        value: formatClp(budget.limit),
+        detail: `Límite ${budget.period === "monthly" ? "mensual" : budget.period === "yearly" ? "anual" : "de período fijo"}${budget.spent === null ? " · Gasto no observado" : ` · Gasto neto ${formatClp(budget.spent)}`}`,
+        link: `/presupuestos/${budget.id}`,
+      }));
+      view.empty = view.rows.length
+        ? null
+        : "No hay presupuestos aplicables al mes.";
+      view.preview = data.hasMore;
+      const reasons = {
+        comparable:
+          "Los límites mensuales tienen la misma ventana y no comparten etiquetas. No son dinero disponible.",
+        no_budgets:
+          "No hay presupuestos aplicables; esto no dice cuánto puedes gastar.",
+        overlapping_tags:
+          "Los presupuestos comparten etiquetas: no hay un total mensual único sin duplicaciones.",
+        mixed_periods:
+          "Hay presupuestos mensuales, anuales o de período fijo: sus límites no se suman como un mes.",
+        partial_month:
+          "Uno o más presupuestos comienzan, terminan o se archivan durante el mes: sus límites no cubren un mes completo.",
+        different_windows:
+          "Los presupuestos cubren ventanas diferentes y no dan un total mensual comparable.",
+        changed_definitions:
+          "La definición de un presupuesto cambió durante el mes o la consulta; no hay un total mensual comparable confirmado.",
+      };
+      view.notices = [reasons[data.totalReason]];
+      break;
+    }
+    case "consultar_aportes_mensuales_meta": {
+      const result = MonthlyGoalAllocationSchema.safeParse(source.data);
+      if (!result.success) break;
+      const data = result.data;
+      view.title = data.name;
+      view.period = monthLabel(data.month);
+      view.link = `/metas/${data.id}`;
+      view.metrics = [
+        money("Asignación neta del mes", data.netContributions),
+        money("Aportes", data.contributions),
+        money("Retiros", data.withdrawals),
+      ];
+      view.empty = null;
+      view.notices = [
+        `Solo ${monthLabel(data.month)} · No es un saldo bancario ni ahorro total.${data.pendingCount ? ` ${count(data.pendingCount, "movimiento pendiente", "movimientos pendientes")}.` : ""}`,
+        ...(data.tracking.empty
+          ? ["La meta no estuvo activa en el período consultado."]
+          : []),
+        ...(data.incompleteCoverage
+          ? [
+              "La cobertura del mes es parcial o desconocida; pueden faltar movimientos.",
+            ]
+          : []),
+      ];
+      break;
+    }
+    case "consultar_diferencia_ingresos_gastos_mes": {
+      const result = MonthlyDifferenceSchema.safeParse(source.data);
+      if (!result.success) break;
+      const data = result.data;
+      view.period = monthLabel(data.month);
+      view.metrics = [
+        money("Ingresos confirmados", data.receivedIncome),
+        money("Gasto neto", data.spending),
+        money("Diferencia", data.difference),
+      ];
+      view.empty = null;
+      view.notices = [
+        "Ingresos confirmados menos compras atribuidas al mes. No representa efectivo ahorrado ni variación bancaria.",
+        `${count(data.unclassifiedCredits.count, "crédito sin clasificar", "créditos sin clasificar")} · ${count(data.unresolvedMovementCount, "movimiento sin resolver", "movimientos sin resolver")}.`,
+      ];
+      break;
+    }
+    case "consultar_tendencia_gastos": {
+      const result = SpendingTrendSchema.safeParse(source.data);
+      if (!result.success) break;
+      const data = result.data;
+      view.metrics = [money("Promedio mensual", data.average)];
+      view.rows = data.months.map((row) => ({
+        id: row.month,
+        title: monthLabel(row.month),
+        value: formatClp(row.spending),
+        detail: `${row.partial ? "Mes parcial" : "Mes completo"}${row.unresolvedMovementCount ? " · Hay movimientos sin resolver" : ""}`,
+      }));
+      view.empty = null;
+      view.notices = [
+        `${data.selection === "all" ? "Todas las compras" : data.selection === "untagged" ? "Compras sin etiqueta" : "Una etiqueta seleccionada"}. Un mes con poco historial no prueba menor gasto.`,
+      ];
+      break;
+    }
+    case "consultar_variacion_gastos_por_etiqueta": {
+      const result = SpendingVariationSchema.safeParse(source.data);
+      if (!result.success) break;
+      const data = result.data;
+      view.period = monthLabel(data.month);
+      view.metrics = [
+        money("Variación neta", data.change),
+        money("Gasto de este mes", data.current),
+        money("Gasto anterior", data.previous),
+      ];
+      view.rows = data.rows.map((row) => ({
+        id: row.tagId ?? "sin-etiqueta",
+        title: row.name,
+        value: formatClp(row.change),
+        detail: `${monthLabel(data.month)} ${formatClp(row.current)} · ${monthLabel(data.previousMonth)} ${formatClp(row.previous)}`,
+      }));
+      view.empty = null;
+      view.notices = [
+        `${data.partial ? "Períodos parciales equivalentes." : "Meses completos."} Son cambios registrados, no causas demostradas.`,
+        ...(data.otherChange !== "0.00"
+          ? [`Otras etiquetas: ${formatClp(data.otherChange)} de variación.`]
+          : []),
+      ];
+      break;
+    }
+    case "consultar_gasto_por_comercio": {
+      const result = MerchantSpendingSchema.safeParse(source.data);
+      if (!result.success) break;
+      const data = result.data;
+      view.period = monthLabel(data.month);
+      view.metrics = [money("Gasto neto seleccionado", data.totals.spending)];
+      view.rows = data.merchants.map((row, index) => ({
+        id: `${index}`,
+        title: row.merchant || "Comercio no indicado",
+        value: formatClp(row.spending),
+        detail: count(row.count, "compra", "compras"),
+      }));
+      view.empty = view.rows.length
+        ? null
+        : "No hay compras de esos comercios en el mes.";
+      view.notices = [
+        "Los nombres de comercios pueden variar; no se identifican suscripciones.",
+        ...(data.merchantGroups > data.merchants.length
+          ? [`Otros comercios: ${formatClp(data.otherSpending)} de gasto neto.`]
+          : []),
+      ];
+      break;
+    }
+    case "consultar_panorama_metas_ahorro": {
+      const result = SavingsGoalsOverviewSchema.safeParse(source.data);
+      if (!result.success) break;
+      const data = result.data;
+      view.period = monthLabel(data.month);
+      view.rows = data.goals.map((goal) => ({
+        id: goal.id,
+        title: goal.name,
+        value: formatClp(goal.netContributions),
+        detail: `Asignación neta ${goal.period === "cumulative" ? "acumulada" : goal.period === "monthly" ? "mensual" : goal.period === "yearly" ? "anual" : "de período fijo"} · Meta ${formatClp(goal.target)}${goal.incompleteCoverage ? " · Cobertura incompleta" : ""}`,
+        link: `/metas/${goal.id}`,
+      }));
+      view.empty = view.rows.length ? null : "No hay metas actuales.";
+      view.preview = data.hasMore;
+      view.notices = [
+        "Las metas pueden compartir movimientos; no se suman como un saldo o ahorro total.",
+      ];
+      break;
+    }
+    case "consultar_cobertura_datos_financieros": {
+      const result = FinancialCoverageSchema.safeParse(source.data);
+      if (!result.success) break;
+      const data = result.data;
+      view.period = monthLabel(data.month);
+      view.rows = data.accounts.map((account) => ({
+        id: account.id,
+        title: account.alias || accountTypeLabel(account.type),
+        value: account.monthCovered
+          ? "Mes cubierto"
+          : account.historyCompleteness === "unknown"
+            ? "Cobertura desconocida"
+            : "Mes sin cobertura completa",
+        detail: `${accountTypeLabel(account.type)} · ${account.lastSyncedAt ? `Saldo de origen ${date(account.lastSyncedAt)}` : "Fecha de saldo desconocida"}${account.trackingStatus && account.trackingStatus !== "tracked" ? ` · Seguimiento ${account.trackingStatus === "paused" ? "pausado" : "desconectado"}` : ""}`,
+      }));
+      view.empty = view.rows.length
+        ? null
+        : "No hay cuentas activas guardadas.";
+      view.notices = [
+        `${count(data.unresolvedMovementCount, "movimiento sin resolver", "movimientos sin resolver")} y ${count(data.unclassifiedCreditCount, "crédito sin clasificar", "créditos sin clasificar")} en el mes. La hora de consulta no es la fecha de sincronización.`,
+      ];
+      break;
+    }
+    case "consultar_gastos_rango_fechas": {
+      const result = SpendingRangeSchema.safeParse(source.data);
+      if (!result.success) break;
+      const data = result.data;
+      view.metrics = [
+        money("Gasto neto", data.spending),
+        money("Compras brutas", data.grossSpending),
+        money("Devoluciones", data.refunds),
+        money("Reembolsos", data.reimbursements),
+      ];
+      view.empty = null;
+      view.notices = [
+        `Del ${data.from} al día anterior al ${data.before} en Santiago.${data.partial ? " Hoy está incluido parcialmente." : ""} Esto no es necesariamente un mes calendario.`,
+      ];
+      break;
+    }
+    case "consultar_cargos_recurrentes_observados": {
+      const result = RecurringCandidatesSchema.safeParse(source.data);
+      if (!result.success) break;
+      const data = result.data;
+      view.rows = data.candidates.map((row) => ({
+        id: row.merchant,
+        title: row.merchant,
+        value: formatClp(row.total),
+        detail: `${row.observedMonths} meses con compras · Último mes ${monthLabel(row.lastObservedMonth)} · Suma observada en el rango`,
+      }));
+      view.empty = view.rows.length
+        ? null
+        : "No se encontraron patrones repetidos con suficiente historial; esto no descarta cargos reales.";
+      view.preview = data.hasMore;
+      view.notices = [
+        "Son posibles patrones, no suscripciones verificadas, facturas ni próximos cobros.",
+      ];
       break;
     }
   }

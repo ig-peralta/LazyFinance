@@ -4,6 +4,7 @@ import {
   SetAccountAliasSchema,
 } from "@lazyfinance/contracts";
 import {
+  AccountCoverageRecordsSchema,
   AccountRecordsSchema,
   EmptyInputSchema,
 } from "@lazyfinance/contracts/internal";
@@ -21,6 +22,15 @@ export class AccountRpc {
   })
   listActive() {
     return this.service.listActive();
+  }
+
+  @Query({
+    input: EmptyInputSchema,
+    output: AccountCoverageRecordsSchema,
+    meta: { context: "user" },
+  })
+  coverage() {
+    return this.service.coverage();
   }
 
   @Mutation({

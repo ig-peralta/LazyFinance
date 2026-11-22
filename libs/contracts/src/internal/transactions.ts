@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { cursorPageSchema } from "../pagination";
+import { MonthSchema } from "../summaries/month.schema";
 import { TagSummarySchema } from "../tags/tag-summary.schema";
 import { RecentTransactionSchema } from "../transactions/recent-transaction.schema";
 import { TransactionDetailSchema } from "../transactions/transaction-detail.schema";
@@ -71,3 +72,16 @@ export type MovementAggregate = z.infer<typeof MovementAggregateSchema>;
 export type TaggedMovementAggregate = z.infer<
   typeof TaggedMovementAggregateSchema
 >;
+
+export const MerchantSpendingFactSchema = z.object({
+  merchant: z.string().nullable(),
+  month: MonthSchema,
+  amount: z.string(),
+  refundAmount: z.string(),
+  reimbursementAmount: z.string(),
+  count: z.number().int().nonnegative(),
+});
+export const MerchantSpendingFactsSchema = z
+  .array(MerchantSpendingFactSchema)
+  .max(5000);
+export type MerchantSpendingFact = z.infer<typeof MerchantSpendingFactSchema>;

@@ -219,8 +219,8 @@ does not prove that the created resource has remained unchanged. The next respon
 can acknowledge what was actually approved without repeating the proposal; fresh
 financial reads still establish current balances and resource state.
 
-The runtime offers the eleven financial reads plus the owned tag catalog, filtered
-movement browsing and movement detail. It can prepare or correct proposals and read their
+The runtime offers 21 financial reads plus the owned tag catalog, filtered
+movement browsing and movement detail (24 reads total). It can prepare or correct proposals and read their
 current status, never approve/execute/cancel them. Arguments and
 outputs are schema-validated; the authenticated internal UUID is closed over by
 the service, never an LLM argument. Domain services retain all money, schedule,
@@ -234,6 +234,23 @@ from income. Overlapping budgets/goals and evidence pages are not additive.
 Unavailable or oversized evidence is explicit, never an invented zero.
 Text and voice use neutral Spanish without Chilean slang or a deliberate regional
 accent. Santiago dates and CLP remain the financial calendar/currency context.
+
+The expanded read set covers monthly budget plans, one goal's allocations in a
+calendar month, confirmed income minus recorded spending, monthly spending trends,
+changes by tag, merchant totals, a bounded goals overview, account-history
+coverage, bounded calendar-day ranges and observed recurring-charge candidates.
+The monthly-spending read also reports untagged spend and observation cutoffs;
+comparison includes confirmed income and unresolved movements. The budget-plan
+`total` is present only for full, same-window monthly budgets with disjoint tags;
+annual/fixed, overlapping, partial-month or changed definitions return a reason
+instead. Its total is calculated across all applicable budgets, not the 12 preview
+rows. Goal allocations never represent bank balances or total cash saved. Income
+minus spending is not a cash-flow statement or proof of savings, especially with
+credit-card purchases and later purchase-attributed recoveries. Merchant names
+are normalized for case/edge spaces only, not linked across different aliases;
+three similar consecutive monthly charges are **candidates**, not active
+subscriptions or upcoming invoices. Current-month/range results may be partial;
+observed history coverage is not a guarantee of external provider completeness.
 
 Each source has an internal `F1`–`F8` identifier, tool, status, query timestamp,
 optional requested month, original bounded JSON and an allowlisted internal section
@@ -424,7 +441,7 @@ a nonce.
 
 ### Reference presentation
 
-Cards project schema-validated stored results from all fourteen reads; they are not
+Cards project schema-validated stored results from all 24 reads; they are not
 model-authored summaries and do not make additional financial requests. They show
 formatted CLP amounts, periods, bounded rows and the relevant uncertainty, review,
 coverage and cutoff disclosures. No raw JSON panel or source code is displayed.
@@ -492,6 +509,16 @@ and merchant data, follow-up references, truncation and cancellation. Require no
 foreign-owner data or secret disclosure, unsupported success claims or invented
 amounts; record provider/model/date and failures separately from fixture results.
 Never use real customer data as a convenient evaluation fixture.
+
+For the expanded reads, add synthetic questions distinguishing *last calendar
+month* from *the last 30 days*, monthly goal allocations from cumulative/yearly
+progress, budget overlap/partial windows from comparable monthly limits, merchant
+aliases from real subscriptions, and income–spending difference from cash saved.
+Include current-month cutoffs, history gaps, more than 12 result rows and
+mixed/unknown account coverage. The four existing deterministic SDK cases do not
+exercise these new model-selection decisions. Mocked transport and calculation
+tests are not evidence that the two new private SQL reads have run under RLS or
+that a live model chooses the right tool.
 
 No live model request was made during the verification recorded below.
 Offline demonstration, scripted SDK models and deterministic grounding fixtures

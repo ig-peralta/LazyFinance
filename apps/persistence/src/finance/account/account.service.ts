@@ -14,6 +14,10 @@ export class AccountService {
     }));
   }
 
+  coverage() {
+    return this.repository.coverage();
+  }
+
   async setAlias(input: SetAccountAlias) {
     return wireValue(await this.repository.setAlias(input));
   }

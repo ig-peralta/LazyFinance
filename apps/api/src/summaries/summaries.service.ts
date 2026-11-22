@@ -8,6 +8,29 @@ import { monthBounds, previousMonth } from "../utils/period";
 import { santiagoMonth, santiagoParts } from "../utils/santiago-time";
 import { spendingByTag } from "./spending-by-tag";
 
+/** Actual purchase windows; the current month compares with the same prior-month elapsed days. */
+export function comparisonPeriods(month: string, now: Date) {
+  const previous = previousMonth(month);
+  const partial = month === santiagoMonth(now);
+  const { day, hour, minute, second } = santiagoParts(now);
+  const previousDays = new Date(
+    Date.UTC(Number(previous.slice(0, 4)), Number(previous.slice(5, 7)), 0),
+  ).getUTCDate();
+  const previousEnd =
+    Number(day) > previousDays
+      ? monthBounds(previous).end
+      : `${previous}-${day} ${hour}:${minute}:${second}`;
+  return {
+    previousMonth: previous,
+    partial,
+    current: monthBounds(month),
+    previous: {
+      start: monthBounds(previous).start,
+      end: partial ? previousEnd : monthBounds(previous).end,
+    },
+  };
+}
+
 @Injectable()
 export class SummariesService {
   constructor(
@@ -20,23 +43,33 @@ export class SummariesService {
     month: string,
     now = new Date(),
   ): Promise<MonthlySummary> {
-    const client = this.persistence.user(userId);
-    const asOf = month === santiagoMonth(now) ? now.toISOString() : undefined;
-    const [groups, expected] = await Promise.all([
-      client.transactions.taggedAggregates.query({
-        ...monthBounds(month),
-        asOf,
-        adjustmentsAsOf: now.toISOString(),
-      }),
+    const [spending, expected] = await Promise.all([
+      this.getSpendingForUser(userId, month, now),
       this.income.getExpectedForUser(userId, month),
     ]);
-    const totals = movementTotals(groups);
 
     return {
-      month,
+      ...spending,
       expectedIncome: expected.totals,
-      ...totals,
-      adjustmentsAsOf: now.toISOString(),
+    };
+  }
+
+  async getSpendingForUser(userId: string, month: string, now = new Date()) {
+    const asOf = now.toISOString();
+    const groups = await this.persistence
+      .user(userId)
+      .transactions.taggedAggregates.query({
+        ...monthBounds(month),
+        asOf: month === santiagoMonth(now) ? asOf : undefined,
+        adjustmentsAsOf: asOf,
+      });
+    return {
+      month,
+      ...movementTotals(groups),
+      untaggedSpending: movementTotals(groups.filter((row) => row.tag === null))
+        .spending,
+      asOf,
+      adjustmentsAsOf: asOf,
       tags: spendingByTag(groups),
     };
   }
@@ -47,27 +80,20 @@ export class SummariesService {
     now = new Date(),
   ): Promise<MonthlyComparison> {
     const client = this.persistence.user(userId);
-    const previous = previousMonth(month);
-    const partial = month === santiagoMonth(now);
-    const { day, hour, minute, second } = santiagoParts(now);
-    const previousYear = Number(previous.slice(0, 4));
-    const previousNumber = Number(previous.slice(5, 7));
-    const previousDays = new Date(
-      Date.UTC(previousYear, previousNumber, 0),
-    ).getUTCDate();
-    const previousEnd =
-      Number(day) > previousDays
-        ? monthBounds(previous).end
-        : `${previous}-${day} ${hour}:${minute}:${second}`;
+    const {
+      previousMonth: previous,
+      partial,
+      current: currentWindow,
+      previous: previousWindow,
+    } = comparisonPeriods(month, now);
     const [currentGroups, earlierGroups] = await Promise.all([
       client.transactions.aggregates.query({
-        ...monthBounds(month),
+        ...currentWindow,
         asOf: partial ? now.toISOString() : undefined,
         adjustmentsAsOf: now.toISOString(),
       }),
       client.transactions.aggregates.query({
-        start: monthBounds(previous).start,
-        end: partial ? previousEnd : monthBounds(previous).end,
+        ...previousWindow,
         adjustmentsAsOf: now.toISOString(),
       }),
     ]);

@@ -38,7 +38,18 @@ provider pages and generated recurrence dates are not persisted relations.
   builder rather than making every caller receive the largest result.
   `transactions.aggregates` groups only direction/internal/review/receipt states
   (at most 24 groups). `taggedAggregates` additionally joins tag metadata and groups
-  by tag; one returned fact set serves both overall totals and the tag breakdown.
+   by tag; one returned fact set serves both overall totals and the tag breakdown.
+- **Assistant merchant/coverage reads:** `transactions.merchantSpending` groups
+  eligible owned debit purchases by normalized merchant (case and outer spaces)
+  and Santiago calendar month, with the same one-row-per-purchase recovery
+  subquery as summary spending. It caps at 5,000 groups and rejects overflow,
+  not a partial total; API selects a 12-row merchant preview and calculates totals
+  from the complete fact set. `accounts.coverage` returns up to 1,000 owned active
+  accounts' recorded history bounds and completeness; API combines them with
+  retained account source timestamps and a separate monthly movement aggregate.
+  These calls do not form one repeatable-read snapshot across RPCs; their cutoffs
+  and coverage caveats must remain visible. They require restricted-role/RLS SQL
+  integration validation before claiming live database correctness.
 - **Subset of a snapshot:** do not fetch the whole snapshot and discard most of it.
   `income.expectedFacts` reads only declarations/dated expectations, `income.receipts`
   only receipt facts, and `income.facts` remains the complete repeatable-read income

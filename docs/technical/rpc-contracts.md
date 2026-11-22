@@ -106,13 +106,18 @@ Method schemas in the generated file and
 shapes; counts/tables here are a navigation aid, not a second schema definition.
 
 The API's ordinary `GET /` is a liveness check. `/mcp` is authenticated Streamable
-HTTP exposing sixteen tools through the same services. Fourteen are reads:
+HTTP exposing 26 tools through the same services. The 24 reads are:
 `consultar_saldos_cuentas`, `consultar_movimientos_recientes`,
 `consultar_presupuestos_y_metas`, `consultar_avance_presupuestos`,
 `consultar_resumen_gastos_mensuales`, `comparar_gastos_mensuales`, and
 `consultar_ingresos`, `consultar_avance_ahorro`, `consultar_aportes_ahorro`,
 `consultar_compras_del_gasto`, `consultar_compras_presupuesto`,
-`consultar_etiquetas`, `buscar_movimientos`, and `consultar_movimiento`, plus
+`consultar_etiquetas`, `buscar_movimientos`, `consultar_movimiento`,
+`consultar_total_presupuestado_mes`, `consultar_aportes_mensuales_meta`,
+`consultar_diferencia_ingresos_gastos_mes`, `consultar_tendencia_gastos`,
+`consultar_variacion_gastos_por_etiqueta`, `consultar_gasto_por_comercio`,
+`consultar_panorama_metas_ahorro`, `consultar_cobertura_datos_financieros`,
+`consultar_gastos_rango_fechas`, and `consultar_cargos_recurrentes_observados`, plus
 read-only `previsualizar_accion_financiera` and destructive-write
 `ejecutar_accion_financiera`. Preview and execution require the action's explicitly
 granted write scopes. Preview takes `{ action }`; execution takes a stable
@@ -121,7 +126,7 @@ External clients use separate OAuth grants, never Firebase/development app beare
 Discovery, authorization/token/registration/revocation endpoints and the browser
 interaction HTTP bridge are documented in [MCP authorization](mcp-authorization.md).
 The first-party [financial assistant](financial-assistant.md) uses those same
-fourteen read services, without an external MCP/OAuth round trip. Its bearer-only
+24 read services, without an external MCP/OAuth round trip. Its bearer-only
 `POST /assistant/turns` streams validated NDJSON using shared assistant contracts;
 it accepts only conversation ID, request nonce and question. Models can prepare
 proposals/read their status, not approve or execute. Action events and saved snapshots
@@ -140,14 +145,14 @@ Optional bearer-only voice HTTP endpoints use shared strict public schemas:
 conversation ownership and admission are checked server-side. SDP negotiation
 exposes no provider key, owner selector, financial tools or execution authority.
 These are not tRPC procedures: the combined public/private inventories remain
-88/109. Account processing consent requires migration 032; mode isolation requires
+88/111. Account processing consent requires migration 032; mode isolation requires
 migration 033 and the separate public voice read. The voice HTTP adapter
 itself adds no procedures. See the [voice contract and live-validation gates](assistant-live-voice.md).
 
 ## Private surface
 
 The [generated private router](../../libs/rpc-persistence/src/generated/server.ts)
-currently contains **109 procedures**. They expose owned facts and authoritative
+currently contains **111 procedures**. They expose owned facts and authoritative
 commands rather than copying public screen calculations into persistence.
 
 | Router | Methods |
@@ -160,8 +165,8 @@ commands rather than copying public screen calculations into persistence.
 | `financialActions` | `get`, `preview`, `prepare`, `revise`, `apply`, `cancel`, `execute` (user context only; atomic ledger/domain commands) |
 | `mcpGrants` | `list`, `bind`, `revoke` (user context) |
 | `mcpArtifacts` | `find`, `save`, `consume`, `destroy`, `identity`, `revoke` (dedicated OAuth purpose only) |
-| `accounts` | `listActive`, `setAlias` |
-| `transactions` | `recent`, `list`, `detail`, `setInternalMovement`, `aggregates`, `taggedAggregates`, `spendingEvidence`, `expenseAdjustments`, `setExpenseAdjustment`, `removeExpenseAdjustment` |
+| `accounts` | `listActive`, `coverage`, `setAlias` |
+| `transactions` | `recent`, `list`, `detail`, `setInternalMovement`, `aggregates`, `taggedAggregates`, `merchantSpending`, `spendingEvidence`, `expenseAdjustments`, `setExpenseAdjustment`, `removeExpenseAdjustment` |
 | `objectives` | `list` (effective definitions/nested tags), `forPeriod` (optional owned ID selection), `spending` (revision-pinned sums/windows), `budgetEvidence`, `budget`, `budgetHistory`, `createBudget`, `updateBudget`, `archiveBudget`, `savingsGoal`, `savingsGoalHistory`, `createSavingsGoal`, `updateSavingsGoal`, `archiveSavingsGoal`, `savingsFacts`, `savingsEvidence` |
 | `income` | `sources`, `source`, `createSource`, `updateSource`, `archiveSource`, `expectedFacts`, `receipts`, `facts` |
 | `incomeExpectations` | `list`, `create`, `update`, `remove` |

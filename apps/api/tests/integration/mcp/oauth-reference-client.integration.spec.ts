@@ -90,7 +90,7 @@ describe.skipIf(!integration)("official MCP SDK 2.4 reference client", () => {
       );
       await client.connect(transport);
       const tools = (await client.listTools()).tools;
-      expect(tools).toHaveLength(16);
+      expect(tools).toHaveLength(26);
       for (const tool of tools) expect(tool.inputSchema.type).toBe("object");
       expect(
         tools.find((tool) => tool.name === "previsualizar_accion_financiera")

@@ -27,6 +27,7 @@ import {
   voiceSocket,
 } from "./assistant-voice-runtime";
 import { FinancialReads } from "./financial-reads";
+import { FinancialReadsMcpController } from "./financial-reads.mcp";
 
 @Module({
   imports: [
@@ -41,7 +42,7 @@ import { FinancialReads } from "./financial-reads";
     ObjectivesModule,
     FinancialEvidenceModule,
   ],
-  controllers: [AssistantHttp, AssistantVoiceHttp],
+  controllers: [AssistantHttp, AssistantVoiceHttp, FinancialReadsMcpController],
   providers: [
     FinancialReads,
     AssistantService,

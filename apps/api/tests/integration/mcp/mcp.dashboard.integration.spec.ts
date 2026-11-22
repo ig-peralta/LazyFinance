@@ -27,6 +27,7 @@ import { McpAuthorizationService } from "../../../src/mcp/authorization/mcp-auth
 import { ObjectivesService } from "../../../src/objectives/objectives.service";
 import { SavingsProgressService } from "../../../src/objectives/savings-progress.service";
 import { PersistenceClient } from "../../../src/persistence/persistence.client";
+import { SpendingInsightsService } from "../../../src/summaries/spending-insights.service";
 import { SummariesService } from "../../../src/summaries/summaries.service";
 import { TransactionsService } from "../../../src/transactions/transactions.service";
 import { santiagoMonth } from "../../../src/utils/santiago-time";
@@ -45,6 +46,13 @@ describe("Dashboard MCP tools", () => {
         lastSyncedAt: null,
       },
     ]),
+    coverageForUser: vi.fn(async (_userId: string, month: string) => ({
+      month,
+      asOf: "2026-11-07T15:00:00Z",
+      accounts: [],
+      unresolvedMovementCount: 0,
+      unclassifiedCreditCount: 0,
+    })),
   };
   const recent: RecentTransaction[] = [
     {
@@ -116,6 +124,28 @@ describe("Dashboard MCP tools", () => {
         },
       ],
     ),
+    monthlyPlan: vi.fn(async (_userId: string, month: string) => ({
+      month,
+      asOf: "2026-11-07T15:00:00Z",
+      total: "20000.00",
+      totalReason: "comparable",
+      budgetCount: 1,
+      hasMore: false,
+      budgets: [
+        {
+          id: "00000000-0000-4000-8000-000000000041",
+          name: "Budget",
+          period: "monthly",
+          limit: "20000.00",
+          spent: "15000.00",
+          remaining: "5000.00",
+          tags: [],
+          start: `${month}-01 00:00:00`,
+          end: "2026-10-01 00:00:00",
+          archivedAt: null,
+        },
+      ],
+    })),
   };
   const savingsResult = SavingsProgressSchema.parse({
     goal: {
@@ -157,6 +187,26 @@ describe("Dashboard MCP tools", () => {
     progress: vi.fn(
       async (_userId: string, _input: SavingsProgressInput) => savingsResult,
     ),
+    monthly: vi.fn(async (_userId: string, input: SavingsProgressInput) => ({
+      id: input.id,
+      name: "Savings",
+      month: input.month ?? "2026-09",
+      basis: "recorded_allocations",
+      tracking: savingsResult.tracking,
+      historyCoverage: [],
+      incompleteCoverage: false,
+      contributions: "30.00",
+      withdrawals: "10.00",
+      netContributions: "20.00",
+      pendingCount: 0,
+    })),
+    overview: vi.fn(async (_userId: string, month: string) => ({
+      month,
+      asOf: "2026-11-07T15:00:00Z",
+      totalGoals: 0,
+      hasMore: false,
+      goals: [],
+    })),
     evidence: vi.fn(async (_userId: string, _input: SavingsEvidenceInput) => ({
       items: [],
       pageInfo: { hasMore: false, nextCursor: null },
@@ -231,6 +281,24 @@ describe("Dashboard MCP tools", () => {
         tags: [],
       }),
     ),
+    getSpendingForUser: vi.fn(async (_userId: string, month: string) => ({
+      month,
+      asOf: "2026-11-07T15:00:00Z",
+      adjustmentsAsOf: "2026-11-07T15:00:00Z",
+      spending: "15000.00",
+      grossSpending: "18000.00",
+      refunds: "2000.00",
+      reimbursements: "1000.00",
+      untaggedSpending: "0.00",
+      tags: [],
+      unresolvedAdjustmentCount: 0,
+      unresolvedMovementCount: 0,
+      recoveredExpenseCredits: {
+        amount: "4000.00",
+        count: 1,
+        needsReviewCount: 0,
+      },
+    })),
     getComparisonForUser: vi.fn(
       async (_userId: string, month: string): Promise<MonthlyComparison> => ({
         month,
@@ -246,8 +314,87 @@ describe("Dashboard MCP tools", () => {
           previous: "10000.00",
           change: "5000.00",
         },
+        unresolvedMovementCount: { current: 0, previous: 0 },
       }),
     ),
+  };
+  const insights = {
+    difference: vi.fn(async (_userId: string, month: string) => ({
+      month,
+      asOf: "2026-11-07T15:00:00Z",
+      adjustmentsAsOf: "2026-11-07T15:00:00Z",
+      receivedIncome: "100.00",
+      spending: "20.00",
+      difference: "80.00",
+      grossSpending: "20.00",
+      refunds: "0.00",
+      reimbursements: "0.00",
+      unresolvedAdjustmentCount: 0,
+      unresolvedMovementCount: 0,
+      unclassifiedCredits: { amount: "0.00", count: 0 },
+      basis: "confirmed_income_minus_recorded_spending",
+    })),
+    trend: vi.fn(async (_userId: string, input: { through?: string }) => ({
+      through: input.through ?? "2026-09",
+      asOf: "2026-11-07T15:00:00Z",
+      selection: "all",
+      tagId: null,
+      average: "20.00",
+      months: ["2026-08", "2026-09"].map((month) => ({
+        month,
+        spending: "20.00",
+        partial: false,
+        unresolvedMovementCount: 0,
+      })),
+    })),
+    variation: vi.fn(async (_userId: string, month: string) => ({
+      month,
+      previousMonth: "2026-08",
+      asOf: "2026-11-07T15:00:00Z",
+      partial: false,
+      current: "20.00",
+      previous: "10.00",
+      change: "10.00",
+      rows: [],
+      otherChange: "10.00",
+    })),
+    merchant: vi.fn(async (_userId: string, input: { month?: string }) => ({
+      month: input.month ?? "2026-09",
+      asOf: "2026-11-07T15:00:00Z",
+      merchantQuery: null,
+      totals: {
+        spending: "20.00",
+        grossSpending: "20.00",
+        refunds: "0.00",
+        reimbursements: "0.00",
+        count: 1,
+      },
+      merchants: [],
+      otherSpending: "20.00",
+      merchantGroups: 1,
+    })),
+    range: vi.fn(
+      async (_userId: string, input: { from: string; before: string }) => ({
+        ...input,
+        partial: false,
+        asOf: "2026-11-07T15:00:00Z",
+        adjustmentsAsOf: "2026-11-07T15:00:00Z",
+        spending: "20.00",
+        grossSpending: "20.00",
+        refunds: "0.00",
+        reimbursements: "0.00",
+        unresolvedAdjustmentCount: 0,
+        unresolvedMovementCount: 0,
+      }),
+    ),
+    recurring: vi.fn(async (_userId: string, input: { through?: string }) => ({
+      through: input.through ?? "2026-09",
+      months: 3,
+      asOf: "2026-11-07T15:00:00Z",
+      basis: "observed_merchant_pattern",
+      candidates: [],
+      hasMore: false,
+    })),
   };
   const income = {
     getSummaryForUser: vi.fn(
@@ -346,6 +493,8 @@ describe("Dashboard MCP tools", () => {
       .useValue(evidence)
       .overrideProvider(SummariesService)
       .useValue(summaries)
+      .overrideProvider(SpendingInsightsService)
+      .useValue(insights)
       .overrideProvider(IncomeService)
       .useValue(income)
       .compile();
@@ -401,13 +550,23 @@ describe("Dashboard MCP tools", () => {
         "consultar_presupuestos_y_metas",
         "consultar_resumen_gastos_mensuales",
         "consultar_saldos_cuentas",
+        "consultar_total_presupuestado_mes",
+        "consultar_aportes_mensuales_meta",
+        "consultar_diferencia_ingresos_gastos_mes",
+        "consultar_tendencia_gastos",
+        "consultar_variacion_gastos_por_etiqueta",
+        "consultar_gasto_por_comercio",
+        "consultar_panorama_metas_ahorro",
+        "consultar_cobertura_datos_financieros",
+        "consultar_gastos_rango_fechas",
+        "consultar_cargos_recurrentes_observados",
         "ejecutar_accion_financiera",
         "previsualizar_accion_financiera",
       ].sort(),
     );
 
     for (const tool of tools) {
-      expect(tool.description.length).toBeGreaterThan(90);
+      expect(tool.description.length).toBeGreaterThan(60);
       expect(tool.annotations).toMatchObject({
         readOnlyHint: tool.name !== "ejecutar_accion_financiera",
         destructiveHint: tool.name === "ejecutar_accion_financiera",
@@ -426,12 +585,9 @@ describe("Dashboard MCP tools", () => {
         ?.outputSchema.type,
     ).toBe("object");
 
-    for (const name of [
-      "consultar_resumen_gastos_mensuales",
-      "comparar_gastos_mensuales",
-    ]) {
+    for (const name of ["consultar_resumen_gastos_mensuales"]) {
       const tool = tools.find((item) => item.name === name);
-      expect(tool?.description).toContain("compra original");
+      expect(tool?.description).toContain("compra");
       expect(tool?.outputSchema.properties).not.toHaveProperty("income");
       expect(tool?.outputSchema.properties).not.toHaveProperty(
         "receivedIncome",
@@ -440,10 +596,14 @@ describe("Dashboard MCP tools", () => {
         "expectedIncome",
       );
     }
+    expect(
+      tools.find(({ name }) => name === "comparar_gastos_mensuales")
+        ?.outputSchema.properties,
+    ).toHaveProperty("receivedIncome");
     const spending = tools.find(
       ({ name }) => name === "consultar_resumen_gastos_mensuales",
     );
-    expect(spending?.description).toContain("no son ingresos");
+    expect(spending?.description).toContain("no es ingreso");
     for (const field of [
       "spending",
       "grossSpending",
@@ -475,6 +635,36 @@ describe("Dashboard MCP tools", () => {
         { id: savingsResult.goal.id, month: "2026-09" },
       ],
       ["consultar_compras_del_gasto", "alice", { month: "2026-09" }],
+      ["consultar_total_presupuestado_mes", "alice", { month: "2026-09" }],
+      [
+        "consultar_aportes_mensuales_meta",
+        "bob",
+        { id: savingsResult.goal.id, month: "2026-09" },
+      ],
+      [
+        "consultar_diferencia_ingresos_gastos_mes",
+        "alice",
+        { month: "2026-09" },
+      ],
+      ["consultar_tendencia_gastos", "bob", { through: "2026-09", months: 2 }],
+      [
+        "consultar_variacion_gastos_por_etiqueta",
+        "alice",
+        { month: "2026-09" },
+      ],
+      ["consultar_gasto_por_comercio", "bob", { month: "2026-09" }],
+      ["consultar_panorama_metas_ahorro", "alice", { month: "2026-09" }],
+      ["consultar_cobertura_datos_financieros", "bob", { month: "2026-09" }],
+      [
+        "consultar_gastos_rango_fechas",
+        "alice",
+        { from: "2026-09-01", before: "2026-10-01" },
+      ],
+      [
+        "consultar_cargos_recurrentes_observados",
+        "bob",
+        { through: "2026-09", months: 3 },
+      ],
       [
         "consultar_compras_presupuesto",
         "bob",
@@ -540,10 +730,7 @@ describe("Dashboard MCP tools", () => {
         });
       }
 
-      if (
-        name === "consultar_resumen_gastos_mensuales" ||
-        name === "comparar_gastos_mensuales"
-      ) {
+      if (name === "consultar_resumen_gastos_mensuales") {
         expect(response.body.result.structuredContent).not.toHaveProperty(
           "income",
         );
@@ -551,6 +738,11 @@ describe("Dashboard MCP tools", () => {
           "1379000.00",
         );
         expect(response.body.result.structuredContent.spending).toBeDefined();
+      }
+      if (name === "comparar_gastos_mensuales") {
+        expect(
+          response.body.result.structuredContent.receivedIncome.current,
+        ).toBe("1379000.00");
       }
     }
 
@@ -581,10 +773,16 @@ describe("Dashboard MCP tools", () => {
       "bob",
       "2026-09",
     );
-    expect(summaries.getMonthlyForUser).toHaveBeenCalledWith(
+    expect(summaries.getSpendingForUser).toHaveBeenCalledWith(
       "alice",
       "2026-09",
     );
+    expect(insights.difference).toHaveBeenCalledWith("alice", "2026-09");
+    expect(insights.recurring).toHaveBeenCalledWith("bob", {
+      through: "2026-09",
+      months: 3,
+    });
+    expect(accounts.coverageForUser).toHaveBeenCalledWith("bob", "2026-09");
     expect(summaries.getComparisonForUser).toHaveBeenCalledWith(
       "bob",
       "2026-09",

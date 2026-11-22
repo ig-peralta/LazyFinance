@@ -3386,6 +3386,81 @@ describe.skipIf(!ownerUrl)(
       );
     });
 
+    it("aggregates purchase-attributed merchant spending and isolates account coverage by owner", async () => {
+      const purchase = randomUUID();
+      const secondPurchase = randomUUID();
+      const foreignPurchase = randomUUID();
+      const refund = randomUUID();
+      const adjustment = randomUUID();
+      await sql`insert into finance."transaction"(id,account_id,booked_at,amount,type,merchant,is_internal_movement) values
+        (${purchase},${accountA},'2026-06-19T15:00:00Z',-50,'debit',' Stream  ',false),
+        (${secondPurchase},${accountA},'2026-06-19T16:00:00Z',-20,'debit','STREAM',false),
+        (${foreignPurchase},${accountB},'2026-06-19T16:00:00Z',-90,'debit','Foreign',false),
+        (${refund},${accountA},'2026-06-20T15:00:00Z',10,'credit','Refund',false)`.execute(
+        owner,
+      );
+      await sql`insert into finance.expense_adjustment(id,credit_transaction_id,purchase_transaction_id,kind,amount,
+        credit_amount,purchase_amount,credit_booked_at,purchase_booked_at)
+        values (${adjustment},${refund},${purchase},'refund',10,10,-50,'2026-06-20T15:00:00Z','2026-06-19T15:00:00Z')`.execute(
+        owner,
+      );
+      await sql`update finance.account set history_completeness='complete', history_from='2026-06-01', history_through='2026-06-30'
+        where id=${accountA}`.execute(owner);
+
+      const clientFor = (userId: string) =>
+        createTRPCClient<PersistenceRouter>({
+          links: [
+            httpLink({
+              url: `${url}/trpc`,
+              headers: async () => ({
+                authorization: `Bearer ${await sign(ctx(userId))}`,
+              }),
+            }),
+          ],
+        });
+      const period = {
+        start: "2026-06-19 00:00:00",
+        end: "2026-06-20 00:00:00",
+        asOf: new Date().toISOString(),
+        adjustmentsAsOf: new Date().toISOString(),
+      };
+      expect(
+        await clientFor(a).transactions.merchantSpending.query(period),
+      ).toEqual([
+        {
+          merchant: "stream",
+          month: "2026-06",
+          amount: "-70.00",
+          refundAmount: "10.00",
+          reimbursementAmount: "0.00",
+          count: 2,
+        },
+      ]);
+      expect(
+        await clientFor(b).transactions.merchantSpending.query(period),
+      ).toEqual([
+        {
+          merchant: "foreign",
+          month: "2026-06",
+          amount: "-90.00",
+          refundAmount: "0.00",
+          reimbursementAmount: "0.00",
+          count: 1,
+        },
+      ]);
+      expect(await clientFor(a).accounts.coverage.query()).toEqual([
+        expect.objectContaining({
+          id: accountA,
+          historyCompleteness: "complete",
+          historyFrom: "2026-06-01",
+          historyThrough: "2026-06-30",
+        }),
+      ]);
+      expect(
+        (await clientFor(b).accounts.coverage.query()).map((row) => row.id),
+      ).toEqual([accountB]);
+    });
+
     it("keeps income source/expectation changes and receipt confirmation authoritative and atomic", async () => {
       const client = createTRPCClient<PersistenceRouter>({
         links: [

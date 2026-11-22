@@ -5,6 +5,7 @@ import type {
 } from "@lazyfinance/contracts";
 import { Injectable } from "@nestjs/common";
 import { TRPCError } from "@trpc/server";
+import { coversObservedMonth } from "../finance/history-coverage";
 import { PersistenceClient } from "../persistence/persistence.client";
 import { fromCents, toCents } from "../utils/money";
 import { checkedMonth } from "../utils/month-query";
@@ -40,7 +41,11 @@ export class SavingsProgressService {
     private readonly goals: SavingsGoalsService,
   ) {}
 
-  private async selection(userId: string, input: SavingsProgressInput) {
+  private async selection(
+    userId: string,
+    input: SavingsProgressInput,
+    monthly = false,
+  ) {
     const month = checkedMonth(input.month ?? santiagoMonth(new Date()));
     const asOf = input.asOf ?? new Date().toISOString();
     if (Date.parse(asOf) > Date.now())
@@ -49,7 +54,10 @@ export class SavingsProgressService {
         message: "Observation cannot be in the future",
       });
     const goal = await this.goals.detail(userId, input.id);
-    const { start, end, period } = savingsWindow(goal, month);
+    const window = monthly
+      ? { ...monthBounds(month), period: "monthly" as const }
+      : savingsWindow(goal, month);
+    const { start, end, period } = window;
     return {
       goal,
       month,
@@ -60,6 +68,38 @@ export class SavingsProgressService {
 
   async progress(userId: string, input: SavingsProgressInput) {
     const selection = await this.selection(userId, input);
+    const {
+      facts,
+      contributions,
+      withdrawals,
+      contributionCount,
+      withdrawalCount,
+      pendingCount,
+    } = await this.measured(userId, selection);
+    const net = contributions - withdrawals,
+      target = toCents(selection.goal.amount);
+    return {
+      goal: selection.goal,
+      month: selection.month,
+      period: selection.period,
+      basis: "recorded_allocations" as const,
+      tracking: facts.tracking,
+      contributions: fromCents(contributions),
+      withdrawals: fromCents(withdrawals),
+      netContributions: fromCents(net),
+      remaining: fromCents(target - net),
+      percentage: fromCents((net * 10000n) / target),
+      contributionCount,
+      withdrawalCount,
+      pendingCount,
+      historyCoverage: facts.historyCoverage,
+    };
+  }
+
+  private async measured(
+    userId: string,
+    selection: Awaited<ReturnType<SavingsProgressService["selection"]>>,
+  ) {
     const facts = await this.persistence
       .user(userId)
       .objectives.savingsFacts.query(selection.query);
@@ -80,23 +120,77 @@ export class SavingsProgressService {
         withdrawalCount += row.count;
       }
     }
-    const net = contributions - withdrawals,
-      target = toCents(selection.goal.amount);
     return {
-      goal: selection.goal,
-      month: selection.month,
-      period: selection.period,
-      basis: "recorded_allocations" as const,
-      tracking: facts.tracking,
-      contributions: fromCents(contributions),
-      withdrawals: fromCents(withdrawals),
-      netContributions: fromCents(net),
-      remaining: fromCents(target - net),
-      percentage: fromCents((net * 10000n) / target),
+      facts,
+      contributions,
+      withdrawals,
       contributionCount,
       withdrawalCount,
       pendingCount,
+    };
+  }
+
+  async monthly(userId: string, input: SavingsProgressInput) {
+    const selection = await this.selection(userId, input, true);
+    const { facts, contributions, withdrawals, pendingCount } =
+      await this.measured(userId, selection);
+    return {
+      id: selection.goal.id,
+      name: selection.goal.name,
+      month: selection.month,
+      basis: "recorded_allocations" as const,
+      tracking: facts.tracking,
       historyCoverage: facts.historyCoverage,
+      incompleteCoverage:
+        !facts.historyCoverage.length ||
+        facts.historyCoverage.some(
+          (account) =>
+            !coversObservedMonth(account, selection.month, facts.tracking.asOf),
+        ),
+      contributions: fromCents(contributions),
+      withdrawals: fromCents(withdrawals),
+      netContributions: fromCents(contributions - withdrawals),
+      pendingCount,
+    };
+  }
+
+  async overview(userId: string, month: string) {
+    const selected = checkedMonth(month);
+    const asOf = new Date().toISOString();
+    const goals = (
+      await this.persistence.user(userId).objectives.list.query()
+    ).filter((objective) => objective.intent === "saving");
+    const progress = await Promise.all(
+      goals.slice(0, 12).map(async (goal) => {
+        const result = await this.progress(userId, {
+          id: goal.id,
+          month: selected,
+          asOf,
+        });
+        return {
+          id: goal.id,
+          name: goal.name,
+          period: result.period,
+          target: goal.amount,
+          remaining: result.remaining,
+          contributions: result.contributions,
+          withdrawals: result.withdrawals,
+          netContributions: result.netContributions,
+          pendingCount: result.pendingCount,
+          incompleteCoverage:
+            !result.historyCoverage.length ||
+            result.historyCoverage.some(
+              (account) => !coversObservedMonth(account, selected, asOf),
+            ),
+        };
+      }),
+    );
+    return {
+      month: selected,
+      asOf,
+      totalGoals: goals.length,
+      hasMore: goals.length > 12,
+      goals: progress,
     };
   }
 

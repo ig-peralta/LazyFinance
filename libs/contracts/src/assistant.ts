@@ -17,6 +17,16 @@ export const FinancialReadNameSchema = z.enum([
   "consultar_aportes_ahorro",
   "consultar_compras_del_gasto",
   "consultar_compras_presupuesto",
+  "consultar_total_presupuestado_mes",
+  "consultar_aportes_mensuales_meta",
+  "consultar_diferencia_ingresos_gastos_mes",
+  "consultar_tendencia_gastos",
+  "consultar_variacion_gastos_por_etiqueta",
+  "consultar_gasto_por_comercio",
+  "consultar_panorama_metas_ahorro",
+  "consultar_cobertura_datos_financieros",
+  "consultar_gastos_rango_fechas",
+  "consultar_cargos_recurrentes_observados",
 ]);
 
 export const AssistantReadNameSchema = z.enum([

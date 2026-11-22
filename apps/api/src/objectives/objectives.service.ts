@@ -16,7 +16,7 @@ import { fromCents, toCents } from "../utils/money";
 import { monthBounds } from "../utils/period";
 import { santiagoMonth } from "../utils/santiago-time";
 import { parseInput } from "../validation/parse-input";
-import { reportedBudgetPeriod } from "./budget-period";
+import { budgetPeriod, reportedBudgetPeriod } from "./budget-period";
 import { budgetSchedule, nextBudgetRevision } from "./budget-policy";
 import { compareObjectiveBoundaries } from "./objective-time";
 
@@ -215,5 +215,111 @@ export class ObjectivesService {
         },
       ];
     });
+  }
+
+  async monthlyPlan(userId: string, month: string, now = new Date()) {
+    const current = santiagoMonth(now);
+    const { start, end } = monthBounds(month);
+    const definitions = await this.persistence
+      .user(userId)
+      .objectives.forPeriod.query({ before: end });
+    const progress =
+      month <= current
+        ? await this.getSpendingProgressForUser(userId, month, now)
+        : [];
+    const measured = new Map(progress.map((budget) => [budget.id, budget]));
+    const budgets = definitions.flatMap((objective) => {
+      const window =
+        month <= current
+          ? reportedBudgetPeriod(objective, month, now)
+          : budgetPeriod(objective, month);
+      if (
+        !window ||
+        !objective.tags.length ||
+        (objective.archivedAt &&
+          compareObjectiveBoundaries(objective.archivedAt, start) <= 0)
+      )
+        return [];
+      const observed = measured.get(objective.id);
+      return [
+        {
+          id: objective.id,
+          name: objective.name,
+          period: window.period,
+          limit: objective.amount,
+          spent:
+            observed?.revisionId === objective.revisionId
+              ? observed.spent
+              : null,
+          remaining:
+            observed?.revisionId === objective.revisionId
+              ? observed.remaining
+              : null,
+          tags: objective.tags,
+          start: window.start,
+          end: window.end,
+          archivedAt: objective.archivedAt,
+        },
+      ];
+    });
+    if (budgets.length > 100)
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Too many budgets for one overview",
+      });
+    const tags = budgets.flatMap((budget) => budget.tags.map((tag) => tag.id));
+    const reason = !budgets.length
+      ? ("no_budgets" as const)
+      : budgets.some((budget) => budget.period !== "monthly")
+        ? ("mixed_periods" as const)
+        : budgets.some(
+              (budget) =>
+                compareObjectiveBoundaries(budget.start, budgets[0].start) !==
+                  0 ||
+                compareObjectiveBoundaries(budget.end, budgets[0].end) !== 0,
+            )
+          ? ("different_windows" as const)
+          : budgets.some(
+                (budget) =>
+                  compareObjectiveBoundaries(budget.start, start) !== 0 ||
+                  compareObjectiveBoundaries(budget.end, end) !== 0 ||
+                  (budget.archivedAt &&
+                    compareObjectiveBoundaries(budget.archivedAt, end) < 0),
+              )
+            ? ("partial_month" as const)
+            : new Set(tags).size !== tags.length
+              ? ("overlapping_tags" as const)
+              : month <= current &&
+                  budgets.some((budget) => {
+                    const observed = measured.get(budget.id);
+                    return (
+                      budget.spent === null ||
+                      (observed !== undefined &&
+                        (compareObjectiveBoundaries(
+                          observed.tracking.start,
+                          start,
+                        ) > 0 ||
+                          compareObjectiveBoundaries(
+                            observed.tracking.end,
+                            end,
+                          ) < 0))
+                    );
+                  })
+                ? ("changed_definitions" as const)
+                : ("comparable" as const);
+    return {
+      month,
+      asOf: now.toISOString(),
+      totalReason: reason,
+      total:
+        reason === "comparable"
+          ? fromCents(
+              budgets.reduce((sum, budget) => sum + toCents(budget.limit), 0n),
+            )
+          : null,
+      budgetCount: budgets.length,
+      hasMore: budgets.length > 12,
+      budgets: budgets.slice(0, 12),
+    };
   }
 }
