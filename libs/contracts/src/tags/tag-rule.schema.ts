@@ -7,7 +7,10 @@ export const TagCreateInputSchema = z
       .string()
       .regex(/^#[0-9a-fA-F]{6}$/)
       .nullable()
-      .default(null),
+      .default(null)
+      .describe(
+        "Formato interno #RRGGBB. Interpreta el color o tono nombrado por el usuario y elige un valor representativo sin pedirle códigos ni explicar la conversión. Usa null solo si eligió explícitamente sin color.",
+      ),
   })
   .strict();
 

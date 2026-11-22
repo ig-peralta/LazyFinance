@@ -282,8 +282,15 @@ owned reads supply real IDs. Every budget/goal requires at least one existing or
 new tag; the model's JSON schema exposes nonempty alternatives, not only a runtime
 refinement. No-color is a tag choice, never permission for a tagless objective.
 Budget/goal proposals may include up to five new tags.
-The assistant asks one missing detail at a time, including the color of a new tag
-or an explicit no-color choice. It presents **one request at a time**: "Preparé la
+The assistant asks one missing decision at a time, including the color of a new tag
+or an explicit no-color choice when neither was given. Named colors and recognizable
+shades are translated into the required six-digit value internally, including when
+correcting a pending proposal; it must not ask for or narrate color codes. When a
+shade is genuinely ambiguous it asks for the preferred color in ordinary language.
+No-color is not inferred from an omitted preference; existing tags keep their
+colors unless explicitly changed. The same general rule applies to unambiguous
+dates, amounts and owned IDs: ask for a missing decision, not an internal field
+format. It presents **one request at a time**: "Preparé la
 solicitud… Puedes aceptarla en la tarjeta o decirme qué corregir", rather than
 claiming it cannot create supported resources. A pending request blocks another
 new request; previous requests remain accessible instead of being replaced.
@@ -519,6 +526,15 @@ mixed/unknown account coverage. The four existing deterministic SDK cases do not
 exercise these new model-selection decisions. Mocked transport and calculation
 tests are not evidence that the two new private SQL reads have run under RLS or
 that a live model chooses the right tool.
+
+For tag-color interactions, evaluate new tags alone and within budgets/goals,
+corrections to existing/pending tags, common names and shades (for example,
+"roja" and "azul oscuro"), a missing preference, "sin color" and an explicitly
+delegated color choice. Verify that clear preferences proceed to the proposal,
+ambiguous preferences get one natural question, unchanged existing tags retain
+their color, and no spoken or written answer asks for or advertises color codes.
+Schema and scripted-model tests alone cannot establish that a live model will
+follow this conversational guidance.
 
 No live model request was made during the verification recorded below.
 Offline demonstration, scripted SDK models and deterministic grounding fixtures

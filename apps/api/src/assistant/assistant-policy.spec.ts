@@ -12,6 +12,8 @@ import {
   assistantActionContext,
   assistantHistory,
   assistantInstructions,
+  assistantProposalDescription,
+  assistantRevisionDescription,
 } from "./assistant-policy";
 import { assistantModel } from "./assistant-runtime";
 
@@ -256,10 +258,38 @@ describe("provider-neutral assistant configuration and bounded context", () => {
     expect(prompt).toContain("mes actual 2026-11");
     expect(prompt).toContain("UNA A LA VEZ");
     expect(prompt).toContain("budget.newTags");
-    expect(prompt).toContain("pregunta qué color quiere");
+    expect(prompt).toContain(
+      "pregunta qué color prefiere SOLO si aún no lo indicó",
+    );
     expect(prompt).toContain("corregir_propuesta_financiera");
     expect(prompt).toContain(
       "Puedes aceptarla en la tarjeta o decirme qué corregir",
+    );
+  });
+
+  it("treats everyday color choices as preferences, not requests for technical input", () => {
+    const prompt = assistantInstructions(new Date("2026-11-22T16:00:00Z"));
+    expect(prompt).toContain(
+      "los formatos de las herramientas son detalles internos",
+    );
+    expect(prompt).toContain(
+      "No pidas al usuario códigos de color, UUID, JSON ni fechas con formato técnico",
+    );
+    expect(prompt).toContain("rojo → #EF4444");
+    expect(prompt).toContain("azul oscuro → #1E3A8A");
+    expect(prompt).toContain("sin color → null");
+    expect(prompt).toContain(
+      "pregunta qué color prefiere SOLO si aún no lo indicó",
+    );
+    expect(prompt).toContain("si te delegó expresamente la elección");
+    expect(prompt).toContain(
+      "Una etiqueta existente conserva su color salvo una corrección explícita",
+    );
+    expect(assistantProposalDescription).toContain(
+      "sin pedirle un código ni narrar la conversión",
+    );
+    expect(assistantRevisionDescription).toContain(
+      "sin solicitar ni explicar códigos",
     );
   });
 });

@@ -354,6 +354,12 @@ describe("server-owned native audio conversation", () => {
       expect(JSON.stringify(f.responses().at(-1))).not.toContain(
         "acento chileno",
       );
+      expect(JSON.stringify(f.responses().at(-1))).toContain(
+        "nunca pidas códigos ni narres su conversión",
+      );
+      expect(JSON.stringify(f.socket.sent)).toContain(
+        "sin pedirle códigos ni explicar la conversión",
+      );
       const request = {
         kind: "create_budget",
         budget: {
