@@ -1,6 +1,7 @@
 import { TestBed } from "@angular/core/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { emptySummary, setupRpc } from "../../../testing/rpc";
+import { AssistantWorkspace } from "../../features/assistant/assistant-workspace";
 import { AssistantEntry } from "./assistant-entry";
 
 describe("assistant-first home without an AI dependency", () => {
@@ -37,6 +38,14 @@ describe("assistant-first home without an AI dependency", () => {
     expect(f.callsTo("assistant.configuration")).toHaveLength(0);
     expect(f.callsTo("assistant.createConversation")).toHaveLength(0);
     expect(f.callsTo("assistant.consent")).toHaveLength(0);
+    const workspace = TestBed.inject(AssistantWorkspace);
+    expect(workspace.opened()).toBe(true);
+    workspace.minimize();
+    const returnVisit = TestBed.createComponent(AssistantEntry);
+    returnVisit.detectChanges();
+    await returnVisit.whenStable();
+    expect(workspace.opened()).toBe(false);
+    expect(workspace.minimized()).toBe(true);
   });
 
   it("closes the optional monthly details on Escape or an outside pointer without a new read", async () => {

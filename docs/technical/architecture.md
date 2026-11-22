@@ -202,7 +202,8 @@ without new processing. See [consent policy and withdrawal limits](financial-ass
 Generation is bounded, cancellable and lease/nonce protected. It defaults disabled;
 live model quality remains a separate verification gate. One deferred UI host
 preserves authenticated text state across navigation/minimization, inline in the
-assistant-first home and docked beside financial pages. The complete dashboard
+assistant-first home and in an overlay dialog above financial pages. The complete
+dashboard
 remains independent of AI. Optional WebRTC voice adds a server-side Realtime
 control connection for native audio turns, financial tools and history leases;
 captions never trigger the ordinary text stream. Text and voice both receive

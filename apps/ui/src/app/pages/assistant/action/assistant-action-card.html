@@ -33,7 +33,7 @@
     <dl>@for (row of details().rows; track row.label) { <div><dt>{{ row.label }}</dt><dd [class.color-detail]="row.color !== undefined">@if (row.color !== undefined) { <span class="action-color-swatch" [class.no-color]="row.color === null" [style.backgroundColor]="row.color" aria-hidden="true"></span> }{{ row.value }}</dd></div> }</dl>
     @for (note of details().notes; track $index) { <p class="action-note">{{ note }}</p> }
     @if (current().status === 'applied') {
-      <ul class="action-results">@for (result of current().results; track $index) { <li><a [routerLink]="result.path">{{ result.title }} →</a></li> }</ul>
+      <ul class="action-results">@for (result of current().results; track $index) { <li><a data-assistant-navigation [routerLink]="result.path">{{ result.title }} →</a></li> }</ul>
       <p class="action-note">Este cambio ya se guardó. Detener el chat o eliminar la conversación no lo revierte.</p>
     } @else if (current().status !== 'cancelled') {
       @if (interruptedVoiceTurn()) { <p class="action-note" role="status">La respuesta de voz se interrumpió. Revisa todos los campos de esta propuesta antes de aprobarla.</p> }

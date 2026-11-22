@@ -316,6 +316,78 @@ describe("first-party chat page lifetimes and confirmed history", () => {
     }
   });
 
+  it("minimizes when following a reference without aborting or replaying text generation", async () => {
+    const finish = deferred<void>();
+    const f = setup({
+      "assistant.conversation": () => ({
+        ...chat,
+        turns: [assistantReply],
+        turnCount: 1,
+      }),
+    });
+    f.stream.mockImplementationOnce(async (_owner, input, _signal, receive) => {
+      receive({ type: "turn", turn: turn(input) });
+      await finish.promise;
+      receive({
+        type: "done",
+        turn: {
+          ...turn(input),
+          text: "Respuesta completada mientras estaba minimizado",
+          status: "complete",
+        },
+      });
+    });
+    await render(f.fixture);
+    compose(f, "¿Y cómo se compara con el mes pasado?");
+    button(f.root, "Enviar pregunta").click();
+    await vi.waitFor(() => expect(f.stream).toHaveBeenCalledOnce());
+    button(f.root, "Ver consultas · 1 ↗").click();
+    await render(f.fixture);
+    const link = f.root.querySelector<HTMLAnchorElement>(
+      ".chat-details .reference-open",
+    );
+    if (!link) throw new Error("Missing reference navigation");
+    link.addEventListener("click", (event) => {
+      if (event.ctrlKey) event.preventDefault();
+    });
+    link.dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        ctrlKey: true,
+      }),
+    );
+    expect(f.workspace.opened()).toBe(true);
+    const navigateByUrl = vi.mocked(TestBed.inject(Router).navigateByUrl);
+    expect(navigateByUrl).not.toHaveBeenCalled();
+    await render(f.fixture);
+    const currentLink = f.root.querySelector<HTMLAnchorElement>(
+      ".chat-details .reference-open",
+    );
+    if (!currentLink) throw new Error("Missing current reference navigation");
+    expect(currentLink.getAttribute("href")).toBe("/cuentas");
+    const follow = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+    });
+    currentLink.dispatchEvent(follow);
+    await render(f.fixture);
+    expect(follow.defaultPrevented).toBe(true);
+    expect(navigateByUrl).toHaveBeenCalled();
+    expect(f.workspace.opened()).toBe(false);
+    expect(f.workspace.minimized()).toBe(true);
+    expect(f.workspace.textPending()).toBe(true);
+    expect(f.stream.mock.calls[0][2].aborted).toBe(false);
+    finish.resolve();
+    await render(f.fixture);
+    f.workspace.open();
+    await render(f.fixture);
+    expect(f.root.textContent).toContain(
+      "Respuesta completada mientras estaba minimizado",
+    );
+    expect(f.stream).toHaveBeenCalledOnce();
+  });
+
   it("keeps voice proposals in their separate review view after capture ends and restores only the original text and draft", async () => {
     const f = setup(
       { "assistant.configuration": () => externalConfiguration },
@@ -876,6 +948,57 @@ describe("first-party chat page lifetimes and confirmed history", () => {
     expect(f.root.querySelector(".voice-stage")).toBeNull();
   });
 
+  it.each([
+    "hidden tab",
+    "owner removal",
+  ])("keeps established voice available across navigation but stops on %s", async (reason) => {
+    const f = setup(
+      { "assistant.configuration": () => externalConfiguration },
+      chat.id,
+      true,
+    );
+    const voice = f.fixture.debugElement.injector.get(AssistantVoiceClient);
+    let receive: Parameters<AssistantVoiceClient["start"]>[2] | undefined;
+    vi.spyOn(voice, "start").mockImplementation(
+      async (_owner, _id, handler) => {
+        receive = handler;
+        voice.state.set("listening");
+      },
+    );
+    await render(f.fixture);
+    button(f.root, "Voz").click();
+    await render(f.fixture);
+    button(f.root, "Entiendo, iniciar micrófono").click();
+    await render(f.fixture);
+    const end = vi.spyOn(voice, "end");
+    f.workspace.minimize();
+    await render(f.fixture);
+    expect(end).not.toHaveBeenCalled();
+    expect(f.workspace.voiceState()).toBe("listening");
+    const router = TestBed.inject(Router);
+    vi.mocked(router.navigateByUrl).mockRestore();
+    await router.navigateByUrl("/");
+    await render(f.fixture);
+    expect(end).not.toHaveBeenCalled();
+    receive?.({
+      type: "turn",
+      turn: { ...assistantReply, text: "", status: "pending", sources: [] },
+    });
+    receive?.({ type: "source", source: assistantSource() });
+    await render(f.fixture);
+    expect(f.root.querySelector(".voice-stage")?.textContent).toContain(
+      "Ver consultas · 1",
+    );
+    if (reason === "hidden tab") {
+      vi.spyOn(document, "hidden", "get").mockReturnValue(true);
+      document.dispatchEvent(new Event("visibilitychange"));
+    } else f.credentials.clear();
+    await render(f.fixture);
+    expect(end).toHaveBeenCalled();
+    expect(f.workspace.voiceState()).toBe("off");
+    if (reason === "owner removal") expect(f.workspace.minimized()).toBe(false);
+  });
+
   it("preserves an unselected text draft while a separate voice turn closes, reconciles and rejects late events", async () => {
     const closed = deferred<void>();
     let saved: AssistantTurn[] = [];
@@ -1385,6 +1508,7 @@ describe("first-party chat page lifetimes and confirmed history", () => {
     expect(f.workspace.selection()).toBeUndefined();
     expect(f.root.querySelector("textarea")?.value).toBe("");
     expect(f.workspace.opened()).toBe(false);
+    expect(f.workspace.minimized()).toBe(false);
   });
 
   it("keeps an in-flight text stream alive while minimized without replay on reopen", async () => {

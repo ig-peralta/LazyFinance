@@ -120,16 +120,19 @@ See [OAuth browser/site configuration and compatibility](../../docs/technical/mc
 
 The assistant-first home at `/asistente` keeps an ordinary month-selectable financial
 strip above one full-width chat, without requiring AI consent/model calls for the
-snapshot. The strip expands for detailed figures and month selection; the default
-home keeps the composer on screen and lets messages use the available viewport.
+snapshot. The strip expands for detailed figures and month selection; visiting
+home without a minimized chat opens the inline composer and lets messages use
+the available viewport.
 There is no hero, empty results pane or conversation/results tab switcher.
 Proposals stay inline, while **Ver consultas** opens source details on request.
 Privacy, availability and deletion are grouped under one options disclosure.
 `/dashboard` preserves the complete dashboard. The shell provides one persistent
-theme-token-aligned assistant, inline at home and docked
-beside other pages. A compact, neutral **Texto / Voz** segmented switch lives in
-the header beside icon-only history/new/options actions, without another toolbar
-row. Narrow panels retain accessible title text while keeping controls on one line.
+theme-token-aligned assistant, inline at home and in a minimizable overlay dialog
+on other pages. The dialog never shrinks the underlying page layout; it is up to
+1200px wide on desktop and full-screen on narrow screens. A compact, neutral
+**Texto / Voz** segmented switch lives in the header beside icon-only history/
+new/options actions, without another toolbar row. Narrow panels retain accessible
+title text while keeping controls on one line.
 Text remains the default; history opens in a drawer. Native
 voice uses a distinct stage and server-run tools, not transcript-to-text/read-aloud.
 Switching back to text stops capture and restores the original text draft and
@@ -137,16 +140,30 @@ conversation. Voice records stay in the database, outside text history/context;
 their proposal/query review remains in the separate voice view after capture ends.
 Confirmed receipts enter their own conversation's next server context; verbal
 agreement is never approval. See the [assistant guide](../../docs/technical/financial-assistant.md).
-Outside home, **Asistente · ?** in the top bar (accessible name **Abrir asistente · ?**)
-exposes the actual keyboard shortcut without a floating button covering page
-actions. It restores/focuses that instance without resending, respects editable
-fields and real modals, and is bound only within the accepted authenticated shell lifetime.
+Outside home, and when home is minimized, **Asistente · ?** in the top bar
+(accessible name **Abrir asistente · ?**) exposes the actual keyboard shortcut
+without covering page actions before the assistant is opened. It restores/focuses
+that instance without resending,
+respects editable fields and real modals, and is bound only within the accepted
+authenticated shell lifetime.
 Minimize returns focus to the connected invoker, or to the same persistent header
 control if navigation removed or hid that invoker. Deferred loading never replaces it.
 Loading/error cancellation also restores the control before the assistant code is ready.
-`/asistente` opens the existing panel; explicit conversation deep links select
-server-owned history. First open loads it once; authenticated navigation preserves
-in-memory text state without resend. Minimize retains it, while Close panel clears
+While the dialog is open, the background is inert. Minimizing leaves a compact
+bottom-right bubble showing whether a text reply is pending or voice is active;
+the bubble reopens the chat and offers mute/end controls for a live voice session.
+Muted voice shows a crossed-out microphone icon instead of the active microphone.
+Clicking the backdrop minimizes an open overlay; clicks inside do not. Any
+completed in-app route change (including back/forward and returning to
+`/asistente`) minimizes an open chat without losing the draft, text reply or
+established voice session. On home the minimized bubble reopens it inline.
+Following a financial reference or approved-action result minimizes automatically
+after choosing its in-app link; opening one in a new tab does not minimize.
+Visiting `/asistente` without a minimized chat opens the existing panel;
+arriving there while minimized does not reopen it. Explicit conversation deep
+links select server-owned history. First open loads it once; authenticated
+navigation preserves in-memory text state without resend. Minimize retains it,
+while Close panel clears
 the draft/selection and stops work without deleting saved history. Separate Delete
 still requires confirmation. Owner/credential replacement clears private state.
 New answers anchor once at their beginning; later tokens never force scrolling.
@@ -154,13 +171,12 @@ A small centered down arrow returns to the latest message. Quiet activity text
 sits above the input rather than in a full-width status row.
 Requested source details retain their observation cutoffs and keep financial
 approval inline with text replies, never duplicated in a source-only pane.
-Outside home, the desktop dock becomes modal with inert background
-and focus containment on narrow screens; the inline home remains ordinary page
-content. Escape dismisses options, history or requested details before minimizing
-an outside-home dock.
+Outside home, the overlay has an inert background and focus containment at every
+viewport size; the inline home remains ordinary page content. Escape dismisses
+options, history or requested details before minimizing the dialog.
 Processing consent is saved on the account through authenticated RPC, not browser
 storage. New/refused/outdated consent opens a dedicated screen; accepted consent
-survives reload/sign-out/devices. **Ahora no** saves refusal and minimizes a dock;
+survives reload/sign-out/devices. **Ahora no** saves refusal and minimizes the dialog;
 the home snapshot and consent/history entry remain available without processing.
 **Ver historial sin IA** keeps saved chats readable/deletable without new processing.
 Reopening checks permission without remounting an accepted chat. Failed/uncertain
@@ -183,8 +199,10 @@ incomplete answers warn without closing a healthy call or automatically retrying
 Capture stops immediately and saved state refreshes after asynchronous closure.
 Loading, failed and disabled availability are shown under assistant options, with
 **Volver a comprobar voz** for an explicit read after configuration changes.
-Minimize/navigation/hidden tabs end capture. See the
-[voice contract and unverified live gates](../../docs/technical/assistant-live-voice.md).
+Minimizing or navigating during voice setup cancels microphone admission. An
+established voice call can continue while minimized or navigating in-app, with
+the visible bubble and immediate mute/end controls; hiding the tab ends capture.
+See the [voice contract and unverified live gates](../../docs/technical/assistant-live-voice.md).
 
 `/asistente` provides financial questions, explicit suggestions, streamed replies,
 Stop, server-owned history, separate financial reference cards, copy and confirmed

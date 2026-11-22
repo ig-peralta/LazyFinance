@@ -1,8 +1,8 @@
 # First-party financial assistant
 
 The assistant-first home is `/asistente`, the default destination after sign-in.
-The shell owns one persistent assistant, inline at home and docked beside other
-financial pages (a modal on narrow screens outside home).
+The shell owns one persistent assistant, inline at home and in a minimizable
+overlay dialog above other financial pages (full-screen on narrow screens).
 `?conversacion=<UUID>` explicitly selects saved history. It reads the same financial
 services as the dashboard and MCP. It can prepare budget/savings-goal creation,
 tag management and individual movement-tag decisions. Preparing changes no
@@ -10,17 +10,25 @@ financial data: the user must approve the saved proposal with its card's button.
 The model cannot approve or execute. Neither interface moves money, connects banks,
 confirms income, changes banking facts or creates automatic classification rules.
 
-The first open loads the assistant once; authenticated navigation/minimization
-retains that same instance, selected conversation, draft and text generation.
+Visiting home without a minimized chat opens it inline; arriving after
+minimization does not reopen it. The first open loads the assistant once.
+Completed in-app navigation (including back/forward and home) minimizes an open
+chat while retaining that instance, selected conversation, draft and text generation.
+Clicking the overlay backdrop also minimizes; clicks inside do not. In-app
+reference and confirmed-action links minimize immediately when followed.
+A bottom-right bubble reopens a minimized chat, shows text/voice activity and
+provides mute/end controls while voice is live. Voice setup is cancelled on
+minimize/navigation; established voice continues until ended or the tab is hidden.
 Reload restores no private browser state: history is read through authenticated
 services, and only an explicit deep link selects a saved conversation. Close panel
 stops generation, ends voice and clears the in-memory selection/draft; it does not
 delete saved history. Delete requires its separate confirmation and never undoes
 financial changes. Logout, credential replacement and owner changes clear private
 state and invalidate late results.
-Outside home, the persistent top-bar **Asistente · ?** control opens that same
-instance without covering page actions. It also supplies focus recovery after
-route entry. Welcome suggestions only prepare a draft; changes still require
+Outside home, and when home is minimized, the persistent top-bar
+**Asistente · ?** control opens that same instance without covering page actions.
+It also supplies focus recovery after route entry. Welcome suggestions only
+prepare a draft; changes still require
 explicit saved-action approval.
 
 Home uses the available viewport for one full-width conversation and its composer.
@@ -80,9 +88,10 @@ Ending capture keeps voice proposals and query results available in the voice vi
 without showing transcriptions. Returning to text ends capture and restores the
 original selected text conversation and draft. Returning to the retained voice view
 does not start the microphone; resuming requires the explicit start disclosure again.
-Minimize, navigation and hidden tabs end capture, not text history. Audio has no approval
-or execution capability. Server-run tools are not a server-enforced restriction
-on a modified browser's provider rendering commands; see
+An established voice call survives in-app navigation/minimization with visible
+controls; hidden tabs and explicit termination end capture, not text history.
+Audio has no approval or execution capability. Server-run tools are not a
+server-enforced restriction on a modified browser's provider rendering commands; see
 the voice contract's explicit rendering and shutdown/recovery limitations.
 No live provider call is part of deterministic validation.
 Voice failures appear once in a centered accessible problem card with explicit
@@ -134,7 +143,7 @@ Existing banking/OAuth/RPC keys are unrelated and must not be reused.
 Opening the configured non-demo assistant shows a dedicated consent screen when
 the decision is missing, refused or no longer matches the processing policy.
 **Permitir y abrir asistente** saves acceptance; **Ahora no** saves refusal and
-minimizes a docked panel; at home the financial snapshot and consent/history
+minimizes the dialog; at home the financial snapshot and consent/history
 entry remain available. Refusal shows the screen again on the next open. Acceptance
 survives reload, sign-out and other devices without another checkbox. It never
 sends a question, creates a conversation or starts microphone capture by itself.

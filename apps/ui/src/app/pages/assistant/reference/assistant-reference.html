@@ -29,7 +29,7 @@
           <div class="reference-row">
             <div class="reference-row-copy">
               @if (row.link) {
-                <a [routerLink]="row.link" [attr.aria-label]="'Abrir detalle de ' + row.title">{{ row.title }} <app-icon name="arrow" /></a>
+                <a data-assistant-navigation [routerLink]="row.link" [attr.aria-label]="'Abrir detalle de ' + row.title">{{ row.title }} <app-icon name="arrow" /></a>
               } @else { <strong>{{ row.title }}</strong> }
               <p>{{ row.detail }}</p>
             </div>
@@ -48,6 +48,6 @@
 
   <footer class="reference-footer">
     <p>Consultado {{ time(source().queriedAt) }} · Santiago.<br>La consulta no actualiza los datos bancarios.</p>
-    <a class="reference-open" [routerLink]="view().link" [queryParams]="view().query">{{ view().action }} <app-icon name="arrow" /></a>
+    <a class="reference-open" data-assistant-navigation [routerLink]="view().link" [queryParams]="view().query">{{ view().action }} <app-icon name="arrow" /></a>
   </footer>
 </article>

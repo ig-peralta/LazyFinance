@@ -267,7 +267,7 @@ describe("AppShell", () => {
     const [block] = await harness.fixture.getDeferBlocks();
     document.body.append(root);
     try {
-      workspace.modal.set(true);
+      expect(workspace.modal()).toBe(true);
       const trigger = root.querySelector<HTMLButtonElement>(
         "#workspace-assistant-launcher",
       );
@@ -281,16 +281,72 @@ describe("AppShell", () => {
       ].find((button) => button.textContent?.trim() === label);
       expect(cancel).toBeDefined();
       expect(document.activeElement).toBe(cancel);
+      expect(root.querySelector(".assistant-modal-open")).not.toBeNull();
+      expect(
+        root.querySelector(".assistant-load-status")?.getAttribute("role"),
+      ).toBe("dialog");
+      expect(
+        root
+          .querySelector(".assistant-load-status")
+          ?.getAttribute("aria-modal"),
+      ).toBe("true");
       expect(
         root.querySelector(".workspace-content")?.hasAttribute("inert"),
       ).toBe(true);
+      const tab = new KeyboardEvent("keydown", {
+        key: "Tab",
+        bubbles: true,
+        cancelable: true,
+      });
+      cancel?.dispatchEvent(tab);
+      expect(tab.defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(
+        state === DeferBlockState.Error
+          ? root.querySelector(".assistant-load-status a")
+          : cancel,
+      );
+      const reverse = new KeyboardEvent("keydown", {
+        key: "Tab",
+        shiftKey: true,
+        bubbles: true,
+        cancelable: true,
+      });
+      document.activeElement?.dispatchEvent(reverse);
+      expect(reverse.defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(cancel);
       cancel?.click();
       harness.detectChanges();
       await harness.fixture.whenStable();
       expect(root.querySelector(".assistant-load-status")).toBeNull();
+      expect(root.querySelector(".assistant-bubble")).toBeNull();
+      expect(
+        root.querySelector(".assistant-mount")?.hasAttribute("hidden"),
+      ).toBe(true);
       expect(
         root.querySelector(".workspace-content")?.hasAttribute("inert"),
       ).toBe(false);
+      expect(document.activeElement).toBe(trigger);
+      trigger?.click();
+      harness.detectChanges();
+      await harness.fixture.whenStable();
+      const reopened = root.querySelector<HTMLButtonElement>(
+        ".assistant-load-status button",
+      );
+      expect(reopened).not.toBeNull();
+      reopened?.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      );
+      harness.detectChanges();
+      await harness.fixture.whenStable();
+      expect(workspace.opened()).toBe(false);
+      expect(document.activeElement).toBe(trigger);
+      trigger?.click();
+      harness.detectChanges();
+      await harness.fixture.whenStable();
+      root.querySelector<HTMLElement>(".assistant-mount")?.click();
+      harness.detectChanges();
+      await harness.fixture.whenStable();
+      expect(workspace.opened()).toBe(false);
       expect(document.activeElement).toBe(trigger);
     } finally {
       root.remove();

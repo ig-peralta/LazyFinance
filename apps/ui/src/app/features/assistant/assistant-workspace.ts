@@ -1,6 +1,5 @@
 import {
   computed,
-  DestroyRef,
   effect,
   Injectable,
   inject,
@@ -10,37 +9,45 @@ import {
 import { AuthCredentials } from "../../core/auth/auth-credentials";
 
 /** One shell-owned, memory-only session. Opening never sends or reloads a turn. */
+type VoiceState =
+  | "off"
+  | "connecting"
+  | "listening"
+  | "querying"
+  | "responding"
+  | "muted";
+
 @Injectable({ providedIn: "root" })
 export class AssistantWorkspace {
   private readonly credentials = inject(AuthCredentials);
   private readonly visible = signal(false);
+  private readonly collapsed = signal(false);
   readonly opened = computed(
     () => !!this.credentials.current() && this.visible(),
+  );
+  readonly minimized = computed(
+    () => !!this.credentials.current() && this.collapsed(),
   );
   readonly selection = signal<string | undefined>(undefined);
   readonly focusRequest = signal(0);
   readonly home = signal(false);
-  private readonly narrow = signal(false);
-  readonly modal = signal(false);
+  readonly modal = computed(() => !this.home());
+  readonly voiceState = signal<VoiceState>("off");
+  readonly textPending = signal(false);
   private opener: HTMLElement | null = null;
   onMinimize: (() => void) | undefined;
   onDemoDataReset: (() => void) | undefined;
+  onMuteVoice: (() => void) | undefined;
+  onEndVoice: (() => void) | undefined;
 
   constructor() {
-    effect(() => this.modal.set(this.narrow() && !this.home()));
-    if (typeof window !== "undefined" && window.matchMedia) {
-      const media = window.matchMedia("(max-width: 720px)");
-      const update = () => this.narrow.set(media.matches);
-      update();
-      media.addEventListener("change", update);
-      inject(DestroyRef).onDestroy(() =>
-        media.removeEventListener("change", update),
-      );
-    }
     effect(() => {
       this.credentials.current();
       this.selection.set(undefined);
       this.visible.set(false);
+      this.collapsed.set(false);
+      this.voiceState.set("off");
+      this.textPending.set(false);
       untracked(() => this.onMinimize?.());
       this.opener = null;
     });
@@ -53,13 +60,23 @@ export class AssistantWorkspace {
         document.activeElement instanceof HTMLElement
           ? document.activeElement
           : null;
+    this.collapsed.set(false);
     this.visible.set(true);
     this.focusRequest.update((value) => value + 1);
   }
 
-  minimize() {
+  minimize(showBubble = true) {
     this.onMinimize?.();
+    this.collapsed.set(showBubble);
     this.visible.set(false);
+  }
+
+  muteVoice() {
+    this.onMuteVoice?.();
+  }
+
+  endVoice() {
+    this.onEndVoice?.();
   }
 
   demoDataReset() {
