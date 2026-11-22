@@ -152,6 +152,7 @@ Loading/error cancellation also restores the control before the assistant code i
 While the dialog is open, the background is inert. Minimizing leaves a compact
 bottom-right bubble showing whether a text reply is pending or voice is active;
 the bubble reopens the chat and offers mute/end controls for a live voice session.
+Muted voice shows a crossed-out microphone icon instead of the active microphone.
 Clicking the backdrop minimizes an open overlay; clicks inside do not. Any
 completed in-app route change (including back/forward and returning to
 `/asistente`) minimizes an open chat without losing the draft, text reply or

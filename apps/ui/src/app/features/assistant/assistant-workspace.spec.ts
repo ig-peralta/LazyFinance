@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { setupRpc } from "../../../testing/rpc";
 import { AppShell } from "../../layout/app-shell/app-shell";
 import { AssistantEntry } from "../../pages/assistant/assistant-entry";
+import type { Icon } from "../../shared/ui/icon";
 import { AssistantVoiceClient } from "./assistant-voice.client";
 import { AssistantWorkspace } from "./assistant-workspace";
 
@@ -53,6 +54,11 @@ describe("single shell-owned assistant across real route navigation", () => {
     );
     const fixture = TestBed.createComponent(AppShell);
     const root: HTMLElement = fixture.nativeElement;
+    const bubbleIcon = (selector: string) =>
+      (
+        fixture.debugElement.query(By.css(`${selector} app-icon`))
+          ?.componentInstance as Icon | undefined
+      )?.name();
     document.body.append(root);
     fixture.detectChanges();
     await fixture.whenStable();
@@ -161,6 +167,8 @@ describe("single shell-owned assistant across real route navigation", () => {
     expect(root.querySelector(".assistant-bubble")?.textContent).toContain(
       "Micrófono activo",
     );
+    expect(bubbleIcon(".assistant-bubble-open")).toBe("microphone");
+    expect(bubbleIcon('[aria-label="Silenciar micrófono"]')).toBe("microphone");
     expect(end).not.toHaveBeenCalled();
     workspace.endVoice();
     fixture.detectChanges();
@@ -232,6 +240,8 @@ describe("single shell-owned assistant across real route navigation", () => {
     expect(root.querySelector(".assistant-bubble")?.textContent).toContain(
       "Micrófono activo",
     );
+    expect(bubbleIcon(".assistant-bubble-open")).toBe("microphone");
+    expect(bubbleIcon('[aria-label="Silenciar micrófono"]')).toBe("microphone");
     root
       .querySelector<HTMLButtonElement>('[aria-label="Silenciar micrófono"]')
       ?.click();
@@ -240,6 +250,17 @@ describe("single shell-owned assistant across real route navigation", () => {
     expect(root.querySelector(".assistant-bubble")?.textContent).toContain(
       "Micrófono silenciado",
     );
+    expect(bubbleIcon(".assistant-bubble-open")).toBe("microphoneMuted");
+    expect(bubbleIcon('[aria-label="Activar micrófono"]')).toBe(
+      "microphoneMuted",
+    );
+    root
+      .querySelector<HTMLButtonElement>('[aria-label="Activar micrófono"]')
+      ?.click();
+    fixture.detectChanges();
+    expect(mute).toHaveBeenCalledTimes(2);
+    expect(bubbleIcon(".assistant-bubble-open")).toBe("microphone");
+    expect(bubbleIcon('[aria-label="Silenciar micrófono"]')).toBe("microphone");
     root
       .querySelector<HTMLButtonElement>('[aria-label="Terminar voz"]')
       ?.click();

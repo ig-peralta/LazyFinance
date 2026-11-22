@@ -35,6 +35,8 @@ const paths = {
   spark: "M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5L12 3z",
   microphone:
     "M9 6a3 3 0 0 1 6 0v6a3 3 0 0 1-6 0V6 M5 10v2a7 7 0 0 0 14 0v-2 M12 19v3 M8 22h8",
+  microphoneMuted:
+    "M9 6a3 3 0 0 1 6 0v6a3 3 0 0 1-6 0V6 M5 10v2a7 7 0 0 0 14 0v-2 M12 19v3 M8 22h8 M3 3l18 18",
 } as const;
 
 export type IconName = keyof typeof paths;
