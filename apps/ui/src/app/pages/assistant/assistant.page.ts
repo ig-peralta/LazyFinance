@@ -394,8 +394,25 @@ export class AssistantPage {
       this.liveState()?.controller.abort();
       this.workspace.onMinimize = undefined;
       this.workspace.onDemoDataReset = undefined;
+      this.workspace.onMuteVoice = undefined;
+      this.workspace.onEndVoice = undefined;
+      this.workspace.voiceState.set("off");
+      this.workspace.textPending.set(false);
     });
-    this.workspace.onMinimize = () => this.endVoice();
+    this.workspace.onMinimize = () => this.endUnestablishedVoice();
+    this.workspace.onMuteVoice = () => this.voice.mute();
+    this.workspace.onEndVoice = () => this.endVoice();
+    effect(() => {
+      const state = this.voice.state();
+      const live = this.live();
+      const sending = this.sending();
+      this.workspace.voiceState.set(state);
+      this.workspace.textPending.set(
+        state === "off" &&
+          ((!live?.nativeVoice && !!live?.pending) ||
+            (!!sending && sending.scope === this.rpc.authenticatedScope())),
+      );
+    });
     this.workspace.onDemoDataReset = () => {
       this.endVoice(true);
       this.liveState()?.controller.abort();
@@ -417,8 +434,10 @@ export class AssistantPage {
       this.conversations.reload();
       this.consent.reload();
     };
-    // Navigation may preserve text generation, but never hidden microphone capture.
-    const navigation = inject(Router).events.subscribe(() => this.endVoice());
+    // Navigation preserves established voice, but cannot start capture after leaving.
+    const navigation = inject(Router).events.subscribe(() =>
+      this.endUnestablishedVoice(),
+    );
     const visibility = () => {
       if (document.hidden) this.endVoice();
     };
@@ -787,6 +806,27 @@ export class AssistantPage {
     event.stopPropagation();
   }
 
+  protected followAssistantLink(event: MouseEvent) {
+    if (
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey ||
+      !(event.target instanceof Element)
+    )
+      return;
+    const link = event.target.closest<HTMLAnchorElement>(
+      "a[data-assistant-navigation]",
+    );
+    if (
+      link &&
+      this.panel()?.nativeElement.contains(link) &&
+      (!link.target || link.target === "_self")
+    )
+      this.workspace.minimize();
+  }
+
   private cancelProcessing() {
     this.revision.update((value) => value + 1);
     this.endVoice();
@@ -851,7 +891,10 @@ export class AssistantPage {
       this.credentials.current() === owner &&
       this.processingAccepted() &&
       !document.hidden &&
-      this.workspace.opened() &&
+      (this.workspace.opened() ||
+        (!this.voiceStarting() &&
+          this.voice.state() !== "off" &&
+          this.voice.state() !== "connecting")) &&
       this.workspace.selection() === selection;
     owner.signal.addEventListener("abort", () => this.endVoice(true), {
       once: true,
@@ -1019,6 +1062,17 @@ export class AssistantPage {
     }
   }
 
+  private endUnestablishedVoice() {
+    // An unfinished start must never acquire the microphone in the background.
+    // Established audio remains available with visible shell controls.
+    if (
+      this.voiceStarting() ||
+      this.voiceDisclosure() ||
+      this.voice.state() === "connecting"
+    )
+      this.endVoice();
+  }
+
   protected continueText() {
     if (!this.voiceMode() && !this.voiceDisclosure()) return;
     this.endVoice();
@@ -1037,7 +1091,7 @@ export class AssistantPage {
     this.confirmDelete.set(false);
     this.voiceDisclosure.set(false);
     this.workspace.selection.set(undefined);
-    this.workspace.minimize();
+    this.workspace.minimize(false);
   }
 
   protected suggest(question: string) {

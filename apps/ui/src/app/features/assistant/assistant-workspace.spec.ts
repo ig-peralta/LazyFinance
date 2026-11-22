@@ -96,7 +96,7 @@ describe("single shell-owned assistant across real route navigation", () => {
     fixture.detectChanges();
     await fixture.whenStable();
     expect(document.activeElement).toBe(launcher);
-    workspace.modal.set(true);
+    expect(workspace.modal()).toBe(true);
     workspace.open();
     fixture.detectChanges();
     await fixture.whenStable();

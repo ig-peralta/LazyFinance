@@ -73,6 +73,30 @@ export class AppShell {
   private readonly content = viewChild<ElementRef<HTMLElement>>("content");
   // Query presence by name so the assistant class stays out of the eager bundle.
   private readonly assistantHost = viewChild("assistantHost");
+  protected readonly assistantBubbleVisible = computed(
+    () => !!this.assistantHost() && this.assistantWorkspace.minimized(),
+  );
+  protected readonly assistantVoiceActive = computed(
+    () => this.assistantWorkspace.voiceState() !== "off",
+  );
+  protected readonly assistantBubbleStatus = computed(() => {
+    switch (this.assistantWorkspace.voiceState()) {
+      case "connecting":
+        return "Conectando voz…";
+      case "listening":
+        return "Micrófono activo";
+      case "querying":
+        return "Consultando por voz…";
+      case "responding":
+        return "Respondiendo por voz…";
+      case "muted":
+        return "Micrófono silenciado";
+      default:
+        return this.assistantWorkspace.textPending()
+          ? "Preparando respuesta…"
+          : "Conversación minimizada";
+    }
+  });
   private readonly assistantLauncher =
     viewChild<ElementRef<HTMLButtonElement>>("assistantLauncher");
   private readonly assistantPendingCancel = viewChild<
@@ -152,6 +176,41 @@ export class AppShell {
   protected skipToContent(event: Event): void {
     event.preventDefault();
     this.content()?.nativeElement.focus();
+  }
+
+  protected containPendingFocus(event: KeyboardEvent): void {
+    if (
+      event.key !== "Tab" ||
+      !this.assistantWorkspace.opened() ||
+      !this.assistantWorkspace.modal() ||
+      this.assistantHost()
+    )
+      return;
+    const mount = event.currentTarget;
+    if (!(mount instanceof HTMLElement)) return;
+    const controls = [
+      ...mount.querySelectorAll<HTMLElement>("a[href],button:not([disabled])"),
+    ].filter((element) => !element.closest("[hidden]"));
+    const first = controls[0],
+      last = controls.at(-1);
+    if (
+      (event.shiftKey && this.document.activeElement === first) ||
+      (!event.shiftKey && this.document.activeElement === last)
+    ) {
+      event.preventDefault();
+      (event.shiftKey ? last : first)?.focus();
+    }
+  }
+
+  protected dismissPendingAssistant(event: Event): void {
+    if (
+      !this.assistantWorkspace.opened() ||
+      !this.assistantWorkspace.modal() ||
+      this.assistantHost()
+    )
+      return;
+    this.assistantWorkspace.minimize();
+    event.stopPropagation();
   }
 
   protected async logout(): Promise<void> {
