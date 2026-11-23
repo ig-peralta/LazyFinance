@@ -11,6 +11,11 @@ import {
   summarizeRpc,
 } from "./diagnostics";
 import { writePerformanceReport } from "./report";
+import {
+  prepareSqlStatistics,
+  resetSqlStatistics,
+  sqlStatistics,
+} from "./sql-diagnostics";
 
 const movements = 49_999;
 
@@ -86,6 +91,8 @@ describe("measured near-limit provider import", () => {
         })),
       };
       const normalizedBytes = Buffer.byteLength(JSON.stringify(page));
+      await prepareSqlStatistics(f.db);
+      await resetSqlStatistics(f.db);
       const observer = observePrivateRpc(
         f.environment.get("PERSISTENCE_RPC_URL"),
       );
@@ -95,6 +102,7 @@ describe("measured near-limit provider import", () => {
         durationMs: number;
       }[] = [];
       const before = resourceSnapshot();
+      const startedAt = new Date().toISOString();
       const started = performance.now();
       let outcome: { status: string; reason?: string } | null = null;
       let error: ReturnType<typeof errorDetails> | null = null;
@@ -124,7 +132,9 @@ describe("measured near-limit provider import", () => {
         observer.stop();
       }
       const durationMs = performance.now() - started;
+      const endedAt = new Date().toISOString();
       const resources = resourceDifference(before, resourceSnapshot());
+      const sql = await sqlStatistics(f.db);
       let persistedMovements: number | null = null;
       let verificationError: ReturnType<typeof errorDetails> | null = null;
       try {
@@ -163,6 +173,8 @@ describe("measured near-limit provider import", () => {
         },
         result: {
           durationMs,
+          startedAt,
+          endedAt,
           status: outcome?.status ?? null,
           reason: outcome?.reason ?? null,
           error,
@@ -181,6 +193,7 @@ describe("measured near-limit provider import", () => {
           privateRpcSpans: rpcSpans,
           privateRpcSummary: summarizeRpc(observer.spans),
           resources,
+          sql,
         },
       });
       expect(passed, "Near-limit import did not complete; inspect report").toBe(

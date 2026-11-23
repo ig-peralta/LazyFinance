@@ -264,6 +264,10 @@ It builds its own test image, launches a **separate** ephemeral PostgreSQL conta
 measures authenticated API reads and a synthetic near-limit import through signed
 private RPC, saves reports under `tests/performance/results/` and tears down its
 own Compose project. No existing development database, live bank or model is used.
+The read suite has uniform and representative profiles with eight distinct owner
+callers. `PERF_REPETITIONS=3 pnpm test:performance` repeats on fresh databases.
+The committed `tests/performance/dashboard.html` can inspect runs independently;
+SQL plans, statement statistics and Docker samples are diagnostic artifacts.
 See [the suite guide](../../tests/performance/README.md) for resource limits,
 workload/criteria and how to interpret failures. Its API-owned workload specs use
 `apps/api/vitest.performance.config.ts`, not either ordinary Vitest discovery set.

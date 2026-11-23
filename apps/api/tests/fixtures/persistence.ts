@@ -1,5 +1,6 @@
 import "reflect-metadata";
 import { randomUUID } from "node:crypto";
+import type { AuthPrincipal } from "@lazyfinance/contracts";
 import type { ApiRouter } from "@lazyfinance/rpc-api";
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import { Test } from "@nestjs/testing";
@@ -112,6 +113,7 @@ export async function startApi(
   options: {
     assistantRuntime?: AssistantRuntime;
     fintocAdmission?: FintocRequestAdmission;
+    principals?: Record<string, AuthPrincipal>;
   } = {},
 ) {
   const { verifier } = testMockAuth({
@@ -125,6 +127,7 @@ export async function startApi(
       email: `${f.otherUserId}@example.test`,
       name: "Other",
     },
+    ...options.principals,
   });
   const builder = Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(EnvironmentService)

@@ -6,6 +6,16 @@ Run from the repository root with Docker Compose and pnpm 9 installed:
 pnpm test:performance
 ```
 
+For a repeatability series on the same unchanged checkout:
+
+```sh
+PERF_REPETITIONS=3 pnpm test:performance
+```
+
+Each repetition creates a fresh Compose project/database and keeps its own report.
+Failures do not skip later repetitions; the command is nonzero if any repetition
+fails. The series ID, repetition number, source and image IDs identify each result.
+
 This **explicit opt-in** command builds a test image from the current checkout,
 starts a separate PostgreSQL 18 container backed by 512 MiB tmpfs, migrates and
 provisions its fresh `lazyfinance_perf_test` database, and starts compiled private
@@ -50,7 +60,8 @@ requests. Compilation/migration/fixture creation is not included in p95.
 
 | Workload | Synthetic setup and timed operation | Acceptance |
 | --- | --- | --- |
-| Authenticated financial reads | One owned checking account, one monthly budget, 12,000 CLP 100.00 expenses (half tagged) in the current Santiago month and a separate foreign owner. After correctness preflight and 16 warm-up calls, run 200 calls per route with eight concurrent callers, one route at a time: `accounts.list`, `transactions.recent`, `summaries.monthly`, `objectives.progress`. | Every route returns 200 successful results, zero errors and p95 **strictly below 500 ms**. |
+| Uniform read baseline | **Eight different authenticated owners**, each with one checking account, one budget and 12,000 same-instant expenses (half tagged, owner-specific amounts). Total: 96,000 movements. | Both profiles independently require 200 successful calls per route, zero errors and pooled route p95 **strictly below 500 ms**. Each owner has one caller and 25 planned calls. |
+| Representative financial reads | **Eight different authenticated owners**, each with checking/savings/card accounts, four tags, three budgets and 12,000 deterministic varied movements across six complete Santiago months. Includes salary receipts, refund/reimbursement allocations, untagged spending, balanced internal transfers, review/unknown states and removed movements. Report the latest complete month. Total: 96,000 movements, 9,600 expense adjustments and 4,800 receipts. | Correctness checks verify owner-specific account IDs, recent merchants, monthly totals and exact budget totals on every measured response. Eight correctness preflights and 16 round-robin warm-ups are outside timed intervals. |
 | Near-limit provider import | An in-memory synthetic connector supplies one checking account and 49,999 booked movements (50,000 combined records), one complete page with ordinary short text; measure validation, factual snapshot, preparation, transport and commit. Verify persisted rows afterward outside the timed interval. | Complete outcome, exactly 49,999 movements committed atomically, elapsed **under 120 seconds** (transport budget). Record any failure and partial-row count rather than reporting a configured limit as measured success. |
 
 Reads use the application's real public RPC and private signed/RLS paths. The
@@ -76,6 +87,33 @@ forecast, or production/deployment SLA. The 50,000-record limit is compound with
 byte/statement budgets and does not promise all maximum-text inputs will fit.
 Reports also record the built image IDs and whether the checkout was clean; if it
 was dirty, the commit alone does not identify the tested source.
+
+### Database diagnostics
+
+The isolated PostgreSQL container enables `pg_stat_statements` and planning/I/O
+timing. Statistics are reset after warm-up and collected after each timed route
+and import. They separate PostgreSQL planning/execution time from HTTP spans;
+totals across concurrent statements are not wall-clock time. Owner fixture SQL is
+excluded by filtering to the restricted runtime login. Bulk fixture tables are
+`ANALYZE`d before either profile is timed; the uniform profile remains in the fresh
+database when the representative profile runs, with disjoint owner IDs.
+
+A test-only Node preload observes the compiled persistence process's `pg` calls.
+`sql-transactions.ndjson` groups statement counts and client-observed SQL duration
+inside each scoped transaction, without logging parameters or credentials. This
+identifies repeated writes in the import but includes SQL transport and decoding.
+After each read profile, diagnostic calls capture the three actual SELECTs using
+`EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON, TIMING OFF)` inside their existing runtime
+RLS transaction. Those replays are **outside** acceptance windows, use one owner,
+and have an eight-second plan deadline; a timed-out plan is recorded, not hidden.
+These plans are saved in `sql-plans.ndjson` and the read report. No write is replayed
+for profiling, and no production query, grant or transaction budget is changed.
+
+The host runner samples **only its two containers** with `docker stats`, saving
+`container-resources.ndjson`. Reports/dashboard show per-window PostgreSQL CPU and
+observed memory values. Samples are approximately two seconds apart, not continuous
+peaks; short windows may have no sample. Instrumentation adds overhead, so compare
+equivalent profiles/builds, not the original uninstrumented single-owner runs.
 
 The suite writes a read report **after each completed route**. If preflight or
 warm-up fails, it records that stage separately, without inventing 200 timed

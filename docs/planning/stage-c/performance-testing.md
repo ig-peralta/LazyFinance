@@ -10,9 +10,12 @@ The scope and acceptance below were selected when LAZ-108 started; the reproduci
   Execute an isolated synthetic run inside CPU/RAM-limited Docker containers;
   no live banking/model calls or existing user/development database changes.
 - Measure authenticated public `accounts.list`, `transactions.recent`,
-  `summaries.monthly` and `objectives.progress` on a 12,000-movement owner fixture.
+  `summaries.monthly` and `objectives.progress` on two **eight-owner** profiles:
+  a uniform baseline and representative six-month history. Each owner has 12,000
+  movements and its own authenticated caller (96,000 movements per profile).
   Require **p95 < 500 ms per route** with **zero request errors** at eight concurrent
-  callers, after warm-up; record sample count, data shape and resource caps.
+  callers, after correctness preflight and warm-up. Plan 200 calls per route,
+  25 per owner; record pooled and per-owner samples, data shape and resource caps.
 - Separately attempt and measure one ordinary-text import of **50,000 combined
   records** through the real API ingestion and signed private commit. Require a
   complete outcome, 49,999 persisted movements and elapsed time below the 120s
@@ -24,6 +27,24 @@ while the capacity run addresses [the Stage B carryover](../stage-b/closure.md#a
 Build, migrations and fixture creation are excluded from the timed request windows.
 This is a local, synthetic single-profile gate, not proof of deployed capacity,
 browser progress within one second, model/voice speed or live bank freshness.
+
+### Eight-owner scope refinement
+
+The eight-owner profile supersedes the original single-owner concurrency workload;
+the historical measurements below retain their original interpretation. Both new
+profiles use eight distinct internal users, mock bearer tokens and account sets.
+Every measured response checks owner-specific account IDs or financial results.
+The representative profile adds three account types, four tags, three budgets,
+income receipts, explicit expense recoveries and varied movement dates/states.
+It reports the latest complete Santiago month rather than a moving partial month.
+Owner fixture setup and `ANALYZE` are outside measurement; no live provider is used.
+
+The enhanced suite also records PostgreSQL statement planning/execution statistics,
+transaction-level client SQL counts/timings and sampled PostgreSQL CPU/memory.
+Scoped query plans are captured by diagnostic read replays **after** timed routes,
+with the real runtime role/RLS and no write replay. Three repetitions on one
+unchanged identified build will assess variability. Those new measurements are
+pending; the older single-owner results are not eight-owner evidence.
 
 ## Execution and findings
 

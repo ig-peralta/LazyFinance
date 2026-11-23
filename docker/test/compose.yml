@@ -5,6 +5,7 @@ services:
     image: postgres:18-alpine
     cpus: ${PERF_POSTGRES_CPUS:-1.0}
     mem_limit: ${PERF_POSTGRES_MEMORY:-1g}
+    command: ["postgres", "-c", "shared_preload_libraries=pg_stat_statements", "-c", "pg_stat_statements.track_planning=on", "-c", "track_io_timing=on"]
     environment:
       POSTGRES_USER: perf_owner
       POSTGRES_PASSWORD: synthetic-only-password
@@ -32,6 +33,7 @@ services:
       PERF_RUNNER_MEMORY: ${PERF_RUNNER_MEMORY:-3g}
       PERF_POSTGRES_CPUS: ${PERF_POSTGRES_CPUS:-1.0}
       PERF_POSTGRES_MEMORY: ${PERF_POSTGRES_MEMORY:-1g}
+      NODE_OPTIONS: --require=/app/tests/performance/observe-persistence.cjs
     command:
       - pnpm
       - test:integration

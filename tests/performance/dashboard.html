@@ -118,6 +118,10 @@
       .meta-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
       .meta-item small { display: block; color: #78899a; text-transform: uppercase; letter-spacing: .11em; font-weight: 800; font-size: 10px; margin-bottom: 5px; }
       .meta-item span { display: block; overflow-wrap: anywhere; font-size: 12px; line-height: 1.5; }
+      details { margin-top: 16px; font-size: 12px; }
+      summary { cursor: pointer; font-weight: 750; color: #24566a; }
+      pre { max-height: 360px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; background: #f4f7f9; padding: 14px; border-radius: 8px; }
+      .sql-preview { max-width: 360px; overflow-wrap: anywhere; font-size: 11px; }
       footer { padding: 2px 2px 0; font-size: 11px; line-height: 1.6; color: #718497; }
       @media (max-width: 900px) { .summary { grid-template-columns: repeat(2, 1fr); } .detail-grid { grid-template-columns: 1fr; } .meta-grid { grid-template-columns: repeat(2, 1fr); } }
       @media (max-width: 600px) { .shell { padding: 0 15px 38px; } .topbar { padding: 18px 0; } .topbar-note { display: none; } .hero { padding: 28px 24px 32px; } .summary { gap: 9px; } .card { padding: 15px; } .card-value { font-size: 23px; } .section-head, .detail, .environment { padding: 20px; } .phase { grid-template-columns: 110px minmax(65px, 1fr) 67px; gap: 8px; font-size: 10px; } .meta-grid { grid-template-columns: 1fr; } }
@@ -152,6 +156,7 @@
         </section>
         <section class="surface" aria-labelledby="reads-title">
           <div class="section-head"><div><span class="section-tag">01 / Route health</span><h2 id="reads-title">Authenticated reads</h2><p>200 planned calls per route · eight callers · p95 strictly under 500 ms.</p></div><span id="reads-status" class="badge missing">Not measured</span></div>
+          <div class="environment"><label for="profile-selector" class="card-label">Workload profile </label><select id="profile-selector" class="run-select" aria-label="Choose a read workload profile"></select><h3>What this run tests</h3><div id="workload" class="meta-grid"></div></div>
           <div class="table-scroll"><table><thead><tr><th>Route</th><th>Requests</th><th>p50</th><th>p95</th><th>Private RPC (p95)</th><th>Result</th></tr></thead><tbody id="route-rows"></tbody></table></div>
           <div id="route-detail" class="detail"></div>
         </section>
@@ -209,13 +214,20 @@
       }
 
       let selectedRoute = null;
+      let selectedProfile = null;
+      let selectedRunIndex = -1;
       const runLabel = (run) => {
         const stamp = run.directory.match(/^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})/);
         return stamp ? `${stamp[1]} ${stamp[2]}:${stamp[3]}:${stamp[4]} UTC` : run.directory;
       };
       function render(runs, index) {
         const reports = runs[index];
-        const reads = reports?.reads;
+        selectedRunIndex = index;
+        const readReport = reports?.reads;
+        const profiles = list(readReport?.profiles);
+        if (!profiles.some((profile) => profile.id === selectedProfile)) selectedProfile = profiles.at(-1)?.id || null;
+        const profile = profiles.find((profile) => profile.id === selectedProfile);
+        const reads = profile ? { ...readReport, ...profile } : readReport;
         const bank = reports?.import;
         byId("no-data").hidden = Boolean(reports);
         byId("dashboard").hidden = !reports;
@@ -226,12 +238,13 @@
         byId("run-count").textContent = `${runs.length} saved run${runs.length === 1 ? "" : "s"} · ${reports.directory} · ${sourceDescription}${reports.errors ? ` · Unreadable: ${reports.errors.join("; ")}` : ""}`;
 
         const sameBuild = !reads?.gitCommit || !bank?.gitCommit || reads.gitCommit === bank.gitCommit;
-        const label = !sameBuild ? "Mixed builds" : reads?.outcome === "failed" || bank?.outcome === "failed" ? "Target missed" : !reads || !bank || reads.outcome !== "passed" || bank.outcome !== "passed" ? "Partial evidence" : "All targets met";
+        const label = !sameBuild ? "Mixed builds" : readReport?.outcome === "failed" || bank?.outcome === "failed" ? "Target missed" : !reads || !bank || readReport.outcome !== "passed" || bank.outcome !== "passed" ? "Partial evidence" : "All targets met";
         badge(byId("run-status"), label, !sameBuild ? "partial" : label === "Target missed" ? "fail" : label === "All targets met" ? "pass" : "partial");
         const meta = byId("hero-meta");
         const source = reads || bank || {};
         for (const value of [runLabel(reports), source.gitCommit ? `Build ${source.gitCommit.slice(0, 8)}` : "Build unavailable", `${reads?.criteria?.concurrency ?? "—"} concurrent readers`, "Synthetic · isolated Docker"])
           meta.append(node("span", "", value));
+        if (source.series?.planned) meta.append(node("span", "", `Repetition ${source.series.repetition}/${source.series.planned}`));
         if (!reports.fromFolder) {
           for (const [report, filename, label] of [[reads, "financial-reads.json", "Read JSON ↗"], [bank, "banking-import.json", "Import JSON ↗"]]) {
             if (!report) continue;
@@ -251,17 +264,49 @@
         const failures = results.reduce((sum, item) => sum + (finite(item.errors) ? item.errors : 0), 0);
         const passing = routes.filter((name) => statusOf(results.find((item) => item.route === name), reads)[1] === "pass").length;
         clear(byId("summary"));
-        metric(byId("summary"), "Reads on target", `${passing} / ${routes.length}`, reads ? `${number(reads?.dataset?.measuredOwnerMovements)} owned movements` : "Read report unavailable");
+        metric(byId("summary"), "Reads on target", `${passing} / ${routes.length}`, reads ? `${number(reads?.dataset?.movementsPerOwner ?? reads?.dataset?.measuredOwnerMovements)} movements per owner` : "Read report unavailable");
         metric(byId("summary"), "Calls attempted", reads ? `${number(attempted)} / ${number((reads?.criteria?.requests ?? 200) * routes.length)}` : "—", reads ? `${number(failures)} request errors · partial samples are not acceptance` : "Read report unavailable");
         metric(byId("summary"), "Import elapsed", duration(bank?.result?.durationMs), bank ? `Budget: <${duration(bank?.criteria?.transportBudgetMs)}` : "Import report unavailable");
         metric(byId("summary"), "Rows persisted", number(bank?.result?.persistedMovements), bank ? `${number(bank?.dataset?.combinedRecords)} combined records` : "Import report unavailable");
 
         renderHistory(runs, index);
+        const profileSelector = byId("profile-selector");
+        clear(profileSelector);
+        profileSelector.hidden = !profiles.length;
+        for (const entry of profiles) {
+          const option = node("option", "", `${entry.title} · ${entry.outcome}`);
+          option.value = entry.id;
+          profileSelector.append(option);
+        }
+        profileSelector.value = selectedProfile || "";
+        renderWorkload(reads);
         badge(byId("reads-status"), reads ? reads.outcome || "Unknown" : "Not measured", reads?.outcome === "passed" ? "pass" : reads?.outcome === "failed" ? "fail" : reads ? "partial" : "missing");
         badge(byId("import-status"), bank ? bank.outcome || "Unknown" : "Not measured", bank?.outcome === "passed" ? "pass" : bank?.outcome === "failed" ? "fail" : bank ? "partial" : "missing");
         renderRoutes(reads, results);
         renderImport(bank);
         renderEnvironment(source, sameBuild);
+      }
+
+      function renderWorkload(reads) {
+        const parent = byId("workload");
+        clear(parent);
+        if (!reads) { parent.append(node("span", "muted", "No read workload report.")); return; }
+        const data = reads.dataset || {}, criteria = reads.criteria || {};
+        for (const [label, value] of [
+          ["Profile", reads.title || data.profile || "Historical single-owner profile"],
+          ["Authenticated owners", number(data.authenticatedOwners ?? criteria.authenticatedOwners ?? 1)],
+          ["Volume", `${number(data.movementsPerOwner ?? data.measuredOwnerMovements)} movements / owner · ${number(data.totalMovements ?? data.measuredOwnerMovements)} total`],
+          ["Accounts / tags / budgets per owner", `${number(data.accountsPerOwner ?? data.measuredOwnerAccounts)} / ${number(data.tagsPerOwner)} / ${number(data.budgetsPerOwner ?? data.budgets)}`],
+          ["Dates", `${data.reportMonth ?? data.currentMonth ?? "—"} · ${number(data.historyMonths ?? 1)} month history`],
+          ["Acceptance", `${number(criteria.requests)} calls / route · ${number(criteria.concurrency)} concurrent · p95 <${ms(criteria.targetP95Ms)} · 0 errors`],
+          ["Distribution", criteria.requestsPerOwner ? `${criteria.requestsPerOwner} planned calls / owner / route; ${criteria.warmup} total warm-ups` : "See raw historical report"],
+          ["Data shape", data.description || data.origin || "See raw report"],
+          ["Outside measured windows", "Build, migrations, fixture setup, ANALYZE, preflight, warm-up and query-plan replays"],
+        ]) {
+          const item = node("div", "meta-item");
+          item.append(node("small", "", label), node("span", "", value));
+          parent.append(item);
+        }
       }
 
       function renderHistory(runs, active) {
@@ -351,6 +396,18 @@
         detail.append(stats);
         const cgroup = route.resources?.runnerCgroup;
         if (cgroup) detail.append(node("div", "statline", `Runner CPU ${duration(cgroup.cpuMs)} · throttled ${duration(cgroup.throttledMs)} · memory peak since container start ${bytes(cgroup.memoryPeakSinceContainerStartBytes)} · OOM kills ${number(cgroup.oomKills)}`));
+        renderContainerSamples(detail, route.containers);
+        if (list(route.owners).length) {
+          detail.append(node("div", "subheading", "Eight distinct authenticated owners · per-owner samples"));
+          renderTable(detail, ["Owner", "Attempted / planned", "Errors", "p50", "p95 (diagnostic)"], route.owners.map((owner) => [`Owner ${owner.owner}`, `${owner.attempted} / ${owner.requested}`, number(owner.errors), ms(owner.p50Ms), ms(owner.p95Ms)]));
+        }
+        renderSql(detail, route.sql, route.persistence);
+        const planProcedure = { "transactions.recent": "transactions.recent", "summaries.monthly": "transactions.taggedAggregates", "objectives.progress": "objectives.spending" }[route.route];
+        for (const plan of list(reads.queryPlans?.plans).filter((plan) => plan.procedure === planProcedure)) {
+          const item = node("details");
+          item.append(node("summary", "", `${plan.procedure} · scoped query plan (outside measured window)`), node("pre", "", JSON.stringify(plan.plan || { error: plan.error }, null, 2)));
+          detail.append(item);
+        }
         detail.append(node("div", "subheading", "Private RPCs · measured window"));
         const rpc = list(route.privateRpc?.measured);
         if (!rpc.length) { detail.append(node("div", "empty", "No private RPC spans recorded for this route.")); return; }
@@ -468,6 +525,41 @@
         } else detail.append(node("div", "empty", "No private RPC spans recorded."));
         const cgroup = bank.diagnostics?.resources?.runnerCgroup;
         if (cgroup) detail.append(node("div", "statline", `Runner CPU ${duration(cgroup.cpuMs)} · throttled ${duration(cgroup.throttledMs)} · memory peak since container start ${bytes(cgroup.memoryPeakSinceContainerStartBytes)} · OOM kills ${number(cgroup.oomKills)}`));
+        renderContainerSamples(detail, bank.result?.containers);
+        renderSql(detail, bank.diagnostics?.sql, bank.result?.persistence);
+      }
+
+      function renderTable(parent, headers, rows) {
+        const wrapper = node("div", "table-scroll");
+        const table = node("table", "compact");
+        const head = node("thead"), heading = node("tr"), body = node("tbody");
+        for (const label of headers) heading.append(node("th", "", label));
+        head.append(heading);
+        for (const values of rows) row(body, values);
+        table.append(head, body);
+        wrapper.append(table);
+        parent.append(wrapper);
+      }
+
+      function renderContainerSamples(parent, containers) {
+        if (!containers?.postgres) return;
+        const db = containers.postgres;
+        parent.append(node("div", "statline", `PostgreSQL (${number(db.samples)} Docker samples): mean CPU ${finite(db.meanCpuPercent) ? db.meanCpuPercent.toFixed(1) : "—"}% · max observed CPU ${finite(db.maxCpuPercent) ? db.maxCpuPercent.toFixed(1) : "—"}% · max observed memory ${bytes(db.maxObservedMemoryBytes)}`));
+      }
+
+      function renderSql(parent, server, client) {
+        if (list(server?.statements).length) {
+          const section = node("details");
+          section.append(node("summary", "", "PostgreSQL statement timings · planning and execution"), node("p", "muted", server.source));
+          renderTable(section, ["SQL", "Calls", "Plan time", "Execution time", "Max execution", "Temp blocks written"], server.statements.map((statement) => [statement.sql.slice(0, 140), number(statement.calls), duration(statement.planMs), duration(statement.executionMs), duration(statement.maxExecutionMs), statement.tempBlocksWritten]));
+          parent.append(section);
+        }
+        if (list(client?.statements).length) {
+          const section = node("details");
+          section.append(node("summary", "", `Persistence transaction breakdown · ${client.transactions} transactions`), node("p", "muted", client.source));
+          renderTable(section, ["SQL", "Calls", "Client SQL total", "Max call", "Errors"], client.statements.map((statement) => [statement.sql.slice(0, 140), number(statement.calls), duration(statement.clientSqlMs), duration(statement.maxMs), number(statement.errors)]));
+          parent.append(section);
+        }
       }
 
       function renderEnvironment(report, sameBuild) {
@@ -510,6 +602,7 @@
         render(runs, runs.length - 1);
       }
       selector.addEventListener("change", () => { selectedRoute = null; render(runs, Number(selector.value)); });
+      byId("profile-selector").addEventListener("change", (event) => { selectedProfile = event.target.value; selectedRoute = null; render(runs, selectedRunIndex); });
       showRuns(list(globalThis.lazyFinancePerformanceArchive?.runs), "local index");
       byId("report-folder").addEventListener("change", async (event) => {
         const files = Array.from(event.target.files || []);
