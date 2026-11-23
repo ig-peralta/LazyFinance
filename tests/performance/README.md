@@ -62,8 +62,8 @@ requests. Once any timed request fails, the eight in-flight calls finish but no
 more are scheduled. The same applies once eleven calls take at least 500 ms:
 200-call p95 <500 ms is then mathematically impossible. A partial route is a
 **failure**, and its sample percentiles are diagnostics, never a passing p95.
-This prevents a failing route from running until the global test timeout and
-contaminating the later import. `compose.log` preserves PostgreSQL timeouts when
+The other routes still run, but a failed route cannot issue unbounded calls or
+contaminate the later import. `compose.log` preserves PostgreSQL timeouts when
 the database container is torn down.
 
 Defaults are **2 CPU / 3 GiB** for the combined runner (API, persistence and load

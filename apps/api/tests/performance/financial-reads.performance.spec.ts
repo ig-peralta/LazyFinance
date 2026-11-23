@@ -213,6 +213,7 @@ describe("measured authenticated financial reads", () => {
         budgets: 1,
         origin: "synthetic owner-only SQL setup, not part of timed intervals",
       };
+      // Diagnose all four routes even if one cannot meet its acceptance criteria.
       for (const [name, request, verify] of [
         [
           "accounts.list",
@@ -263,7 +264,6 @@ describe("measured authenticated financial reads", () => {
           dataset,
           results,
         });
-        if (result.stage !== "measured" || result.stoppedEarly) break;
       }
 
       const passed =

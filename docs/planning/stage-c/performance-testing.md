@@ -38,16 +38,20 @@ Results are local and gitignored; the paths below name the raw reports.
 | --- | --- | --- |
 | 2026-11-23 00:02 / `b765c783` (clean) | Fixture failed before timing: `tag_decision_origin` CASE needed an enum cast. **No read latency measured.** | **Passed**: complete; 49,999 movements persisted in **91,592 ms**; one account, 49,999 movements, 16,089,031 normalized JSON bytes. |
 | 2026-11-23 00:06 / `c2e7f879` (clean) | Reached the read workload, then ran into PostgreSQL **20s statement timeouts** on budget-spending SQL and the Vitest **600s timeout**. No completed read report or credible per-route p95 was saved. | **Failed** after **103,810 ms** with `TRPCClientError`; **0** movements persisted. PostgreSQL also reported a **100s transaction timeout**. The import followed a read suite that timed out, so do not treat this as an independent import-capacity baseline. |
+| 2026-11-23 00:28 / `d1ec0f7d` (clean) | **Failed**: `accounts.list` completed 200/200, zero errors, p95 **104 ms**. `transactions.recent` stopped after 70/200 successes (zero errors) because 14 calls took ≥500 ms; its partial-sample p95 was **584 ms**, not a 200-call p95. A harness short-circuit prevented `summaries.monthly` and `objectives.progress` from running. | **Passed**: complete; 49,999 persisted in **94,571 ms**. The signed `providerSync.commit` request took **93,209 ms** of that total and sent **31,077,797 bytes**. Runner cgroup used **33.5 CPU seconds** with **1.3 s** throttling; no OOM kills. The commit HTTP span includes transport, server and SQL, not separately measured SQL time. |
 
 Raw reports: `tests/performance/results/2026-11-23T00-02-01-423Z-b765c783/banking-import.json`
 and `tests/performance/results/2026-11-23T00-06-48-207Z-c2e7f879/banking-import.json`.
+The instrumented run saved both JSON reports and `compose.log` under
+`tests/performance/results/2026-11-23T00-28-21-539Z-d1ec0f7d/`.
 The latter run lost its read timings because the original harness wrote them only
 after all four routes. To expose the failing stage and preserve partial evidence,
 the updated harness records per-route correctness/warm-up, request distributions,
 private-RPC timing/status, runner CPU/throttling and memory, plus the import RPC
-timeline. It stops scheduling once an error or irrecoverable p95 violation occurs
-and retains Compose logs. **Rerun pending** on an identified build; neither the
-read criterion nor repeatable import capacity has passed on one complete run.
+timeline. It stops scheduling a route once an error or irrecoverable p95 violation
+occurs and retains Compose logs. The next run will diagnose **all four routes**
+even when an earlier one fails. Neither the read criterion nor repeatable import
+capacity has passed on one complete run.
 
 Do not mark LAZ-108 or [the Stage C gate](definition-of-done.md) complete merely
 because one isolated import passed; deployed capacity, browser progress, live
