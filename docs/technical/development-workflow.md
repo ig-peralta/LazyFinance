@@ -63,10 +63,11 @@ constructor injection for class tokens; reserve `@Inject()` for symbols such as
 is still required; inference cannot repair a missing Nest module dependency.
 
 Biome excludes generated RPC routers, `dist`, `node_modules`, `.turbo`, `.angular`,
-coverage and `.local` secret/backup files. Generation, not formatting, owns the
-router output. HTML formatting is disabled because this Biome version mishandles
-Angular `@if`/`@for`; Angular compilation checks templates. Markdown/YAML remain
-manually formatted. These commands are not a Markdown link checker.
+coverage, local performance reports and `.local` secret/backup files. Generation,
+not formatting, owns the router output. HTML formatting is disabled because this
+Biome version mishandles Angular `@if`/`@for`; Angular compilation checks
+templates. Markdown/YAML remain manually formatted. These commands are not a
+Markdown link checker.
 
 Keep one blank line between constructors/methods, fields and methods, and
 independent helpers/schema declarations. Group related simple fields; separate
