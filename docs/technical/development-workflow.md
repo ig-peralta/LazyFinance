@@ -196,6 +196,7 @@ runs workspace test scripts, including Angular's default test behavior.
 | Root API integration runner | Builds, migrates/provisions disposable DB, starts compiled persistence plus API test listeners | API workflows through real public/private RPC and restricted SQL roles |
 | Live Firebase extension | Same isolated integration setup plus current test-user ID tokens and Firebase verification network access | Real token verification and two-user mapping/isolation |
 | Docker/image or browser smoke | Builds/starts containers or app servers; may require manual browser sign-in | Runtime packaging, network/environment and deployment behavior |
+| Explicit performance suite | Dedicated Docker Compose stack with capped CPU/RAM and ephemeral PostgreSQL; never part of `pnpm test` or `test:integration` | Measured route latency and near-limit import on a recorded synthetic workload, not production capacity |
 
 A useful **serverless** set (after building shared libraries) is:
 
@@ -256,6 +257,15 @@ fixtures and assess the separate performance target with a measured load run.
 The root runner forwards test arguments: for a resource-constrained machine, use
 `pnpm test:integration --maxWorkers=2` without weakening individual deadlines;
 file filters can also select a focused signed-RPC workflow run.
+
+Run `pnpm test:performance` separately for the opt-in Docker performance suite.
+It builds its own test image, launches a **separate** ephemeral PostgreSQL container,
+measures authenticated API reads and a synthetic near-limit import through signed
+private RPC, saves reports under `tests/performance/results/` and tears down its
+own Compose project. No existing development database, live bank or model is used.
+See [the suite guide](../../tests/performance/README.md) for resource limits,
+workload/criteria and how to interpret failures. Its API-owned workload specs use
+`apps/api/vitest.performance.config.ts`, not either ordinary Vitest discovery set.
 
 For the live Firebase extension, set `TEST_FIREBASE_ID_TOKEN_A/B` for two distinct
 verified-email test identities, optionally `TEST_FIREBASE_PROJECT_ID` and

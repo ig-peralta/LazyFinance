@@ -1,0 +1,48 @@
+name: lazyfinance-performance-test
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    cpus: ${PERF_POSTGRES_CPUS:-1.0}
+    mem_limit: ${PERF_POSTGRES_MEMORY:-1g}
+    environment:
+      POSTGRES_USER: perf_owner
+      POSTGRES_PASSWORD: synthetic-only-password
+      POSTGRES_DB: lazyfinance_perf_test
+    tmpfs:
+      - /var/lib/postgresql:rw,size=512m
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U perf_owner -d lazyfinance_perf_test']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    networks: [performance]
+
+  performance:
+    build:
+      context: ../..
+      dockerfile: docker/test/Dockerfile
+    cpus: ${PERF_RUNNER_CPUS:-2.0}
+    mem_limit: ${PERF_RUNNER_MEMORY:-3g}
+    environment:
+      TEST_POSTGRES_OWNER_URL: postgresql://perf_owner:synthetic-only-password@postgres:5432/lazyfinance_perf_test
+      PERF_REPORT_FILE: ${PERF_REPORT_FILE:?Use pnpm test:performance}
+      PERF_GIT_SHA: ${PERF_GIT_SHA:?Use pnpm test:performance}
+      PERF_RUNNER_CPUS: ${PERF_RUNNER_CPUS:-2.0}
+      PERF_RUNNER_MEMORY: ${PERF_RUNNER_MEMORY:-3g}
+      PERF_POSTGRES_CPUS: ${PERF_POSTGRES_CPUS:-1.0}
+      PERF_POSTGRES_MEMORY: ${PERF_POSTGRES_MEMORY:-1g}
+    command:
+      - pnpm
+      - test:integration
+      - --config
+      - vitest.performance.config.ts
+      - --maxWorkers=1
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [performance]
+
+networks:
+  performance:
+    internal: true

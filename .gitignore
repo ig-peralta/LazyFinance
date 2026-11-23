@@ -2,3 +2,4 @@
 **/dist
 **/.turbo
 **/.env
+tests/performance/results/

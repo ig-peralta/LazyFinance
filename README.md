@@ -201,6 +201,7 @@ These scripts run from the repository root. Turborepo runs tasks in the workspac
 | `pnpm mcp:keys`                                   | Print new API-only OAuth state/signing secrets; never commit the output. |
 | `pnpm check:architecture`                          | Check database, service, browser and router boundaries.                       |
 | `TEST_POSTGRES_OWNER_URL=... pnpm test:integration` | Start compiled persistence and test both RPC boundaries on an isolated `_test` DB. |
+| `pnpm test:performance` | Build an isolated, resource-limited Docker test stack, measure financial reads and near-limit import, and save local reports. See [performance testing](tests/performance/README.md). |
 | `pnpm resources`                                  | Pass additional arguments to `docker compose -f docker/local/resources.yml`. |
 | `pnpm resources:up` / `pnpm resources:down`       | Start / stop local PostgreSQL.                                               |
 | `pnpm deploy:local`                               | Pass additional arguments to `docker compose -f docker/local/deploy.yml`.    |

@@ -56,6 +56,7 @@ ordering, not a delivery forecast. Linear owns their live values.
 | [Financial assistant](../../technical/financial-assistant.md) and [live voice contract](../../technical/assistant-live-voice.md) | LAZ-72 persistent conversation/voice implementation, privacy, review fixes and remaining live-provider gates |
 | [Integrated assistant browser validation](assistant-browser-validation.md) | Final mocked Chromium matrix, deferred-focus regression/fix, responsive/accessibility results and synthetic voice boundaries |
 | [Validation plan](validation-plan.md) | Observable journeys, appropriate evidence and unresolved live checks |
+| [Performance testing](performance-testing.md) | LAZ-108 scope, measured run evidence, acceptance and limitations; reproducible Docker suite |
 | [Stage Definition of Done](definition-of-done.md) | Required completion and gate checks, all still open |
 | [Dated issue snapshot](../snapshots/backlog-2026-11-10-stage-c-planning.md) | Complete project inventory after selection; not a live board |
 | [Product requirements](../../product/product-requirements.md) and [journeys](../../product/user-journeys.md#stage-c---selected-everyday-experience-and-live-voice) | User-facing behavior and planned outcomes |
