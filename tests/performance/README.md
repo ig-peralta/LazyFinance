@@ -112,8 +112,9 @@ for profiling, and no production query, grant or transaction budget is changed.
 
 The host runner samples **only its two containers** with `docker stats`, saving
 `container-resources.ndjson`. Reports/dashboard show per-window PostgreSQL CPU and
-observed memory values. Samples are approximately two seconds apart, not continuous
-peaks; short windows may have no sample. Instrumentation adds overhead, so compare
+observed memory values. Renderer refresh cadence depends on the Docker CLI and may
+repeat cached values; sample counts are not independent observations or continuous
+peaks. Short windows may have no sample. Instrumentation adds overhead, so compare
 equivalent profiles/builds, not the original uninstrumented single-owner runs.
 
 The suite writes a read report **after each completed route**. If preflight or

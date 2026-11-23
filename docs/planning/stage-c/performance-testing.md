@@ -25,7 +25,7 @@ The scope and acceptance below were selected when LAZ-108 started; the reproduci
 The first criterion follows [NFR-06](../../product/non-functional-requirements.md#nfr-06--interactive-performance),
 while the capacity run addresses [the Stage B carryover](../stage-b/closure.md#accepted-limitations-and-carryovers).
 Build, migrations and fixture creation are excluded from the timed request windows.
-This is a local, synthetic single-profile gate, not proof of deployed capacity,
+This is a bounded local synthetic workload, not proof of deployed capacity,
 browser progress within one second, model/voice speed or live bank freshness.
 
 ### Eight-owner scope refinement
@@ -43,11 +43,11 @@ The enhanced suite also records PostgreSQL statement planning/execution statisti
 transaction-level client SQL counts/timings and sampled PostgreSQL CPU/memory.
 Scoped query plans are captured by diagnostic read replays **after** timed routes,
 with the real runtime role/RLS and no write replay. Three repetitions on one
-unchanged identified build will assess variability. Those new measurements are
-pending; the older single-owner results are not eight-owner evidence.
+unchanged identified build have completed; see the
+[eight-owner results](#eight-owner-repeatability-series-75000316). The older
+single-owner results retain their original interpretation.
 
-The first eight-owner pilot (`089d511b`,
-`tests/performance/results/2026-11-23T02-09-48-671Z-089d511b/`) was interrupted
+The first eight-owner pilot (`089d511b`) was interrupted
 after finding harness defects: the pg observer recognized `BEGIN` but not Kysely's
 `START TRANSACTION`, and Docker's streaming terminal controls prevented resource
 JSON parsing. Its partial read data and successful 93,061 ms import are retained,
@@ -64,7 +64,8 @@ Arch Linux 7.3.5. A load-average snapshot near the second run was 1.74/1.66/1.15
 host contention was **not** excluded or continuously sampled. All runs used
 Node 22.23.5, PostgreSQL 18 Alpine, a **2 CPU / 3 GiB** combined runner and a
 **1 CPU / 1 GiB** PostgreSQL container with 512 MiB tmpfs and no host ports.
-Results are local and gitignored; the paths below name the raw reports.
+The measurements, conditions and interpretation needed for review are included
+below; this record does not require access to an operator's generated reports.
 
 | UTC run / source build | Four financial reads | 50,000-record synthetic import |
 | --- | --- | --- |
@@ -73,14 +74,8 @@ Results are local and gitignored; the paths below name the raw reports.
 | 2026-11-23 00:28 / `d1ec0f7d` (clean) | **Failed**: `accounts.list` completed 200/200, zero errors, p95 **104 ms**. `transactions.recent` stopped after 70/200 successes (zero errors) because 14 calls took ≥500 ms; its partial-sample p95 was **584 ms**, not a 200-call p95. A harness short-circuit prevented `summaries.monthly` and `objectives.progress` from running. | **Passed**: complete; 49,999 persisted in **94,571 ms**. The signed `providerSync.commit` request took **93,209 ms** of that total and sent **31,077,797 bytes**. Runner cgroup used **33.5 CPU seconds** with **1.3 s** throttling; no OOM kills. The commit HTTP span includes transport, server and SQL, not separately measured SQL time. |
 | 2026-11-23 00:33 / `210143a7` (clean) | **Failed**: all four routes diagnosed. `accounts.list` passed; `transactions.recent`, `summaries.monthly` and `objectives.progress` crossed the 500 ms threshold and stopped early without request errors. Details below. | **Passed**: complete; 49,999 persisted in **91,704 ms**. The **90,366 ms** private commit call dominated the import, with a **31,077,797-byte** request body. |
 
-Raw reports: `tests/performance/results/2026-11-23T00-02-01-423Z-b765c783/banking-import.json`
-and `tests/performance/results/2026-11-23T00-06-48-207Z-c2e7f879/banking-import.json`.
-The first instrumented run saved both JSON reports and `compose.log` under
-`tests/performance/results/2026-11-23T00-28-21-539Z-d1ec0f7d/`.
-The complete four-route diagnostic saved `financial-reads.json`,
-`banking-import.json` and `compose.log` under
-`tests/performance/results/2026-11-23T00-33-41-292Z-210143a7/`. Its runner image
-was `sha256:b17ffdfc8ca39f5f08e79b28d2b3848af0727e79675df127bd0b7b7ce7d5c502`;
+The complete four-route diagnostic (`210143a7`) used runner image
+`sha256:b17ffdfc8ca39f5f08e79b28d2b3848af0727e79675df127bd0b7b7ce7d5c502`;
 the PostgreSQL image was
 `sha256:9ba53c7d41ea093baf5c1ba635ba5434c4f979880527d49bb7d9237d3193085b`.
 The second run lost its read timings because the original harness wrote them only
@@ -137,3 +132,90 @@ capacity claim or revising thresholds. Do not mark LAZ-108 or
 [the Stage C gate](definition-of-done.md) complete merely because import attempts
 passed; deployed capacity, browser progress, live providers and model/voice
 latency are separate work.
+
+## Eight-owner repeatability series (`75000316`)
+
+Executed `PERF_REPETITIONS=3 pnpm test:performance` with series ID
+`2026-11-23T02:24:57.404Z`. All three repetitions used a clean checkout of
+`75000316ee72f759b2913bbc1c3ba2e9125c9717`, the same runner image
+`sha256:2765a05537b91458dfaa055a5031d3b797ebbee5243c4c9f0e95b904cb8233ec`
+and the PostgreSQL image recorded above. Each repetition created a fresh database
+with the same **2 CPU / 3 GiB** runner and **1 CPU / 1 GiB** PostgreSQL caps.
+All profiles and imports completed their bounded test execution; the command
+correctly returned **1** because the read acceptance criteria failed.
+Repetitions started on **2026-11-23** at **02:24:57**, **02:33:54** and
+**02:41:20 UTC**, respectively.
+
+Both profiles have eight distinct authenticated owners and 12,000 movements per
+owner. Full 200-call results contain exactly 25 calls from each owner. The uniform
+fixture remains when the representative fixture is added, with disjoint owner IDs;
+the import ran first in each repetition and its 49,999 movements also remained as
+foreign background data. Thus the two profiles are separate workloads, not an
+apples-to-apples query-optimization comparison. Host contention was not excluded.
+
+| Profile / public route | Repetition 1 | Repetition 2 | Repetition 3 | Finding |
+| --- | --- | --- | --- | --- |
+| Uniform / `accounts.list` | 200/200; p95 **84 ms** | 200/200; **84 ms** | 200/200; **92 ms** | Pass in all three; no timed errors |
+| Uniform / `transactions.recent` | 200/200; **419 ms** | 200/200; **409 ms** | 200/200; **482 ms** | Pass in all three; no timed errors |
+| Uniform / `summaries.monthly` | 18/200; partial p95 **12,058 ms** | 18/200; **11,852 ms** | 18/200; **11,426 ms** | Latency failure in all three; all 18 attempted timed calls succeeded |
+| Uniform / `objectives.progress` | Preflight failed | Preflight failed | Preflight failed | Eight concurrent preflight calls hit PostgreSQL statement timeouts; no timed acceptance sample |
+| Representative / `accounts.list` | 200/200; **119 ms** | 200/200; **123 ms** | 200/200; **132 ms** | Pass in all three; no timed errors |
+| Representative / `transactions.recent` | 200/200; **492 ms** | 173/200; partial **501 ms** | 200/200; **496 ms** | Borderline; repetition 2 stopped after eleven calls ≥500 ms, with no timed request errors |
+| Representative / `summaries.monthly` | Preflight failed | Preflight failed | Preflight failed | Eight concurrent preflight calls hit PostgreSQL statement timeouts; no timed acceptance sample |
+| Representative / `objectives.progress` | Preflight failed | Preflight failed | Preflight failed | Eight concurrent preflight calls hit PostgreSQL statement timeouts; no timed acceptance sample |
+
+Partial percentiles describe only completed calls and are not 200-call acceptance
+results. A preflight failure is not zero-error acceptance: the public error was
+`Persistence is unavailable`, and Compose logs identify the **20s statement
+timeout** on the named financial query. No fixture-value assertion failed in the
+completed diagnostic replays.
+
+| Import repetition | Elapsed | Private commit HTTP | Persisted movements | Outcome |
+| --- | --- | --- | --- | --- |
+| 1 | **96,019 ms** | **94,656 ms** | **49,999** | Pass |
+| 2 | **96,411 ms** | **95,065 ms** | **49,999** | Pass |
+| 3 | **94,538 ms** | **93,156 ms** | **49,999** | Pass |
+
+### Test/setup review versus application findings
+
+- **Harness defects fixed before this series:** recognize Kysely's `START
+  TRANSACTION` as well as `BEGIN`, assert observer readiness, parse Docker's
+  streaming terminal controls, start sampling after startup, and run preflight/
+  warm-up with the intended eight concurrent owner callers. Each corrected run
+  saved six scoped plans, transaction records and container samples. Resource
+  parsing reported **zero errors** in all three runs.
+- **Real read-performance findings left unchanged:** single-owner diagnostic
+  `EXPLAIN ANALYZE` replays through the real runtime/RLS path returned correct
+  fixture totals. `transactions.taggedAggregates` took **695–744 ms** in the
+  uniform profile and **6,919–7,278 ms** with representative history;
+  `objectives.spending` took **4,993–5,282 ms** and **5,271–5,423 ms** respectively.
+  Budget plans scanned the transaction table with large foreign-row rejection
+  counts; aggregate/budget plans contained **1,450–2,156 JIT functions**. These are
+  diagnostic observations, not an isolated proof that JIT is the sole cause.
+  PostgreSQL mean sampled CPU during the uniform monthly timed window was
+  **98.9–99.1% of one core**. These results support genuine database workload
+  pressure, not a malformed fixture or missing authentication.
+- **Real import cost left unchanged:** the observer counted **49,999 individual
+  movement INSERTs** in each ordinary commit, matching the implementation's
+  sequential write loop. Their client-observed SQL time totalled **82.4–83.8 s**;
+  PostgreSQL reported **24.0 s planning** plus **11.2–11.4 s execution** for those
+  inserts. Client SQL time also includes transport/decoding and scheduling; it is
+  not interchangeable with PostgreSQL execution time. Three successful imports
+  under this ordinary-text synthetic shape do not guarantee arbitrary payload or
+  production capacity.
+- **Sampling limitation:** Docker rendered roughly half-second snapshots here,
+  sometimes repeating cached readings, rather than the approximately two-second
+  cadence originally described by the producer. The producer wording has been
+  corrected for future runs. Reported
+  means/maxima are sampled observations, not independent samples or true peaks.
+
+No production API/persistence query, index, financial rule, runtime grant, resource
+cap or transaction timeout was changed. Application remediation remains outside
+this test/evidence task. There is no Stage C or read-performance pass claim.
+
+All eighteen plan captures completed without replay failures; no global Vitest
+timeout or database-space error occurred in this series. The measurements above
+are the committed review record. The tracked
+[suite guide](../../../tests/performance/README.md) explains reproduction, and the
+tracked [dashboard](../../../tests/performance/dashboard.html) can inspect results
+produced by a new run; neither is a substitute for the findings recorded here.

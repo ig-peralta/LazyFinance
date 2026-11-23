@@ -161,7 +161,7 @@ export function attachDiagnostics(record, directory, resources) {
     ...record,
     resourceSampling: {
       source:
-        "docker stats, approximately 2-second samples; not continuous peaks",
+        "docker stats streaming snapshots; renderer refreshes may repeat cached values; not continuous peaks",
       samples: resources.samples.length,
       errors: resources.errors,
     },
