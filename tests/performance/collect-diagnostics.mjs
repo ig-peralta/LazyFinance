@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { stripVTControlCharacters } from "node:util";
 
 function memoryBytes(value) {
   const match = value.match(/^([\d.]+)([KMGT]?i?B)/);
@@ -33,7 +34,12 @@ export function captureResources(containerIds, directory) {
     pending += chunk;
     const lines = pending.split("\n");
     pending = lines.pop();
-    for (const line of lines.filter(Boolean)) {
+    // Docker's streaming renderer emits cursor controls even with a JSON template.
+    // Each stats record is a flat JSON object; terminal-only lines are not errors.
+    const records = lines.flatMap(
+      (line) => stripVTControlCharacters(line).match(/\{[^{}]*\}/g) ?? [],
+    );
+    for (const line of records) {
       try {
         const value = JSON.parse(line);
         const sample = {
@@ -49,7 +55,7 @@ export function captureResources(containerIds, directory) {
           `${JSON.stringify(sample)}\n`,
         );
       } catch (error) {
-        errors.push(error.message);
+        if (errors.length < 20) errors.push(error.message);
       }
     }
   });

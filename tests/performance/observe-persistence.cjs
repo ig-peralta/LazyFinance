@@ -57,7 +57,7 @@ if (process.argv[1]?.endsWith("apps/persistence/dist/main.js")) {
     )
       return original.apply(this, args);
     const sql = args[0];
-    if (/^begin\b/i.test(sql))
+    if (/^(begin|start transaction)\b/i.test(sql))
       scopes.set(this, {
         startedAt: new Date().toISOString(),
         start: performance.now(),
@@ -152,4 +152,8 @@ if (process.argv[1]?.endsWith("apps/persistence/dist/main.js")) {
       }
     }
   };
+  write("observer-ready", {
+    pid: process.pid,
+    measured: "scoped pg promise queries",
+  });
 }

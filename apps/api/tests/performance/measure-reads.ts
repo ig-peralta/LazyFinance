@@ -73,26 +73,37 @@ export async function measureReads(
   let resources: ReturnType<typeof resourceDifference> | null = null;
   let sql: Awaited<ReturnType<typeof sqlStatistics>> | null = null;
   try {
+    await resetSqlStatistics(db);
     const start = performance.now();
-    try {
-      for (const caller of callers) {
-        await caller.request();
-        preflight.completed++;
-      }
-    } catch (error) {
-      preflight.error = errorDetails(error);
-    }
+    await Promise.all(
+      callers.map(async (caller) => {
+        try {
+          await caller.request();
+          preflight.completed++;
+        } catch (error) {
+          preflight.error ??= errorDetails(error);
+        }
+      }),
+    );
     preflight.durationMs = performance.now() - start;
     if (!preflight.error) {
       const start = performance.now();
-      try {
-        for (let i = 0; i < readCriteria.warmup; i++) {
-          await callers[i % callers.length].request();
-          warmup.completed++;
-        }
-      } catch (error) {
-        warmup.error = errorDetails(error);
-      }
+      await Promise.all(
+        callers.map(async (caller) => {
+          for (
+            let i = 0;
+            i < readCriteria.warmup / callers.length && !warmup.error;
+            i++
+          ) {
+            try {
+              await caller.request();
+              warmup.completed++;
+            } catch (error) {
+              warmup.error ??= errorDetails(error);
+            }
+          }
+        }),
+      );
       warmup.durationMs = performance.now() - start;
     }
     if (!preflight.error && !warmup.error) {
@@ -137,6 +148,11 @@ export async function measureReads(
       endedAt = new Date().toISOString();
       resources = resourceDifference(before, resourceSnapshot());
       sql = await sqlStatistics(db);
+    } else {
+      sql = await sqlStatistics(
+        db,
+        "preflight/warm-up; no timed acceptance samples",
+      );
     }
   } finally {
     observer.stop();

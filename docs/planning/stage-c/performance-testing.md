@@ -46,6 +46,17 @@ with the real runtime role/RLS and no write replay. Three repetitions on one
 unchanged identified build will assess variability. Those new measurements are
 pending; the older single-owner results are not eight-owner evidence.
 
+The first eight-owner pilot (`089d511b`,
+`tests/performance/results/2026-11-23T02-09-48-671Z-089d511b/`) was interrupted
+after finding harness defects: the pg observer recognized `BEGIN` but not Kysely's
+`START TRANSACTION`, and Docker's streaming terminal controls prevented resource
+JSON parsing. Its partial read data and successful 93,061 ms import are retained,
+but it is not a completed acceptance run. The harness now recognizes both SQL
+forms, checks observer readiness, strips Docker terminal controls and starts
+sampling only after container startup. Preflight and warm-up use eight concurrent
+owners (two warm-ups each), rather than spending the test deadline on serial
+slow requests. Failed preflight/warm-up statistics remain explicitly labelled.
+
 ## Execution and findings
 
 The local host is an AMD Ryzen 5 PRO 4650U (6 cores/12 threads) with 14 GiB RAM,

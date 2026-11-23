@@ -85,6 +85,9 @@ try {
     .trim()
     .split("\n")
     .filter(Boolean);
+  // docker stats does not wait for created-but-stopped containers to start.
+  if ((await compose(["up", "-d"])) !== 0)
+    throw new Error("Performance containers could not be started");
   resources = captureResources(ids, destination);
   status = await compose(
     ["up", "--abort-on-container-exit", "--exit-code-from", "performance"],

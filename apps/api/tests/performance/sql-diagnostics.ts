@@ -1,9 +1,22 @@
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import type { FixtureDatabase } from "../fixtures/database";
 import { errorDetails } from "./diagnostics";
 
 export async function prepareSqlStatistics(db: FixtureDatabase) {
+  const run = process.env.PERF_REPORT_FILE;
+  if (
+    !run ||
+    !/^[\w-]+$/.test(run) ||
+    !existsSync(join("/results", run, "observer-ready"))
+  )
+    throw new Error("The isolated persistence SQL observer did not start");
   await db.pool.query("CREATE EXTENSION IF NOT EXISTS pg_stat_statements");
 }
 
@@ -11,7 +24,10 @@ export async function resetSqlStatistics(db: FixtureDatabase) {
   await db.pool.query("SELECT pg_stat_statements_reset()");
 }
 
-export async function sqlStatistics(db: FixtureDatabase) {
+export async function sqlStatistics(
+  db: FixtureDatabase,
+  phase = "measured window, reset after warm-up",
+) {
   const result = await db.pool.query<{
     queryId: string;
     sql: string;
@@ -32,8 +48,7 @@ export async function sqlStatistics(db: FixtureDatabase) {
     FROM pg_stat_statements WHERE userid = (SELECT oid FROM pg_roles WHERE rolname = 'lazyfinance_test_runtime')
     ORDER BY total_exec_time + total_plan_time DESC LIMIT 20`);
   return {
-    source:
-      "pg_stat_statements, runtime login, reset after warm-up; PostgreSQL time excludes transport",
+    source: `pg_stat_statements, runtime login, ${phase}; PostgreSQL time excludes transport`,
     statements: result.rows,
   };
 }
