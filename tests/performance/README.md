@@ -13,25 +13,30 @@ persistence plus the API's authenticated test app. The API tests use real signed
 private RPC, runtime RLS, and synthetic identities; no existing development
 database, live bank/model, external service or host port is involved. The script
 copies raw JSON reports and `compose.log` to
-`tests/performance/results/<UTC>-<git-sha>/`, then refreshes the **single**
-`tests/performance/results/dashboard.html` with all available runs. It stops only
-the Compose project it created. Results are gitignored. A failed assertion returns
-a nonzero exit status; keep its partial report and log to diagnose the failure.
+`tests/performance/results/<UTC>-<git-sha>/`, refreshes an optional local result
+index, and stops only the Compose project it created. Results and the index are
+gitignored. A failed assertion returns a nonzero exit status; keep its partial
+report and log to diagnose the failure.
 
-Open `tests/performance/results/dashboard.html` directly in a browser: no server,
-network or extra dependencies are needed. The run selector and archive table give
-access to every local result folder. The selected run shows each route's acceptance
-and partial-sample status, request distributions, private RPCs, import phases,
-resources and build provenance, with links to its raw JSON and Compose log.
-Missing reports are shown as unmeasured, never as passes. To rebuild the one
-dashboard after adding or removing local run folders without rerunning Docker:
+The **single committed [dashboard](dashboard.html)** is available at
+`tests/performance/dashboard.html` even before any tests have run. Open it directly
+in a browser; select `tests/performance/results/` with **Open results folder** to
+read every saved run locally. The run selector and archive table give access to all
+selected results. Browsers cannot enumerate a local folder automatically, so the
+runner also refreshes an optional `results/catalog.js` index for automatic loading
+when the dashboard is opened from this repository. Refresh that index independently
+of the tests after adding or removing runs:
 
 ```sh
 node tests/performance/dashboard.mjs
 ```
 
-Raw JSON remains authoritative; the HTML is a local visualization, not another
-performance measurement. The viewer does not send report contents anywhere.
+The selected run shows route acceptance and partial-sample status, request
+distributions, private RPCs, import phases, resources and build provenance. When
+using the local index it also links to raw JSON and Compose logs. Missing reports
+are unmeasured, never passes. Raw JSON remains authoritative; the HTML is a local
+visualization, not another performance measurement. The viewer does not send
+report contents anywhere.
 
 The `docker/test/` directory holds the isolated image and Compose configuration;
 `tests/performance/run.mjs` owns launch, artifact collection and teardown. The

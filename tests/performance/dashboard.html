@@ -46,6 +46,7 @@
       .upload-copy { flex: 1 1 300px; font-size: 13px; color: #5e7185; line-height: 1.5; }
       .upload-copy strong { display: block; color: #1f3448; font-size: 14px; }
       .run-select { min-width: min(100%, 320px); max-width: 100%; border: 1px solid #b9cbd4; border-radius: 9px; padding: 10px 12px; background: white; color: #193d50; font-size: 12px; font-weight: 750; }
+      .folder-input { max-width: 100%; color: #193d50; font-size: 12px; }
       .file-links { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; }
       .message { width: 100%; margin: 0; color: #64778b; font-size: 12px; }
       .message.error { color: #ad3d40; }
@@ -133,14 +134,16 @@
       </header>
 
       <div class="upload">
-        <div class="upload-copy"><strong>Saved local runs</strong>Every available run is embedded here. Choose one below or from the run history. Regenerate this page after adding results.</div>
+        <div class="upload-copy"><strong>Saved local runs</strong>This dashboard is always available. Choose the results folder to read its runs directly, or use the optional local index.</div>
+        <label for="report-folder" class="card-label">Open results folder</label>
+        <input id="report-folder" class="folder-input" type="file" webkitdirectory multiple aria-label="Select the performance results folder" />
         <label for="run-selector" class="card-label">Run</label>
         <select id="run-selector" class="run-select" aria-label="Choose a performance run"></select>
         <div id="raw-links" class="file-links"></div>
         <p id="run-count" class="message" role="status"></p>
       </div>
 
-      <div id="no-data" class="empty" hidden>No results were found. Run <code>pnpm test:performance</code> or regenerate this dashboard after adding results. Missing reports remain unmeasured, never passed.</div>
+      <div id="no-data" class="empty" hidden>No results loaded yet. Select <code>tests/performance/results/</code> above, or refresh the optional index with <code>node tests/performance/dashboard.mjs</code>. This page works before any test run. Missing reports remain unmeasured, never passed.</div>
       <main id="dashboard" hidden>
         <div id="summary" class="summary" aria-label="Run summary"></div>
         <section class="surface" aria-labelledby="history-title">
@@ -164,7 +167,7 @@
       <footer>Private RPC times include transport, server and database work—not separately measured SQL time. Concurrent spans overlap. Runner memory peak is since container start, not a per-route peak. Synthetic results do not establish production capacity.</footer>
     </div>
 
-    <script id="embedded-reports" type="application/json">{}</script>
+    <script src="./results/catalog.js"></script>
     <script>
       const routes = ["accounts.list", "transactions.recent", "summaries.monthly", "objectives.progress"];
       const byId = (id) => document.getElementById(id);
@@ -220,7 +223,7 @@
         clear(byId("raw-links"));
         if (!reports) { badge(byId("run-status"), "No data", "missing"); return; }
         byId("run-selector").value = String(index);
-        byId("run-count").textContent = `${runs.length} saved run${runs.length === 1 ? "" : "s"} · ${reports.directory}${reports.errors ? ` · Unreadable: ${reports.errors.join("; ")}` : ""}`;
+        byId("run-count").textContent = `${runs.length} saved run${runs.length === 1 ? "" : "s"} · ${reports.directory} · ${sourceDescription}${reports.errors ? ` · Unreadable: ${reports.errors.join("; ")}` : ""}`;
 
         const sameBuild = !reads?.gitCommit || !bank?.gitCommit || reads.gitCommit === bank.gitCommit;
         const label = !sameBuild ? "Mixed builds" : reads?.outcome === "failed" || bank?.outcome === "failed" ? "Target missed" : !reads || !bank || reads.outcome !== "passed" || bank.outcome !== "passed" ? "Partial evidence" : "All targets met";
@@ -229,16 +232,18 @@
         const source = reads || bank || {};
         for (const value of [runLabel(reports), source.gitCommit ? `Build ${source.gitCommit.slice(0, 8)}` : "Build unavailable", `${reads?.criteria?.concurrency ?? "—"} concurrent readers`, "Synthetic · isolated Docker"])
           meta.append(node("span", "", value));
-        for (const [report, filename, label] of [[reads, "financial-reads.json", "Read JSON ↗"], [bank, "banking-import.json", "Import JSON ↗"]]) {
-          if (!report) continue;
-          const link = node("a", "", label);
-          link.href = `${encodeURIComponent(reports.directory)}/${filename}`;
-          byId("raw-links").append(link);
-        }
-        if (reports.composeLog) {
-          const log = node("a", "", "Compose log ↗");
-          log.href = `${encodeURIComponent(reports.directory)}/compose.log`;
-          byId("raw-links").append(log);
+        if (!reports.fromFolder) {
+          for (const [report, filename, label] of [[reads, "financial-reads.json", "Read JSON ↗"], [bank, "banking-import.json", "Import JSON ↗"]]) {
+            if (!report) continue;
+            const link = node("a", "", label);
+            link.href = `results/${encodeURIComponent(reports.directory)}/${filename}`;
+            byId("raw-links").append(link);
+          }
+          if (reports.composeLog) {
+            const log = node("a", "", "Compose log ↗");
+            log.href = `results/${encodeURIComponent(reports.directory)}/compose.log`;
+            byId("raw-links").append(log);
+          }
         }
 
         const results = list(reads?.results);
@@ -486,21 +491,48 @@
         }
       }
 
-      let archive = { runs: [] };
-      try { archive = JSON.parse(byId("embedded-reports").textContent); }
-      catch { byId("run-count").textContent = "The embedded run archive could not be read."; }
-      const runs = list(archive.runs);
-      if (!runs.length && !byId("run-count").textContent) byId("run-count").textContent = "0 saved runs";
       const selector = byId("run-selector");
-      selector.hidden = !runs.length;
-      for (let index = runs.length - 1; index >= 0; index--) {
-        const run = runs[index];
-        const option = node("option", "", `${runLabel(run)} · ${run.reads?.outcome || "no reads"} / ${run.import?.outcome || "no import"}`);
-        option.value = String(index);
-        selector.append(option);
+      let runs = [];
+      let sourceDescription = "local index";
+      function showRuns(next, source) {
+        runs = next;
+        sourceDescription = source;
+        selectedRoute = null;
+        clear(selector);
+        selector.hidden = !runs.length;
+        for (let index = runs.length - 1; index >= 0; index--) {
+          const run = runs[index];
+          const option = node("option", "", `${runLabel(run)} · ${run.reads?.outcome || "no reads"} / ${run.import?.outcome || "no import"}`);
+          option.value = String(index);
+          selector.append(option);
+        }
+        byId("run-count").textContent = runs.length ? `${runs.length} saved run${runs.length === 1 ? "" : "s"} · ${source}` : `No runs loaded · ${source}`;
+        render(runs, runs.length - 1);
       }
       selector.addEventListener("change", () => { selectedRoute = null; render(runs, Number(selector.value)); });
-      render(runs, runs.length - 1);
+      showRuns(list(globalThis.lazyFinancePerformanceArchive?.runs), "local index");
+      byId("report-folder").addEventListener("change", async (event) => {
+        const files = Array.from(event.target.files || []);
+        if (!files.length) return;
+        const found = new Map();
+        for (const file of files) {
+          if (!["financial-reads.json", "banking-import.json", "compose.log"].includes(file.name)) continue;
+          const parts = (file.webkitRelativePath || file.name).split("/");
+          const directory = parts.length > 1 ? parts.at(-2) : "Selected files";
+          if (!found.has(directory)) found.set(directory, { directory, fromFolder: true });
+          const run = found.get(directory);
+          if (file.name === "compose.log") { run.composeLog = true; continue; }
+          try {
+            const report = JSON.parse(await file.text());
+            run[file.name === "financial-reads.json" ? "reads" : "import"] = report;
+          } catch (error) {
+            if (!run.errors) run.errors = [];
+            run.errors.push(`${file.name}: ${error instanceof Error ? error.message : "Unreadable JSON"}`);
+          }
+        }
+        showRuns([...found.values()].sort((a, b) => a.directory.localeCompare(b.directory)), "selected folder · files stay in this browser");
+        event.target.value = "";
+      });
     </script>
   </body>
 </html>

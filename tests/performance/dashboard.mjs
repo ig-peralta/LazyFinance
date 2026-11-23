@@ -8,30 +8,10 @@ import {
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const template = new URL("./dashboard.template.html", import.meta.url);
 const results = fileURLToPath(new URL("./results/", import.meta.url));
-const placeholder =
-  '<script id="embedded-reports" type="application/json">{}</script>';
 
-/** Embed JSON safely in a script element, including arbitrary error messages. */
-export function renderDashboard(reports) {
-  const html = readFileSync(template, "utf8");
-  if (html.split(placeholder).length !== 2)
-    throw new Error("Performance dashboard data placeholder is missing");
-  const json = JSON.stringify(reports)
-    .replaceAll("<", "\\u003c")
-    .replaceAll(">", "\\u003e")
-    .replaceAll("&", "\\u0026")
-    .replaceAll("\u2028", "\\u2028")
-    .replaceAll("\u2029", "\\u2029");
-  return html.replace(
-    placeholder,
-    `<script id="embedded-reports" type="application/json">${json}</script>`,
-  );
-}
-
-/** One offline dashboard for all available local runs, including partial failures. */
-export function writeDashboard() {
+/** Optional data index for the committed, always-available HTML dashboard. */
+export function writeCatalog() {
   mkdirSync(results, { recursive: true });
   const runs = [];
   const directories = readdirSync(results, { withFileTypes: true })
@@ -59,8 +39,12 @@ export function writeDashboard() {
     }
     if (run.reads || run.import || run.composeLog || run.errors) runs.push(run);
   }
-  const output = join(results, "dashboard.html");
-  writeFileSync(output, renderDashboard({ runs }));
+  const json = JSON.stringify({ runs })
+    .replaceAll("<", "\\u003c")
+    .replaceAll("\u2028", "\\u2028")
+    .replaceAll("\u2029", "\\u2029");
+  const output = join(results, "catalog.js");
+  writeFileSync(output, `window.lazyFinancePerformanceArchive = ${json};\n`);
   return output;
 }
 
@@ -68,5 +52,5 @@ export function writeDashboard() {
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   if (process.argv.length !== 2)
     throw new Error("Usage: node tests/performance/dashboard.mjs");
-  console.log(writeDashboard());
+  console.log(writeCatalog());
 }
