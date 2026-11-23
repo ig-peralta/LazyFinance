@@ -74,7 +74,8 @@ describe("measured authenticated financial reads", () => {
          SELECT $1, CASE WHEN i % 2 = 0 THEN $2::uuid ELSE NULL END,
                 now(), '-100.00', 'debit', 'manual', 'Synthetic merchant',
                 'Synthetic purchase', false,
-                CASE WHEN i % 2 = 0 THEN 'manual' ELSE 'unreviewed' END, 'clear'
+                (CASE WHEN i % 2 = 0 THEN 'manual' ELSE 'unreviewed' END)::finance.tag_decision_origin,
+                'clear'::finance.movement_review_status
          FROM generate_series(1, $3::integer) AS i`,
         [f.accountId, tag.id, rows],
       );
