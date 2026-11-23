@@ -8,6 +8,7 @@
       "!**/.turbo",
       "!**/.angular",
       "!**/coverage",
+      "!tests/performance/results",
       "!.local",
       "!libs/rpc-api/src/generated",
       "!libs/rpc-persistence/src/generated"
