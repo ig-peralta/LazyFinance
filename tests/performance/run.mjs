@@ -8,6 +8,7 @@ import {
 } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { writeDashboard } from "./dashboard.mjs";
 
 const root = fileURLToPath(new URL("../..", import.meta.url));
 const location = dirname(fileURLToPath(import.meta.url));
@@ -123,6 +124,7 @@ try {
       `${JSON.stringify({ ...record, build: { runnerImageId: imageId, postgresImageId, sourceTreeClean } }, null, 2)}\n`,
     );
   }
+  console.log(`All-run performance dashboard: ${writeDashboard()}`);
   console.log(`Performance reports and Compose log: ${destination}`);
 } catch (error) {
   console.error("No complete performance report was collected:", error);

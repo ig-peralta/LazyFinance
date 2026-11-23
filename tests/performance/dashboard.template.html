@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>Performance results · LazyFinance</title>
+    <style>
+      :root {
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #1c2c40;
+        background: #f4f7fa;
+        font-synthesis: none;
+      }
+      * { box-sizing: border-box; }
+      [hidden] { display: none; }
+      body { margin: 0; min-width: 320px; }
+      button, select { font: inherit; }
+      a { color: #176e86; }
+      :focus-visible { outline: 3px solid #43b9b1; outline-offset: 3px; }
+      .shell { max-width: 1240px; margin: 0 auto; padding: 0 28px 64px; }
+      .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 28px 0; }
+      .brand { display: flex; align-items: center; gap: 12px; font-weight: 800; letter-spacing: -.04em; font-size: 18px; }
+      .mark { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; color: white; background: #153c50; font-size: 13px; letter-spacing: -.03em; }
+      .topbar-note, .muted { color: #66798d; }
+      .topbar-note { font-size: 12px; font-weight: 650; text-transform: uppercase; letter-spacing: .13em; }
+      .hero { position: relative; overflow: hidden; border-radius: 24px; padding: 36px 40px 40px; color: #e2f3f5; background: radial-gradient(circle at 88% 6%, #276e7a 0, transparent 38%), linear-gradient(125deg, #112b42, #19465b 90%); box-shadow: 0 18px 40px #11364a1c; }
+      .hero::after { content: ""; position: absolute; right: -95px; bottom: -200px; width: 400px; height: 400px; border: 1px solid #ffffff21; border-radius: 50%; box-shadow: 0 0 0 55px #ffffff08, 0 0 0 110px #ffffff07; pointer-events: none; }
+      .hero-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; position: relative; z-index: 1; }
+      .eyebrow { margin: 0; font-size: 11px; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; color: #90d9d6; }
+      h1 { margin: 24px 0 8px; font-size: clamp(32px, 5vw, 52px); line-height: 1.04; letter-spacing: -.055em; color: white; }
+      .hero p.lede { max-width: 640px; margin: 0; color: #bad1dc; line-height: 1.6; }
+      .hero-meta { position: relative; z-index: 1; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 30px; }
+      .hero-meta span { border: 1px solid #ffffff2b; background: #ffffff12; border-radius: 7px; padding: 8px 11px; font-size: 12px; color: #e4f3f5; }
+      .badge { display: inline-flex; align-items: center; gap: 7px; width: max-content; border-radius: 999px; padding: 7px 12px; font-size: 11px; letter-spacing: .09em; font-weight: 800; text-transform: uppercase; white-space: nowrap; }
+      .badge::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+      .badge.pass { background: #e5f6ee; color: #16734f; }
+      .badge.fail { background: #fcebe9; color: #b44245; }
+      .badge.partial { background: #fff1dc; color: #946122; }
+      .badge.missing { background: #edf1f5; color: #66798d; }
+      .hero .badge.pass { background: #d8f9e9; }
+      .hero .badge.fail { background: #ffe9e4; }
+      .hero .badge.partial { background: #fff1dc; }
+      .hero .badge.missing { background: #e3edf1; }
+      .upload { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 18px; margin: 20px 0 24px; padding: 16px 20px; border: 1px solid #dae4eb; border-radius: 14px; background: white; }
+      .upload-copy { flex: 1 1 300px; font-size: 13px; color: #5e7185; line-height: 1.5; }
+      .upload-copy strong { display: block; color: #1f3448; font-size: 14px; }
+      .run-select { min-width: min(100%, 320px); max-width: 100%; border: 1px solid #b9cbd4; border-radius: 9px; padding: 10px 12px; background: white; color: #193d50; font-size: 12px; font-weight: 750; }
+      .file-links { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; }
+      .message { width: 100%; margin: 0; color: #64778b; font-size: 12px; }
+      .message.error { color: #ad3d40; }
+      .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+      .card, .surface { background: white; border: 1px solid #dfe7ed; box-shadow: 0 5px 22px #1230470a; }
+      .card { border-radius: 15px; padding: 20px 21px; }
+      .card-label { font-size: 11px; color: #667b8e; text-transform: uppercase; letter-spacing: .12em; font-weight: 800; }
+      .card-value { margin: 12px 0 6px; font-size: 27px; font-weight: 770; letter-spacing: -.05em; font-variant-numeric: tabular-nums; }
+      .card-foot { color: #6d7e90; font-size: 12px; line-height: 1.45; }
+      .surface { border-radius: 18px; overflow: hidden; margin-bottom: 24px; }
+      .section-head { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 26px 28px 21px; }
+      .section-head h2 { margin: 4px 0 5px; font-size: 22px; letter-spacing: -.035em; }
+      .section-head p { margin: 0; color: #687c8f; font-size: 13px; line-height: 1.55; }
+      .section-tag { color: #258281; text-transform: uppercase; letter-spacing: .16em; font-weight: 800; font-size: 10px; }
+      .table-scroll { width: 100%; overflow-x: auto; }
+      table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
+      th { padding: 12px 16px; background: #f5f8fa; color: #6a7d8e; font-size: 10px; letter-spacing: .11em; text-transform: uppercase; white-space: nowrap; }
+      th:first-child, td:first-child { padding-left: 28px; }
+      th:last-child, td:last-child { padding-right: 28px; }
+      td { padding: 16px; border-top: 1px solid #edf1f4; vertical-align: middle; font-variant-numeric: tabular-nums; }
+      td.numeric { white-space: nowrap; font-weight: 750; }
+      .route-row { cursor: pointer; }
+      .route-row:hover, .route-row.selected { background: #f0f8f8; }
+      .route-row.missing { cursor: default; }
+      .route-name { font-weight: 750; color: #1b4054; }
+      .route-name small { display: block; font-size: 11px; margin-top: 4px; color: #718497; font-weight: 500; }
+      .route-button { padding: 0; background: transparent; border: 0; text-align: left; color: inherit; cursor: pointer; }
+      .route-button:hover { text-decoration: underline; }
+      .route-button:disabled { cursor: default; text-decoration: none; }
+      .history-button { border: 0; background: none; padding: 0; color: #1b4054; cursor: pointer; font-weight: 750; text-align: left; }
+      .history-button:hover { text-decoration: underline; }
+      .detail { border-top: 1px solid #dfe7ed; padding: 25px 28px 29px; background: #fcfdfd; }
+      .detail-head { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; align-items: start; }
+      .detail-head h3 { margin: 0; font-size: 18px; letter-spacing: -.03em; }
+      .detail-head p { margin: 5px 0 0; font-size: 12px; color: #6b7c8c; }
+      .notice { padding: 12px 14px; margin: 18px 0; border-radius: 9px; font-size: 12px; line-height: 1.55; color: #744c1e; background: #fff3e0; }
+      .notice.danger { color: #a43941; background: #fcebe9; }
+      .detail-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(275px, 1fr); gap: 16px; margin-top: 20px; }
+      .subpanel { min-width: 0; background: white; border: 1px solid #e5edf0; border-radius: 11px; padding: 18px; }
+      .subpanel h4 { margin: 0 0 5px; font-size: 13px; }
+      .subpanel .caption { margin: 0 0 15px; color: #728393; font-size: 11px; line-height: 1.55; }
+      .latency-plot { width: 100%; height: auto; display: block; background: #f9fbfc; border-radius: 7px; }
+      .plot-key { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; color: #798998; font-size: 11px; margin-top: 8px; }
+      .swatch { display: inline-block; width: 12px; height: 2px; background: #b24950; margin: 0 5px 4px 0; }
+      .buckets { display: flex; align-items: end; gap: 7px; min-height: 132px; }
+      .bucket { flex: 1; min-width: 0; text-align: center; font-size: 10px; color: #718495; }
+      .bucket-count { display: block; color: #3b5365; font-weight: 750; margin-bottom: 5px; }
+      .bucket-track { position: relative; height: 82px; background: #f0f5f7; border-radius: 5px; overflow: hidden; }
+      .bucket-fill { position: absolute; inset: auto 0 0; background: #58a9aa; border-radius: 5px; }
+      .bucket-fill.slow { background: #dc7475; }
+      .bucket-label { display: block; margin-top: 7px; line-height: 1.25; }
+      .statline { display: flex; flex-wrap: wrap; gap: 10px 24px; margin-top: 17px; color: #576f81; font-size: 12px; }
+      .statline strong { color: #273d50; }
+      .subheading { font-size: 12px; font-weight: 750; margin: 24px 0 10px; }
+      .compact th, .compact td { padding: 10px 12px; }
+      .compact th:first-child, .compact td:first-child { padding-left: 14px; }
+      .compact th:last-child, .compact td:last-child { padding-right: 14px; }
+      .empty { padding: 24px; border: 1px dashed #cfdee5; background: #f8fbfc; border-radius: 11px; color: #62798b; font-size: 13px; line-height: 1.6; }
+      .phase { display: grid; grid-template-columns: 200px minmax(120px, 1fr) 90px; align-items: center; gap: 12px; margin: 14px 0; font-size: 12px; }
+      .phase-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 650; }
+      .phase-track { height: 9px; background: #edf2f4; border-radius: 99px; overflow: hidden; }
+      .phase-fill { height: 100%; border-radius: inherit; min-width: 2px; background: #7ea8b7; }
+      .phase-fill.commit { background: #dc7475; }
+      .phase-duration { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+      .import-metrics { display: flex; flex-wrap: wrap; gap: 14px 32px; padding: 0 28px 22px; color: #576c7c; font-size: 12px; }
+      .import-metrics strong { color: #263f52; display: block; font-size: 20px; margin-bottom: 3px; font-variant-numeric: tabular-nums; letter-spacing: -.04em; }
+      .environment { padding: 23px 28px; }
+      .environment h2 { font-size: 15px; margin: 0 0 15px; }
+      .meta-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+      .meta-item small { display: block; color: #78899a; text-transform: uppercase; letter-spacing: .11em; font-weight: 800; font-size: 10px; margin-bottom: 5px; }
+      .meta-item span { display: block; overflow-wrap: anywhere; font-size: 12px; line-height: 1.5; }
+      footer { padding: 2px 2px 0; font-size: 11px; line-height: 1.6; color: #718497; }
+      @media (max-width: 900px) { .summary { grid-template-columns: repeat(2, 1fr); } .detail-grid { grid-template-columns: 1fr; } .meta-grid { grid-template-columns: repeat(2, 1fr); } }
+      @media (max-width: 600px) { .shell { padding: 0 15px 38px; } .topbar { padding: 18px 0; } .topbar-note { display: none; } .hero { padding: 28px 24px 32px; } .summary { gap: 9px; } .card { padding: 15px; } .card-value { font-size: 23px; } .section-head, .detail, .environment { padding: 20px; } .phase { grid-template-columns: 110px minmax(65px, 1fr) 67px; gap: 8px; font-size: 10px; } .meta-grid { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <div class="topbar"><div class="brand"><span class="mark">LF</span> LazyFinance</div><span class="topbar-note">Engineering / Benchmarks</span></div>
+      <header class="hero">
+        <div class="hero-top"><span class="eyebrow">Performance lab · LAZ-108</span><span id="run-status" class="badge missing">No data</span></div>
+        <h1>Run diagnostics</h1>
+        <p class="lede">Read latency, private RPCs, resources and import phases from the isolated synthetic performance suite.</p>
+        <div id="hero-meta" class="hero-meta" aria-label="Run details"></div>
+      </header>
+
+      <div class="upload">
+        <div class="upload-copy"><strong>Saved local runs</strong>Every available run is embedded here. Choose one below or from the run history. Regenerate this page after adding results.</div>
+        <label for="run-selector" class="card-label">Run</label>
+        <select id="run-selector" class="run-select" aria-label="Choose a performance run"></select>
+        <div id="raw-links" class="file-links"></div>
+        <p id="run-count" class="message" role="status"></p>
+      </div>
+
+      <div id="no-data" class="empty" hidden>No results were found. Run <code>pnpm test:performance</code> or regenerate this dashboard after adding results. Missing reports remain unmeasured, never passed.</div>
+      <main id="dashboard" hidden>
+        <div id="summary" class="summary" aria-label="Run summary"></div>
+        <section class="surface" aria-labelledby="history-title">
+          <div class="section-head"><div><span class="section-tag">Run archive</span><h2 id="history-title">All available results</h2><p>Choose any saved run to inspect its routes and import. Earlier runs may contain only partial data.</p></div></div>
+          <div class="table-scroll"><table><thead><tr><th>Run · UTC</th><th>Build</th><th>Reads</th><th>Import</th><th>Elapsed</th></tr></thead><tbody id="history-rows"></tbody></table></div>
+        </section>
+        <section class="surface" aria-labelledby="reads-title">
+          <div class="section-head"><div><span class="section-tag">01 / Route health</span><h2 id="reads-title">Authenticated reads</h2><p>200 planned calls per route · eight callers · p95 strictly under 500 ms.</p></div><span id="reads-status" class="badge missing">Not measured</span></div>
+          <div class="table-scroll"><table><thead><tr><th>Route</th><th>Requests</th><th>p50</th><th>p95</th><th>Private RPC (p95)</th><th>Result</th></tr></thead><tbody id="route-rows"></tbody></table></div>
+          <div id="route-detail" class="detail"></div>
+        </section>
+
+        <section class="surface" aria-labelledby="import-title">
+          <div class="section-head"><div><span class="section-tag">02 / Ingestion</span><h2 id="import-title">Near-limit import</h2><p>One account + 49,999 movements · complete and under 120 seconds required.</p></div><span id="import-status" class="badge missing">Not measured</span></div>
+          <div id="import-metrics" class="import-metrics"></div>
+          <div id="import-detail" class="detail"></div>
+        </section>
+
+        <section class="surface environment" aria-labelledby="environment-title"><h2 id="environment-title">Run provenance &amp; limits</h2><div id="environment" class="meta-grid"></div></section>
+      </main>
+      <footer>Private RPC times include transport, server and database work—not separately measured SQL time. Concurrent spans overlap. Runner memory peak is since container start, not a per-route peak. Synthetic results do not establish production capacity.</footer>
+    </div>
+
+    <script id="embedded-reports" type="application/json">{}</script>
+    <script>
+      const routes = ["accounts.list", "transactions.recent", "summaries.monthly", "objectives.progress"];
+      const byId = (id) => document.getElementById(id);
+      const finite = (value) => typeof value === "number" && Number.isFinite(value);
+      const number = (value) => finite(value) ? new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(value) : "—";
+      const ms = (value) => finite(value) ? `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(value)} ms` : "—";
+      const duration = (value) => !finite(value) ? "—" : value >= 1000 ? `${(value / 1000).toFixed(1)} s` : ms(value);
+      const bytes = (value) => !finite(value) ? "—" : value >= 1e6 ? `${(value / 1e6).toFixed(1)} MB` : value >= 1000 ? `${(value / 1000).toFixed(1)} kB` : `${number(value)} B`;
+      const list = (value) => Array.isArray(value) ? value : [];
+      const node = (tag, className, text) => {
+        const item = document.createElement(tag);
+        if (className) item.className = className;
+        if (text !== undefined) item.textContent = String(text);
+        return item;
+      };
+      const clear = (item) => item.replaceChildren();
+      function badge(item, text, state) {
+        item.className = `badge ${state}`;
+        item.textContent = text;
+      }
+      function metric(parent, label, value, foot) {
+        const card = node("div", "card");
+        card.append(node("div", "card-label", label), node("div", "card-value", value), node("div", "card-foot", foot));
+        parent.append(card);
+      }
+      function row(parent, values) {
+        const tr = node("tr");
+        for (const value of values) tr.append(node("td", "", value));
+        parent.append(tr);
+      }
+      function statusOf(route, reads) {
+        if (!route) return ["Not measured", "missing"];
+        if (route.stage !== "measured") return [route.stage || "Not measured", "partial"];
+        const requested = route.requested ?? reads?.criteria?.requests;
+        const target = reads?.criteria?.targetP95Ms;
+        if (finite(requested) && route.successful === requested && route.errors === 0 && finite(route.p95Ms) && finite(target) && route.p95Ms < target && !route.stoppedEarly)
+          return ["Pass", "pass"];
+        return ["Target missed", "fail"];
+      }
+
+      let selectedRoute = null;
+      const runLabel = (run) => {
+        const stamp = run.directory.match(/^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})/);
+        return stamp ? `${stamp[1]} ${stamp[2]}:${stamp[3]}:${stamp[4]} UTC` : run.directory;
+      };
+      function render(runs, index) {
+        const reports = runs[index];
+        const reads = reports?.reads;
+        const bank = reports?.import;
+        byId("no-data").hidden = Boolean(reports);
+        byId("dashboard").hidden = !reports;
+        clear(byId("hero-meta"));
+        clear(byId("raw-links"));
+        if (!reports) { badge(byId("run-status"), "No data", "missing"); return; }
+        byId("run-selector").value = String(index);
+        byId("run-count").textContent = `${runs.length} saved run${runs.length === 1 ? "" : "s"} · ${reports.directory}${reports.errors ? ` · Unreadable: ${reports.errors.join("; ")}` : ""}`;
+
+        const sameBuild = !reads?.gitCommit || !bank?.gitCommit || reads.gitCommit === bank.gitCommit;
+        const label = !sameBuild ? "Mixed builds" : reads?.outcome === "failed" || bank?.outcome === "failed" ? "Target missed" : !reads || !bank || reads.outcome !== "passed" || bank.outcome !== "passed" ? "Partial evidence" : "All targets met";
+        badge(byId("run-status"), label, !sameBuild ? "partial" : label === "Target missed" ? "fail" : label === "All targets met" ? "pass" : "partial");
+        const meta = byId("hero-meta");
+        const source = reads || bank || {};
+        for (const value of [runLabel(reports), source.gitCommit ? `Build ${source.gitCommit.slice(0, 8)}` : "Build unavailable", `${reads?.criteria?.concurrency ?? "—"} concurrent readers`, "Synthetic · isolated Docker"])
+          meta.append(node("span", "", value));
+        for (const [report, filename, label] of [[reads, "financial-reads.json", "Read JSON ↗"], [bank, "banking-import.json", "Import JSON ↗"]]) {
+          if (!report) continue;
+          const link = node("a", "", label);
+          link.href = `${encodeURIComponent(reports.directory)}/${filename}`;
+          byId("raw-links").append(link);
+        }
+        if (reports.composeLog) {
+          const log = node("a", "", "Compose log ↗");
+          log.href = `${encodeURIComponent(reports.directory)}/compose.log`;
+          byId("raw-links").append(log);
+        }
+
+        const results = list(reads?.results);
+        const attempted = results.reduce((sum, item) => sum + (finite(item.attempted) ? item.attempted : 0), 0);
+        const failures = results.reduce((sum, item) => sum + (finite(item.errors) ? item.errors : 0), 0);
+        const passing = routes.filter((name) => statusOf(results.find((item) => item.route === name), reads)[1] === "pass").length;
+        clear(byId("summary"));
+        metric(byId("summary"), "Reads on target", `${passing} / ${routes.length}`, reads ? `${number(reads?.dataset?.measuredOwnerMovements)} owned movements` : "Read report unavailable");
+        metric(byId("summary"), "Calls attempted", reads ? `${number(attempted)} / ${number((reads?.criteria?.requests ?? 200) * routes.length)}` : "—", reads ? `${number(failures)} request errors · partial samples are not acceptance` : "Read report unavailable");
+        metric(byId("summary"), "Import elapsed", duration(bank?.result?.durationMs), bank ? `Budget: <${duration(bank?.criteria?.transportBudgetMs)}` : "Import report unavailable");
+        metric(byId("summary"), "Rows persisted", number(bank?.result?.persistedMovements), bank ? `${number(bank?.dataset?.combinedRecords)} combined records` : "Import report unavailable");
+
+        renderHistory(runs, index);
+        badge(byId("reads-status"), reads ? reads.outcome || "Unknown" : "Not measured", reads?.outcome === "passed" ? "pass" : reads?.outcome === "failed" ? "fail" : reads ? "partial" : "missing");
+        badge(byId("import-status"), bank ? bank.outcome || "Unknown" : "Not measured", bank?.outcome === "passed" ? "pass" : bank?.outcome === "failed" ? "fail" : bank ? "partial" : "missing");
+        renderRoutes(reads, results);
+        renderImport(bank);
+        renderEnvironment(source, sameBuild);
+      }
+
+      function renderHistory(runs, active) {
+        const body = byId("history-rows");
+        clear(body);
+        for (let index = runs.length - 1; index >= 0; index--) {
+          const run = runs[index];
+          const tr = node("tr", index === active ? "route-row selected" : "route-row");
+          const cell = node("td");
+          const button = node("button", "history-button", runLabel(run));
+          button.type = "button";
+          button.addEventListener("click", () => { selectedRoute = null; render(runs, index); });
+          cell.append(button);
+          tr.append(cell);
+          tr.append(node("td", "", (run.reads?.gitCommit || run.import?.gitCommit || "—").slice(0, 8)));
+          tr.append(node("td", "", run.reads?.outcome || "Not measured"));
+          tr.append(node("td", "", run.import?.outcome || "Not measured"));
+          tr.append(node("td", "numeric", duration(run.import?.result?.durationMs)));
+          body.append(tr);
+        }
+      }
+
+      function renderRoutes(reads, results) {
+        const body = byId("route-rows");
+        clear(body);
+        const measured = results.filter((result) => routes.includes(result.route));
+        if (!measured.some((result) => result.route === selectedRoute))
+          selectedRoute = measured.find((result) => statusOf(result, reads)[1] !== "pass")?.route || measured[0]?.route || null;
+        for (const name of routes) {
+          const result = results.find((item) => item.route === name);
+          const [label, state] = statusOf(result, reads);
+          const tr = node("tr", `route-row ${result ? "" : "missing"} ${selectedRoute === name ? "selected" : ""}`);
+          const routeCell = node("td", "route-name");
+          const button = node("button", "route-button", name);
+          button.type = "button";
+          button.disabled = !result;
+          button.addEventListener("click", () => { selectedRoute = name; renderRoutes(reads, results); });
+          routeCell.append(button);
+          if (result?.stoppedEarly || (result && result.stage !== "measured")) routeCell.append(node("small", "", result.stoppedEarly ? "Partial sample · stopped early" : result.stage));
+          tr.append(routeCell);
+          tr.append(node("td", "numeric", result ? `${number(result.attempted)} / ${number(result.requested ?? reads?.criteria?.requests)} · ${number(result.errors)} errors` : "—"));
+          tr.append(node("td", "numeric", ms(result?.p50Ms)));
+          tr.append(node("td", "numeric", ms(result?.p95Ms)));
+          const slowest = list(result?.privateRpc?.measured).reduce((worst, rpc) => !worst || (rpc.p95Ms ?? 0) > (worst.p95Ms ?? 0) ? rpc : worst, null);
+          tr.append(node("td", "", slowest ? `${slowest.procedure} · ${ms(slowest.p95Ms)}` : "—"));
+          const stateCell = node("td");
+          const status = node("span");
+          badge(status, label, state);
+          stateCell.append(status);
+          tr.append(stateCell);
+          body.append(tr);
+        }
+        const detail = byId("route-detail");
+        clear(detail);
+        const route = results.find((item) => item.route === selectedRoute);
+        if (!route) { detail.append(node("div", "empty", "No route samples available in this report.")); return; }
+        const [label, state] = statusOf(route, reads);
+        const header = node("div", "detail-head");
+        const heading = node("div");
+        heading.append(node("h3", "", route.route), node("p", "", `${number(route.successful)} successful / ${number(route.requested ?? reads?.criteria?.requests)} planned · ${number(route.errors)} errors · ${number(route.concurrency)} callers`));
+        const stateTag = node("span");
+        badge(stateTag, label, state);
+        header.append(heading, stateTag);
+        detail.append(header);
+        const error = route.preflight?.error || route.warmup?.error || list(route.failureSamples)[0]?.error;
+        if (error) detail.append(node("div", "notice danger", `${error.kind || "Error"}: ${error.message || "No detail recorded"}`));
+        if (route.stoppedEarly) detail.append(node("div", "notice", `Stopped scheduling once the 200-call target became unattainable. The ${ms(route.p95Ms)} sample p95 is diagnostic only—not a 200-call acceptance result.`));
+        const grid = node("div", "detail-grid");
+        const plot = node("div", "subpanel");
+        plot.append(node("h4", "", "Request latency over time"), node("p", "caption", `Each point is a completed call. Red guide: <${ms(reads?.criteria?.targetP95Ms)} p95 target.`));
+        drawPlot(plot, route, reads?.criteria?.targetP95Ms);
+        const histogram = node("div", "subpanel");
+        histogram.append(node("h4", "", "Latency distribution"), node("p", "caption", "Completed calls by duration bucket, including slow calls."));
+        drawBuckets(histogram, route);
+        grid.append(plot, histogram);
+        detail.append(grid);
+        const stats = node("div", "statline");
+        for (const [name, value] of [
+          ["p50", ms(route.p50Ms)], ["p95", ms(route.p95Ms)], ["p99", ms(route.p99Ms)], ["max", ms(route.maxMs)],
+          ["≥ target", number(route.overTarget)], ["throughput", finite(route.successfulPerSecond) ? `${number(route.successfulPerSecond)}/s` : "—"],
+          ["warm-up", `${number(route.warmup?.completed)} / ${number(route.warmup?.requested)}`],
+        ]) {
+          const entry = node("span");
+          entry.append(node("strong", "", `${name}  `), document.createTextNode(value));
+          stats.append(entry);
+        }
+        detail.append(stats);
+        const cgroup = route.resources?.runnerCgroup;
+        if (cgroup) detail.append(node("div", "statline", `Runner CPU ${duration(cgroup.cpuMs)} · throttled ${duration(cgroup.throttledMs)} · memory peak since container start ${bytes(cgroup.memoryPeakSinceContainerStartBytes)} · OOM kills ${number(cgroup.oomKills)}`));
+        detail.append(node("div", "subheading", "Private RPCs · measured window"));
+        const rpc = list(route.privateRpc?.measured);
+        if (!rpc.length) { detail.append(node("div", "empty", "No private RPC spans recorded for this route.")); return; }
+        const container = node("div", "table-scroll");
+        const table = node("table", "compact");
+        const head = node("thead");
+        const hrow = node("tr");
+        for (const value of ["Procedure", "Calls", "p50", "p95", "HTTP statuses", "Non-2xx"])
+          hrow.append(node("th", "", value));
+        head.append(hrow);
+        const rpcBody = node("tbody");
+        for (const item of rpc) row(rpcBody, [item.procedure, number(item.calls), ms(item.p50Ms), ms(item.p95Ms), list(item.statuses).join(", ") || "—", number(item.non2xx)]);
+        table.append(head, rpcBody);
+        container.append(table);
+        detail.append(container);
+      }
+
+      function drawPlot(parent, route, target) {
+        const samples = list(route.samples).filter((item) => finite(item.offsetMs) && finite(item.durationMs)).sort((a, b) => a.offsetMs - b.offsetMs);
+        if (!samples.length) { parent.append(node("div", "empty", "No timed request samples recorded.")); return; }
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("viewBox", "0 0 720 150");
+        svg.setAttribute("role", "img");
+        svg.setAttribute("aria-label", `Latency of ${samples.length} completed requests over time`);
+        svg.setAttribute("class", "latency-plot");
+        const ceiling = Math.max(1, finite(target) ? target * 1.2 : 0, ...samples.map((item) => item.durationMs));
+        const windowMs = Math.max(1, route.elapsedMs || 0, ...samples.map((item) => item.offsetMs));
+        const y = (value) => (134 - value / ceiling * 118).toFixed(1);
+        if (finite(target)) {
+          const guide = document.createElementNS(svg.namespaceURI, "line");
+          for (const [key, value] of Object.entries({ x1: "8", x2: "712", y1: y(target), y2: y(target), stroke: "#c76060", "stroke-width": "1.5", "stroke-dasharray": "5 5" })) guide.setAttribute(key, value);
+          svg.append(guide);
+        }
+        const points = document.createElementNS(svg.namespaceURI, "polyline");
+        points.setAttribute("points", samples.map((item) => `${(8 + item.offsetMs / windowMs * 704).toFixed(1)},${y(item.durationMs)}`).join(" "));
+        points.setAttribute("fill", "none");
+        points.setAttribute("stroke", "#288c96");
+        points.setAttribute("stroke-width", "2.5");
+        points.setAttribute("stroke-linejoin", "round");
+        svg.append(points);
+        parent.append(svg);
+        const key = node("div", "plot-key");
+        key.append(node("span", "", "Start"), node("span", "", `Max ${ms(ceiling)} · target ${ms(target)}`), node("span", "", `+${duration(route.elapsedMs)}`));
+        parent.append(key);
+      }
+
+      function drawBuckets(parent, route) {
+        const buckets = list(route.latencyBucketsMs);
+        if (!buckets.length) { parent.append(node("div", "empty", "No latency buckets recorded.")); return; }
+        const entries = [...buckets, { below: null, count: route.latencyAtLeast1000Ms }];
+        const maximum = Math.max(1, ...entries.map((item) => finite(item.count) ? item.count : 0));
+        const chart = node("div", "buckets");
+        entries.forEach((item, index) => {
+          const lower = index === 0 ? 0 : buckets[index - 1].below;
+          const label = item.below === null ? `≥${duration(lower)}` : index === 0 ? `<${ms(item.below)}` : `${number(lower)}–${number(item.below)} ms`;
+          const part = node("div", "bucket");
+          part.append(node("span", "bucket-count", number(item.count)));
+          const track = node("div", "bucket-track");
+          const fill = node("div", `bucket-fill ${lower >= 500 ? "slow" : ""}`);
+          fill.style.height = `${Math.max(0, (finite(item.count) ? item.count : 0) / maximum * 100)}%`;
+          track.append(fill);
+          part.append(track, node("span", "bucket-label", label));
+          chart.append(part);
+        });
+        parent.append(chart);
+      }
+
+      function renderImport(bank) {
+        const summary = byId("import-metrics");
+        const detail = byId("import-detail");
+        clear(summary);
+        clear(detail);
+        if (!bank) { detail.append(node("div", "empty", "No import report available. This is not a passing import.")); return; }
+        for (const [label, value] of [
+          ["Elapsed / <120s", duration(bank.result?.durationMs)],
+          ["Persisted / expected", `${number(bank.result?.persistedMovements)} / ${number(bank.criteria?.expectedPersistedMovements)}`],
+          ["Normalized data", bytes(bank.dataset?.normalizedBytes)],
+          ["Outcome", bank.result?.status || "No complete outcome"],
+        ]) {
+          const item = node("div");
+          item.append(node("strong", "", value), document.createTextNode(label));
+          summary.append(item);
+        }
+        const problem = bank.result?.error || bank.result?.verificationError || (bank.result?.errorKind ? { kind: bank.result.errorKind } : null);
+        if (problem) detail.append(node("div", "notice danger", `${problem.kind || "Error"}: ${problem.message || "No detail recorded"}`));
+        if (bank.result?.reason) detail.append(node("div", "notice", `Outcome reason: ${bank.result.reason}`));
+        detail.append(node("div", "subheading", "Import phase timeline · wall clock"));
+        const phases = list(bank.diagnostics?.timeline);
+        if (!phases.length) detail.append(node("div", "empty", "This report has no phase timing breakdown."));
+        for (const phase of phases) {
+          const entry = node("div", "phase");
+          const name = node("span", "phase-name", phase.name);
+          name.title = phase.name || "";
+          const track = node("div", "phase-track");
+          const fill = node("div", `phase-fill ${phase.name === "private RPC providerSync.commit" ? "commit" : ""}`);
+          fill.style.width = `${Math.max(0, Math.min(100, (phase.durationMs || 0) / (bank.result?.durationMs || 1) * 100))}%`;
+          track.append(fill);
+          entry.append(name, track, node("span", "phase-duration", duration(phase.durationMs)));
+          detail.append(entry);
+        }
+        detail.append(node("div", "subheading", "Signed private HTTP calls"));
+        const spans = list(bank.diagnostics?.privateRpcSpans);
+        if (spans.length) {
+          const container = node("div", "table-scroll");
+          const table = node("table", "compact");
+          const head = node("thead");
+          const hrow = node("tr");
+          for (const value of ["Procedure", "At", "Elapsed", "HTTP status", "Request body"]) hrow.append(node("th", "", value));
+          head.append(hrow);
+          const body = node("tbody");
+          for (const item of spans) row(body, [item.procedure, `+${duration(item.offsetMs)}`, duration(item.durationMs), item.status ?? item.errorKind ?? "—", bytes(item.requestBytes)]);
+          table.append(head, body);
+          container.append(table);
+          detail.append(container);
+        } else detail.append(node("div", "empty", "No private RPC spans recorded."));
+        const cgroup = bank.diagnostics?.resources?.runnerCgroup;
+        if (cgroup) detail.append(node("div", "statline", `Runner CPU ${duration(cgroup.cpuMs)} · throttled ${duration(cgroup.throttledMs)} · memory peak since container start ${bytes(cgroup.memoryPeakSinceContainerStartBytes)} · OOM kills ${number(cgroup.oomKills)}`));
+      }
+
+      function renderEnvironment(report, sameBuild) {
+        const parent = byId("environment");
+        clear(parent);
+        const env = report.environment || {};
+        const build = report.build || {};
+        const values = [
+          ["Commit", report.gitCommit || "Unavailable"],
+          ["Checkout", build.sourceTreeClean === true ? "Clean when tested" : build.sourceTreeClean === false ? "Dirty when tested — commit does not identify all source" : "Unknown"],
+          ["Runner", `${env.runner?.cpus ?? "—"} CPU · ${env.runner?.memory ?? "—"} RAM`],
+          ["PostgreSQL", `${env.postgres?.image ?? "—"} · ${env.postgres?.cpus ?? "—"} CPU · ${env.postgres?.memory ?? "—"} RAM`],
+          ["Runtime", report.nodeVersion || "Unavailable"],
+          ["Runner image", build.runnerImageId || "Unavailable"],
+        ];
+        if (!sameBuild) values.unshift(["Warning", "Selected reports have different commits. Do not combine them into an acceptance result."]);
+        for (const [label, value] of values) {
+          const item = node("div", "meta-item");
+          item.append(node("small", "", label), node("span", "", value));
+          parent.append(item);
+        }
+      }
+
+      let archive = { runs: [] };
+      try { archive = JSON.parse(byId("embedded-reports").textContent); }
+      catch { byId("run-count").textContent = "The embedded run archive could not be read."; }
+      const runs = list(archive.runs);
+      if (!runs.length && !byId("run-count").textContent) byId("run-count").textContent = "0 saved runs";
+      const selector = byId("run-selector");
+      selector.hidden = !runs.length;
+      for (let index = runs.length - 1; index >= 0; index--) {
+        const run = runs[index];
+        const option = node("option", "", `${runLabel(run)} · ${run.reads?.outcome || "no reads"} / ${run.import?.outcome || "no import"}`);
+        option.value = String(index);
+        selector.append(option);
+      }
+      selector.addEventListener("change", () => { selectedRoute = null; render(runs, Number(selector.value)); });
+      render(runs, runs.length - 1);
+    </script>
+  </body>
+</html>

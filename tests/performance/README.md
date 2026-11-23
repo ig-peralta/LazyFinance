@@ -13,9 +13,25 @@ persistence plus the API's authenticated test app. The API tests use real signed
 private RPC, runtime RLS, and synthetic identities; no existing development
 database, live bank/model, external service or host port is involved. The script
 copies raw JSON reports and `compose.log` to
-`tests/performance/results/<UTC>-<git-sha>/` and stops only the Compose project it
-created. Results are gitignored. A failed assertion returns a nonzero exit status;
-keep its partial report and log to diagnose the failure.
+`tests/performance/results/<UTC>-<git-sha>/`, then refreshes the **single**
+`tests/performance/results/dashboard.html` with all available runs. It stops only
+the Compose project it created. Results are gitignored. A failed assertion returns
+a nonzero exit status; keep its partial report and log to diagnose the failure.
+
+Open `tests/performance/results/dashboard.html` directly in a browser: no server,
+network or extra dependencies are needed. The run selector and archive table give
+access to every local result folder. The selected run shows each route's acceptance
+and partial-sample status, request distributions, private RPCs, import phases,
+resources and build provenance, with links to its raw JSON and Compose log.
+Missing reports are shown as unmeasured, never as passes. To rebuild the one
+dashboard after adding or removing local run folders without rerunning Docker:
+
+```sh
+node tests/performance/dashboard.mjs
+```
+
+Raw JSON remains authoritative; the HTML is a local visualization, not another
+performance measurement. The viewer does not send report contents anywhere.
 
 The `docker/test/` directory holds the isolated image and Compose configuration;
 `tests/performance/run.mjs` owns launch, artifact collection and teardown. The
