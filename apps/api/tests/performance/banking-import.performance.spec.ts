@@ -3,9 +3,43 @@ import { describe, expect, it } from "vitest";
 import type { ConnectorPage } from "../../src/banking/connector/normalized-banking.schema";
 import { BankingIngestionService } from "../../src/banking/ingestion/banking-ingestion.service";
 import { fixture, integration } from "../fixtures/persistence";
+import {
+  errorDetails,
+  observePrivateRpc,
+  resourceDifference,
+  resourceSnapshot,
+  summarizeRpc,
+} from "./diagnostics";
 import { writePerformanceReport } from "./report";
 
 const movements = 49_999;
+
+function timeline(
+  started: number,
+  durationMs: number,
+  spans: { name: string; startedAtMs: number; durationMs: number }[],
+) {
+  const result: { name: string; offsetMs: number; durationMs: number }[] = [];
+  let cursor = 0;
+  for (const span of spans.sort((a, b) => a.startedAtMs - b.startedAtMs)) {
+    const offsetMs = span.startedAtMs - started;
+    if (offsetMs > cursor)
+      result.push({
+        name: "client work / response decoding",
+        offsetMs: cursor,
+        durationMs: offsetMs - cursor,
+      });
+    result.push({ name: span.name, offsetMs, durationMs: span.durationMs });
+    cursor = Math.max(cursor, offsetMs + span.durationMs);
+  }
+  if (durationMs > cursor)
+    result.push({
+      name: "client work / response decoding",
+      offsetMs: cursor,
+      durationMs: durationMs - cursor,
+    });
+  return result;
+}
 
 describe("measured near-limit provider import", () => {
   it("attempts one 50,000-record run through signed persistence and real PostgreSQL", async () => {
@@ -52,30 +86,66 @@ describe("measured near-limit provider import", () => {
         })),
       };
       const normalizedBytes = Buffer.byteLength(JSON.stringify(page));
+      const observer = observePrivateRpc(
+        f.environment.get("PERSISTENCE_RPC_URL"),
+      );
+      const fetchPageSpans: {
+        name: string;
+        startedAtMs: number;
+        durationMs: number;
+      }[] = [];
+      const before = resourceSnapshot();
       const started = performance.now();
       let outcome: { status: string; reason?: string } | null = null;
-      let errorKind: string | null = null;
+      let error: ReturnType<typeof errorDetails> | null = null;
       try {
         outcome = await new BankingIngestionService(f.persistence).syncForUser(
           f.userId,
           f.connectionId,
-          { provider: "fixture-bank", fetchPage: async () => page },
+          {
+            provider: "fixture-bank",
+            fetchPage: async () => {
+              const fetchedAt = performance.now();
+              try {
+                return page;
+              } finally {
+                fetchPageSpans.push({
+                  name: "synthetic connector fetchPage",
+                  startedAtMs: fetchedAt,
+                  durationMs: performance.now() - fetchedAt,
+                });
+              }
+            },
+          },
         );
-      } catch (error) {
-        errorKind = error instanceof Error ? error.name : "unknown";
+      } catch (cause) {
+        error = errorDetails(cause);
+      } finally {
+        observer.stop();
       }
       const durationMs = performance.now() - started;
-      const stored = await f.db.pool.query<{ count: string }>(
-        `SELECT count(*)::text AS count FROM finance.transaction t
-         JOIN finance.account a ON a.id = t.account_id
-         WHERE a.provider_connection_id = $1`,
-        [f.connectionId],
-      );
-      const persistedMovements = Number(stored.rows[0].count);
+      const resources = resourceDifference(before, resourceSnapshot());
+      let persistedMovements: number | null = null;
+      let verificationError: ReturnType<typeof errorDetails> | null = null;
+      try {
+        const stored = await f.db.pool.query<{ count: string }>(
+          `SELECT count(*)::text AS count FROM finance.transaction t
+           JOIN finance.account a ON a.id = t.account_id
+           WHERE a.provider_connection_id = $1`,
+          [f.connectionId],
+        );
+        persistedMovements = Number(stored.rows[0].count);
+      } catch (cause) {
+        verificationError = errorDetails(cause);
+      }
       const passed =
         outcome?.status === "complete" &&
         persistedMovements === movements &&
         durationMs < 120_000;
+      const rpcSpans = observer.spans.map((span) => ({
+        ...span,
+        offsetMs: span.startedAtMs - started,
+      }));
       writePerformanceReport("banking-import", {
         outcome: passed ? "passed" : "failed",
         criteria: {
@@ -95,8 +165,22 @@ describe("measured near-limit provider import", () => {
           durationMs,
           status: outcome?.status ?? null,
           reason: outcome?.reason ?? null,
-          errorKind,
+          error,
           persistedMovements,
+          verificationError,
+        },
+        diagnostics: {
+          timeline: timeline(started, durationMs, [
+            ...observer.spans.map((span) => ({
+              name: `private RPC ${span.procedure}`,
+              startedAtMs: span.startedAtMs,
+              durationMs: span.durationMs,
+            })),
+            ...fetchPageSpans,
+          ]),
+          privateRpcSpans: rpcSpans,
+          privateRpcSummary: summarizeRpc(observer.spans),
+          resources,
         },
       });
       expect(passed, "Near-limit import did not complete; inspect report").toBe(
@@ -105,5 +189,5 @@ describe("measured near-limit provider import", () => {
     } finally {
       await f.db.close();
     }
-  });
+  }, 180_000);
 });

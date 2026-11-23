@@ -12,9 +12,10 @@ provisions its fresh `lazyfinance_perf_test` database, and starts compiled priva
 persistence plus the API's authenticated test app. The API tests use real signed
 private RPC, runtime RLS, and synthetic identities; no existing development
 database, live bank/model, external service or host port is involved. The script
-copies raw JSON reports to `tests/performance/results/<UTC>-<git-sha>/` and stops
-only the Compose project it created. Results are gitignored. A failed assertion
-returns a nonzero exit status; keep its report to diagnose the failure.
+copies raw JSON reports and `compose.log` to
+`tests/performance/results/<UTC>-<git-sha>/` and stops only the Compose project it
+created. Results are gitignored. A failed assertion returns a nonzero exit status;
+keep its partial report and log to diagnose the failure.
 
 The `docker/test/` directory holds the isolated image and Compose configuration;
 `tests/performance/run.mjs` owns launch, artifact collection and teardown. The
@@ -28,20 +29,42 @@ requests. Compilation/migration/fixture creation is not included in p95.
 
 | Workload | Synthetic setup and timed operation | Acceptance |
 | --- | --- | --- |
-| Authenticated financial reads | One owned checking account, one monthly budget, 12,000 CLP 100.00 expenses (half tagged) in the current Santiago month and a separate foreign owner. After 16 warm-up calls, run 200 calls per route with eight concurrent callers, one route at a time: `accounts.list`, `transactions.recent`, `summaries.monthly`, `objectives.progress`. | Every route returns 200 successful results, zero errors and p95 **strictly below 500 ms**. |
+| Authenticated financial reads | One owned checking account, one monthly budget, 12,000 CLP 100.00 expenses (half tagged) in the current Santiago month and a separate foreign owner. After correctness preflight and 16 warm-up calls, run 200 calls per route with eight concurrent callers, one route at a time: `accounts.list`, `transactions.recent`, `summaries.monthly`, `objectives.progress`. | Every route returns 200 successful results, zero errors and p95 **strictly below 500 ms**. |
 | Near-limit provider import | An in-memory synthetic connector supplies one checking account and 49,999 booked movements (50,000 combined records), one complete page with ordinary short text; measure validation, factual snapshot, preparation, transport and commit. Verify persisted rows afterward outside the timed interval. | Complete outcome, exactly 49,999 movements committed atomically, elapsed **under 120 seconds** (transport budget). Record any failure and partial-row count rather than reporting a configured limit as measured success. |
 
 Reads use the application's real public RPC and private signed/RLS paths. The
 benchmark client and API app share the runner container's CPU/memory; PostgreSQL
 has a separate cap and private bridge network. The generated JSON includes
-per-route p50/p95/p99/max, sample counts, errors, throughput and wall time, plus
-import duration/status, normalized byte size, persisted rows, cgroup limits and
-the source commit. This is one local synthetic profile, **not** a UI-first-paint,
+per-route p50/p95/p99/max, chronological per-request samples, latency buckets,
+request failures, throughput and wall time. The new diagnostics also show
+preflight/warm-up outcomes, private RPC counts/p95/status by procedure, and
+runner CPU throttling, CPU use and memory snapshots for each measured route.
+The import report includes a timeline of connector fetch, signed private begin,
+facts and commit HTTP calls, the gaps spent in client-side validation, preparation,
+serialization and response decoding, request bytes, outcome, persisted rows and
+the same resource counters. Both reports retain cgroup limits and the source
+commit. The private HTTP spans end at response headers: they include transport,
+server and PostgreSQL work, **not** a separate SQL execution-time measurement.
+Concurrent per-request/private-RPC durations overlap; do not sum them as wall
+time. The runner cgroup includes the benchmark client and private persistence
+server but excludes the PostgreSQL container. Its `memory.peak` is since container
+start, not a per-route peak. Instrumentation adds some work; compare only equivalent
+profiles. This is one local synthetic profile, **not** a UI-first-paint,
 voice/model latency, bank-fetch cadence, live-provider test, cross-user capacity
 forecast, or production/deployment SLA. The 50,000-record limit is compound with
 byte/statement budgets and does not promise all maximum-text inputs will fit.
 Reports also record the built image IDs and whether the checkout was clean; if it
 was dirty, the commit alone does not identify the tested source.
+
+The suite writes a read report **after each completed route**. If preflight or
+warm-up fails, it records that stage separately, without inventing 200 timed
+requests. Once any timed request fails, the eight in-flight calls finish but no
+more are scheduled. The same applies once eleven calls take at least 500 ms:
+200-call p95 <500 ms is then mathematically impossible. A partial route is a
+**failure**, and its sample percentiles are diagnostics, never a passing p95.
+This prevents a failing route from running until the global test timeout and
+contaminating the later import. `compose.log` preserves PostgreSQL timeouts when
+the database container is torn down.
 
 Defaults are **2 CPU / 3 GiB** for the combined runner (API, persistence and load
 client) and **1 CPU / 1 GiB** for PostgreSQL. Override for a new, separately
