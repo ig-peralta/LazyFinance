@@ -1,4 +1,4 @@
-' Shared visual language from the unchanged conceptual PNGs.
+' Shared visual language for the LazyFinance architecture views.
 ' UML roles, not deployment status, determine colour. Status is written explicitly.
 ' Graphviz supplies layout locally; no diagram server or application service is used.
 skinparam backgroundColor #FFFFFF
@@ -181,4 +181,4 @@ skinparam sequence {
   ActivationBorderColor #64748B
   ActivationBackgroundColor #D5E8D4
 }
-footer <color:#64748B>LazyFinance · Stage B code 1cda504 · Deployment pending</color>
+footer <color:#64748B>LazyFinance · Architecture documentation</color>

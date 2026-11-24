@@ -3,22 +3,23 @@
 left to right direction
 title LazyFinance — Components / Logical View
 
-component "<b>Angular web — apps/ui</b>\nPublic prerender / private CSR\nFinance pages, chat and action cards" as Web <<boundary>>
+component "<b>Angular web — apps/ui</b>\nPublic prerender / private CSR\nFinance pages and persistent assistant" as Web <<boundary>>
 component "<b>External MCP client</b>\nOwned reads / delegated changes" as Client <<external client>>
 
 package "Public API — apps/api" <<application>> {
-  component "<b>API adapters</b>\nPublic tRPC / assistant stream\nSeparate OAuth + MCP boundary" as Gateway <<boundary>>
+  component "<b>API adapters</b>\nPublic tRPC / text and voice streams\nSeparate OAuth + MCP boundary" as Gateway <<boundary>>
   component "<b>Shared financial services</b>\nBalances, movements, tags and income\nBudgets, measured savings and evidence\nBounded preview / action policy" as Core <<domain core>>
-  component "<b>Assistant workflow</b>\nBounded history / grounded reads\nProposal preparation, never approval" as Assistant <<first-party agent>>
+  component "<b>Assistant workflow</b>\nGrounded text / optional live voice control\nOwned history and proposal preparation" as Assistant <<first-party agent>>
   component "<b>Identity and consent</b>\nVerified subject → internal owner\nClient-bound grants and scopes" as Auth <<security>>
-  component "<b>Banking orchestration</b>\nLink lifecycle / normalization\nPrepared snapshot synchronization" as Banking <<adapter>>
+  component "<b>Banking orchestration</b>\nLifecycle, explicit selection and aliases\nShared prepared snapshot synchronization" as Banking <<adapter>>
+  component "<b>Banking scheduler</b>\nOpt-in Fintoc only\nDurable due claim, no browser required" as Schedule <<adapter>>
 }
 
 component "<b>Private persistence — apps/persistence</b>\nAssertion / purpose / owner validation\nFactual projections and named commands\nHistory, grants and atomic action receipts" as Stored <<persistence>>
 database "<b>PostgreSQL 18</b>\nidentity / finance / assistant\nExact facts, constraints and forced RLS" as DB
 
 component "<b>Firebase Auth</b>\nFirst-party identity verification" as Firebase <<security>>
-component "<b>Configured model provider</b>\nOptional; disabled by default" as Model <<model provider>>
+component "<b>Configured model provider</b>\nText model / OpenAI Realtime\nDisabled by default" as Model <<model provider>>
 component "<b>Fintoc</b>\nProvider-neutral banking adapter" as Fintoc <<adapter>>
 
 Web ..> Gateway : public tRPC / NDJSON
@@ -27,6 +28,8 @@ Gateway --> Core
 Gateway --> Assistant
 Gateway --> Auth
 Gateway --> Banking
+Schedule --> Banking : selected enrollment
+Schedule ..> Stored : narrow claim purpose
 Assistant --> Core : read / propose / status
 Core ..> Stored : signed private tRPC
 Assistant ..> Stored
@@ -39,8 +42,9 @@ Banking ..> Fintoc
 
 legend bottom
   One shared API financial core serves web, assistant and MCP; only private persistence owns SQL.
-  Private RPC signs user, identity-bootstrap or OAuth-purpose context as appropriate.
-  Application bearers and MCP OAuth tokens are not interchangeable. Writes require UI approval or separate MCP scopes.
+  Private RPC signs user context or a narrow purpose: identity, OAuth, banking claim or transport admission.
+  Assistant proposals need UI approval; MCP writes require separate scopes. The model has no execution authority.
+  The development-only simulated bank uses owned source records and the same ingest/commit path, without automatic sync.
   No money movement. Model / provider calls never hold a SQL transaction open.
 endlegend
 @enduml

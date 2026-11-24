@@ -1,6 +1,6 @@
 @startuml process
 !include style.iuml
-title LazyFinance — Process View\nOne request-bound path at a time
+title LazyFinance — Process View\nOn-demand requests and optional scheduled bank work
 skinparam activity {
   BackgroundColor #D5E8D4
   BorderColor #64748B
@@ -11,27 +11,39 @@ skinparam activity {
 }
 
 start
-:Explicit browser / MCP request; <<#DAE8FC>>
-:API verifies credentials / scopes\nand resolves the trusted owner; <<#FFF2CC>>
-
-switch (Request path)
-case (Financial read)
-  :Persistence: scoped factual\nprojection / aggregate; <<#FFE6CC>>
-  :API: financial interpretation,\ncalendar rules and response; <<#D5E8D4>>
-case (Assistant turn)
-  :Persistence: claim\nnonce, lease and history; <<#FFE6CC>>
-  if (New turn acquired?) then (yes)
-    :API: bounded model / tool loop outside SQL,\nowned reads / proposals use separate scoped RPCs; <<#E1D5E7>>
-    :Persistence: lease-checked\nturn completion; <<#FFE6CC>>
-  else (replay)
-    :Return saved / pending turn,\ndo not run the model again; <<#DAE8FC>>
+if (Selected-account sync?) then (no)
+  :Verify credentials / scopes\nand resolve the trusted owner; <<#FFF2CC>>
+  switch (Web / MCP request)
+  case (Financial read)
+    :Persistence: scoped factual\nprojection / aggregate; <<#FFE6CC>>
+    :API: financial interpretation,\ncalendar rules and response; <<#D5E8D4>>
+  case (Text assistant turn)
+    :Check current processing consent\nfor provider-backed text; <<#FFF2CC>>
+    :Persistence: claim\nnonce, lease and history; <<#FFE6CC>>
+    if (New turn acquired?) then (yes)
+      :API: bounded model / tool loop outside SQL,\nowned reads / proposals use separate scoped RPCs; <<#E1D5E7>>
+      :Persistence: lease-checked\nturn completion; <<#FFE6CC>>
+    else (replay)
+      :Return saved / pending turn,\ndo not run the model again; <<#DAE8FC>>
+    endif
+  case (Approved / delegated action)
+    :Saved-version UI approval OR\nseparately granted MCP write scopes; <<#FFF2CC>>
+    :Short owner-locked transaction:\nrecheck authority, facts and idempotency; <<#FFE6CC>>
+    :Domain command + receipt commit together,\nstale input changes no finance; <<#FFE6CC>>
+  endswitch
+else (yes)
+  if (Enabled Fintoc timer?) then (scheduled)
+    :Request one due claim\nthrough a narrow private purpose; <<#FFE6CC>>
+    if (Claim acquired?) then (yes)
+      :Use the claimed owner\nand pinned versions; <<#F8CECC>>
+    else (no)
+      :Finish tick without provider work; <<#F8CECC>>
+      stop
+    endif
+  else (manual)
+    :Verify the browser session\nand resolve the owner; <<#FFF2CC>>
   endif
-case (Approved / delegated action)
-  :Saved-version UI approval OR\nseparately granted MCP write scopes; <<#FFF2CC>>
-  :Short owner-locked transaction:\nrecheck authority, facts and idempotency; <<#FFE6CC>>
-  :Domain command + receipt commit together,\nstale input changes no finance; <<#FFE6CC>>
-case (Bank synchronization)
-  :Persistence: acquire\nrevision-bound lease / honor backoff; <<#FFE6CC>>
+  :Confirm selection and versions;\nacquire lease or honor backoff; <<#FFE6CC>>
   if (Lease acquired?) then (yes)
     :API: bounded provider fetch\noutside SQL; <<#F8CECC>>
     if (Valid available snapshot?) then (yes)
@@ -44,9 +56,9 @@ case (Bank synchronization)
   else (active / backoff)
     :Return existing state,\ndo not start another fetch; <<#DAE8FC>>
   endif
-endswitch
+endif
 
-:Return confirmed state,\nsaved result or explicit uncertainty; <<#DAE8FC>>
+:Return or reconcile confirmed state,\nsaved result or explicit uncertainty; <<#DAE8FC>>
 note right
   Uncertain write response → read status.
   Never automatically replay a mutation.
@@ -57,7 +69,8 @@ stop
 legend bottom
   Representative financial paths, not an exhaustive router inventory.
   All user writes share a short per-owner advisory lock.
-  Leases coalesce request-driven work; there is no scheduler or worker queue.
+  Manual and scheduled Fintoc imports share the same ingestion path. The mock provider is manual only.
+  A durable due claim is not a message queue; a timer does not need a browser session.
   Model / provider calls and financial preparation never run inside SQL.
   Focused message sequences are documented separately.
 endlegend

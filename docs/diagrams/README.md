@@ -1,16 +1,16 @@
-# Implemented ER and 4+1 architecture views
+# LazyFinance architecture diagrams
 
-These views describe the **Stage B implementation at `1cda504`**, with its closure
-documentation at `14aef36`, reviewed on **2026-11-09**. They are derived from the
-checked-in migrations, application modules, shared-library exports and deployment
-configuration. The PNGs are rendered documentation, not screenshots of running
-infrastructure or evidence that every integration has been validated.
+The ER and 4+1 views reflect the **Stage C implementation** on `main` at
+[`1a6190bb`](https://github.com/ig-peralta/LazyFinance/commit/1a6190bb7679db39687b2853ab776c7daaf313e2).
+They are derived from migrations, application modules, workspace exports and
+deployment configuration. The [development deployment](#physical-view--development-deployment)
+shows the topology defined in Compose. The [production view](#physical-view--proposed-production)
+is a **proposal**, not a deployed environment or release approval. The
+[Stage C gate](../planning/stage-c/closure.md) separately records what was verified.
 
-Deployment was pending at this baseline. The physical view shows the Stage B
-Compose reference, not the later [Stage C development deployment](../technical/technical-manual.md#development-deployment).
-Hosting, DNS/TLS ingress and environment readiness are not established by these
-diagrams. No cloud platform, replica count, background worker or production control
-is assumed.
+The [Stage B atlas](https://github.com/ig-peralta/LazyFinance/tree/13f4b174cc08ed3210e14b9d09375d8ad1b96d56/docs/diagrams)
+remains available for dated reports. The images here are rendered documentation,
+not screenshots of running infrastructure.
 
 | Diagram | View and concern | Editable source | Rendered diagram |
 | --- | --- | --- | --- |
@@ -18,27 +18,27 @@ is assumed.
 | Logical / components | Application responsibilities and authority boundaries | [components.puml](sources/components.puml) | [Full-size PNG](components.png) |
 | Development | Workspace packages, source dependencies and generated type boundaries | [development.puml](sources/development.puml) | [Full-size PNG](development.png) |
 | Process | Activity overview of request paths, leases, locks and atomic outcomes | [process.puml](sources/process.puml) | [Full-size PNG](process.png) |
-| Physical | **Planned** deployment nodes, networks, ports and external dependencies | [physical.puml](sources/physical.puml) | [Full-size PNG](physical.png) |
+| Physical — development | Configured Traefik ingress, Compose services, private networks and owner-only initialization | [physical.puml](sources/physical.puml) | [Full-size PNG](physical.png) |
+| Physical — proposed production | Public ingress, private runtime and data, controlled releases and backup/restore | [production.puml](sources/production.puml) | [Full-size PNG](production.png) |
 | Scenarios (+1) / use cases | User/client scenarios connecting the other four views | [use-cases.puml](sources/use-cases.puml) | [Full-size PNG](use-cases.png) |
 | Assistant query | A grounded text turn through shared financial services | [agent-sequence.puml](sources/agent-sequence.puml) | [Full-size PNG](agent-sequence.png) |
 | Proposal approval | Explicit saved-version approval and atomic receipt | [approval-sequence.puml](sources/approval-sequence.puml) | [Full-size PNG](approval-sequence.png) |
 | Delegated MCP action | Preview, independently granted writes and idempotency | [mcp-sequence.puml](sources/mcp-sequence.puml) | [Full-size PNG](mcp-sequence.png) |
-| Banking synchronization | Explicit snapshot fetch, preparation and atomic commit | [bank-sync-sequence.puml](sources/bank-sync-sequence.puml) | [Full-size PNG](bank-sync-sequence.png) |
+| Banking synchronization | Selected-account Fintoc fetch, preparation and atomic commit | [bank-sync-sequence.puml](sources/bank-sync-sequence.puml) | [Full-size PNG](bank-sync-sequence.png) |
 
 The 4+1 views use UML component, package, activity, deployment and use-case
 notation; the ER uses Information Engineering crow's feet. Each is an
 architectural projection, not a dump of every class or procedure. Follow the
 source links below for implementation detail. Open the full-size PNGs to inspect
 or reuse them in a report. Editable PlantUML sources and their
-[shared style](sources/style.iuml) live in `sources/`. The implementation-backed
-component, use-case and assistant sequence replace the earlier conceptual sketches;
-there are no parallel conceptual PNGs or duplicate logical/scenario image copies.
+[shared style](sources/style.iuml) live in `sources/`.
 
 ## Styling and diagram conventions
 
 The set uses a consistent pastel role palette, bold names, italic stereotypes,
 explicit subsystem boundaries and standard UML symbols. Every maintained image
-describes implemented responsibilities or the explicitly planned physical topology.
+describes implemented responsibilities, configured development topology or the
+explicitly proposed production topology.
 Colour supplements labels; it never establishes authorization or deployment status.
 
 | Role | Fill / border |
@@ -59,17 +59,17 @@ Colour supplements labels; it never establishes authorization or deployment stat
   inputs/outputs are described in the legend rather than adding crossing arrows.
   None of these are network links.
 - **Process:** an activity overview separates alternative request paths and the
-  API/persistence/network responsibility for each step. The paths are not one
-  long transaction or a set of concurrent background workers.
+  optional Fintoc timer. Each step distinguishes API logic from scoped SQL and
+  provider work; the paths are not one long transaction.
 - **Focused sequences:** numbered messages, dashed returns/lifelines, activation bars and
   `loop`/`alt`/`opt` fragments. Short database activations distinguish SQL scopes
   from model/provider work. Activations do not imply separate worker processes.
-- **Physical:** deployment nodes contain runtime artifacts; lines show configured
-  communication paths, with networks/ports written explicitly. One-shot jobs and
-  external calls are distinguished from the internal service path. The host remains
-  **planned**, not an installed environment.
+- **Physical:** nodes and lines show communication boundaries. Development labels
+  name actual Compose networks and ports; production labels show proposed isolation
+  and controls without choosing a host or platform. One-shot jobs are distinct
+  from the steady-state application path.
 - **Scenarios (+1):** actors outside a system boundary, true use-case ellipses,
-  stable `UC-01`–`UC-08` identifiers and solid actor associations without arrowheads.
+  stable `UC-01`–`UC-09` identifiers and solid actor associations without arrowheads.
   Do not invent `include`/`extend` relationships to connect otherwise independent
   workflows; shared policies are explained in notes instead.
 - **ER:** qualified SQL entity names, selected typed attributes and explicit
@@ -78,9 +78,9 @@ Colour supplements labels; it never establishes authorization or deployment stat
 
 ## Entity–relationship diagram
 
-![Implemented ER diagram: 28 application tables and 44 foreign keys](er.png)
+![Implemented ER diagram: 35 application tables and 53 foreign keys](er.png)
 
-- **28 tables / 44 foreign keys**, checked against the 29 migration `up` paths.
+- **35 tables / 53 foreign keys**, reflecting application migrations through `039`.
   The owner-only migration ledger is infrastructure and is not an application
   entity. Titles use qualified SQL `schema.table` names; underscore aliases exist
   only in the source for linking relationships.
@@ -98,8 +98,12 @@ Colour supplements labels; it never establishes authorization or deployment stat
 - Conversation turns/sources are JSON, not invented relational tables.
   `assistant.action.turn_id` is not an FK. Action/OAuth `grant_id` fields are not
   FKs; action receipts survive chat deletion through a nullable conversation FK.
+- Selection and schedule records have both connection and owner FKs; transport
+  admission/backoff is per mode and has no owner FK. Simulated-bank source and
+  event records are separate from imported ledger facts.
 - Valid foreign keys do not replace related-owner RLS. The shared provider catalog
-  is runtime-read-only; all 27 sensitive tables force RLS.
+  is runtime-read-only; all 34 sensitive tables force RLS. Being in the schema does
+  not make the development-only demo tools available in every environment.
 
 Sources: [migrations](../../apps/persistence/src/database/migrations),
 [database model and constraints](../technical/database-model.md),
@@ -119,6 +123,11 @@ Card approval and separately consented MCP writes have distinct authorization
 paths. First-party sign-in/consent and MCP OAuth are different credential
 boundaries: Firebase/application bearers are not accepted on `/mcp`. Model and
 provider calls stay outside SQL.
+
+The assistant preserves text state across navigation and can use opt-in live voice
+with a server-side control connection. Banking shares one prepared import path
+across manual and enrolled Fintoc synchronization. The simulated bank uses the
+same import path but only explicit sync changes imported facts.
 
 Sources: [API modules](../../apps/api/src/app.module.ts),
 [private modules](../../apps/persistence/src/app.module.ts),
@@ -151,16 +160,16 @@ Sources: application and library `package.json` files,
 
 ## Process view
 
-![Process view: assistant turns, approval, MCP execution and manual bank sync](process.png)
+![Process view: text turns, approval, MCP execution and manual or scheduled bank sync](process.png)
 
-The activity diagram separates request-bound paths, rather than combining every
-message into one oversized sequence. Authentication/protocol detail is condensed
-after a trusted owner or MCP grant has been resolved. Ordinary financial reads use
-the same scoped private RPC boundary without invoking a model or bank.
+The activity diagram summarizes request paths and the separate entry for an
+enabled Fintoc scheduler. Ordinary financial reads use the same scoped private RPC
+boundary without invoking a model or bank.
 
-1. **Assistant turn:** a short transaction claims nonce/lease/history. Bounded
-   model execution stays outside SQL; each owned read/proposal uses a separate
-   scoped RPC. A lease-checked transaction confirms the saved turn.
+1. **Text turn:** after verifying access and processing consent for provider-backed
+   text, a short transaction claims nonce/lease/history. Bounded model execution
+   stays outside SQL; a lease-checked transaction confirms the saved turn. The
+   [voice contract](../technical/assistant-live-voice.md) documents the distinct audio path.
 2. **First-party approval:** the exact saved version is revalidated under the
    per-user write lock. Domain changes, dependent tags and receipt commit together.
    Stale/expired input changes no finance. An uncertain response triggers a status
@@ -170,15 +179,15 @@ the same scoped private RPC boundary without invoking a model or bank.
    client/request binding, current selection and idempotency inside the transaction.
    Existing-record changes require a matching preview fingerprint; the supported
    create actions can be submitted without one.
-4. **Bank synchronization:** only the acquired-lease path fetches bounded Fintoc
-   pages and prepares decisions. Revalidated commit saves facts, decisions and
-   checkpoint atomically. Failure retains last-good data. Active leases/backoff
-   return existing state rather than starting another run.
+4. **Bank synchronization:** an explicit command or an enrolled Fintoc due claim
+   enters the same selected-account path. Only an acquired lease fetches and
+   prepares a bounded snapshot. Commit revalidates versions and the factual
+   fingerprint, then saves facts, decisions and checkpoint atomically. Failures
+   retain last-good data; no claim or an active lease/backoff begins no second fetch.
 
-These are request-driven processes. A durable lease is not a job queue or
-scheduler. Stop/disconnection prevents obsolete answer adoption; it does not
-prove rollback of an already committed command. The view omits repetitive returns,
-some policy branches and the separate bank-link Widget exchange.
+A durable lease is not a message queue. Stop/disconnection prevents obsolete answer
+adoption; it does not prove rollback of an already committed command. The view
+omits repetitive returns, some policy branches and the bank-link Widget exchange.
 
 See the [focused sequences](#focused-message-sequences) for the actual message
 boundaries, without making the overview unreadably tall.
@@ -186,40 +195,43 @@ boundaries, without making the overview unreadably tall.
 Sources: [assistant orchestration](../../apps/api/src/assistant/assistant.service.ts),
 [action commands](../../apps/persistence/src/actions/action.repository.ts),
 [banking orchestration](../../apps/api/src/banking/ingestion/banking-ingestion.service.ts),
+[scheduled runner](../../apps/api/src/banking/scheduling/banking-sync-runner.ts),
 [transaction middleware](../../apps/persistence/src/rpc/rls.middleware.ts).
 
-## Physical view — Stage B deployment reference
+## Physical view — development deployment
 
-![Physical view: planned Compose reference, explicitly not a deployed environment](physical.png)
+![Development deployment: Traefik routes HTTPS to static UI or API; persistence and PostgreSQL stay private](physical.png)
 
-This view maps the checked-in **local deployment reference**, not an installed
-production system. `ui`, `api`, `persistence` and `postgres` are configured service
-containers, with separate owner-only initialization and opt-in seed jobs.
+- Traefik is the only service with published host ports: `80` redirects to HTTPS
+  and `443` routes `WEB_DOMAIN` to static Nginx (`4000`) or `api.lazyfinance.online`
+  to the API (`3000`). The browser, not Nginx, calls the API origin.
+- The API uses signed HTTP tRPC to persistence (`3001`) on the internal `services`
+  network. Persistence alone among the application services joins `data` to reach
+  PostgreSQL (`5432`). Neither private service publishes a host port.
+- Owner-only `init` migrates and provisions logins before runtime; the opt-in seed
+  does not run on deployment. PostgreSQL persists to a named volume, not a backup.
+- The development stack uses Firebase and a test-mode Fintoc key pair. Demo tools
+  are enabled there; automatic banking sync is off. The assistant/voice provider
+  settings come from the development environment.
 
-- `data` and `services` are internal networks. API has no data-network membership;
-  UI has no services/data membership. Database and persistence publish no host
-  ports in `deploy.yml`.
-- Default mappings are UI host `4200` → container `4000` and API host `3000` →
-  container `3000`. They are configuration defaults, not reachable-endpoint claims.
-- UI Nginx serves static assets only, with no request-time Angular/Node process or
-  API proxy. Browser requests go directly to the build-configured API origin.
-  The production build's `https://api.lazyfinance.online` is **not deployment evidence**;
-  an entirely local rehearsal needs an appropriate browser build URL and CORS.
-- Owner credentials belong to explicit init/seed jobs. Persistence uses its
-  restricted SQL login; the API alone holds private signing/provider/OAuth secrets.
-  A named data volume is not a backup/restore procedure.
-- Optional providers require configuration. The Compose API defaults to development
-  mode/mock authentication and disables the assistant. Production auth, keys and
-  supported OAuth/browser origins require deliberate setup.
-- Production hosting, DNS/TLS ingress, protected private transport, secrets/rotation,
-  monitoring, backup/restore, rate/cost controls and exact-image/environment
-  validation remain pending. No AWS/Kubernetes/managed-database architecture is
-  implied by the diagram.
+Sources: [development Compose](../../docker/dev/compose.yml),
+[main-branch deployment workflow](../../.github/workflows/main-branch-deploy.yml),
+[static Nginx](../../apps/ui/nginx.conf) and the
+[development runbook](../technical/technical-manual.md#development-deployment).
+The [local Compose options](../technical/technical-manual.md#compose) are different
+from this HTTPS deployment.
 
-Sources: [deploy.yml](../../docker/local/deploy.yml),
-[UI Dockerfile](../../apps/ui/Dockerfile), [static Nginx](../../apps/ui/nginx.conf),
-[operational manual](../technical/technical-manual.md#compose),
-[Stage B carryovers](../planning/stage-b/closure.md#accepted-limitations-and-carryovers).
+## Physical view — proposed production
+
+![Proposed production deployment: HTTPS ingress, private TLS, scoped database access, an owner-only migration job and encrypted backups](production.png)
+
+This deployment design keeps the existing application boundaries while adding
+private TLS, a gated release path, isolated secrets and data, and a recovery plan.
+The example hostnames are placeholders. The initial design shows one API replica
+because voice admission and hangup recovery are process-local; it makes no
+availability or capacity claim. See the
+[production deployment proposal](../technical/production-deployment.md) for
+release prerequisites and decisions still open.
 
 ## Scenarios view (+1)
 
@@ -229,16 +241,17 @@ Sources: [deploy.yml](../../docker/local/deploy.yml),
 | --- | --- |
 | UC-01 — Access workspace | J6: verified identity, owned browser sessions and supported credential methods |
 | UC-02 — Manage/trace finance | J1–J5 and J7: meaningful balances, periods, declarations, measured allocations and evidence |
-| UC-03 — Connect/synchronize bank | J8: explicit lifecycle and available-snapshot commands, with freshness and first-link tracking context |
-| UC-04 — Ask text questions | J9: bounded grounded conversation, uncertainty and trusted financial reference cards |
+| UC-03 — Connect/synchronize bank | J8 and Stage C: explicit selection, aliases, first import, opt-in Fintoc sync and truthful recovery/freshness |
+| UC-04 — Ask text questions | J9 and Stage C: persistent grounded chat, streamed answers, uncertainty and financial reference cards |
 | UC-05 — Review proposal | J10: explicit saved-version approval/edit/cancel, atomic receipts and uncertain-outcome reconciliation |
 | UC-06–UC-08 — Delegate/use MCP | J11: account/client-bound consent/revocation, owned reads and separately scoped bounded direct writes |
+| UC-09 — Start live voice | Stage C: opt-in microphone capture, interruption, separate proposal review and text fallback |
 
-These are supported implementation scenarios, not certification that every live
-provider/model/client combination passed. Broader MCP management, voice, advanced
-analysis and additional providers are not shown as delivered capabilities. See the
-[journeys](../product/user-journeys.md) and
-[Stage B evidence/limitations](../planning/stage-b/closure.md).
+These are implemented scenarios, not certification of every live
+provider/model/client combination. Broader MCP management, forecasting and
+additional live bank connectors are not delivered here. See the
+[journeys](../product/user-journeys.md#stage-c---selected-everyday-experience-and-live-voice)
+and the [Stage C gate](../planning/stage-c/closure.md).
 
 ## Focused message sequences
 
@@ -246,18 +259,21 @@ analysis and additional providers are not shown as delivered capabilities. See t
 
 ![Implemented grounded text query through shared financial services](agent-sequence.png)
 
-This representative read turn uses stored facts, bounded history and explicit
-sources. It does not introduce voice, direct SQL from the financial core or
-assistant-triggered bank refresh. A repeated nonce returns saved state instead of
-running the model again. See [assistant orchestration](../../apps/api/src/assistant/assistant.service.ts).
+This representative text turn verifies processing consent before provider work
+and uses stored facts, bounded history and explicit sources. A repeated nonce
+returns saved state instead of running the model again. See
+[assistant orchestration](../../apps/api/src/assistant/assistant.service.ts) and the
+separate [live voice transport](../technical/assistant-live-voice.md#transport-and-authority).
 
 ### Explicit proposal approval
 
 ![Saved-version approval, atomic domain changes and durable action receipt](approval-sequence.png)
 
 The card already references a saved, unapproved proposal. A new model response is
-not needed for approval. Stale facts change no finance, and an uncertain response
-requires a status read. See [API actions](../../apps/api/src/actions/actions.service.ts)
+not needed for approval. An interrupted voice turn qualifies only for its attached
+saved proposal; interruption does not approve it. Stale facts change no finance,
+and an uncertain response requires a status read. See
+[API actions](../../apps/api/src/actions/actions.service.ts)
 and the [authoritative ledger](../../apps/persistence/src/actions/action.repository.ts).
 
 ### Delegated MCP action
@@ -272,12 +288,15 @@ The transaction binds the live grant, client and request ID. See
 
 ### Manual banking synchronization
 
-![Explicit snapshot synchronization with durable lease and atomic commit](bank-sync-sequence.png)
+![Manual selected-account synchronization with durable lease and atomic commit](bank-sync-sequence.png)
 
-Only an acquired lease fetches available snapshot pages. Provider calls and
-financial preparation occur outside SQL; revision/fingerprint checks protect the
-short commit. Failure retains last-good data. See
-[banking orchestration](../../apps/api/src/banking/ingestion/banking-ingestion.service.ts).
+Only an acquired lease fetches available pages for confirmed accounts. Provider
+calls and financial preparation occur outside SQL; version and fingerprint checks
+protect the commit. Failure retains last-good data. The optional Fintoc runner
+adds an enrolled due claim, then uses this same ingest path. The simulated bank
+never schedules background imports. See
+[banking orchestration](../../apps/api/src/banking/ingestion/banking-ingestion.service.ts)
+and the [sync policy](../planning/stage-c/banking-sync-policy.md).
 
 ## Editing and rendering
 
@@ -288,7 +307,7 @@ rendered outputs. Keep source and output changes together. The database model
 guide embeds this ER PNG rather than maintaining another diagram definition.
 
 Render from the repository root with **PlantUML 1.2026.9**, a supported Java
-runtime and local **Graphviz** (`16.1.0` was used for this set). Set `PLANTUML_JAR`
+runtime and local **Graphviz** (`16.1.2` was used for this set). Set `PLANTUML_JAR`
 to your local PlantUML JAR. Graphviz's `dot` must be on `PATH`, or selected through
 `GRAPHVIZ_DOT`. No hosted diagram server is used:
 

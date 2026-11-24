@@ -585,10 +585,14 @@ headers. Angular HTTP transfer caching remains disabled, protected resources hav
 no transfer-cache `id`, and components never write financial `TransferState`.
 No module-global authenticated client, batch queue or financial response cache is
 used. Static HTML is non-personalized/revalidated; only fingerprinted assets are
-immutable. Both environments call their explicit API base URL directly:
-`http://localhost:3000` in development and `https://api.lazyfinance.online` in production.
-`RpcClient` appends `/trpc`; Nginx does no API proxying or prefix rewriting. API CORS
-must allow the UI origin, and browser API/Firebase build identifiers must match deployment.
+immutable. Each build calls its explicit API base URL directly: local development
+uses `http://localhost:3000`; the checked-in production build targets
+`https://api.lazyfinance.online` for the Stage C development deployment. The term
+"production build" describes Angular compilation, not a production environment.
+`RpcClient` appends `/trpc`; Nginx does no API proxying or prefix rewriting. API
+CORS must allow the UI origin, and browser API/Firebase build identifiers must
+match deployment. See the [production proposal](production-deployment.md) for
+separate release origins and identity configuration.
 
 Editor drawers use native dialogs with immediate component teardown on dismissal,
 not retained live forms awaiting an exit animation. Mobile menus close on route

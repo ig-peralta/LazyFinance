@@ -11,9 +11,9 @@ target is not evidence of a delivered capability.
 | Guide | Read it for |
 | --- | --- |
 | [Architecture](architecture.md) | Runtime/dependency boundaries, responsibility split and product scope |
-| [Implemented ER and 4+1 views](../diagrams/README.md) | Dated Stage B PlantUML/PNG baseline: ER, logical, development, process, reference physical and scenarios views |
+| [Stage C ER and 4+1 views](../diagrams/README.md) | PlantUML/PNG sources for data, components, development, process, deployment and scenarios |
 | [Private RPC, transactions and RLS](persistence-security.md) | Signed contexts, bootstrap, runtime/reset roles and grants, related ownership, rollback, atomic commands and limits |
-| [Implemented database model and ERD](database-model.md) | All 35 application tables, actual relationships/keys, financial representation, migrations and diagram baseline limits |
+| [Implemented database model and ERD](database-model.md) | All 35 application tables and 53 foreign keys, financial representation and migrations |
 | [RPC contracts and clients](rpc-contracts.md) | Public/private exports, 94/118 procedure inventories, MCP, code generation and wire semantics |
 | [First-party financial assistant](financial-assistant.md) | Provider-neutral models, grounded reads, explicit action approval, durable receipts, streaming, privacy, limits and evaluation gates |
 | [Live voice contract](assistant-live-voice.md) | Opt-in WebRTC, processing disclosure, microphone/session lifetimes, client-policy limits and live release gates |
@@ -28,6 +28,9 @@ target is not evidence of a delivered capability.
 
 - [Technical manual](technical-manual.md): process/environment separation, local
   setup, Compose topology, environment-specific browser/static hosting and troubleshooting.
+- [Production deployment proposal](production-deployment.md): proposed HTTPS edge,
+  private runtime and data, and release, recovery and provider prerequisites.
+  This is a design, not a deployment runbook or a release decision.
 - [Development and verification](development-workflow.md): builds, Biome/editor/DI
   conventions, [file ownership and extraction](development-workflow.md#file-ownership-and-extraction),
   [type safety and boundaries](development-workflow.md#type-safety-and-boundary-types),
@@ -43,9 +46,9 @@ target is not evidence of a delivered capability.
 
 - [Non-functional requirements](../product/non-functional-requirements.md):
   quality targets, not proof of production readiness or maximum-size load tests.
-- [Diagram inventory](../diagrams/README.md): dated Stage B ER/4+1 sources and PNGs,
-  with that baseline's use cases, components and focused message sequences. The physical
-  view is planned configuration, not deployment evidence.
+- The [diagram atlas](../diagrams/README.md) documents the implementation and the
+  configured development topology, with a clearly labelled production proposal.
+  The diagram itself does not establish that a live environment passed checks.
 - [Stage C gate review](../planning/stage-c/closure.md) distinguishes development
   acceptance, recorded checks and remaining release risks. The dated
   [November 9 backlog](../planning/snapshots/backlog-2026-11-09.md) and

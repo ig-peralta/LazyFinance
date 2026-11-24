@@ -6,11 +6,12 @@ Start here for the current system map. Detailed references:
 [provider-neutral identity](identity.md) and
 [developer verification](development-workflow.md).
 
-The [ER and 4+1 atlas](../diagrams/README.md) projects this implementation
-into stored relationships, logical responsibilities, package dependencies,
-request/process interactions, physical topology and scenarios. **Deployment is
-pending**: the physical view describes the checked-in Compose reference, not an
-installed production environment.
+The [Stage C ER and 4+1 atlas](../diagrams/README.md) shows stored relationships,
+logical responsibilities, package dependencies, process and scenarios. The
+[development topology](../diagrams/README.md#physical-view--development-deployment)
+comes from the installed stack's Compose configuration. The
+[production deployment proposal](production-deployment.md) is separate and not
+deployed.
 
 ## Repository and runtime boundaries
 
@@ -47,9 +48,10 @@ procedures. The [RPC reference](rpc-contracts.md) owns current procedure counts.
 `/mcp` exposes fourteen financial/supporting reads and two action tools (preview
 and direct execution) through domain services, not direct persistence queries.
 Ordinary HTTP covers API `GET /`, persistence `GET /health`, MCP transport and
-OAuth discovery/protocol/browser-interaction routes, plus the authenticated NDJSON
-assistant stream at `POST /assistant/turns`. Inventories and schema-change rules live in the
-[RPC reference](rpc-contracts.md).
+OAuth discovery/protocol/browser-interaction routes, plus authenticated NDJSON
+streams at `POST /assistant/turns` and `POST /assistant/voice/events`. Voice audio
+uses direct WebRTC; financial tools stay with the API. Inventories and schema-change
+rules live in the [RPC reference](rpc-contracts.md).
 
 ## Authentication, sessions and ownership
 
@@ -256,20 +258,27 @@ freshness and production operation are not verified by this architectural
 description; executed local checks and browser limits live in the
 [delivery record](../planning/stage-c/experience-delivery.md).
 
+The development-only simulated bank stores owned synthetic source records apart
+from the imported ledger. It reuses prepared ingestion on explicit synchronization;
+simulated activity does not update financial facts until that import, and the
+Fintoc scheduler does not run mock connections. See the
+[development demo path](technical-manual.md#development-deployment).
+
 ## Operations
 
 Fresh migrations only: table/types/constraints/indexes/grants/RLS apply together.
 There is no legacy migration adoption or automatic database reset. Owner credentials
 belong only to CLI/init/seed jobs; the API uses private RPC without a database
 connection, and persistence rejects owner/BYPASSRLS credentials for its normal
-runtime pool. Explicitly enabled demo tools use a separate, narrowly granted
-`BYPASSRLS` connection in development persistence only; their signed user context
-comes from API authentication. No demo reset or seed runs during deployment.
+runtime pool. The development stack enables demo tools with a separate, narrowly
+granted `BYPASSRLS` connection in persistence. Signed user context comes from API
+authentication. No demo reset or seed runs during deployment, and the production
+proposal omits the demo login and disables demo tools.
 
-Compose supports private persistence, separate runtime environments and an owner-only
-init job. Its full stack separates data/service/edge networks; database/persistence
-ports are not published in that reference. Deployment and final environment
-verification remain pending; the configuration is not evidence of production TLS,
-secret storage, backup recovery or load readiness. See the
-[technical manual](technical-manual.md) and
-[development workflow](development-workflow.md).
+The [development deployment](technical-manual.md#development-deployment) uses
+Traefik for public HTTPS, separate edge/service/data networks and an owner-only
+init job. Neither persistence nor PostgreSQL publishes a host port. The private
+Compose hops are not the proposed production TLS links. Production secret storage,
+recovery, abuse controls and capacity still need validation; see the
+[production proposal](production-deployment.md) and
+[Stage C release follow-ups](../planning/stage-c/closure.md#open-release-follow-ups).

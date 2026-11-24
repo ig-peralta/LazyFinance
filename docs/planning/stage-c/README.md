@@ -57,6 +57,7 @@ delivery forecast. Linear owns current assignments and issue states.
 | [Selected-account synchronization policy](banking-sync-policy.md) | LAZ-89 decision and implemented selection/consent, isolated portable execution, background authority and recovery; live enablement remains gated |
 | [Banking delivery](banking-delivery.md) and [browser verification](banking-browser-validation.md) | LAZ-74 implementation traceability, executed local checks and explicit unverified operational limits |
 | [Workspace delivery](workspace-delivery.md) | LAZ-75 workflows, preferences, shortcut integration and executed Chromium/accessibility screening |
+| [Architecture diagrams](../../diagrams/README.md) | Current ER and 4+1 views, configured development topology and a separate production proposal |
 | [Financial assistant](../../technical/financial-assistant.md) and [live voice contract](../../technical/assistant-live-voice.md) | LAZ-72 persistent conversation/voice implementation, privacy, review fixes and remaining live-provider gates |
 | [Integrated assistant browser validation](assistant-browser-validation.md) | Final mocked Chromium matrix, deferred-focus regression/fix, responsive/accessibility results and synthetic voice boundaries |
 | [Validation plan](validation-plan.md) | Planned journeys and evidence tiers; results are in the closure record |

@@ -1,7 +1,7 @@
 @startuml er
 !include style.iuml
 top to bottom direction
-title LazyFinance — Implemented Entity–Relationship Model\n28 application tables · 44 foreign keys
+title LazyFinance — Implemented Entity–Relationship Model\n35 application tables · 53 foreign keys
 hide circle
 hide methods
 skinparam classAttributeIconSize 0
@@ -35,6 +35,7 @@ entity "identity.mcp_grant" as identity_mcp_grant <<identity>> {
   interaction_id : text <<UK>>
   user_id : uuid <<FK>>
   client_id : text
+  redirect_uri : text
   resource : text
   scopes : text_array
   expires_at : timestamptz
@@ -54,6 +55,7 @@ entity "assistant.conversation" as assistant_conversation <<assistant>> {
   id : uuid <<PK>>
   --
   user_id : uuid <<FK>>
+  mode : text
   title : text
   turns : jsonb
   lease : uuid
@@ -77,6 +79,14 @@ entity "assistant.action" as assistant_action <<assistant>> {
   status : text
   results : jsonb
   expires_at : timestamptz
+}
+entity "assistant.processing_consent" as assistant_processing_consent <<assistant>> {
+  user_id : uuid <<PK, FK>>
+  --
+  policy_key : text
+  decision : text
+  revision : integer
+  decided_at : timestamptz
 }
 entity "finance.provider" as finance_provider <<banking>> {
   id : uuid <<PK>>
@@ -107,12 +117,69 @@ entity "finance.provider_link_intent" as finance_provider_link_intent <<banking>
   state : text
   expires_at : timestamptz
 }
+entity "finance.provider_account_selection" as finance_provider_account_selection <<banking>> {
+  connection_id : uuid <<PK, FK>>
+  --
+  user_id : uuid <<FK>>
+  version : integer
+  discovery_version : integer
+  credential_version : integer
+  account_ids : text_array
+  confirmed_at : timestamptz
+  automatic_enrolled : boolean
+}
+entity "finance.provider_sync_schedule" as finance_provider_sync_schedule <<banking>> {
+  connection_id : uuid <<PK, FK>>
+  --
+  user_id : uuid <<FK>>
+  credential_version : integer
+  selection_version : integer
+  next_attempt_at : timestamptz
+  claim_id : uuid
+  claim_expires_at : timestamptz
+  pause_reason : text
+}
+entity "finance.provider_request_admission" as finance_provider_request_admission <<banking>> {
+  id : uuid <<PK>>
+  --
+  mode : connection_mode
+  purpose : text
+  started_at : timestamptz
+  expires_at : timestamptz
+  finished_at : timestamptz
+}
+entity "finance.provider_request_backoff" as finance_provider_request_backoff <<banking>> {
+  mode : connection_mode <<PK>>
+  --
+  retry_after : timestamptz
+}
+entity "finance.demo_bank_source" as finance_demo_bank_source <<banking>> {
+  connection_id : uuid <<PK, FK>>
+  --
+  user_id : uuid <<FK>>
+  accounts : jsonb
+  movements : jsonb
+  failure : text
+  prepared : boolean
+  fixture_as_of : timestamptz
+}
+entity "finance.demo_bank_sync_event" as finance_demo_bank_sync_event <<banking>> {
+  id : uuid <<PK>>
+  --
+  connection_id : uuid <<FK>>
+  user_id : uuid <<FK>>
+  occurred_at : timestamptz
+  origin : text
+  result : text
+  movement_count : integer
+}
 entity "finance.account" as finance_account <<finance>> {
   id : uuid <<PK>>
   --
   user_id : uuid <<FK>>
   provider_connection_id : uuid <<FK>>
   external_id : varchar
+  alias : varchar
   type : account_type
   currency : currency
   balance : numeric
@@ -243,6 +310,9 @@ entity "finance.provider_sync_state" as finance_provider_sync_state <<banking>> 
   --
   checkpoint : varchar
   revision : integer
+  credential_version : integer
+  selection_version : integer
+  claim_id : uuid
   lease_expires_at : timestamptz
   last_success_at : timestamptz
   retry_after : timestamptz
@@ -267,9 +337,14 @@ identity_user ||..o{ identity_mcp_grant
 identity_user |o..o{ identity_mcp_artifact
 identity_user ||..o{ assistant_conversation
 identity_user ||..o{ assistant_action
+identity_user ||--o| assistant_processing_consent
 assistant_conversation |o..o{ assistant_action
 identity_user ||..o{ finance_provider_connection
 identity_user ||..o{ finance_provider_link_intent
+identity_user ||..o{ finance_provider_account_selection
+identity_user ||..o{ finance_provider_sync_schedule
+identity_user ||..o{ finance_demo_bank_source
+identity_user ||..o{ finance_demo_bank_sync_event
 identity_user ||..o{ finance_account
 identity_user ||..o{ finance_tag
 identity_user ||..o{ finance_tag_rule
@@ -279,6 +354,10 @@ identity_user ||..o{ finance_income_source
 finance_provider ||..o{ finance_provider_connection
 finance_provider_connection |o..o{ finance_provider_link_intent : connection_id
 finance_provider_connection |o..o{ finance_provider_link_intent : completed_connection_id
+finance_provider_connection ||--o| finance_provider_account_selection
+finance_provider_connection ||--o| finance_provider_sync_schedule
+finance_provider_connection ||--o| finance_demo_bank_source
+finance_provider_connection ||..o{ finance_demo_bank_sync_event
 finance_provider_connection ||..o{ finance_account
 finance_provider_connection ||--o| finance_provider_sync_state
 finance_provider_connection ||--o{ finance_provider_movement_removal

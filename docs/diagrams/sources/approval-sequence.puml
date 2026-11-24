@@ -21,7 +21,10 @@ API -> P : apply(id, version, normalized command)
 activate P #FFE6CC
 P -> DB : Begin transaction + per-owner write lock
 activate DB #FFE6CC
-note over P, DB : Recheck owner, completed turn, version, expiry and factual fingerprint.
+note over P, DB
+  Recheck owner, qualifying turn, version, expiry and factual fingerprint.
+  An interrupted voice turn qualifies only for its attached saved proposal.
+end note
 alt Current valid proposal
   P -> DB : Domain commands + dependent tags + receipt
 else Stale / expired proposal
