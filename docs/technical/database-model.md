@@ -1,8 +1,8 @@
 # Implemented database model
 
 This reference describes the checked-in Kysely migrations, not a conceptual
-product model. PostgreSQL 18 holds **33 application tables** in fixed `identity`,
-`finance` and `assistant` schemas. Thirty-two sensitive tables force scoped RLS;
+product model. PostgreSQL 18 holds **35 application tables** in fixed `identity`,
+`finance` and `assistant` schemas. Thirty-four sensitive tables force scoped RLS;
 `finance.provider` is the shared read-only catalog exception. There is no tenancy,
 membership or account-sharing model. See [security and RLS](persistence-security.md)
 for policy/grant details.
@@ -80,16 +80,17 @@ The four banking operational tables added by migration `202611100030` are listed
 above but not drawn in that baseline image. Selection and schedules each reference
 the owned connection and user. Migration 032's consent table references the user.
 Migration 034 temporarily added a one-time seed marker; migration 035 drops that
-obsolete table while preserving migration history. The current schema has 33 tables
-and 49 foreign keys. Neither migration is represented in the baseline image. The
-transport tables contain no financial-owner references.
+obsolete table while preserving migration history. Migration 039 adds the
+simulated bank source and sync event tables, each tied to a connection and user.
+These later tables are not represented in the baseline image. The transport
+tables contain no financial-owner references.
 
 ![Implemented relationships across identity, finance and assistant](../diagrams/er.png)
 
 The diagram omits other columns, indexes, check constraints and RLS expressions;
 it is not generated DDL or an ownership-policy diagram. Migrations remain the
-source of truth. Deployment is pending; this is the checked-in schema, not an
-inspection of a deployed database.
+source of truth. This is the checked-in schema, not an inspection of a deployed
+database.
 
 There is **no transaction-tag join table**: each transaction has at most one tag.
 The many-to-many relationship is objective-to-tag. A receipt references a source,

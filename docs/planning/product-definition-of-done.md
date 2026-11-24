@@ -2,6 +2,10 @@
 
 This is the **exit checklist for a usable LazyFinance product release**, not a claim that the product is already complete. The [product requirements](../product/product-requirements.md) describe agreed behavior; the [planning snapshot](snapshots/backlog-2026-11-10-stage-c-planning.md) records issue-level scope, and the [stage definitions of done](README.md#stage-gates) cover staged delivery. Stage B's [GO to Stage C planning](stage-b/closure.md) accepts development-stage limitations; it does not check off this release checklist.
 
+The [Stage C GO for development closure](stage-c/closure.md) also leaves this
+checklist open. Its [release follow-ups](stage-c/closure.md#open-release-follow-ups)
+remain relevant to the release candidate.
+
 LazyFinance is Done for its agreed release scope only when the team can demonstrate and verify **all** of the following:
 
 - [ ] **Release scope is explicit.** The product requirements identify the capabilities committed for this release, their acceptance criteria, and any intentionally deferred capabilities. Every committed issue is delivered or explicitly re-scoped with an explanation; a Todo issue is not described as shipped.

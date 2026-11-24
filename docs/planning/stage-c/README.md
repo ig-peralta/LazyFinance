@@ -1,7 +1,10 @@
 # Stage C — expanded experience
 
-**Scope selected on 2026-11-09 (America/Santiago).** Planning baselines below are
-retained; implementation evidence does not by itself close the stage/release gate.
+**Gate reviewed on 2026-11-24 (America/Santiago): GO for development closure.**
+See the [gate record](closure.md) and [retrospective](retrospective.md). This does
+not approve a production release. Planning baselines below retain their original
+scope dates and decisions.
+
 Make everyday financial management clear and low-friction: guided bank setup,
 chosen accounts kept up to date automatically, easier classification, a persistent
 readable assistant and live voice. **The November 11 scope addition also requires
@@ -37,18 +40,18 @@ records** (1 parent and 4 candidates): **39 Stage C records** in total.
 LAZ-106 (deployment), LAZ-108 (performance testing), LAZ-107 (mock banking provider)
 and LAZ-105 (richer seed) each block LAZ-99, as does LAZ-109 (security verification).
 The original snapshot preserves initial states; Linear owns current delivery status.
-Optional membership does not make a candidate a completion blocker. Record an
-explicit promotion, delivery or deferral decision at review.
+All four optional candidates were [deferred at the gate](closure.md#optional-outcomes);
+their Backlog states are preserved, and none became a completion blocker.
 
-One stage milestone remains one sprint; no Linear cycle is added. The existing
-**2026-11-20 target remains tentative**. At initial publication, capacity, owners,
-estimates and individual due dates had not been agreed; priorities are relative
-ordering, not a delivery forecast. Linear owns their live values.
+One stage milestone remains one sprint; no Linear cycle was added. The
+**2026-11-20 target was tentative**. Priorities were relative ordering, not a
+delivery forecast. Linear owns current assignments and issue states.
 
 ## Planning documents
 
 | Document | Responsibility |
 | --- | --- |
+| [Stage C closure](closure.md) and [retrospective](retrospective.md) | Reviewed baseline, accepted development outcomes, limitations and follow-ups |
 | [Integrated experience delivery](experience-delivery.md) | Four requested feature workstreams, PR stack, executed combined verification and remaining release gates; not Stage C closure |
 | [Scope and planning record](planning.md) | All 18 feedback items, required/optional selection, dependencies, decisions and exclusions |
 | [Selected-account synchronization policy](banking-sync-policy.md) | LAZ-89 decision and implemented selection/consent, isolated portable execution, background authority and recovery; live enablement remains gated |
@@ -56,17 +59,16 @@ ordering, not a delivery forecast. Linear owns their live values.
 | [Workspace delivery](workspace-delivery.md) | LAZ-75 workflows, preferences, shortcut integration and executed Chromium/accessibility screening |
 | [Financial assistant](../../technical/financial-assistant.md) and [live voice contract](../../technical/assistant-live-voice.md) | LAZ-72 persistent conversation/voice implementation, privacy, review fixes and remaining live-provider gates |
 | [Integrated assistant browser validation](assistant-browser-validation.md) | Final mocked Chromium matrix, deferred-focus regression/fix, responsive/accessibility results and synthetic voice boundaries |
-| [Validation plan](validation-plan.md) | Observable journeys, appropriate evidence and unresolved live checks |
+| [Validation plan](validation-plan.md) | Planned journeys and evidence tiers; results are in the closure record |
 | [Performance testing](performance-testing.md) | LAZ-108 scope, measured run evidence, acceptance and limitations; reproducible Docker suite |
 | [Security testing](security-testing.md) | LAZ-109 regression evidence, reproducible checks and open dependency/release risks |
-| [Stage Definition of Done](definition-of-done.md) | Required completion and gate checks, all still open |
-| [Dated issue snapshot](../snapshots/backlog-2026-11-10-stage-c-planning.md) | Complete project inventory after selection; not a live board |
+| [Stage Definition of Done](definition-of-done.md) | Assessed development gate criteria and acceptance limits |
+| [Gate snapshot](../snapshots/backlog-2026-11-24-stage-c-gate.md) and [planning snapshot](../snapshots/backlog-2026-11-10-stage-c-planning.md) | Complete dated project inventories at review and at original selection; neither is a live board |
 | [Product requirements](../../product/product-requirements.md) and [journeys](../../product/user-journeys.md#stage-c---selected-everyday-experience-and-live-voice) | User-facing behavior and planned outcomes |
 
 The internal Linear document **Stage C — Scope, acceptance and validation** links
-the same workstreams and their issue-level acceptance criteria. No closure or
-retrospective is fabricated in advance; create those records after the actual
-review using the [shared template](../stage-sprint-record-template.md).
+the same workstreams and their issue-level acceptance criteria. The closure and
+retrospective follow the [shared template](../stage-sprint-record-template.md).
 
 ## Boundaries and completion
 
@@ -87,7 +89,6 @@ real money. Automatic bank updates must respect provider capabilities and must
 not disguise stale source data as fresh. Removing model/provider labels from chat
 does not remove separate processing/privacy disclosure.
 
-Apply this stage's [DoD](definition-of-done.md), then the separate
-[product release checklist](../product-definition-of-done.md). Stage B's
-live-validation/security/operational carryovers remain explicit release concerns,
-not checks that passed merely because planning began.
+The [product release checklist](../product-definition-of-done.md) remains open.
+The [review's open follow-ups](closure.md#open-release-follow-ups) identify what
+the confirmed development workflows do not establish for release.
