@@ -7,6 +7,8 @@ LAZ-99 owns the actual gate record. The [stage DoD](definition-of-done.md) remai
 unchecked. The [November 11 scope addition](planning.md#required-scope-additions--2026-11-11)
 also requires deployment, performance testing, a mock banking provider and a
 substantially richer seed; all four block LAZ-99.
+The [November 24 scope addition](planning.md#required-scope-addition--2026-11-24)
+also requires the LAZ-109 security regressions before the gate.
 
 ## Evidence levels and safe setup
 
@@ -48,6 +50,7 @@ run them or contact live banking/model services.
 | V14 — Measured performance | Execute the agreed performance tests; record measured results, findings, limitations and necessary follow-up against the criteria selected during issue work | LAZ-108; executed performance-test evidence |
 | V15 — Mock banking journeys | Exercise representative connection, account-selection, synchronization and recovery journeys without real bank access; synthetic behavior retains ownership and financial meaning | LAZ-107; documented mock-provider scenarios and results |
 | V16 — Rich synthetic history | Demonstrate varied, coherent financial scenarios across the agreed workflows using the substantially improved, repeatable synthetic seed | LAZ-105; scenario coverage and demonstration results |
+| V17 — Security boundaries | Run controlled auth, owner, service-purpose, grant, approval and demo regressions; denied reads disclose no protected records and denied writes preserve state. Review dependency advisories separately | LAZ-109; [executed checks and remaining risks](security-testing.md) |
 
 V13 and V14 specify required outcomes, **not how deployment or performance testing
 will be done**. Choose deployment scope/approach and performance scope/approach/
@@ -106,5 +109,7 @@ At the gate, LAZ-99 requires the four additions' delivery evidence, including th
 actual deployment and measured performance results. It also records remaining
 dependency-security, capacity, operational, rate/cost and retention/deletion
 limitations; functional tests and risk dispositions do not substitute for the
-required deployment/performance work. Stage completion and the [product release review](../product-definition-of-done.md)
+required deployment/performance work. Use LAZ-109's controlled results for the
+security gate evidence, not as a substitute for live or deployed verification.
+Stage completion and the [product release review](../product-definition-of-done.md)
 are separate decisions; do not pre-fill a closure or retrospective as successful.

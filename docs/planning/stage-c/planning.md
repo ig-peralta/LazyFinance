@@ -14,6 +14,8 @@
 - **Scope addition:** 2026-11-11 product direction adds required deployment,
   performance testing, a mock banking provider and substantial seed improvement
   ([details below](#required-scope-additions--2026-11-11)).
+- **Scope addition:** 2026-11-24 adds required security regression testing
+  ([details below](#required-scope-addition--2026-11-24)).
 
 ## Goal and expected demonstration
 
@@ -74,7 +76,7 @@ the original C01–C18 brief; they are not optional candidates or delivered work
 
 All four are children of LAZ-76 and explicitly block the LAZ-99 stage review.
 They were created as required Todo issues with initial High priority, no Optional
-label and no assignee, estimate, due date or cycle. Selected Stage C scope is now
+label and no assignee, estimate, due date or cycle. At that point Stage C selected
 **38 records: 33 required (5 parents/28 children) and 5 optional**. The project
 inventory contains 103 records; the original dated snapshots remain unchanged.
 
@@ -91,6 +93,19 @@ candidate or authorize real money movement. LAZ-8's existing seed and LAZ-13's
 local packaging remain completed predecessor work, not reopened issues. The
 tentative November 20 target is unchanged.
 
+## Required scope addition — 2026-11-24
+
+Add **LAZ-109**, a required child of LAZ-76 in the existing Stage C milestone,
+blocking LAZ-99. Verify public authentication, signed private RPC, database-role
+and owner isolation, and scoped MCP, assistant and demo behavior. Execute the
+regressions on local synthetic fixtures and record results and release risks in
+the [security testing record](security-testing.md). An advisory audit is separate
+from functional security evidence; neither is a production certification.
+
+Stage C now selects **39 records: 34 required (5 parents/29 children) and 5
+optional**. The project inventory contains 104 records. The prior dated snapshots
+and decisions are unchanged; no optional candidate was promoted.
+
 ## Issue structure and selection
 
 The fresh inventory contained 65 completed Stage A/B issues and no Stage C work.
@@ -106,7 +121,7 @@ text chat, grounding and evidence. Those records remain Done.
 | LAZ-74 | LAZ-89, LAZ-86, LAZ-90, LAZ-88, LAZ-87, LAZ-97, LAZ-85 | Synchronization policy, account selection, automation, guided setup and aliases |
 | LAZ-72 | LAZ-93, LAZ-91, LAZ-92, LAZ-96, LAZ-95, LAZ-94 | Persistent assistant, reading/evidence, presentation/privacy and live voice |
 | LAZ-71 | LAZ-80, LAZ-83 | Grant experience and safe application identity/logos |
-| LAZ-76 | LAZ-98, LAZ-100, LAZ-106, LAZ-108, LAZ-107, LAZ-105, LAZ-99 | Experience/external checks, deployment, performance testing, mock/seed support and actual gate review |
+| LAZ-76 | LAZ-98, LAZ-100, LAZ-106, LAZ-108, LAZ-107, LAZ-105, LAZ-109, LAZ-99 | Experience/external checks, deployment, performance and security testing, mock/seed support and actual gate review |
 | LAZ-73, Optional | LAZ-101, LAZ-103, LAZ-102, LAZ-104 | Quotes, simulation, alerts and WhatsApp |
 
 At the original publication there were **34 new records: 29 required
@@ -142,10 +157,11 @@ unfinished candidate as required or as shipped.
 - **Connected apps:** grant presentation and logos are coordinated but do not add
   permissions or require a new MCP command surface.
 - **Verification:** LAZ-98 depends on the four required feature workstreams;
-  LAZ-100 records external integration checks. LAZ-99 depends on both and all four
-  required November 11 additions: LAZ-106, LAZ-108, LAZ-107 and LAZ-105. Their
-  acceptance evidence is required before closing the stage; no optional candidate
-  blocks those issues automatically.
+  LAZ-100 records external integration checks. LAZ-99 depends on both, the four
+  required November 11 additions (LAZ-106, LAZ-108, LAZ-107 and LAZ-105), and the
+  November 24 security verification (LAZ-109). Their acceptance evidence is
+  required before closing the stage; no optional candidate blocks those issues
+  automatically.
 
 These are deliverable dependencies, not a claim that implementation is underway.
 Use coherent reviews and explicitly recorded live-validation sessions, as the
@@ -218,6 +234,10 @@ the four required issues above. The Linear milestone, scope document, LAZ-76 and
 LAZ-99 now include them; each new issue blocks LAZ-99. This is a scope decision,
 not an implementation or validation result. Deployment and performance-testing
 choices remain deferred to issue work. The original dated snapshots remain unchanged.
+
+On 2026-11-24, the stage added LAZ-109 for required security regression evidence.
+The scope addition is not a GO decision; its results and remaining release risks
+are recorded separately.
 
 At review, record additions, promotions, deferrals and their reasons; the exact
 build and checks; unresolved risks; the actual gate outcome; and retrospective

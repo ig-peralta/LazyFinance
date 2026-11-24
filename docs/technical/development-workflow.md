@@ -280,6 +280,11 @@ observe the [identity verification boundaries](identity.md#verification-scope).
 
 ## Financial and security review checklist
 
+The [Stage C security testing record](../planning/stage-c/security-testing.md)
+maps selected boundaries to the regression suites, reproduction commands and
+open advisory/deployment risks. A dependency audit and application test results
+are separate evidence.
+
 - Follow the [persistence read pattern](persistence-reads.md): purpose-shaped
   projections, stored joins and factual aggregates in persistence; no discarded
   snapshots, repeated catalog joins or nested scans over downloaded movements.
