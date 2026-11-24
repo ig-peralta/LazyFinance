@@ -7,6 +7,8 @@ import {
 import { EnvironmentService } from "../../environment/environment.service";
 import { BankingSyncRunner } from "./banking-sync-runner";
 
+const CLAIM_INTERVAL = 30_000;
+
 @Injectable()
 export class BankingSyncTimer
   implements OnApplicationBootstrap, OnModuleDestroy
@@ -38,7 +40,7 @@ export class BankingSyncTimer
     } catch {
       this.logger.warn("Bank scheduler is unavailable; no work was replayed");
     } finally {
-      if (!this.shutdown.signal.aborted) this.schedule(60_000);
+      if (!this.shutdown.signal.aborted) this.schedule(CLAIM_INTERVAL);
     }
   }
 

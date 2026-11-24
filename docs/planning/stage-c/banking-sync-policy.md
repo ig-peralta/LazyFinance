@@ -9,7 +9,9 @@
   boundaries so it can later move to a separate service without rewriting its
   behavior or duplicating financial logic.
 
-The 2026-11-10 decision evidence and acceptance requirements below are retained.
+The 2026-11-10 decision evidence and acceptance requirements below are retained,
+including the original interval. See the [operating guide](../../technical/technical-manual.md)
+for the current cadence.
 The current [banking guide](../../../apps/api/src/banking/README.md) now describes
 delivered explicit discovery/versioned selection (LAZ-86) and background execution
 (LAZ-90), sharing the existing ingestion workflow. Migration 030 adds durable

@@ -137,9 +137,11 @@ describe.skipIf(!integration)("owned selected-account ingestion", () => {
         lastResult: "complete",
         automation: { enrolled: true, failureCount: 0, pauseReason: null },
       });
-      expect(Date.parse(status.automation.nextAttemptAt ?? "")).toBeGreaterThan(
-        Date.now() + 59 * 60_000,
-      );
+      const wait =
+        Date.parse(status.automation.nextAttemptAt ?? "") -
+        Date.parse(status.lastSuccessAt ?? "");
+      expect(wait).toBeGreaterThan(49 * 60_000);
+      expect(wait).toBeLessThan(56 * 60_000);
       expect(status.freshness.state).not.toBe("fresh");
       f.fetch.mockClear();
       await runner.runOnce();

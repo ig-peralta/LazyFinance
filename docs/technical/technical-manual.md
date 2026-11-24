@@ -106,13 +106,14 @@ independent. Do not edit or rotate live keys merely to try the worker.
 
 Prefer one intended hosting topology operationally, but duplicate API/headless
 replicas are safe through durable database claims, not process-local exclusion.
-Each host wakes immediately, then 60 seconds after a bounded invocation settles;
+Each host wakes immediately, then 30 seconds after a bounded invocation settles;
 each invocation claims at most one due connection. One background run is reserved
 globally, with due ordering and `FOR UPDATE SKIP LOCKED`. Claim and ingestion lease
 are five minutes and must match on completion. Daily-quota deferral releases its
 claim and advances due time; other early deferrals/abandoned claims remain bounded
 by expiry. Missed intervals coalesce, not replay as a backlog. Success schedules
-one hour plus 0–5 minutes jitter independently of bank-source age.
+50 minutes plus 0–5 minutes jitter independently of bank-source age. Existing due
+times are not rewritten; subsequent successful imports establish the new cadence.
 
 Operational limits are code-owned defaults, not adjustable environment quotas:
 two starts/second and two in-flight Fintoc requests globally, 1,000 sync/discovery

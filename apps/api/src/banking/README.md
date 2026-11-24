@@ -59,14 +59,24 @@ a distinct service; the current trusted API signer can assert ordinary users.
 
 Set `BANKING_AUTOMATIC_SYNC_ENABLED=true` only with valid matching-mode Fintoc
 configuration and explicit operational approval. It defaults `false` in API and
-Compose. The timer wakes immediately, then 60 seconds after each invocation settles;
+Compose. The timer wakes immediately, then 30 seconds after each invocation settles;
 each invocation claims at most one due connection. Database claims support multiple
 replicas/hosts with one globally reserved background run, due-time ordering and
 `FOR UPDATE SKIP LOCKED`; correctness does not rely on a singleton JS process.
-Success schedules one hour plus 0–5 minutes jitter, not missed-hour replay jobs.
+Success schedules 50 minutes plus 0–5 minutes jitter, not replay jobs for missed intervals.
 Daily quota deferral advances due time and releases the claim; other abandoned
 claims remain bounded by their five-minute expiry. Manual and automatic starts
-share leases and 30 starts per connection per rolling 24 hours.
+share leases and 30 starts per connection per rolling 24 hours. The success cadence
+alone cannot exhaust that cap; failures and additional manual starts still count.
+
+**Why not import every 5–10 minutes?** That cadence implies 144–288 runs per
+connection per day before limits. Automatic imports could exhaust the shared
+budget and block **Sincronizar bancos**. Each run still rereads the tracked
+movements, and pulling more often does not make Fintoc update its source data
+sooner. Keep the 50–55-minute interval until
+[incremental pulls](fintoc/README.md#technical-debt-incremental-movement-pulls)
+are validated, the actual provider update cadence and request volume are measured,
+and the scheduler can reserve capacity for manual sync within the shared limit.
 
 All Fintoc calls share durable two-starts/second and two-in-flight admission;
 sync/discovery reads additionally share 1,000 requests per mode per rolling hour.

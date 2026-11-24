@@ -77,11 +77,32 @@ reclassified. Records booked before the first-link day are outside future fetche
 so those older retained records are not refreshed by this policy. Importing earlier
 history is a future explicit product flow; no month/payroll exception is implemented.
 
-Each explicit pull currently replays the tracked first-link-to-today period, not an
+Each pull currently replays the tracked first-link-to-today period, not an
 incremental cursor or a silently truncated rolling window. Existing page/record/
-byte/time limits still fail oversized runs atomically. Long-running connection
-history may eventually need a separate bounded catch-up/correction strategy; this
-policy does not claim a successful maximum-size or multi-year load benchmark.
+byte/time limits still fail oversized runs atomically. See the deferred
+[incremental pull work](#technical-debt-incremental-movement-pulls) below.
+
+## Technical debt: incremental movement pulls
+
+On-demand and scheduled sync deliberately keep the same bounded snapshot for now.
+Every run rereads the tracked movements even if nothing changed, so provider page
+counts and ingestion work grow with connection age. Measure provider admission/fetch
+and commit time before changing default behavior.
+
+Use Fintoc's documented [`updated_since`](https://docs.fintoc.com/api/movements-api/movements/movements-list)
+date filter for changes, not a newer `since` booking-date cutoff: older movements
+can arrive late or change status after they were imported. Keep the original
+first-link boundary, balance snapshots and `confirmed_only=false`. Persist a
+date-overlapped sync-start checkpoint only with a complete commit; a failed run
+must not advance it. First imports and newly selected or reselected accounts still
+need a baseline or explicit catch-up. Retain ID-based updates and user decisions.
+
+Compare paginated deltas against full snapshots on a test link, including a backdated
+arrival, a late reversal, same-day/concurrent updates, and a lost or partial run.
+Keep a bounded wider reconciliation path. Do not treat omitted rows as deletions;
+evaluate Fintoc's explicit [removal events](https://docs.fintoc.com/api/main-resources/events-reference/types-of-events)
+if the list does not represent them as reversals. Do not claim complete history or
+live-bank latency until verified.
 
 ## Ownership and transport
 
@@ -266,7 +287,7 @@ separately hardened deployment: review distinct signing authority and credential
 network distribution before future extraction. Do not copy broad API signing
 authority into an independently trusted worker without that review.
 
-The timer invokes one bounded claim immediately and then waits 60 seconds after
+The timer invokes one bounded claim immediately and then waits 30 seconds after
 settlement. Multiple API/headless replicas share durable claims; one background
 run is reserved globally, with due-time ordering and row-lock `SKIP LOCKED`.
 Daily budget exhaustion moves the due time and releases the claim so other work
@@ -274,7 +295,7 @@ can proceed. Other abandoned claims expire within five minutes; a claim must
 match the live ingestion revision/lease before committing or completing schedule.
 Manual and background work share a 30-start rolling-24-hour connection budget;
 coalesced/readonly calls do not consume starts. Relink/selection/restart do not
-reset this budget. Success schedules one hour plus 0–5 minutes jitter. Retryable
+reset this budget. Success schedules 50 minutes plus 0–5 minutes jitter. Retryable
 failure waits 5/15/60/360 minutes plus 0–1 minute jitter, respecting later provider
 waits; five consecutive failures pause automation. Invalid data, account
 unavailability and access failures pause it without blind retries. Explicit
