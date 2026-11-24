@@ -3,16 +3,18 @@ import { createHash, generateKeyPairSync, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import type { PersistenceContext as SignedContext } from "@lazyfinance/contracts/context";
-import type {
-  CommitProviderSync,
-  SaveMcpArtifact,
+import {
+  type CommitProviderSync,
+  MAX_PERSISTENCE_RPC_BYTES,
+  type SaveMcpArtifact,
 } from "@lazyfinance/contracts/internal";
 import {
   createContextSigner,
   createContextVerifier,
 } from "@lazyfinance/rpc-auth";
 import type { PersistenceRouter } from "@lazyfinance/rpc-persistence";
-import { type INestApplication, Inject } from "@nestjs/common";
+import { Inject } from "@nestjs/common";
+import type { NestExpressApplication } from "@nestjs/platform-express";
 import { Test } from "@nestjs/testing";
 import {
   createTRPCClient,
@@ -108,7 +110,7 @@ describe.skipIf(!ownerUrl)(
   () => {
     let owner: Kysely<Record<string, never>>;
     let runtime: Kysely<Record<string, never>>;
-    let app: INestApplication;
+    let app: NestExpressApplication;
     let url: string;
     let resetDatabaseUrl: string;
     let sign: Awaited<ReturnType<typeof createContextSigner>>;
@@ -275,7 +277,10 @@ describe.skipIf(!ownerUrl)(
         imports: [AppModule, DatabaseModule],
         providers: [FailureRouter],
       }).compile();
-      app = module.createNestApplication({ logger: false });
+      app = module.createNestApplication<NestExpressApplication>({
+        logger: false,
+      });
+      app.useBodyParser("json", { limit: MAX_PERSISTENCE_RPC_BYTES });
       await app.listen(0, "127.0.0.1");
       url = await app.getUrl();
       await sql`insert into identity."user"(id,email,name) values (${a}, ${a + "@example.test"}, 'A'), (${b}, ${b + "@example.test"}, 'B')`.execute(
@@ -470,7 +475,7 @@ describe.skipIf(!ownerUrl)(
           .filter((name) => !name.startsWith("failure."))
           .sort(),
       ).toEqual(expected.sort());
-      expect(expected).toHaveLength(109);
+      expect(expected).toHaveLength(111);
 
       for (const name of expected)
         expect(procedures[name]._def.meta).toMatchObject({
@@ -1540,7 +1545,7 @@ describe.skipIf(!ownerUrl)(
       const rollback = await new Migrator({
         db: owner,
         provider: migrationProvider(),
-      }).migrateDown();
+      }).migrateTo("202611160034-development-demo-seed");
       expect(String(rollback.error)).toMatch(/demo-tools reset operation/);
       expect(await migrate(owner, migrationProvider())).toEqual([]);
       expect(

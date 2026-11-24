@@ -359,6 +359,11 @@ describe.skipIf(!integration)(
         expect((await f.client.tags.list.query())[0].name).toBe(
           "Cambio más reciente",
         );
+        // A stale request is still pending until explicitly revised or cancelled.
+        await f.client.financialActions.cancel.mutate({
+          id: action.id,
+          version: 1,
+        });
         const movement = await f.db.insert("transaction", {
           accountId: f.accountId,
           amount: "-12000.00",
