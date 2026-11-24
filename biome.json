@@ -9,6 +9,7 @@
       "!**/.angular",
       "!**/coverage",
       "!tests/performance/results",
+      "!tests/validation/results",
       "!.local",
       "!libs/rpc-api/src/generated",
       "!libs/rpc-persistence/src/generated"
