@@ -28,6 +28,9 @@ for direction.
 
 ## Phase 3 — final evidence
 
-- [Fase 3 — Evidencias del Proyecto APT](fase3/README.md): Spanish closeout and
-  innovation summary, product vision, prioritized backlog, design with UML, and
-  per-sprint test matrices. See [outstanding submissions](fase3/README.md#entregables-pendientes).
+- [Cierre e innovación](fase3/cierre-e-innovacion.md): development closeout and innovation summary, not production approval.
+- [Visión del producto](fase3/vision-del-producto.md): audience, problem, value, scope and success criteria.
+- [Backlog priorizado](fase3/backlog-priorizado.md): recorded priorities and links to Sprint Backlogs, Definitions of Done and retrospectives.
+- [Documento de diseño](fase3/documento-de-diseno.md): architecture, data model, UML diagrams and design decisions.
+- [Plan de pruebas y evidencias](fase3/pruebas/README.md): test plans and recorded results for Sprints A, B and C.
+- Supporting references: [non-functional requirements](../product/non-functional-requirements.md) and [technical manual](../technical/technical-manual.md).

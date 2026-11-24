@@ -47,4 +47,4 @@ dirigidas por un agente quedaron fuera de la entrega.
   con menos conciliación manual. Ese beneficio aún no se ha medido.
 
 [Visión y evolución del producto](../../product/product-vision.md) ·
-[Índice de Fase 3](README.md)
+[Índice de Fase 3](../README.md#phase-3--final-evidence)

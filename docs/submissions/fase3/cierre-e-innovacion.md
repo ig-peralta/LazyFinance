@@ -36,4 +36,4 @@ panel o el asistente sin perder esa trazabilidad. Reducir el tiempo de
 conciliación es un beneficio esperado, no medido en un estudio con usuarios.
 
 [Más sobre innovación e interoperabilidad](../../product/innovation.md) ·
-[Índice de Fase 3](README.md)
+[Índice de Fase 3](../README.md#phase-3--final-evidence)
