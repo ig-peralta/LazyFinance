@@ -30,7 +30,7 @@ legend bottom
   The shaded box is the development host (docker/dev/compose.yml).
   Only Traefik publishes host ports; services and data are internal networks.
   The browser calls the API origin directly. Provider SDK / Widget and optional browser WebRTC traffic are not drawn.
-  Automatic bank sync is off. The opt-in seed job is not part of deployment, and the persistent volume is not a backup.
+  Automatic bank sync is off. Deployment does not prepare demo data, and the persistent volume is not a backup.
   Stage C development configuration, not production release evidence.
 endlegend
 @enduml

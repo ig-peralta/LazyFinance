@@ -1,15 +1,21 @@
 import type { Insertable } from "kysely";
 import type { TransactionTable } from "../../finance/transaction/transaction.tables";
-
-type NewTransactionRow = Insertable<TransactionTable>;
-
 import type { TagKey } from "./catalog";
 import { bookedDate, clp, seedId, variedAmount } from "./helpers";
 import { type AccountKey, accounts } from "./profile";
 
-export type LedgerEntry = NewTransactionRow & {
+export type LedgerEntry = Pick<
+  Insertable<TransactionTable>,
+  | "accountId"
+  | "amount"
+  | "type"
+  | "merchant"
+  | "description"
+  | "isInternalMovement"
+> & {
   id: string;
   bookedAt: Date;
+  externalId: string;
   tagId: string | null;
 };
 
@@ -50,7 +56,6 @@ export function buildLedger(asOf = new Date()): LedgerEntry[] {
           bookedAt,
           amount: clp(amount),
           type: amount < 0 ? "debit" : "credit",
-          source: "manual",
           merchant,
           description,
           externalId: `demo:${id}`,

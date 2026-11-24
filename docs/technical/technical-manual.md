@@ -34,7 +34,7 @@ The setup order is deliberate:
 5. Start persistence, API and UI (or let the Compose init/dependency chain do so).
 
 The persistence CLI scripts run TypeScript. For containers, use the compiled
-`node dist/database/cli.js` with `migrate`, `provision`, `provision-demo-tools` or `seed`.
+`node dist/database/cli.js` with `migrate`, `provision` or `provision-demo-tools`.
 None is an application startup side effect. Runtime
 role checks are not bypassed by using a database owner when setup fails.
 
@@ -42,7 +42,7 @@ role checks are not bypassed by using a database owner when setup fails.
 
 | Process | Configuration boundary |
 | --- | --- |
-| Owner CLI / init / seed | `POSTGRES_MIGRATION_URL`; separate runtime and demo-tools login/password pairs only for role provisioning |
+| Owner CLI / init | `POSTGRES_MIGRATION_URL`; separate runtime and demo-tools login/password pairs only for role provisioning |
 | Persistence | `POSTGRES_RUNTIME_URL`, `PERSISTENCE_RPC_PUBLIC_KEY`, matching key ID; `HOST` / `PORT` default to `127.0.0.1` / `3001` |
 | API | `PERSISTENCE_RPC_URL`, `PERSISTENCE_RPC_PRIVATE_KEY`, matching key ID; auth/CORS settings; `PORT` default `3000`; direct mock runs default `HOST` to loopback; optional banking timer |
 | Headless banking host | Same signed private-RPC and matching-mode Fintoc configuration; `BANKING_AUTOMATIC_SYNC_ENABLED`; no HTTP listener or database URL |
@@ -291,7 +291,7 @@ profile or instructions for a live environment.
 
 - `resources.yml`: local PostgreSQL on loopback port 5432; no named durable volume.
 - `apps.yml`: apps plus owner-only init job using the external `lazyfinance`
-  resources network. Start resources first; only persistence, init and seed join that
+  resources network. Start resources first; only persistence and init join that
   database network, with API/UI on separate service/edge networks.
 - `deploy.yml`: separate data/service/edge networks, named PostgreSQL volume,
   owner-only init job, private persistence, API and static UI. No
@@ -305,10 +305,6 @@ profile or instructions for a live environment.
 
 Both local Compose app stacks publish the API on loopback only. After `init`
 succeeds, sign in with a test email and password to create an empty mock workspace.
-The legacy manual fixture remains optional. On a fresh database, run
-`pnpm deploy:local --profile tools run --rm seed` before signing in as
-`demo@lazyfinance.cl` if you need the manual fixture.
-
 The in-app **Preparar demo** action resets only the signed-in user's finance and
 assistant data after confirmation, creates an owned simulated bank, and imports
 three of six accounts via normal synchronization. Neither user creation nor demo

@@ -54,17 +54,6 @@ services:
     networks: [data]
     restart: 'no'
 
-  seed:
-    image: ${DOCKER_USERNAME:-igperalta}/lazyfinance-persistence:${IMAGE_TAG:-latest}
-    profiles: [tools]
-    environment:
-      POSTGRES_MIGRATION_URL: postgresql://${POSTGRES_USER:-lazyfinance_owner}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-lazyfinance}
-    command: ['node', 'dist/database/cli.js', 'seed']
-    depends_on:
-      init:
-        condition: service_completed_successfully
-    networks: [data]
-
   persistence:
     image: ${DOCKER_USERNAME:-igperalta}/lazyfinance-persistence:${IMAGE_TAG:-latest}
     build:

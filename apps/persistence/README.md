@@ -53,13 +53,10 @@ silently changed or password-rotated. Unsafe/unmanaged collisions are refused.
 not a financial-data bypass or a login credential.
 
 The compiled image includes `node dist/database/cli.js` with `migrate`, `provision`,
-`provision-demo-tools` and `seed` commands. The first local mock sign-in creates
-just the identity through signed RPC; Firebase still requires a verified email
-for first provisioning. Do not source the root Compose `.env` into app processes.
-
-The optional `pnpm --filter persistence db:seed` command uses CLI-only owner
-credentials for the legacy manual financial fixture. Run it on a fresh database
-before signing in as `demo@lazyfinance.cl` if you need that fixture.
+and `provision-demo-tools` commands. No user is created at startup or by these
+commands. The first local mock sign-in creates just the identity through signed
+RPC; Firebase still requires a verified email for first provisioning. Do not
+source the root Compose `.env` into app processes.
 
 ## Demo tools
 
@@ -93,7 +90,8 @@ reset. No user ID is accepted from the browser. The tool
 leaves every identity row (including MCP grants) untouched, and deleting assistant
 action receipts does not reverse their prior financial effects. This operation
 does not alter application RLS or runtime grants. Use **Preparar demo** to load
-the synthetic finances for either an authenticated mock or Firebase owner.
+the synthetic finances for either an authenticated mock or Firebase owner. There
+is no separate financial seed command; retiring it does not delete old fixtures.
 
 Simulator mutations generate curated activity after preparation: an internal
 checking/savings transfer (balanced debit/credit pair), an external expense,
@@ -173,7 +171,7 @@ protected/TLS service channel in deployment.
 - Follow the [purpose-shaped read pattern](../../docs/technical/persistence-reads.md):
   joins/projections and factual SQL sums belong here; API calendar/financial
   interpretation must not be copied into a second implementation.
-- Only migration/seed tooling receives owner credentials.
+- Only the database CLI receives owner credentials for application setup.
 - Feature repositories inject `RLS_DB`, which fails outside a scoped transaction.
 - Each RPC verifies its signed user/bootstrap/OAuth/scheduler/transport purpose
   before opening a transaction.

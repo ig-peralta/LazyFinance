@@ -1,21 +1,15 @@
 import "dotenv/config";
-import type { FinanceTables } from "../finance/finance.tables";
-import type { IdentityTables } from "../identity/identity.tables";
 import { createDatabase } from "./connection";
 import { provisionDemoToolsRole } from "./demo-tools-provision";
 import { migrate } from "./migrator";
 import { provisionRuntime } from "./provision";
-import { seedDemo } from "./seed";
 
 async function main() {
   const url = process.env.POSTGRES_MIGRATION_URL;
   if (!url)
     throw new Error("POSTGRES_MIGRATION_URL is required by the owner-only CLI");
 
-  const db = createDatabase<FinanceTables & IdentityTables>(
-    url,
-    process.argv[2] === "seed",
-  );
+  const db = createDatabase(url, false);
 
   try {
     switch (process.argv[2]) {
@@ -56,13 +50,8 @@ async function main() {
         );
         break;
       }
-      case "seed":
-        console.log(await seedDemo(db));
-        break;
       default:
-        throw new Error(
-          "Expected migrate, provision, provision-demo-tools or seed",
-        );
+        throw new Error("Expected migrate, provision or provision-demo-tools");
     }
   } finally {
     await db.destroy();

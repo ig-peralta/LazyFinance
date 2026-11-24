@@ -16,17 +16,6 @@ services:
     networks: [lazyfinance]
     restart: 'no'
 
-  seed:
-    image: lazyfinance-persistence:local
-    profiles: [tools]
-    environment:
-      POSTGRES_MIGRATION_URL: 'postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-lazyfinance}'
-    command: ['node', 'dist/database/cli.js', 'seed']
-    networks: [lazyfinance]
-    depends_on:
-      init:
-        condition: service_completed_successfully
-
   persistence:
     image: lazyfinance-persistence:local
     build:

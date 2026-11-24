@@ -208,7 +208,7 @@ the retained movement with `needs_review`. Confirmation can resolve that conflic
 without deleting decisions/receipts/allocations; unrelated conflicts remain. This
 is distinct from permanent tombstones, which replay never reactivates.
 
-## Migration and seed lifecycle
+## Migration and demo-data lifecycle
 
 Forty migrations are globally ordered across `migrations/identity`,
 `migrations/finance` and `migrations/assistant`: schema/bootstrap foundations plus
@@ -282,18 +282,15 @@ rewriting financial data. Income-receipt policies are unchanged.
 
 Migration 040 updates the restricted identity resolver to allow the first local
 mock sign-in to create an application user. It does not insert data, change
-grants, rewrite mappings or change Firebase provisioning.
-
-The explicit owner-only CLI seed creates the fixed local manual account and its
-initial fixtures; it is never startup or migration work. Stable fixture IDs allow
-repeatable updates while preserving existing transaction tag decisions. The
-separate confirmed development reset clears the authenticated user's finance and
-assistant data before creating an owned simulated bank source with six accounts.
+grants, rewrite mappings or change Firebase provisioning. The retired financial
+CLI seed has no data-removal migration. The confirmed **Preparar demo** action
+clears the authenticated user's finance and assistant data before creating an
+owned simulated bank source with six accounts.
 Three accounts are selected and imported through normal discovery/synchronization;
 tag decisions and income receipts attach after import. The other three remain
 available but unselected. Simulated activity changes the source only until the next
 explicit refresh. The reset does not accept a target user ID and preserves all
 identity data, including MCP grants. Deleting assistant receipts does not undo
-financial changes. Neither operation is a generic import or safe for real user data.
+financial changes. Use this action only with disposable demo data.
 Follow the [persistence setup](../../apps/persistence/README.md) and
 [test-database precautions](development-workflow.md#verification-tiers).

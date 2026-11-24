@@ -117,7 +117,7 @@ revocation limitations.
 
 | Credential / role | Purpose |
 | --- | --- |
-| `POSTGRES_MIGRATION_URL` | Owner-only migration, provision and explicit seed CLI jobs |
+| `POSTGRES_MIGRATION_URL` | Owner-only migrations and database role provisioning |
 | `lazyfinance_runtime` | NOLOGIN permission role holding application grants/RLS policies |
 | Provisioned runtime LOGIN | Inherits that permission role; supplied via `POSTGRES_RUNTIME_URL` |
 | `lazyfinance_identity_bootstrap` | Restricted NOLOGIN function owner, not a runtime login |

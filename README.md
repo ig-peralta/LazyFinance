@@ -51,7 +51,7 @@ flowchart TB
     style privateData fill:none,stroke:#64748b,stroke-dasharray:5 5
 ```
 
-The API verifies users and owns financial rules, scheduling, tag matching and provider orchestration. It has no database connection or credentials. Persistence verifies short-lived signed service assertions and enforces scoped RLS in a transaction per procedure. Only migration/seed tooling receives owner credentials. There is no tenancy layer or automatic old-database adoption.
+The API verifies users and owns financial rules, scheduling, tag matching and provider orchestration. It has no database connection or credentials. Persistence verifies short-lived signed service assertions and enforces scoped RLS in a transaction per procedure. Only the database CLI gets owner credentials for application setup. There is no tenancy layer or automatic old-database adoption.
 
 The shared banking journey authorizes an owned Fintoc connection, discovers minimal account metadata, confirms a versioned selection and starts one first import. New accounts are never silently enrolled. Manual and automatic available-data imports use one isolated atomic engine, including a headless composition. Automatic execution defaults disabled; it does not force a bank refresh. Deselect/disconnect preserves history and personal account names. Access, enrollment, import success and bank-source age remain separate facts. See the [banking boundary](apps/api/src/banking/README.md) and [delivery evidence](docs/planning/stage-c/banking-delivery.md).
 
@@ -267,9 +267,7 @@ Markdown and YAML remain manually formatted with this Biome version.
 Both local Compose options publish the API on loopback. After `init` succeeds,
 sign in normally; no separate mock identity command is required. The deployed
 development stack uses Firebase. Deployment does not load demo finances or reset
-user data automatically. The legacy manual fixture is still opt-in: on a fresh
-database, run `pnpm deploy:local --profile tools run --rm seed` before signing in
-as `demo@lazyfinance.cl` if you need that fixture.
+user data automatically.
 
 With `DEMO_TOOLS_ENABLED=true` on both API and persistence, **Mi cuenta → Herramientas demo → Preparar demo** asks for confirmation before clearing only the signed-in user's finance and assistant data. It prepares a simulated bank, then imports the three selected accounts through the normal synchronization path. Three more accounts remain available to select. Later simulated activity reaches the financial workspace only on explicit sync. Use this action only with disposable demo data.
 

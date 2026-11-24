@@ -1,17 +1,14 @@
 import type { Insertable } from "kysely";
 import type { IncomeSourceTable } from "../../finance/income-source/income-source.tables";
-
-type NewIncomeSourceRow = Insertable<IncomeSourceTable>;
-
 import { seedId } from "./helpers";
 import type { LedgerEntry } from "./ledger";
-import { demoUser } from "./profile";
+
+type IncomeSourceFixture = Omit<Insertable<IncomeSourceTable>, "userId">;
 
 export const incomeSources = [
   {
     id: seedId("income-source:salary"),
     name: "Trabajo principal",
-    userId: demoUser.id,
     currency: "CLP",
     regularity: "regular",
     amountKind: "fixed",
@@ -22,7 +19,6 @@ export const incomeSources = [
   {
     id: seedId("income-source:commissions"),
     name: "Comisiones",
-    userId: demoUser.id,
     currency: "CLP",
     regularity: "regular",
     amountKind: "variable",
@@ -33,7 +29,6 @@ export const incomeSources = [
   {
     id: seedId("income-source:freelance"),
     name: "Proyectos independientes",
-    userId: demoUser.id,
     currency: "CLP",
     regularity: "irregular",
     amountKind: "variable",
@@ -44,7 +39,6 @@ export const incomeSources = [
   {
     id: seedId("income-source:bonuses"),
     name: "Bonos y aguinaldos",
-    userId: demoUser.id,
     currency: "CLP",
     regularity: "irregular",
     amountKind: "variable",
@@ -52,7 +46,7 @@ export const incomeSources = [
     schedule: null,
     startDate: "2024-01-01",
   },
-] satisfies NewIncomeSourceRow[];
+] satisfies IncomeSourceFixture[];
 
 export const incomeExpectations = [
   {
