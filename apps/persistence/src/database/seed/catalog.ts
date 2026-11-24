@@ -1,10 +1,10 @@
 import type { Insertable } from "kysely";
 import type { ObjectiveTable } from "../../finance/objective/objective.tables";
-
-type NewObjectiveRow = Insertable<ObjectiveTable>;
-
 import { seedId } from "./helpers";
-import { demoUser } from "./profile";
+
+type ObjectiveFixture = Omit<Insertable<ObjectiveTable>, "userId"> & {
+  id: string;
+};
 
 export const tags = [
   { key: "salary", name: "Sueldo", color: "#15803D" },
@@ -28,15 +28,12 @@ export const tags = [
 export type TagKey = (typeof tags)[number]["key"];
 
 export const objectives: {
-  key: string;
-  value: NewObjectiveRow & { id: string };
+  value: ObjectiveFixture;
   tags: TagKey[];
 }[] = [
   {
-    key: "monthly-groceries",
     value: {
       id: seedId("objective:monthly-groceries"),
-      userId: demoUser.id,
       name: "Presupuesto mensual de supermercado",
       amount: "280000.00",
       kind: "time_based",
@@ -48,10 +45,8 @@ export const objectives: {
     tags: ["groceries"],
   },
   {
-    key: "monthly-transport",
     value: {
       id: seedId("objective:monthly-transport"),
-      userId: demoUser.id,
       name: "Presupuesto mensual de transporte",
       amount: "110000.00",
       kind: "time_based",
@@ -63,10 +58,8 @@ export const objectives: {
     tags: ["transport"],
   },
   {
-    key: "yearly-vacation",
     value: {
       id: seedId("objective:yearly-vacation"),
-      userId: demoUser.id,
       name: "Presupuesto anual de vacaciones",
       amount: "650000.00",
       kind: "time_based",
@@ -78,10 +71,8 @@ export const objectives: {
     tags: ["vacation"],
   },
   {
-    key: "emergency-fund",
     value: {
       id: seedId("objective:emergency-fund"),
-      userId: demoUser.id,
       name: "Fondo de emergencia",
       amount: "6500000.00",
       kind: "amount_based",
@@ -90,10 +81,8 @@ export const objectives: {
     tags: ["savings"],
   },
   {
-    key: "september-2025",
     value: {
       id: seedId("objective:september-2025"),
-      userId: demoUser.id,
       name: "Fiestas Patrias 2025",
       amount: "240000.00",
       kind: "time_based",

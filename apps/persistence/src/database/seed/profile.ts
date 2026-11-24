@@ -1,59 +1,38 @@
-import type { Insertable } from "kysely";
-import type { AccountTable } from "../../finance/account/account.tables";
-import type { UserTable } from "../../identity/user/user.tables";
-
-type NewAccountRow = Insertable<AccountTable>;
-
-type NewUserRow = Insertable<UserTable>;
-
+import type { DemoBankAccount } from "@lazyfinance/contracts/internal";
 import { seedId } from "./helpers";
 
-const joinedAt = new Date("2023-12-01T15:00:00.000Z");
+type AccountFixture = Pick<
+  DemoBankAccount,
+  "type" | "number" | "holderName"
+> & {
+  id: string;
+};
 
-export const demoUser = {
-  id: "00000000-0000-4000-8000-000000000001",
-  email: "demo@lazyfinance.cl",
-  name: "Camila Rojas",
-  createdAt: joinedAt,
-} satisfies NewUserRow;
+const holderName = "Camila Rojas";
 
+// Keep this key stable so existing prepared demo banks remain addressable.
 export const demoConnectionId = seedId("connection:manual");
 
 export const accounts = {
   checking: {
     id: seedId("account:checking"),
-    userId: demoUser.id,
-    providerConnectionId: demoConnectionId,
     type: "checking",
     number: "DEMO-CC-001",
-    holderName: demoUser.name,
-    alias: "Cuenta corriente",
-    currency: "CLP",
-    createdAt: joinedAt,
+    holderName,
   },
   savings: {
     id: seedId("account:savings"),
-    userId: demoUser.id,
-    providerConnectionId: demoConnectionId,
     type: "savings",
     number: "DEMO-AH-001",
-    holderName: demoUser.name,
-    alias: "Fondo de emergencia",
-    currency: "CLP",
-    createdAt: joinedAt,
+    holderName,
   },
   creditCard: {
     id: seedId("account:credit-card"),
-    userId: demoUser.id,
-    providerConnectionId: demoConnectionId,
     type: "credit_card",
     number: "DEMO-TC-001",
-    holderName: demoUser.name,
-    alias: "Tarjeta de crédito",
-    currency: "CLP",
-    createdAt: joinedAt,
+    holderName,
   },
-} as const satisfies Record<string, NewAccountRow>;
+} as const satisfies Record<string, AccountFixture>;
 
 export type AccountKey = keyof typeof accounts;
 

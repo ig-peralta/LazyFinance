@@ -51,7 +51,7 @@ flowchart TB
     style privateData fill:none,stroke:#64748b,stroke-dasharray:5 5
 ```
 
-The API verifies users and owns financial rules, scheduling, tag matching and provider orchestration. It has no database connection or credentials. Persistence verifies short-lived signed service assertions and enforces scoped RLS in a transaction per procedure. Only migration/seed tooling receives owner credentials. There is no tenancy layer or automatic old-database adoption.
+The API verifies users and owns financial rules, scheduling, tag matching and provider orchestration. It has no database connection or credentials. Persistence verifies short-lived signed service assertions and enforces scoped RLS in a transaction per procedure. Only the database CLI gets owner credentials for application setup. There is no tenancy layer or automatic old-database adoption.
 
 The shared banking journey authorizes an owned Fintoc connection, discovers minimal account metadata, confirms a versioned selection and starts one first import. New accounts are never silently enrolled. Manual and automatic available-data imports use one isolated atomic engine, including a headless composition. Automatic execution defaults disabled; it does not force a bank refresh. Deselect/disconnect preserves history and personal account names. Access, enrollment, import success and bank-source age remain separate facts. See the [banking boundary](apps/api/src/banking/README.md) and [delivery evidence](docs/planning/stage-c/banking-delivery.md).
 
@@ -186,7 +186,6 @@ Use a **fresh empty database**. The new migrations do not import old Drizzle his
 pnpm exec turbo build --filter=persistence...
 POSTGRES_MIGRATION_URL=postgresql://user:password@localhost:5432/lazyfinance pnpm --filter persistence db:migrate
 POSTGRES_MIGRATION_URL=postgresql://user:password@localhost:5432/lazyfinance PERSISTENCE_DATABASE_USER=lazyfinance_app PERSISTENCE_DATABASE_PASSWORD=local-runtime-password-change-me pnpm --filter persistence db:provision-runtime
-POSTGRES_MIGRATION_URL=postgresql://user:password@localhost:5432/lazyfinance pnpm --filter persistence db:seed
 pnpm rpc:keys
 # Put the private key only in apps/api/.env and the public key in apps/persistence/.env.
 # Copy their .env.example files and configure POSTGRES_RUNTIME_URL in persistence.
@@ -194,6 +193,13 @@ pnpm dev
 ```
 
 The UI runs at <http://localhost:4200>, API at <http://localhost:3000>, and private persistence at `127.0.0.1:3001`. Owner credentials belong only to CLI jobs; persistence requires a restricted runtime login. The API connects only through private RPC. Stop resources with `pnpm resources:down` when finished.
+
+With `AUTH_PROVIDER=mock`, sign in with any valid email and a nonempty test password.
+The first sign-in creates an empty workspace; the same email returns to it. Use
+`demo@lazyfinance.cl` to return to an existing legacy demo workspace. The mock does
+not verify passwords or email ownership: use it only with disposable local data.
+To load sample finances, configure the [optional demo tools](apps/persistence/README.md#demo-tools)
+before starting the apps and choose **Mi cuenta → Herramientas demo → Preparar demo**.
 
 App-local `.env` files are separate from the root [Compose environment](.env.example). Never commit real keys/passwords. See the [technical manual](docs/technical/technical-manual.md).
 
@@ -258,7 +264,12 @@ Markdown and YAML remain manually formatted with this Biome version.
 - **Full local deployment:** copy `.env.example` to `.env`, generate keys, then `pnpm deploy:local:up`. The `init` job must succeed before persistence starts. It also provisions a separate demo-tools role. PostgreSQL/persistence have no published ports; the API cannot join the data network. Data uses a named volume. This remains a local demonstration setup, not production secret management or TLS.
 - **Development deployment:** `docker/dev/compose.yml` runs PostgreSQL, private persistence, API and UI behind Traefik HTTPS. The main-branch workflow publishes changed images to `igperalta/lazyfinance-{api,persistence,ui}`, applies migrations/provisions the runtime and demo-tools roles, and updates the stack. See the [development deployment runbook](docs/technical/technical-manual.md#development-deployment).
 
-The explicit CLI seed remains a manual local fixture: `pnpm deploy:local --profile tools run --rm seed`. Deployment never seeds or resets user data automatically. With `DEMO_TOOLS_ENABLED=true` on both API and persistence, **Mi cuenta → Herramientas demo → Preparar demo** asks for confirmation before clearing only the signed-in user's finance and assistant data. It prepares a simulated bank, then imports the three selected accounts through the normal synchronization path. Three more accounts remain available to select. Later simulated activity reaches the financial workspace only on explicit sync. Use this action only with disposable demo data.
+Both local Compose options publish the API on loopback. After `init` succeeds,
+sign in normally; no separate mock identity command is required. The deployed
+development stack uses Firebase. Deployment does not load demo finances or reset
+user data automatically.
+
+With `DEMO_TOOLS_ENABLED=true` on both API and persistence, **Mi cuenta → Herramientas demo → Preparar demo** asks for confirmation before clearing only the signed-in user's finance and assistant data. It prepares a simulated bank, then imports the three selected accounts through the normal synchronization path. Three more accounts remain available to select. Later simulated activity reaches the financial workspace only on explicit sync. Use this action only with disposable demo data.
 
 The browser sends no target user ID. Identity data, including MCP grants, remains intact; deleting assistant/MCP action receipts does not reverse their financial effects. Only enabled persistence holds the dedicated demo-tools credential. Use a fresh database for unrelated schema histories. For a production-mode rehearsal, use Firebase with `API_NODE_ENV=production`; mock authentication is development-only.
 

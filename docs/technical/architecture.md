@@ -58,7 +58,8 @@ rules live in the [RPC reference](rpc-contracts.md).
 Only `config.get` and `auth.loginMock` are anonymous public procedures. The API
 verifies Firebase/mock bearers and resolves the stable provider/issuer/subject to
 an internal UUID. First Firebase provisioning requires verified email and never
-links different subjects by email. Mock is existing-only and rejected in production.
+links different subjects by email. Local mock sign-in provisions an owner on first
+use; later bearer requests only resolve that owner. Production rejects mock mode.
 
 External MCP has a separate [standards-first OAuth boundary](mcp-authorization.md):
 `oidc-provider` handles discovery, CIMD/DCR, S256 PKCE and rotating credentials;
@@ -268,12 +269,12 @@ Fintoc scheduler does not run mock connections. See the
 
 Fresh migrations only: table/types/constraints/indexes/grants/RLS apply together.
 There is no legacy migration adoption or automatic database reset. Owner credentials
-belong only to CLI/init/seed jobs; the API uses private RPC without a database
+belong only to the database CLI for application setup; the API uses private RPC without a database
 connection, and persistence rejects owner/BYPASSRLS credentials for its normal
 runtime pool. The development stack enables demo tools with a separate, narrowly
 granted `BYPASSRLS` connection in persistence. Signed user context comes from API
-authentication. No demo reset or seed runs during deployment, and the production
-proposal omits the demo login and disables demo tools.
+authentication. Deployment does not sign in users or prepare demo data. The
+production proposal omits mock sign-in and disables demo tools.
 
 The [development deployment](technical-manual.md#development-deployment) uses
 Traefik for public HTTPS, separate edge/service/data networks and an owner-only

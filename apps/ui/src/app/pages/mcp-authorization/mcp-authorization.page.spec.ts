@@ -110,6 +110,15 @@ function button(root: HTMLElement, text: string) {
   return found;
 }
 
+function submitMockLogin(root: HTMLElement) {
+  const email = root.querySelector<HTMLInputElement>("#email");
+  const password = root.querySelector<HTMLInputElement>("#password");
+  if (!email || !password) throw new Error("Missing MCP sign-in");
+  email.value = principal.email;
+  password.value = "test-password";
+  button(root, "Iniciar sesión y revisar permisos").click();
+}
+
 async function setupFirebase() {
   const account = firebaseUser("firebase-a", "firebase-token");
   let observe: (user: FirebaseUser | null) => void = () => {};
@@ -219,10 +228,7 @@ describe("single-page MCP connection without the financial workspace", () => {
   it("logs in and previews permissions in place on the same request without approving", async () => {
     const f = await setup();
     await f.enter();
-    const password = f.root.querySelector<HTMLInputElement>("#password");
-    if (!password) throw new Error("Missing MCP sign-in form");
-    password.value = "password";
-    button(f.root, "Iniciar sesión y revisar permisos").click();
+    submitMockLogin(f.root);
     await f.settle();
     expect(f.router.url).toBe("/autorizar-mcp?interaction=connection-a");
     expect(f.root.textContent).toContain("Conectar aplicación");
@@ -298,10 +304,7 @@ describe("single-page MCP connection without the financial workspace", () => {
       "/autorizar-mcp?interaction=connection-a&redirect=https://evil.example/steal",
     );
     const originalUrl = f.router.url;
-    const password = f.root.querySelector<HTMLInputElement>("#password");
-    if (!password) throw new Error("Missing MCP sign-in");
-    password.value = "password";
-    button(f.root, "Iniciar sesión y revisar permisos").click();
+    submitMockLogin(f.root);
     await f.settle();
     expect(f.router.url).toBe(originalUrl);
     expect(f.root.querySelector("mcp-consent-page")).not.toBeNull();
@@ -439,10 +442,7 @@ describe("single-page MCP connection without the financial workspace", () => {
       handlers: { "auth.loginMock": () => pending.promise },
     });
     await f.enter("/autorizar-mcp?interaction=connection-a");
-    const password = f.root.querySelector<HTMLInputElement>("#password");
-    if (!password) throw new Error("Missing MCP sign-in");
-    password.value = "password";
-    button(f.root, "Iniciar sesión y revisar permisos").click();
+    submitMockLogin(f.root);
     await vi.waitFor(() => expect(f.callsTo("auth.loginMock")).toHaveLength(1));
     await f.router.navigateByUrl("/autorizar-mcp?interaction=connection-b");
     f.fixture.detectChanges();

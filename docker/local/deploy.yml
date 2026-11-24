@@ -35,17 +35,6 @@ services:
     networks: [data]
     restart: 'no'
 
-  seed:
-    image: lazyfinance-persistence:local
-    profiles: [tools]
-    environment:
-      POSTGRES_MIGRATION_URL: 'postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-lazyfinance}'
-    command: ['node', 'dist/database/cli.js', 'seed']
-    depends_on:
-      init:
-        condition: service_completed_successfully
-    networks: [data]
-
   persistence:
     image: lazyfinance-persistence:local
     build:
@@ -73,6 +62,7 @@ services:
       dockerfile: apps/api/Dockerfile
     environment:
       NODE_ENV: ${API_NODE_ENV:-development}
+      HOST: 0.0.0.0
       PORT: '3000'
       PERSISTENCE_RPC_URL: http://persistence:3001
       PERSISTENCE_RPC_PRIVATE_KEY: ${PERSISTENCE_RPC_PRIVATE_KEY:?Generate keys with pnpm rpc:keys}
@@ -102,7 +92,7 @@ services:
       MCP_OAUTH_JWKS:
       MCP_OAUTH_TRUST_PROXY: '${MCP_OAUTH_TRUST_PROXY:-false}'
     ports:
-      - '${API_PORT:-3000}:3000'
+      - '127.0.0.1:${API_PORT:-3000}:3000'
     depends_on:
       persistence:
         condition: service_healthy

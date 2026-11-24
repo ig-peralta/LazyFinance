@@ -1,13 +1,10 @@
 import type { VerifiedExternalIdentity } from "@lazyfinance/contracts";
 
-export const mockEmail = "demo@lazyfinance.cl";
-export const mockPassword = "password";
-export const mockToken = "lazyfinance-demo-token";
-
+/** Keep the original demo subject so that local demo accounts retain ownership. */
 export const mockIdentity = {
   provider: "mock",
   issuer: "https://mock.lazyfinance.cl",
   providerSubject: "demo",
-  verifiedEmail: mockEmail,
+  verifiedEmail: "demo@lazyfinance.cl",
   displayName: "Camila Rojas",
 } as const satisfies VerifiedExternalIdentity;

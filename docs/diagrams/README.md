@@ -211,8 +211,8 @@ Sources: [assistant orchestration](../../apps/api/src/assistant/assistant.servic
 - The API uses signed HTTP tRPC to persistence (`3001`) on the internal `services`
   network. Persistence alone among the application services joins `data` to reach
   PostgreSQL (`5432`). Neither private service publishes a host port.
-- Owner-only `init` migrates and provisions logins before runtime; the opt-in seed
-  does not run on deployment. PostgreSQL persists to a named volume, not a backup.
+- Owner-only `init` migrates and provisions logins before runtime. Deployment
+  does not prepare demo data. PostgreSQL persists to a named volume, not a backup.
 - The development stack uses Firebase and a test-mode Fintoc key pair. Demo tools
   are enabled there; automatic banking sync is off. The assistant/voice provider
   settings come from the development environment.

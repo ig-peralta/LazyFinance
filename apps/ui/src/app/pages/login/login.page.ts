@@ -67,12 +67,19 @@ export class LoginPage {
     void this.session.retry();
   }
 
-  async loginWithMock(email: string, password: string): Promise<void> {
-    if (this.provider() !== "mock") return;
-    await this.execute("signin", async () => {
+  async submitMock(
+    event: Event,
+    email: HTMLInputElement,
+    password: HTMLInputElement,
+  ): Promise<void> {
+    event.preventDefault();
+    if (this.busy() || this.provider() !== "mock") return;
+    const value = password.value;
+    password.value = "";
+    await this.execute("mock-signin", async () => {
       const { token } = await this.api.loginMock(
-        email,
-        password,
+        email.value,
+        value,
         this.lifetime.signal,
       );
       this.lifetime.signal.throwIfAborted();

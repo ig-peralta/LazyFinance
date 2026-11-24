@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const MockLoginInputSchema = z
   .object({
-    email: z.email(),
+    email: z.string().trim().toLowerCase().pipe(z.email().max(160)),
     password: z.string().min(1),
   })
   .strict();

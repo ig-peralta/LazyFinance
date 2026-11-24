@@ -42,7 +42,7 @@ current application boundaries and describes the controls needed around them.
 | --- | --- |
 | API → persistence | Private route from the API only, with TLS and the existing signed tRPC context. Signatures authenticate the context; they do not encrypt transport. The API cannot reach PostgreSQL. |
 | Persistence → PostgreSQL | Private PostgreSQL 18 with TLS and peer verification. The runtime login cannot own tables or bypass RLS. Verify that the chosen service supports the migrations, scoped grants, bootstrap roles and forced RLS before selecting it. |
-| Privileged DDL | Use the matched persistence image as a one-shot migration/provisioning job before application rollout. Only the job gets the owner credential; neither runtime container gets it. Never include demo-role provisioning, reset or seed jobs in the production rollout. |
+| Privileged DDL | Use the matched persistence image as a one-shot migration/provisioning job before application rollout. Only the job gets the owner credential; neither runtime container gets it. Omit demo-role provisioning and demo preparation. Production uses Firebase, not mock sign-in. |
 | Secrets | Separate owner and runtime database credentials, the API signing key, Firebase Admin credentials, and optional OAuth, bank and model keys. Persistence receives the private-RPC verification key, not the signing key. Use scoped secret delivery and rehearse rotation and recovery of the keys needed to read stored encrypted data. |
 | Backups | Set recovery point and recovery time objectives, then use encrypted off-host backups and point-in-time recovery. Test restores to an isolated environment, including compatible migrations, runtime grants and access to required decryption keys. A Compose volume is not a backup. |
 

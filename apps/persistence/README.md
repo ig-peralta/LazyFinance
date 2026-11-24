@@ -40,14 +40,28 @@ leave a half-protected table or a successful ledger entry.
    pnpm --filter persistence db:provision-runtime
    ```
 
+4. Generate keys with `pnpm rpc:keys`. Put the private key **only in the API**
+   environment and the public key in persistence. Keys/secrets must not enter Git.
+5. Before starting persistence, optionally configure [demo tools](#demo-tools).
+   Run persistence with `POSTGRES_RUNTIME_URL` using the provisioned login and
+   **without `POSTGRES_MIGRATION_URL`**. Startup rejects owner/BYPASSRLS credentials.
+
 The provision command creates a distinct LOGIN inheriting the NOLOGIN
 `lazyfinance_runtime` permission role. Existing managed logins are verified, not
 silently changed or password-rotated. Unsafe/unmanaged collisions are refused.
 `lazyfinance_identity_bootstrap` is a separate restricted NOLOGIN function owner,
 not a financial-data bypass or a login credential.
 
+The compiled image includes `node dist/database/cli.js` with `migrate`, `provision`,
+and `provision-demo-tools` commands. No user is created at startup or by these
+commands. The first local mock sign-in creates just the identity through signed
+RPC; Firebase still requires a verified email for first provisioning. Do not
+source the root Compose `.env` into app processes.
+
+## Demo tools
+
 The opt-in `demo-tools` module uses a separate login. Only the owner-only CLI
-provisions it, with `DEMO_TOOLS_DATABASE_USER` and a
+provisions it, with `POSTGRES_MIGRATION_URL`, `DEMO_TOOLS_DATABASE_USER` and a
 `DEMO_TOOLS_DATABASE_PASSWORD` of at least 24 characters:
 
 ```sh
@@ -58,22 +72,11 @@ That role has `BYPASSRLS` but only provider-catalog reads and scoped DML on
 finance/assistant owner-data tables. It cannot read/write identity rows, MCP grants
 or artifacts. The owner-only init job receives the password to provision the role;
 only enabled development persistence receives its database URL, plus expected
-database/login variables. Its separate connection is opened only when
-`DEMO_TOOLS_ENABLED=true` and startup checks the role/database/grants. Never supply
-the credential to API or production persistence.
-
-4. Generate keys with `pnpm rpc:keys`. Put the private key **only in the API**
-   environment and the public key in persistence. Keys/secrets must not enter Git.
-5. Start persistence with `POSTGRES_RUNTIME_URL` using the provisioned login and
-   **without `POSTGRES_MIGRATION_URL`**. Startup rejects owner/BYPASSRLS credentials.
-
-Run `pnpm --filter persistence db:seed` only as an explicit CLI operation with
-**CLI-only** owner credentials to create/update the stable demo fixtures. Deployment
-does not invoke this command; it is not an app-startup or migration side effect.
-These fixtures use the mock identity
-and are not visible to Firebase-authenticated users. The compiled image includes
-`node dist/database/cli.js migrate|provision|provision-demo-tools|seed`; the runtime never receives the
-owner URL. Do not source the root Compose `.env` into app processes.
+database/login variables (`DEMO_TOOLS_DATABASE_NAME` and `DEMO_TOOLS_DATABASE_USER`).
+Set `DEMO_TOOLS_ENABLED=true` on both API and persistence; persistence checks the
+role/database/grants before opening that connection. See the
+[environment example](.env.example). Never supply the credential to API or production
+persistence.
 
 Migration 034 temporarily introduced the demo-seed marker table; migration 035
 drops that obsolete marker while retaining migration history. The confirmed
@@ -86,9 +89,10 @@ and income receipts. Failed post-reset imports can be continued without another
 reset. No user ID is accepted from the browser. The tool
 leaves every identity row (including MCP grants) untouched, and deleting assistant
 action receipts does not reverse their prior financial effects. This operation
-does not alter application RLS or runtime grants. The owner-only CLI seed remains
-an explicit initial setup for the fixed local mock account; deployment never runs
-it automatically.
+does not alter application RLS or runtime grants. Use **Preparar demo** to load
+the synthetic finances for either an authenticated mock or Firebase owner. There
+is no separate financial seed command; retiring it does not delete old fixtures.
+
 Simulator mutations generate curated activity after preparation: an internal
 checking/savings transfer (balanced debit/credit pair), an external expense,
 purchase or credit, or a source correction/removal. They atomically update only
@@ -101,6 +105,9 @@ protected/TLS service channel in deployment.
 
 ## Boundaries
 
+- Migration 040 allows first local mock sign-in to provision a user through the
+  existing identity resolver without changing its grants or existing mappings.
+  It inserts no data and does not alter Firebase provisioning.
 - Migrations 036–038 add the nonremoved per-account recent index and replace only
   expense-adjustment/transaction SELECT ownership with equivalent owned-key
   membership. Transaction account keys use an indexable statement-local array.
@@ -164,7 +171,7 @@ protected/TLS service channel in deployment.
 - Follow the [purpose-shaped read pattern](../../docs/technical/persistence-reads.md):
   joins/projections and factual SQL sums belong here; API calendar/financial
   interpretation must not be copied into a second implementation.
-- Only migration/seed tooling receives owner credentials.
+- Only the database CLI receives owner credentials for application setup.
 - Feature repositories inject `RLS_DB`, which fails outside a scoped transaction.
 - Each RPC verifies its signed user/bootstrap/OAuth/scheduler/transport purpose
   before opening a transaction.

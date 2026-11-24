@@ -3,7 +3,13 @@ import { TRPCClientError } from "@trpc/client";
 import { FirebaseError } from "firebase/app";
 import { isCancelled } from "../rpc/rpc-error";
 
-export type AuthAction = "signin" | "register" | "link" | "verify" | "reset";
+export type AuthAction =
+  | "signin"
+  | "mock-signin"
+  | "register"
+  | "link"
+  | "verify"
+  | "reset";
 
 /** Display policy only; email equality and error metadata never authorize linking. */
 export function authErrorMessage(error: unknown, action: AuthAction): string {
@@ -13,6 +19,9 @@ export function authErrorMessage(error: unknown, action: AuthAction): string {
     error instanceof TRPCClientError &&
     (error as TRPCClientError<ApiRouter>).data?.code === "CONFLICT"
   ) {
+    if (action === "mock-signin")
+      return "Ese correo ya está en uso. Usa otro correo para el acceso de prueba.";
+
     return "No pudimos conectar esta identidad. Inicia sesión con tu método anterior; no combinamos cuentas por correo.";
   }
 
@@ -48,6 +57,8 @@ export function authErrorMessage(error: unknown, action: AuthAction): string {
   const messages: Record<AuthAction, string> = {
     signin:
       "No pudimos iniciar sesión. Revisa tus credenciales e inténtalo de nuevo.",
+    "mock-signin":
+      "No pudimos iniciar la sesión de prueba. Revisa el correo e inténtalo de nuevo.",
     register:
       "No pudimos completar el registro. Si la cuenta se creó, inicia sesión para reenviar la verificación.",
     link: "No pudimos confirmar la conexión. Revisa tus métodos antes de volver a intentarlo; no combinamos cuentas automáticamente.",

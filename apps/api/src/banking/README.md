@@ -22,8 +22,7 @@ source accounts; three are selected for the initial import and the rest remain
 discoverable. Later simulator activity changes the source first, then the normal
 explicit import commits selected financial facts. Its generated historical sync
 entries are separate from executed attempts. Automatic enrollment is rejected and
-expired access must be reconnected, rediscovered and confirmed again. The separate
-owner-only CLI seed remains a manual fixture rather than a bank connection.
+expired access must be reconnected, rediscovered and confirmed again.
 
 ## Selection, automation and portable composition
 

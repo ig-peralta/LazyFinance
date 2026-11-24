@@ -88,22 +88,25 @@ within 30 seconds does not limit a transaction to 30 seconds.
 
 The stable `(provider, issuer, providerSubject)` identifies an external account;
 the resolved `identity.user.id` owns financial records. The API verifies Firebase
-or mock credentials before calling `identity.resolve` with `existing` or
-`provision` mode.
+tokens or handles local mock sign-in before calling `identity.resolve`. Mock
+provisioning runs only on sign-in; an existing mock bearer uses `existing` mode.
 
 The resolver invokes the narrow
-[`identity.resolve_external_identity`](../../apps/persistence/src/database/migrations/identity/202611060004-identity-bootstrap.ts)
+[`identity.resolve_external_identity`](../../apps/persistence/src/database/migrations/identity/202611240040-local-mock-sign-in.ts)
 `SECURITY DEFINER` function. It:
 
 1. Requires transaction-local bootstrap context and locks the external identity
    key to serialize concurrent first sign-ins.
 2. Returns an existing mapping without remapping by email or name.
-3. Refuses missing mock mappings and existing-only requests.
-4. Requires verified email for first provisioning, inserting the user and mapping
-   atomically. Unique-email collisions fail rather than linking another subject.
+3. Refuses a missing mapping on existing-only requests.
+4. Requires verified email for first Firebase provisioning. For mock provisioning,
+   checks the local issuer and subject derived from the claimed email. The user and
+   mapping are inserted atomically; unique-email collisions fail instead of linking
+   to another subject.
 
 The function has a fixed `pg_catalog, pg_temp` search path and schema-qualified
-objects. PUBLIC execution is revoked in the same migration. Its dedicated
+objects. PUBLIC execution was revoked at creation; migration 040 leaves the owner
+and grants unchanged. Its dedicated
 `lazyfinance_identity_bootstrap` NOLOGIN owner has only the identity-table
 SELECT/INSERT permissions/policies it needs, no finance access. The runtime may
 execute the function but cannot assume that owner or directly query the external
@@ -114,7 +117,7 @@ revocation limitations.
 
 | Credential / role | Purpose |
 | --- | --- |
-| `POSTGRES_MIGRATION_URL` | Owner-only migration, provision and explicit seed CLI jobs |
+| `POSTGRES_MIGRATION_URL` | Owner-only migrations and database role provisioning |
 | `lazyfinance_runtime` | NOLOGIN permission role holding application grants/RLS policies |
 | Provisioned runtime LOGIN | Inherits that permission role; supplied via `POSTGRES_RUNTIME_URL` |
 | `lazyfinance_identity_bootstrap` | Restricted NOLOGIN function owner, not a runtime login |

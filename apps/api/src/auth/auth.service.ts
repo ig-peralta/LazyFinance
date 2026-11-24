@@ -30,10 +30,10 @@ export class AuthService {
     const parsed = MockLoginInputSchema.safeParse(body);
     if (!parsed.success) throw new BadRequestException("Invalid login request");
 
-    const result = await this.mock.login(parsed.data);
-    await this.persistence.resolveExisting(this.mock.verify(result.token));
+    const identity = this.mock.identify(parsed.data.email);
+    await this.persistence.resolveOrCreate(identity);
 
-    return result;
+    return this.mock.issueSession(identity);
   }
 
   async authenticate(

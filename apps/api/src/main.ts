@@ -20,6 +20,9 @@ async function bootstrap() {
 
   const environment = app.get(EnvironmentService);
   const port = environment.get("PORT");
+  const host =
+    environment.get("HOST") ??
+    (environment.get("AUTH_PROVIDER") === "mock" ? "127.0.0.1" : undefined);
   configureCors(
     app,
     environment.get("CORS_ORIGINS"),
@@ -27,7 +30,8 @@ async function bootstrap() {
   );
 
   await app.startAllMicroservices();
-  await app.listen(port);
+  if (host) await app.listen(port, host);
+  else await app.listen(port);
 
   const logger = new Logger("Bootstrap");
   logger.log(`Starting application at ${await app.getUrl()}`);

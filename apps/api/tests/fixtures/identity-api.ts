@@ -11,14 +11,15 @@ import { testEnvironment } from "./environment";
 
 export async function identityApi(
   identities?: Map<string, VerifiedExternalIdentity>,
-  provider: "firebase" | "mock" = "firebase",
+  options: { provider?: "firebase" | "mock"; demoTools?: boolean } = {},
 ) {
   const db = new FixtureDatabase();
   const builder = Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(EnvironmentService)
     .useValue(
       testEnvironment({
-        AUTH_PROVIDER: provider,
+        AUTH_PROVIDER: options.provider ?? "firebase",
+        DEMO_TOOLS_ENABLED: options.demoTools ?? false,
         FIREBASE_PROJECT_ID:
           process.env.TEST_FIREBASE_PROJECT_ID ?? "lazyfinance-dev",
       }),
