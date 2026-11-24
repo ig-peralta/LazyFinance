@@ -22,6 +22,7 @@ import { filter, map } from "rxjs";
 import { AuthCredentials } from "../../core/auth/auth-credentials";
 import { SessionService } from "../../core/auth/session.service";
 import { AssistantWorkspace } from "../../features/assistant/assistant-workspace";
+import { BankSyncFeedback } from "../../features/banking/bank-sync-feedback";
 import { OnboardingData } from "../../features/onboarding/onboarding.data";
 import { AssistantPage } from "../../pages/assistant/assistant.page";
 import { Icon } from "../../shared/ui/icon";
@@ -39,6 +40,7 @@ import { WorkspacePreferences } from "./workspace-preferences";
     Icon,
     WorkspaceAppearance,
     AssistantPage,
+    BankSyncFeedback,
   ],
   templateUrl: "./app-shell.html",
 })

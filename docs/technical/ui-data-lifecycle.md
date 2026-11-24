@@ -418,9 +418,9 @@ generated markup receives typography without altering unrelated screens. See
 `BankConnectionsPage` at `/conexiones-bancarias` (**Mi cuenta → Conexiones bancarias**)
 provides `BankingData` for two credential-scoped resources:
 server banking configuration and owned connection summaries. Both initial reads
-participate in that page's workspace readiness. The separate `/cuentas` page
-reads only stored balances and links to connection settings; it starts no banking
-reads or Widget flow. Onboarding links to the same settings page and never gates
+participate in that page's workspace readiness. On entry the separate `/cuentas`
+page reads only stored balances; it does not start a status check, import or Widget
+flow. Onboarding links to the same settings page and never gates
 access to it, whether the guide is active, skipped or completed.
 Loading, unavailable configuration, failed reads and an empty connection list are
 distinct; no provider requests or per-connection status checks run on page entry.
@@ -448,6 +448,25 @@ preserves history, and reconciles failed responses to show locally disabled acce
 with pending provider cleanup. Completing cleanup is another explicit command.
 Keyboard focus enters the authorization heading and returns to the connections
 heading on completion/cancellation; disconnect cancellation restores its trigger.
+
+### On-demand financial refresh
+
+**Sincronizar bancos** starts an explicit, credential-scoped command that survives
+navigation in the same tab. `ManualBankSync` reads owned connections and saved
+status on demand; it reuses `banking.importInitial` / `banking.refresh` sequentially
+for eligible connections. It shares a submission guard with the per-bank panel.
+Provider movement detail targets only the bank matched by the owned account ID in
+saved status. Read retries, status, pinned evidence and settings remain read-only.
+
+The workspace shows partial outcomes per connection. An ambiguous import gets a
+read-only status check, never a repeated mutation; another explicit request reads
+fresh status again. Only a confirmed commit (including `needs_review`) changes the
+scoped revision consumed by open balance, movement, summary and progress resources.
+Page owners still fetch their own data; no global financial response cache is added.
+Month and filters stay selected while movement cursors reset after a commit. A
+failed screen read can be retried without making another provider request.
+
+### Connection-specific status and account management
 
 Access status never advances financial freshness. The separate account-summary
 read has no public connection mapping; it is not joined heuristically to banks.

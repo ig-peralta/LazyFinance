@@ -21,6 +21,7 @@ import {
   reportWorkspaceReadiness,
 } from "../../../core/rendering/workspace-preparation";
 import { AccountsData } from "../../../features/accounts/accounts.data";
+import { BankSyncButton } from "../../../features/banking/bank-sync-button";
 import { TagsData } from "../../../features/tags/tags.data";
 import { HistoryData } from "../../../features/transactions/history.data";
 import { Icon, type IconName } from "../../../shared/ui/icon";
@@ -33,7 +34,7 @@ import {
 
 @Component({
   selector: "history-page",
-  imports: [FormsModule, RouterLink, Icon, NgTemplateOutlet],
+  imports: [FormsModule, RouterLink, Icon, NgTemplateOutlet, BankSyncButton],
   providers: [HistoryData, AccountsData, TagsData],
   templateUrl: "./history.page.html",
 })

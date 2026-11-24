@@ -87,6 +87,59 @@ describe("owned banking controls without fabricated financial refresh", () => {
     vi.restoreAllMocks();
   });
 
+  it("syncs from the header without opening a panel and rereads saved lifecycle facts", async () => {
+    const f = setup(
+      {
+        "banking.syncStatus": () =>
+          bankingSyncStatus({ lastSuccessAt: "2026-11-08T17:30:00.000Z" }),
+        "banking.refresh": () => {
+          f.setBanks([{ ...bankingConnection, status: "expired" }]);
+          return { status: "failed", reason: "expired", retryAfter: null };
+        },
+      },
+      [bankingConnection],
+    );
+    await render(f.fixture);
+    expect(f.callsTo("banking.syncStatus")).toHaveLength(0);
+    button(f.root, "Sincronizar bancos").click();
+    await render(f.fixture);
+    expect(f.callsTo("banking.refresh")).toHaveLength(1);
+    expect(f.root.textContent).toContain("Requiere reconexión");
+    expect(f.root.querySelector("bank-sync-panel")).toBeNull();
+  });
+
+  it("updates the open panel after a header import without remounting it", async () => {
+    let imported = false;
+    const f = setup(
+      {
+        "banking.syncStatus": () =>
+          bankingSyncStatus(
+            imported
+              ? {
+                  lastSuccessAt: "2026-11-08T18:00:00.000Z",
+                  lastResult: "complete",
+                }
+              : {},
+          ),
+        "banking.importInitial": () => {
+          imported = true;
+          return bankingImportResult;
+        },
+      },
+      [bankingConnection],
+    );
+    await render(f.fixture);
+    button(f.root, "Datos y sincronización").click();
+    await render(f.fixture);
+    const panel = f.root.querySelector("bank-sync-panel");
+    expect(panel?.textContent).toContain("Sin importación confirmada");
+    button(f.root, "Sincronizar bancos").click();
+    await render(f.fixture);
+    expect(f.callsTo("banking.importInitial")).toHaveLength(1);
+    expect(f.root.querySelector("bank-sync-panel")).toBe(panel);
+    expect(panel?.textContent).toContain("Última importación completada");
+  });
+
   it("keeps the Widget lazy, binds the callback to its intent and waits for backend confirmation", async () => {
     const authorization = deferred<string | null>(),
       completion = deferred<RpcOutput<"banking.completeLink">>();

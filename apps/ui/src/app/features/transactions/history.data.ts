@@ -1,19 +1,25 @@
 import {
   computed,
-  effect,
   Injectable,
   inject,
+  linkedSignal,
   resource,
   signal,
 } from "@angular/core";
 import type { TransactionsInput } from "@lazyfinance/contracts";
 import { RpcClient } from "../../core/rpc/rpc-client";
+import { ManualBankSync } from "../banking/manual-bank-sync";
 
 @Injectable()
 export class HistoryData {
   private readonly rpc = inject(RpcClient);
+  private readonly sync = inject(ManualBankSync);
   readonly filters = signal<TransactionsInput | undefined>(undefined);
-  private readonly trail = signal<(string | undefined)[]>([undefined]);
+  private readonly trail = linkedSignal<(string | undefined)[]>(() => {
+    this.rpc.authenticatedScope();
+    this.sync.revision();
+    return [undefined];
+  });
   readonly pageNumber = computed(() => this.trail().length);
   readonly page = resource({
     params: () => {
@@ -30,13 +36,6 @@ export class HistoryData {
   readonly items = computed(() =>
     this.page.hasValue() ? this.page.value().items : [],
   );
-
-  constructor() {
-    effect(() => {
-      this.rpc.authenticatedScope();
-      this.trail.set([undefined]);
-    });
-  }
 
   apply(input: TransactionsInput | undefined) {
     this.trail.set([undefined]);

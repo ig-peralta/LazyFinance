@@ -337,8 +337,8 @@ versions; it is current-fact evidence, not historical time travel. Dashboard tag
 decisions invalidate savings allocations as well as spending/budget reads.
 
 `/cuentas` (**Mi dinero → Cuentas**) owns stored account balances, last-sync dates
-and links into movement history. It does not load banking settings or contact
-Fintoc. A **Conectar banco** shortcut and the empty state link to the separate
+and links into movement history. On entry it does not load banking settings or
+contact Fintoc. A **Conectar banco** shortcut and the empty state link to the separate
 connection settings; they do not launch authorization themselves.
 Personal names are owned display labels, edited in a scoped drawer and preserved
 on synchronization/relink. Removing a name requires explicit `null`, not blank
@@ -389,7 +389,14 @@ be deselected. Server-disabled automation is disclosed even when intent is saved
 Onboarding's `from=onboarding` context provides a fixed return link to `/comenzar`;
 there is no arbitrary return URL or separate banking workflow.
 
-**Importar datos disponibles** calls the explicit initial-import command; after a
+**Sincronizar bancos** is available on financial screens and at the top of bank
+settings. It uses the saved selection without another confirmation and reports
+the outcome per bank. It never links a bank, changes account selection, or enrolls
+automatic sync. A provider movement detail can request just its bank. Stored read
+retries remain separate. Successful imports reload the visible balances, transactions
+and calculations while preserving the month/filter selection.
+
+In the per-bank panel, **Importar datos disponibles** calls the initial-import command; after a
 confirmed success, **Actualizar datos disponibles** replays the backend's bounded
 snapshot. Neither action forces the bank to refresh. Authorization completion opens
 the panel but never imports automatically. Counts describe examined provider
@@ -426,7 +433,7 @@ automatic imports are enabled and enrolled. Errors, scope changes and teardown
 cancel observation; its expiry leaves the explicit status-read button available.
 Observation never discovers, selects, enrolls or replays a mutation. Closing a panel
 stops waiting, not server processing; reopening reconciles its durable lease.
-Other financial pages read fresh data when navigated to, without a root cache.
+Financial reads remain page-owned, without a root cache.
 Server configuration/mode and authoritative status eligibility both gate imports;
 readonly status and local disconnect remain available when configuration is disabled.
 See the [backend contract/setup](../api/src/banking/fintoc/README.md).

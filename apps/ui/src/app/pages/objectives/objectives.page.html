@@ -7,7 +7,7 @@
 <div class="stack">
   <div class="stack">
     <section class="panel">
-      <div class="panel-heading"><div><h2>Tus límites en perspectiva</h2><p class="panel-subtitle">Compras netas de devoluciones y reembolsos atribuidos a la compra original.</p></div><button class="icon-button" type="button" aria-label="Recargar presupuestos" (click)="data.progress.reload(); data.objectives.reload()"><app-icon name="refresh" /></button></div>
+      <div class="panel-heading"><div><h2>Tus límites en perspectiva</h2><p class="panel-subtitle">Compras netas de devoluciones y reembolsos atribuidos a la compra original.</p></div><bank-sync-button /></div>
       @if (data.progress.isLoading()) { <p class="notice" role="status">Calculando el gasto de tus presupuestos…</p> }
       @else if (data.progress.error()) { <p class="notice danger" role="alert">No pudimos calcular el avance. <button type="button" (click)="data.progress.reload()">Reintentar</button></p> }
       @else if (data.progress.hasValue()) {

@@ -232,8 +232,8 @@ The API hosts the timer; after building, `pnpm --filter api worker:banking` host
 that module headlessly without `AppModule`, HTTP, Firebase, MCP or assistant.
 `BANKING_AUTOMATIC_SYNC_ENABLED` defaults false; valid matching-mode provider
 configuration and explicit account enrollment are also required. Success schedules
-an available-data import one hour plus 0–5 minutes jitter later. The timer wakes
-immediately and then 60 seconds after settlement. Durable claims allow multiple
+an available-data import 50 minutes plus 0–5 minutes jitter later. The timer wakes
+immediately and then 30 seconds after settlement. Durable claims allow multiple
 replicas/hosts with one globally reserved background run; row-lock `SKIP LOCKED`
 and due-time ordering avoid waiting on a user-held schedule row. Attempt-quota
 deferral releases the claim and advances due time. Leases bound abandoned work.

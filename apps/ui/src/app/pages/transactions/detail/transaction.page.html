@@ -1,7 +1,10 @@
 <a class="text-link page-back" [routerLink]="returnContext().path" [queryParams]="returnContext().queryParams">← {{ returnContext().label }}</a>
 <header class="page-header">
   <div><p class="eyebrow">MI DINERO</p><h1>Movimiento<span class="accent-text">.</span></h1><p class="page-description">Revisa los hechos del banco y tu clasificación.</p></div>
-  <button class="button" type="button" [disabled]="detail.isLoading()" (click)="detail.reload()"><app-icon name="refresh" /> Recargar</button>
+  <div class="page-actions">
+    @if (detail.hasValue() && detail.value().source === 'provider') { <bank-sync-button [accountId]="detail.value().account.id" /> }
+    <button class="button" type="button" [disabled]="detail.isLoading()" (click)="detail.reload()">Recargar registro</button>
+  </div>
 </header>
 @if (savedNotice()) { <p class="notice" role="status">{{ savedNotice() }}</p> }
 @if (detail.isLoading()) { <p class="notice" role="status">Cargando el detalle del movimiento…</p> }

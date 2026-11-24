@@ -9,6 +9,7 @@ import {
   formatAccountBalance,
 } from "../../features/accounts/account-presentation";
 import { AccountsData } from "../../features/accounts/accounts.data";
+import { BankSyncButton } from "../../features/banking/bank-sync-button";
 import { EditorDrawer } from "../../shared/ui/editor-drawer";
 import { Icon } from "../../shared/ui/icon";
 import { AccountAliasEditor } from "./account-alias-editor";
@@ -21,7 +22,7 @@ const timestamp = new Intl.DateTimeFormat("es-CL", {
 
 @Component({
   selector: "accounts-page",
-  imports: [RouterLink, Icon, EditorDrawer, AccountAliasEditor],
+  imports: [RouterLink, Icon, EditorDrawer, AccountAliasEditor, BankSyncButton],
   providers: [AccountsData],
   templateUrl: "./accounts.page.html",
   styleUrl: "./accounts.page.css",

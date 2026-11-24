@@ -7,10 +7,10 @@ describe("portable synchronization scheduling policy", () => {
   it("schedules successful snapshots independently of source freshness", () => {
     expect(syncScheduleCompletion(4, now, 0)).toEqual({
       expectedFailureCount: 4,
-      nextAttemptAt: "2026-11-10T13:00:00.000Z",
+      nextAttemptAt: "2026-11-10T12:50:00.000Z",
     });
     expect(syncScheduleCompletion(0, now, 1).nextAttemptAt).toBe(
-      "2026-11-10T13:05:00.000Z",
+      "2026-11-10T12:55:00.000Z",
     );
   });
 

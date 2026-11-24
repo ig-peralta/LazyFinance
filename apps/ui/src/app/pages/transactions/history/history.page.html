@@ -54,7 +54,7 @@
     </section>
   }
   @if (accounts.error() || tags.error()) { <p class="notice warning" role="alert">Algunas opciones de filtros no están disponibles. <button type="button" (click)="accounts.reload(); tags.reload()">Reintentar</button></p> }
-  <div class="panel-heading history-results-heading"><div><h2>Tu registro de movimientos</h2><p class="panel-subtitle">{{ activeFilters() ? activeFilters() + ' filtros aplicados' : 'Sin filtros' }} · Más recientes primero.</p></div><button class="icon-button" type="button" aria-label="Recargar historial" [disabled]="data.page.isLoading() || !!error()" (click)="data.page.reload()"><app-icon name="refresh" /></button></div>
+  <div class="panel-heading history-results-heading"><div><h2>Tu registro de movimientos</h2><p class="panel-subtitle">{{ activeFilters() ? activeFilters() + ' filtros aplicados' : 'Sin filtros' }} · Más recientes primero.</p></div><bank-sync-button /></div>
   @if (error()) { <p class="notice">Corrige los filtros para consultar el historial. No se ha interpretado el enlace inválido como una selección vacía.</p> }
   @else if (data.page.isLoading()) { <div role="status" aria-label="Cargando historial" class="stack">@for (item of [1,2,3,4]; track item) { <div class="skeleton" style="height:38px"></div> }</div> }
   @else if (data.page.error()) { <div class="notice danger" role="alert">No pudimos cargar el historial. No significa que esté vacío. <button type="button" (click)="data.page.reload()">Reintentar</button></div> }

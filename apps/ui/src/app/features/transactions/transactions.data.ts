@@ -1,15 +1,20 @@
 import { computed, Injectable, inject, resource } from "@angular/core";
 import { RpcClient } from "../../core/rpc/rpc-client";
+import { ManualBankSync } from "../banking/manual-bank-sync";
 import { TaggingData } from "../tagging/tagging.data";
 
 @Injectable()
 export class TransactionsData {
   private readonly rpc = inject(RpcClient);
+  private readonly sync = inject(ManualBankSync);
   private readonly tagging = inject(TaggingData);
 
   readonly recent = resource({
-    params: () => this.rpc.authenticatedScope(),
-    loader: async ({ params: scope, abortSignal }) => {
+    params: () => {
+      const scope = this.rpc.authenticatedScope();
+      return scope && { scope, syncRevision: this.sync.revision() };
+    },
+    loader: async ({ params: { scope }, abortSignal }) => {
       const decisionVersion = this.tagging.changed()?.version ?? 0;
       // The activity preview deliberately renders only the first ten-item page.
       // Continuation controls belong to a future UI change.

@@ -5,13 +5,13 @@
   </div>
   <div class="page-actions">
     <a class="button primary" routerLink="/conexiones-bancarias"><app-icon name="plus" /> Conectar banco</a>
-    <button class="button" type="button" [disabled]="accounts.isLoading()" (click)="accounts.reload()"><app-icon name="refresh" /> Recargar cuentas</button>
+    <bank-sync-button />
   </div>
 </header>
-<details class="section-disclosure"><summary>Sobre estos saldos</summary><p>Son saldos guardados, independientes del acceso bancario; no garantizan disponibilidad en tiempo real. Un saldo desconocido no es cero. Recargar cuentas solo consulta estos datos: no solicita una actualización al banco.</p><p>Administra el acceso y las importaciones en <a class="text-link" routerLink="/conexiones-bancarias">Conexiones bancarias</a>.</p></details>
+<details class="section-disclosure"><summary>Sobre estos saldos</summary><p>Son saldos guardados, independientes del acceso bancario; no garantizan disponibilidad en tiempo real. Un saldo desconocido no es cero. Sincronizar bancos importa los datos que el proveedor ya tiene disponibles; no solicita una actualización al banco.</p><p>Administra el acceso y las importaciones en <a class="text-link" routerLink="/conexiones-bancarias">Conexiones bancarias</a>.</p></details>
 @if (accounts.isLoading()) { <p class="notice" role="status">Consultando las cuentas guardadas…</p> }
 @else if (accounts.error()) { <p class="notice danger" role="alert">No pudimos consultar tus cuentas. No significa saldo cero ni importación vacía. <button type="button" (click)="accounts.reload()">Reintentar lectura</button></p> }
-@else if (!accounts.value().length) { <div class="empty-state"><span class="empty-icon"><app-icon name="bank" /></span><h2>No hay cuentas activas para mostrar</h2><p>Autorizar un banco no importa sus datos automáticamente. Abre Datos y sincronización en Conexiones bancarias para iniciar la importación. Un listado vacío no confirma una importación exitosa ni un saldo cero.</p><a class="button" routerLink="/conexiones-bancarias">Ver conexiones bancarias <app-icon name="arrow" /></a></div> }
+@else if (!accounts.value().length) { <div class="empty-state"><span class="empty-icon"><app-icon name="bank" /></span><h2>No hay cuentas activas para mostrar</h2><p>Autorizar un banco no importa datos. Elige qué cuentas seguir en Conexiones bancarias. Si ya confirmaste una selección, usa Sincronizar bancos. Un listado vacío no confirma una importación exitosa ni un saldo cero.</p><a class="button" routerLink="/conexiones-bancarias">Ver conexiones bancarias <app-icon name="arrow" /></a></div> }
 @else {
   <section class="accounts-grid" aria-label="Cuentas y saldos guardados">
     @for (account of accounts.value(); track account.id) {

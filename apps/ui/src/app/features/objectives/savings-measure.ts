@@ -13,12 +13,14 @@ import { formatDate, formatDateTime } from "../../../utils/date";
 import { reportWorkspaceReadiness } from "../../core/rendering/workspace-preparation";
 import { RpcClient } from "../../core/rpc/rpc-client";
 import { Icon } from "../../shared/ui/icon";
+import { BankSyncButton } from "../banking/bank-sync-button";
+import { ManualBankSync } from "../banking/manual-bank-sync";
 import { createCursorTrail } from "../pagination/cursor-trail";
 import { TaggingData } from "../tagging/tagging.data";
 
 @Component({
   selector: "savings-measure",
-  imports: [RouterLink, Icon],
+  imports: [RouterLink, Icon, BankSyncButton],
   templateUrl: "./savings-measure.html",
 })
 export class SavingsMeasure {
@@ -26,6 +28,7 @@ export class SavingsMeasure {
   readonly month = input.required<string>();
   readonly compact = input(false);
   private readonly rpc = inject(RpcClient);
+  private readonly sync = inject(ManualBankSync);
   private readonly tagging = inject(TaggingData, { optional: true });
   protected readonly progress = resource({
     params: () => {
@@ -35,6 +38,7 @@ export class SavingsMeasure {
           scope,
           id: this.goal().id,
           month: this.month(),
+          syncRevision: this.sync.revision(),
           revision: this.goal(),
           decision: this.tagging?.changed(),
         }
