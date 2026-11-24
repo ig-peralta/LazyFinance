@@ -107,6 +107,99 @@ describe.skipIf(!integration)(
       }
     });
 
+    it("accepts a CIMD client that omits application_type on any loopback port, but only on its registered path", async () => {
+      // Mirrors the document Claude Code publishes: portless loopback callbacks and no application_type.
+      const id = "https://client.example/portless-loopback-client.json";
+      const f = await oauthAppFixture(async () =>
+        Response.json({
+          client_id: id,
+          client_name: "Portless loopback CIMD fixture",
+          redirect_uris: [
+            "http://localhost/callback",
+            "http://127.0.0.1/callback",
+          ],
+          grant_types: ["authorization_code", "refresh_token"],
+          response_types: ["code"],
+          token_endpoint_auth_method: "none",
+        }),
+      );
+      try {
+        for (const redirect of [
+          "http://localhost:46384/callback",
+          "http://127.0.0.1:52000/callback",
+        ]) {
+          const pending = await f.begin(id, f.browser(), {
+            redirect_uri: redirect,
+          });
+          const approved = await f.approve(pending);
+          const token = oauthTokensSchema.parse(
+            (
+              await f
+                .exchange(id, approved.code, pending.verifier, {
+                  redirect_uri: redirect,
+                })
+                .expect(200)
+            ).body,
+          );
+          await f.mcp(token.access_token, "tools/list").expect(200);
+        }
+        for (const redirect of [
+          "http://localhost:46384/other",
+          "http://[::1]:46384/callback",
+          "http://localhost:46384/callback?next=1",
+        ]) {
+          const response = await request(f.api.app.getHttpServer())
+            .get("/oauth/authorize")
+            .query({
+              client_id: id,
+              response_type: "code",
+              redirect_uri: redirect,
+              resource: f.resource,
+              scope: "finance:read",
+              code_challenge: "c".repeat(43),
+              code_challenge_method: "S256",
+            });
+          expect(response.status, redirect).toBe(400);
+          expect(response.headers.location).toBeUndefined();
+        }
+      } finally {
+        await f.close();
+      }
+    });
+
+    it("keeps exact matching for HTTPS callbacks when application_type is omitted", async () => {
+      const f = await oauthAppFixture();
+      try {
+        const client = await f.register({
+          application_type: undefined,
+          redirect_uris: ["https://client.example/callback"],
+        });
+        const pending = await f.begin(client.client_id, f.browser(), {
+          redirect_uri: "https://client.example/callback",
+        });
+        expect(pending.id).toBeTruthy();
+        for (const redirect of [
+          "https://client.example/other",
+          "https://client.example:8443/callback",
+        ]) {
+          const response = await request(f.api.app.getHttpServer())
+            .get("/oauth/authorize")
+            .query({
+              client_id: client.client_id,
+              response_type: "code",
+              redirect_uri: redirect,
+              resource: f.resource,
+              scope: "finance:read",
+              code_challenge: "c".repeat(43),
+              code_challenge_method: "S256",
+            });
+          expect(response.status, redirect).toBe(400);
+        }
+      } finally {
+        await f.close();
+      }
+    });
+
     it.each([
       "client_secret_basic",
       "client_secret_post",
