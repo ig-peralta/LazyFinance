@@ -53,6 +53,12 @@ negotiation; this is not a complete modern-transport conformance claim.
 - Validate HTTPS redirect URIs exactly. Allow only documented native loopback HTTP
   redirects, with RFC 8252's variable-port exception but no wildcard host/path/query
   matching. Display the actual redirect hostname and a loopback warning at consent.
+  The provider applies the variable-port exception only to `native` clients, so a
+  client that omits `application_type` (DCR or CIMD) defaults to `native`: loopback
+  callbacks match on scheme, host and path while HTTPS callbacks stay exact. Claude
+  Code's public CIMD document registers portless loopback callbacks and omits
+  `application_type`; without this default its randomly chosen callback port is
+  rejected with `invalid_redirect_uri`.
 - Preserve the provider's SSRF-resistant DNS/connection handling for CIMD/JWKS
   fetches. Bound response bytes/time and caching. Never replace its secure fetch
   dispatcher with an unrestricted production fetch or follow unsafe redirects.
@@ -365,6 +371,7 @@ discovery, consent, tool results, refresh, revocation and two-user isolation.
 | Official TypeScript MCP client 2.4.0 | OAuth discovery/DCR, browser consent, owned tool call, refresh and revocation | Automated real-RPC/PostgreSQL run; legacy MCP transport negotiation |
 | OpenCode V2 2.2.5 | CIMD/native loopback and documented DCR/pre-registered alternatives | Local browser authorization and an actual financial tool call passed; after per-grant revocation the next call returned `Connection closed` and the client disconnected. Manual HTTP status and refresh were not captured; native CIMD fixtures and SDK lifecycle tests provide separate protocol evidence. |
 | ChatGPT / Codex | CIMD or DCR, issuer response and exact hosted callback; real public HTTPS endpoint and account access | Documentation/ChatGPT public CIMD reviewed; private-key-JWT/CIMD fixtures pass; hosted products not verified |
+| Claude Code 2.1.286 | CIMD (`https://claude.ai/oauth/claude-code-client-metadata`) with a random loopback port | Authorization requests for `localhost`/`127.0.0.1` on any port reach consent; other paths and unregistered loopback hosts are refused (integration spec and live checks). A complete interactive flow, tool call, refresh and revocation is not yet recorded |
 | Claude connectors | Discovery, DCR/preconfigured credentials, PKCE and refresh; distinguish interactive connectors from API supplied-token usage | Current authentication documentation reviewed; standard DCR/confidential fixtures pass; hosted products not verified |
 | Other conforming HTTP clients | Standard discovery, public/confidential client authentication and recorded transport compatibility | Not verified |
 

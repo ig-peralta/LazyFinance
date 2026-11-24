@@ -72,6 +72,12 @@ export async function createOAuthProvider(
     jwks: jwksSchema.parse(JSON.parse(settings.jwks)),
     clients: [],
     clientDefaults: {
+      // oidc-provider ignores the port of a registered loopback callback only for
+      // native clients (RFC 8252 section 7.3) and otherwise assumes "web". Public
+      // CIMD documents such as Claude Code's omit application_type and register
+      // portless loopback callbacks, so default to native. HTTPS callbacks stay
+      // exact and the redirect policy still allows only HTTPS or loopback hosts.
+      application_type: "native",
       token_endpoint_auth_method: "none",
       grant_types: ["authorization_code", "refresh_token"],
       response_types: ["code"],
