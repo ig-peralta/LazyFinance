@@ -17,8 +17,9 @@ The apps use TypeScript/Node.js, PostgreSQL 18, Firebase identity, Zod, Vitest a
 ## Architecture
 
 The [implemented ER and 4+1 diagram atlas](docs/diagrams/README.md) provides
-editable sources and rendered PNGs. **Deployment is pending**; its physical view
-shows the planned Compose reference topology, not a deployed environment.
+editable sources and rendered PNGs for the Stage B baseline. Its physical view
+shows a local Compose reference, not the installed
+[Stage C development deployment](docs/technical/technical-manual.md#development-deployment).
 
 ```mermaid
 flowchart TB
@@ -57,7 +58,7 @@ External MCP uses separate OAuth grants, readable client/callback/permission ide
 
 The persistent, minimizable [financial assistant](docs/technical/financial-assistant.md) provides grounded text and opt-in live voice with account-persisted processing consent and a dedicated first-time/refused-consent screen. Microphone capture still requires a separate explicit start. Budget/goal creation, tag management and single-movement tagging still require exact saved-action approval. MCP can execute those commands only with separately granted write scopes. Financial changes and durable receipts commit together; stopping/deleting chat never undoes them. Chat, voice and banking automation default disabled. Live model/voice fidelity, remote lifetime/cost controls and bank entitlement/freshness remain separate release gates. See [architecture](docs/technical/architecture.md) and [RPC/RLS security](docs/technical/persistence-security.md).
 
-Bank movement tracking begins on each connection's first-link day in Santiago;
+Fintoc movement tracking begins on each connection's first-link day in Santiago;
 there is no automatic pre-link backfill. Reported balances stay independent of
 imported movement history. See the [tracking policy and date precision](apps/api/src/banking/fintoc/README.md#tracking-starts-at-first-link).
 
@@ -80,6 +81,12 @@ These are initial areas of responsibility, not exclusive assignments: the team s
 The project follows **iterative and incremental development with agile practices, without claiming a formal Scrum framework**. The financial core was validated with controlled data before parallel UI, identity, banking, MCP and agent delivery. **Each stage milestone is one sprint; its assigned Linear issues are its Sprint Backlog**, without separate Linear cycles. [Stage B closed on 2026-11-09](docs/planning/stage-b/closure.md) with GO to Stage C planning and explicit development-stage limitations, not production-release approval. [Stage C selects](docs/planning/stage-c/planning.md) clearer workflows, automatic selected-account banking and a persistent assistant with live voice, plus explicitly optional extensions. The [original planning snapshot](docs/planning/snapshots/backlog-2026-11-10-stage-c-planning.md) records 99 issues: 65 prior Done, 29 required Todo and 5 Optional Backlog.
 
 The [November 11 addition](docs/planning/stage-c/planning.md#required-scope-additions--2026-11-11) makes deployment, performance testing, a mock banking provider and substantial seed improvement mandatory. The [November 24 addition](docs/planning/stage-c/planning.md#required-scope-addition--2026-11-24) requires security regressions, bringing Stage C to 34 required and 5 Optional records. November 20 was a tentative target. The [retrospective](docs/planning/stage-b/retrospective.md) recommends smaller coherent reviews and explicit live validation; broader MCP management remains an unselected follow-up. See the [planning index](docs/planning/README.md), [method](docs/planning/project-method.md) and separate [product DoD](docs/planning/product-definition-of-done.md).
+
+The [November 24 Stage C review](docs/planning/stage-c/closure.md) records **GO for
+development closure**, not production release approval. The
+[retrospective](docs/planning/stage-c/retrospective.md) and
+[dated tracker snapshot](docs/planning/snapshots/backlog-2026-11-24-stage-c-gate.md)
+preserve the outcome and follow-ups.
 
 ## Documentation
 
@@ -246,7 +253,9 @@ Markdown and YAML remain manually formatted with this Biome version.
 - **Full local deployment:** copy `.env.example` to `.env`, generate keys, then `pnpm deploy:local:up`. The `init` job must succeed before persistence starts. It also provisions a separate demo-tools role. PostgreSQL/persistence have no published ports; the API cannot join the data network. Data uses a named volume. This remains a local demonstration setup, not production secret management or TLS.
 - **Development deployment:** `docker/dev/compose.yml` runs PostgreSQL, private persistence, API and UI behind Traefik HTTPS. The main-branch workflow publishes changed images to `igperalta/lazyfinance-{api,persistence,ui}`, applies migrations/provisions the runtime and demo-tools roles, and updates the stack. See the [development deployment runbook](docs/technical/technical-manual.md#development-deployment).
 
-Initial local mock data remains explicit: `pnpm deploy:local --profile tools run --rm seed`. The development deployment never seeds or resets user data automatically. When `DEMO_TOOLS_ENABLED=true` on both API and persistence, the UI shows **Mi cuenta → Herramientas demo**, where **Preparar demo** asks for confirmation before clearing only the signed-in user's finance and assistant data and atomically reseeding demo finance fixtures. The browser sends no target user ID; identity data, including MCP grants, remains intact. Deleting assistant/MCP action receipts does not reverse their prior financial effects. Persistence holds the separate privileged connection only when enabled; normal RLS/runtime grants are unchanged. Existing volumes are not reset or upgraded from the old schema; use a fresh database for unrelated schema histories. Use Firebase plus `API_NODE_ENV=production` for a production-mode rehearsal; mock auth is development-only.
+The explicit CLI seed remains a manual local fixture: `pnpm deploy:local --profile tools run --rm seed`. Deployment never seeds or resets user data automatically. With `DEMO_TOOLS_ENABLED=true` on both API and persistence, **Mi cuenta → Herramientas demo → Preparar demo** asks for confirmation before clearing only the signed-in user's finance and assistant data. It prepares a simulated bank, then imports the three selected accounts through the normal synchronization path. Three more accounts remain available to select. Later simulated activity reaches the financial workspace only on explicit sync. Use this action only with disposable demo data.
+
+The browser sends no target user ID. Identity data, including MCP grants, remains intact; deleting assistant/MCP action receipts does not reverse their financial effects. Only enabled persistence holds the dedicated demo-tools credential. Use a fresh database for unrelated schema histories. For a production-mode rehearsal, use Firebase with `API_NODE_ENV=production`; mock authentication is development-only.
 
 The production UI serves static files through unprivileged Nginx on port `4000`.
 Its browser API base URL comes directly from the Angular environment files:

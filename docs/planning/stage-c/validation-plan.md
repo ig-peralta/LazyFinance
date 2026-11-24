@@ -2,9 +2,10 @@
 
 **Status:** planned checks, not execution evidence. The
 [scope record](planning.md) traces all feedback; LAZ-98 owns controlled experience
-verification, LAZ-100 owns separately authorized external integration evidence and
-LAZ-99 owns the actual gate record. The [stage DoD](definition-of-done.md) remains
-unchecked. The [November 11 scope addition](planning.md#required-scope-additions--2026-11-11)
+verification, LAZ-100 owns separately authorized external integration checks and
+LAZ-99 owns the [actual gate record](closure.md). See the
+[assessed stage DoD](definition-of-done.md) for the outcome. The
+[November 11 scope addition](planning.md#required-scope-additions--2026-11-11)
 also requires deployment, performance testing, a mock banking provider and a
 substantially richer seed; all four block LAZ-99.
 The [November 24 scope addition](planning.md#required-scope-addition--2026-11-24)
@@ -27,8 +28,8 @@ also requires the LAZ-109 security regressions before the gate.
   live behavior. Do not open a public tunnel by implication.
 
 Select commands from the [verification tiers](../../technical/development-workflow.md#verification-tiers).
-Integration/browser checks may start listeners. This documentation task does not
-run them or contact live banking/model services.
+Integration/browser checks may start listeners. The plan itself records no
+execution and does not authorize contacting live banking or model services.
 
 ## Required acceptance scenarios
 

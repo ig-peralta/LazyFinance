@@ -11,10 +11,10 @@ target is not evidence of a delivered capability.
 | Guide | Read it for |
 | --- | --- |
 | [Architecture](architecture.md) | Runtime/dependency boundaries, responsibility split and product scope |
-| [Implemented ER and 4+1 views](../diagrams/README.md) | Dated Stage B PlantUML/PNG baseline: ER, logical, development, process, planned physical and scenarios views; deployment pending |
+| [Implemented ER and 4+1 views](../diagrams/README.md) | Dated Stage B PlantUML/PNG baseline: ER, logical, development, process, reference physical and scenarios views |
 | [Private RPC, transactions and RLS](persistence-security.md) | Signed contexts, bootstrap, runtime/reset roles and grants, related ownership, rollback, atomic commands and limits |
-| [Implemented database model and ERD](database-model.md) | All 33 application tables, actual relationships/keys, financial representation, migrations and diagram baseline limits |
-| [RPC contracts and clients](rpc-contracts.md) | Public/private exports, 88/109 procedure inventories, MCP, code generation and wire semantics |
+| [Implemented database model and ERD](database-model.md) | All 35 application tables, actual relationships/keys, financial representation, migrations and diagram baseline limits |
+| [RPC contracts and clients](rpc-contracts.md) | Public/private exports, 94/118 procedure inventories, MCP, code generation and wire semantics |
 | [First-party financial assistant](financial-assistant.md) | Provider-neutral models, grounded reads, explicit action approval, durable receipts, streaming, privacy, limits and evaluation gates |
 | [Live voice contract](assistant-live-voice.md) | Opt-in WebRTC, processing disclosure, microphone/session lifetimes, client-policy limits and live release gates |
 | [External MCP authorization](mcp-authorization.md) | Standards-first OAuth, client interoperability/evidence, independent grants, consent, revocation and operations |
@@ -46,8 +46,8 @@ target is not evidence of a delivered capability.
 - [Diagram inventory](../diagrams/README.md): dated Stage B ER/4+1 sources and PNGs,
   with that baseline's use cases, components and focused message sequences. The physical
   view is planned configuration, not deployment evidence.
-- [Stage C delivery evidence](../planning/stage-c/experience-delivery.md) records
-  the integrated feature checks and remaining release gates. The dated
+- [Stage C gate review](../planning/stage-c/closure.md) distinguishes development
+  acceptance, recorded checks and remaining release risks. The dated
   [November 9 backlog](../planning/snapshots/backlog-2026-11-09.md) and
   [Stage B closure](../planning/stage-b/closure.md): completed development-stage
   inventory, evidence and accepted carryovers. The [earlier checkpoint](../planning/snapshots/backlog-2026-11-02.md)

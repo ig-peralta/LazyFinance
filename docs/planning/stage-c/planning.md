@@ -224,7 +224,8 @@ or release certification was performed to write this plan.
 
 ## Review and change record
 
-This scope record is not closure. On 2026-11-10 the LAZ-89 implementation review
+This scope record preserves planning; see the [November 24 gate decision](closure.md)
+for the actual review. On 2026-11-10 the LAZ-89 implementation review
 selected the [banking synchronization design](banking-sync-policy.md), including
 the explicit requirement for isolated boundaries and future service extraction.
 That decision is not delivered automation, plan verification or a live test.

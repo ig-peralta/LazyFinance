@@ -281,10 +281,10 @@ API verification; an old application cookie is expired, not adopted as identity.
 
 ## Compose
 
-**Deployment is pending.** These checked-in files describe supported local
-packaging/reference topologies, not a currently deployed production environment.
-The [physical architecture view](../diagrams/README.md#physical-view--deployment-pending)
-maps their containers, networks, ports and remaining deployment decisions.
+The checked-in Compose files support local packaging and the installed Stage C
+development deployment. The dated
+[physical architecture view](../diagrams/README.md#physical-view--stage-b-deployment-reference)
+maps the local reference, not the installed host or a production environment.
 
 - `resources.yml`: local PostgreSQL on loopback port 5432; no named durable volume.
 - `apps.yml`: apps plus owner-only init job using the external `lazyfinance`
@@ -312,6 +312,12 @@ Browser API URLs remain environment-specific build configuration. Change
 `CORS_ORIGINS` to allow the actual UI origin in each environment.
 
 ### Development deployment
+
+The [Stage C gate](../planning/stage-c/closure.md#gate-assessment) records deployment
+and public endpoint checks on `323f28cf` plus maintainer confirmation of the
+signed-in workflows. Use the configured `WEB_DOMAIN` over HTTPS for the UI.
+Development acceptance does not establish release-image security, capacity or
+recovery readiness. Demo tools are for authorized development accounts/data only.
 
 `.github/workflows/main-branch-deploy.yml` runs on pushes to `main` (and supports
 manual dispatch). It rebuilds only changed app images unless shared build inputs

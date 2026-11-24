@@ -6,10 +6,11 @@ checked-in migrations, application modules, shared-library exports and deploymen
 configuration. The PNGs are rendered documentation, not screenshots of running
 infrastructure or evidence that every integration has been validated.
 
-**Deployment is pending.** The physical view shows the existing Compose reference
-topology only. Hosting, DNS/TLS ingress and final environment readiness are not
-established by these diagrams. No cloud platform, replica count, background worker
-or production control is assumed.
+Deployment was pending at this baseline. The physical view shows the Stage B
+Compose reference, not the later [Stage C development deployment](../technical/technical-manual.md#development-deployment).
+Hosting, DNS/TLS ingress and environment readiness are not established by these
+diagrams. No cloud platform, replica count, background worker or production control
+is assumed.
 
 | Diagram | View and concern | Editable source | Rendered diagram |
 | --- | --- | --- | --- |
@@ -187,7 +188,7 @@ Sources: [assistant orchestration](../../apps/api/src/assistant/assistant.servic
 [banking orchestration](../../apps/api/src/banking/ingestion/banking-ingestion.service.ts),
 [transaction middleware](../../apps/persistence/src/rpc/rls.middleware.ts).
 
-## Physical view — deployment pending
+## Physical view — Stage B deployment reference
 
 ![Physical view: planned Compose reference, explicitly not a deployed environment](physical.png)
 

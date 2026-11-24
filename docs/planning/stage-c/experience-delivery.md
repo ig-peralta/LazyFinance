@@ -2,7 +2,9 @@
 
 This records the four requested feature workstreams, not Stage C closure or
 production-release approval. The separate validation/release workstream and live
-gates remain open. Historical planning and Stage B evidence are unchanged.
+gates remained open at this delivery baseline. See the later
+[Stage C gate review](closure.md) for the closure decision. Historical planning
+and Stage B evidence are unchanged.
 
 ## Review stack
 
