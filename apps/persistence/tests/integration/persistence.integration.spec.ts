@@ -3029,7 +3029,10 @@ describe.skipIf(!ownerUrl)(
         await expect(
           raw.mutation(`demoTools.${method}`, { accountId: linkedAccount }),
         ).rejects.toMatchObject({ data: { code: "BAD_REQUEST" } });
-      await sql`update finance.demo_bank_source set accounts=jsonb_set(jsonb_set(accounts,'{0,balance}',to_jsonb('9999999999999.99'::text)),'{1,balance}',to_jsonb('9999999999999.99'::text))
+      // With no card debt, either transfer direction targets a full cash balance.
+      await sql`update finance.demo_bank_source set accounts=jsonb_set(
+        jsonb_set(jsonb_set(accounts,'{0,balance}',to_jsonb('9999999999999.99'::text)),'{1,balance}',to_jsonb('9999999999999.99'::text)),
+        '{2,balance}',to_jsonb('0.00'::text))
         where user_id=${demoOwner}`.execute(owner);
       const overflowBefore = await user.demoTools.bankSource.query({
         id: first.connectionId,
