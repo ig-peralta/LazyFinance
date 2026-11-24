@@ -19,6 +19,9 @@ being described as delivered. The [November 11 addition](stage-c/planning.md#req
 also requires completed deployment, executed performance testing, a mock banking
 provider and a substantially richer synthetic seed. All four block the stage gate;
 deployment and performance-test approaches are chosen when their issues start.
+The [November 24 addition](stage-c/planning.md#required-scope-addition--2026-11-24)
+requires controlled security regression evidence for Stage C. That evidence cannot
+replace dependency triage and deployment security checks for the release candidate.
 Quotes, a synthetic banking-action demo, alerts and WhatsApp remain optional unless
 explicitly promoted. Broader MCP management, advanced forecasts/anomalies,
 additional real banking integrations, historical backfill and shared ownership

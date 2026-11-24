@@ -19,9 +19,10 @@ extraction; it remains unchanged. The later planning snapshot adds 34 Stage C
 records: 29 required Todo and 5 Optional Backlog. The
 [November 11 addition](stage-c/planning.md#required-scope-additions--2026-11-11)
 adds four required children for deployment, performance testing, mock banking and
-substantial seed improvement. Stage C now selects **38 records: 33 required and
-5 optional**; the project contains 103 records. The dated snapshots retain their
-original counts and states. The
+substantial seed improvement. The [November 24 addition](stage-c/planning.md#required-scope-addition--2026-11-24)
+adds security regression tests (LAZ-109). Stage C now selects **39 records: 34
+required and 5 optional**; the project contains 104 records. The dated snapshots
+retain their original counts and states. The
 [Stage B closure](stage-b/closure.md) separately records GO to Stage C planning,
 the reviewed baseline and accepted limitations. The earlier checkpoint retains
 its November 2 issue states.
@@ -32,7 +33,7 @@ its November 2 issue states.
 | --- | --- | --- |
 | [A — financial core](stage-a/README.md) | 19 issues, all Done | [Closure](stage-a/closure.md), [documentary retrospective](stage-a/retrospective.md) and [gate criteria](stage-a/definition-of-done.md) |
 | [B — parallel product tracks](stage-b/README.md) | 46 issues across six workstreams, all Done | [Workstream map](stage-b/README.md#workstreams-from-linear), [closure](stage-b/closure.md), [retrospective](stage-b/retrospective.md) and [gate assessment](stage-b/definition-of-done.md) |
-| [C — expanded experience](stage-c/README.md) | 38 selected records after November 11: 33 required (5 parents/28 children), 5 optional (1 parent/4 candidates) | [Selected scope](stage-c/planning.md), [validation plan](stage-c/validation-plan.md) and [gate criteria](stage-c/definition-of-done.md); broader MCP management remains an unselected follow-up |
+| [C — expanded experience](stage-c/README.md) | 39 selected records after November 24: 34 required (5 parents/29 children), 5 optional (1 parent/4 candidates) | [Selected scope](stage-c/planning.md), [validation plan](stage-c/validation-plan.md) and [gate criteria](stage-c/definition-of-done.md); broader MCP management remains an unselected follow-up |
 
 The [all-issue snapshot](snapshots/backlog-2026-11-10-stage-c-planning.md) contains every parent,
 child and recorded field at extraction. Stage folders reference that inventory
@@ -50,6 +51,8 @@ They were added as Todo/High without owners, estimates, due dates or cycles.
 Deployment and performance-testing approaches are selected when their issues
 start. A plan, skipped check or carryover-risk note is not completion evidence.
 The optional banking-action demo remains separate and optional.
+LAZ-109 adds executed security regression evidence as another LAZ-99 blocker;
+see the [security testing record](stage-c/security-testing.md).
 
 **One milestone equals one sprint; the milestone's assigned issues are its Sprint Backlog.** Sprint durations differ by stage. See the [methodology](project-method.md), [stage definitions of done](README.md#stage-gates), and [product Definition of Done](product-definition-of-done.md) for the broader exit criteria.
 

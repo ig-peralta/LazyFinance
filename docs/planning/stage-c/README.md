@@ -6,8 +6,8 @@ Make everyday financial management clear and low-friction: guided bank setup,
 chosen accounts kept up to date automatically, easier classification, a persistent
 readable assistant and live voice. **The November 11 scope addition also requires
 deployment, performance testing, a mock banking provider and substantial seed
-improvement.** Deployment and performance-test approaches are decided when those
-issues start, not by this plan.
+improvement.** The November 24 addition requires recorded security regression
+results. Delivery and verification approaches are decided when the issues start.
 
 Stage B's [closure](../stage-b/closure.md) and
 [retrospective](../stage-b/retrospective.md) supply the foundation and accepted
@@ -20,7 +20,8 @@ uses repository baseline `13f4b17`. The original
 The [planning snapshot](../snapshots/backlog-2026-11-10-stage-c-planning.md)
 records the **original 34 issues** in the existing Stage C milestone. The
 [November 11 addition](planning.md#required-scope-additions--2026-11-11) adds four
-required children; the selected workstreams now contain:
+required children and the [November 24 addition](planning.md#required-scope-addition--2026-11-24)
+adds security verification. The selected workstreams now contain:
 
 | Workstream | Parent | Children | Selection |
 | --- | --- | --- | --- |
@@ -28,13 +29,13 @@ required children; the selected workstreams now contain:
 | Bank setup, account selection, aliases and automatic synchronization | LAZ-74 | 7 | Required |
 | Persistent, readable assistant and live voice | LAZ-72 | 6 | Required |
 | Recognizable connected applications | LAZ-71 | 2 | Required |
-| Validation, deployment, performance and mock/seed support | LAZ-76 | 7 | Required |
+| Validation, deployment, performance, security and mock/seed support | LAZ-76 | 8 | Required |
 | External quotes, synthetic banking-action demo, alerts and WhatsApp | LAZ-73 | 4 | Optional |
 
-There are now **33 required records** (5 parents and 28 children) and **5 Optional
-records** (1 parent and 4 candidates): **38 Stage C records** in total.
+There are now **34 required records** (5 parents and 29 children) and **5 Optional
+records** (1 parent and 4 candidates): **39 Stage C records** in total.
 LAZ-106 (deployment), LAZ-108 (performance testing), LAZ-107 (mock banking provider)
-and LAZ-105 (richer seed) were added as required Todo issues and each blocks LAZ-99.
+and LAZ-105 (richer seed) each block LAZ-99, as does LAZ-109 (security verification).
 The original snapshot preserves initial states; Linear owns current delivery status.
 Optional membership does not make a candidate a completion blocker. Record an
 explicit promotion, delivery or deferral decision at review.
@@ -57,6 +58,7 @@ ordering, not a delivery forecast. Linear owns their live values.
 | [Integrated assistant browser validation](assistant-browser-validation.md) | Final mocked Chromium matrix, deferred-focus regression/fix, responsive/accessibility results and synthetic voice boundaries |
 | [Validation plan](validation-plan.md) | Observable journeys, appropriate evidence and unresolved live checks |
 | [Performance testing](performance-testing.md) | LAZ-108 scope, measured run evidence, acceptance and limitations; reproducible Docker suite |
+| [Security testing](security-testing.md) | LAZ-109 regression evidence, reproducible checks and open dependency/release risks |
 | [Stage Definition of Done](definition-of-done.md) | Required completion and gate checks, all still open |
 | [Dated issue snapshot](../snapshots/backlog-2026-11-10-stage-c-planning.md) | Complete project inventory after selection; not a live board |
 | [Product requirements](../../product/product-requirements.md) and [journeys](../../product/user-journeys.md#stage-c---selected-everyday-experience-and-live-voice) | User-facing behavior and planned outcomes |
@@ -77,7 +79,8 @@ shared ownership and historical backfill also remain unselected.
 The required mock banking provider is synthetic development/demo/validation
 support, not a real banking integration or the optional agent banking-action demo.
 The four November 11 additions need actual delivery evidence; recording a plan,
-skipped check or carryover risk does not satisfy the stage gate.
+skipped check or carryover risk does not satisfy the stage gate. LAZ-109 likewise
+requires executed tests and an explicit disposition of remaining risks.
 
 The optional banking-action demo is isolated simulation, not permission to move
 real money. Automatic bank updates must respect provider capabilities and must

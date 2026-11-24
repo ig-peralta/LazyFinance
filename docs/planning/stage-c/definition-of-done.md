@@ -5,8 +5,9 @@
 [snapshot](../snapshots/backlog-2026-11-10-stage-c-planning.md) records 29 required
 issues (5 parents/24 children) plus 5 Optional records at initial selection.
 The [November 11 addition](planning.md#required-scope-additions--2026-11-11) adds
-four mandatory children: **33 required and 5 Optional records** in total. This
-checklist remains open; selection is not implementation or verification.
+four mandatory children; the [November 24 addition](planning.md#required-scope-addition--2026-11-24)
+adds security verification: **34 required and 5 Optional records** in total.
+This checklist remains open pending the actual gate review.
 
 ## Required outcomes
 
@@ -26,6 +27,7 @@ checklist remains open; selection is not implementation or verification.
 
 - [ ] Required child issues meet their own acceptance checks, or a specific exception/scope change is explicitly accepted and reported. Parent rollups alone are not delivery evidence.
 - [ ] All four November 11 additions have delivery and acceptance evidence before LAZ-99 closes. They are mandatory gate blockers, not optional candidates; a deferral, skipped check or carryover-risk note does not satisfy them.
+- [ ] The [security regression record](security-testing.md) shows executed checks for the selected trust boundaries and disposition of observed dependency and deployment risks (LAZ-109). It does not waive separate production security acceptance.
 - [ ] The [validation scenarios](validation-plan.md) have recorded controlled, real-RPC/database, browser/accessibility and separately authorized external evidence as applicable (LAZ-98, LAZ-100). Two-user/session isolation, selection changes, provider failures, uncertain outcomes and action authority are covered.
 - [ ] Live-model/voice, Firebase, current bank-tracking and required client combinations have current results or explicit unresolved dispositions. Skipped/mocked/older-window checks are not labelled live acceptance.
 - [ ] Every optional candidate (quotes, synthetic banking-action demo, alerts, WhatsApp) has a delivered/deferred/promoted decision. An unfinished optional item is not a required gate failure; promotion is an explicit scope change (LAZ-73).
