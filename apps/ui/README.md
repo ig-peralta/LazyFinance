@@ -42,10 +42,12 @@ the selected Angular environment. Static startup never waits for API/database
 readiness. Other UI hosting only needs equivalent static fallback/caching.
 
 The ordinary UI build includes a **Herramientas demo** route, but shows its menu
-entry and reset/transaction controls only when the API returns `demoTools.enabled: true` from
-`config.get`. Reset and the two untagged demo transaction buttons use authenticated
-API RPC, never a separate browser endpoint or browser-supplied owner/account ID.
-Generation requires reset-created demo accounts. API and persistence each require
+entry and reset/simulator controls only when the API returns `demoTools.enabled: true` from
+`config.get`. Preparation creates a simulated bank, selects three of six accounts
+and imports its historical movements. An incomplete import can be continued without
+another reset. Activity/corrections/removals change only the source until explicit
+refresh; simulated failures are shown in the banking status. These controls use
+authenticated API RPC, never a browser-supplied owner/account ID. API and persistence each require
 their own explicit `DEMO_TOOLS_ENABLED=true` setting.
 
 ## Authenticated workspace
@@ -345,7 +347,7 @@ Retained balances show selected/paused/no-access tracking separately from source
 age; deselection does not hide an account or erase its history.
 
 `/conexiones-bancarias` (**Mi cuenta → Conexiones bancarias**) supports owned Fintoc
-authorization, explicit access checks, same-bank/same-holder relinking and confirmed
+authorization and demo-only simulated banking, explicit access checks, relinking and confirmed
 disconnect. The page links back to stored accounts. Server configuration determines
 whether linking is enabled and whether the Widget uses test or live mode. Test
 mode warns against real credentials and links to Fintoc's public test identities.
@@ -355,6 +357,12 @@ Navigation, cancellation and credential replacement close the Widget and discard
 late results. A failed/uncertain exchange offers read reconciliation, not replay.
 Disconnect preserves financial history and shows pending remote cleanup when needed;
 local disconnect remains available if provider configuration is disabled/mismatched.
+The simulated bank needs no Widget, bank credential or remote cleanup. It retains a
+separate generated historical chronology and executed sync attempts; restoring its
+source does not override a saved retry deadline or relink expired access.
+For simulated banking, three historical accounts are initially selected and
+three additional accounts can be selected later; automatic enrollment is not
+available. Its reported history begins in 2024, not on the connection day.
 
 **Datos y sincronización** opens one selected connection's status panel, not a
 fan-out of provider calls on page entry. The readonly backend status identifies
@@ -390,7 +398,7 @@ balances, pending/processing exclusions, partial requested history and uncertain
 movement classification remain explicit. The UI performs no provider normalization
 or spending/income/savings calculations.
 
-Tracking begins on **the connection's first-link day in Santiago** and continues
+Fintoc tracking begins on **the connection's first-link day in Santiago** and continues
 forward, not with a 90-day transaction backfill. Authorization and synchronization
 explain the start date, which does not move on refresh or same-identity relink.
 Fintoc supplies reliable accounting days, not an exact-time cutoff, so records

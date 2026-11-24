@@ -1,6 +1,7 @@
 import "@angular/compiler";
 import { computed, signal } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
+import { provideRouter } from "@angular/router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { deferred } from "../../../testing/deferred";
 import {
@@ -19,7 +20,12 @@ import { DemoToolsPage } from "./demo-tools.page";
 
 function setup(enabled = true, handlers: RpcHandlers = {}) {
   const rpc = createRpcFetch({
-    "demoTools.resetDemoData": () => ({ transactionCount: 42 }),
+    "demoTools.resetDemoData": () => ({
+      transactionCount: 42,
+      connectionId: "00000000-0000-4000-8000-000000000001",
+      status: "ready",
+    }),
+    "demoTools.preparation": () => null,
     "demoTools.createInternalTransaction": () => ({
       transactionCount: 2,
       description: "Aporte al fondo de emergencia",
@@ -36,6 +42,7 @@ function setup(enabled = true, handlers: RpcHandlers = {}) {
   const assistantReset = vi.fn();
   TestBed.configureTestingModule({
     providers: [
+      provideRouter([]),
       { provide: API_URL, useValue: "http://api.test" },
       { provide: RPC_FETCH, useValue: rpc.fetch },
       {
@@ -104,7 +111,9 @@ describe("DemoToolsPage", () => {
     expect(
       rpc.callsTo("demoTools.createInternalTransaction")[0].input,
     ).toBeUndefined();
-    expect(root.textContent).toContain("2 movimientos sin etiqueta");
+    expect(root.textContent).toContain(
+      "2 movimientos pendientes de sincronizar",
+    );
     click("create-external-demo-transaction");
     await fixture.whenStable();
     fixture.detectChanges();
@@ -113,7 +122,7 @@ describe("DemoToolsPage", () => {
       rpc.callsTo("demoTools.createExternalTransaction")[0].input,
     ).toBeUndefined();
     expect(root.textContent).toContain("Compra en feria");
-    expect(root.textContent).toContain("1 movimiento sin etiqueta");
+    expect(root.textContent).toContain("1 movimiento pendiente de sincronizar");
     expect(assistantReset).not.toHaveBeenCalled();
   });
 

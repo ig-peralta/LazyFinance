@@ -61,7 +61,7 @@ export class ProviderScheduleRepository {
         "s.confirmedAt",
       ])
       .where("c.id", "=", id)
-      .where("p.identifier", "=", "fintoc")
+      .where("p.identifier", "in", ["fintoc", "mock_bank"])
       .executeTakeFirst();
     if (!row || !row.mode) return;
     const existing = await this.db

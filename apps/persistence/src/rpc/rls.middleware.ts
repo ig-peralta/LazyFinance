@@ -75,10 +75,25 @@ export class RlsMiddleware implements TRPCMiddleware<ProcedureMeta> {
             "demoTools.resetDemoData",
             "demoTools.createInternalTransaction",
             "demoTools.createExternalTransaction",
+            "demoTools.changeBankMovement",
+            "demoTools.finalizeDemoData",
+            "demoTools.setBankFailure",
+            "demoTools.reconnectBank",
+            "demoTools.preparation",
+            "demoTools.bankSource",
+            "demoTools.bankHistory",
           ].includes(options.path)
         )
           throw new TRPCError({ code: "NOT_FOUND" });
-        if (options.type !== "mutation" || options.ctx.identity.kind !== "user")
+        if (
+          options.ctx.identity.kind !== "user" ||
+          (options.type === "query") !==
+            [
+              "demoTools.preparation",
+              "demoTools.bankSource",
+              "demoTools.bankHistory",
+            ].includes(options.path)
+        )
           throw new TRPCError({ code: "FORBIDDEN" });
         // The tool owns its own transaction and connection. Holding a runtime
         // transaction here would deadlock against the shared per-user write lock.

@@ -21,7 +21,7 @@
         @for (id of missingIds(); track id) {
           <label class="check-option"><input type="checkbox" [checked]="selectedIds().includes(id)" [disabled]="!selectedIds().includes(id)" (change)="toggle(id, false)" /><span>Cuenta seleccionada que ya no aparece en el banco · referencia {{ id }}. Desmárcala para pausar su seguimiento sin borrar su historial.</span></label>
         }
-        <label class="check-option"><input type="checkbox" [checked]="automatic()" (change)="setAutomatic($any($event.target).checked)" /><span>Permitir futuras importaciones automáticas de estas cuentas</span></label>
+        @if (allowAutomatic()) { <label class="check-option"><input type="checkbox" [checked]="automatic()" (change)="setAutomatic($any($event.target).checked)" /><span>Permitir futuras importaciones automáticas de estas cuentas</span></label> }
       </fieldset>
     }
     @if (automatic() && !automaticEnabled()) { <p class="notice warning">Las actualizaciones automáticas están deshabilitadas en este servidor. Guardaremos tu elección, pero no se mostrarán como activas.</p> }

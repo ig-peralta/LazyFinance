@@ -22,6 +22,7 @@ export class BankAccountSelector {
   readonly enabled = input(false);
   readonly locked = input(false);
   readonly automaticEnabled = input(false);
+  readonly allowAutomatic = input(true);
   readonly confirmed = output<BankingSelection>();
   readonly pendingChange = output<boolean>();
   readonly reconciliationChange = output<boolean>();

@@ -27,6 +27,11 @@ export class FintocImportService {
     const owned = await this.persistence
       .user(userId)
       .providerLinks.connection.query({ id: connectionId });
+    if (owned.connection.provider !== "fintoc")
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Fintoc connection not found",
+      });
     const config = this.fintoc.configuration();
     if (!config.enabled || config.mode !== owned.connection.mode)
       throw new TRPCError({

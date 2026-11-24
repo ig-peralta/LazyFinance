@@ -174,18 +174,22 @@ context to the private persistence RPC. No browser-supplied user ID is accepted.
 With `DEMO_TOOLS_ENABLED=true` on both services, the private procedure skips the
 ordinary runtime transaction (holding its per-user lock would deadlock the second
 connection). The demo-tools module validates the separate database role and runs
-an atomic cleanup-and-reseed transaction with that same per-user advisory lock.
+an atomic cleanup-and-source-seed transaction with that same per-user advisory lock.
 It clears only that user's finance and assistant records (including MCP-origin
-assistant receipts), then writes namespaced demo fixtures. Every `identity` row,
+assistant receipts), then writes an owned simulated bank source. Subsequent signed
+user calls use normal discovery, selection and atomic ingestion; the privileged
+finalization transaction attaches historical decisions only after a complete import.
+Every `identity` row,
 including MCP grants/artifacts, remains untouched. Deleting an action receipt does
 not undo its prior financial effect. The flag defaults to false; without it,
 persistence opens no privileged connection and the API advertises no demo tools.
-The two demo transaction mutations use that same authenticated scope, role,
-per-user lock and atomic connection. They accept no owner/account selector and
-require the reset-created manual test connection and owned demo account IDs;
-linked bank accounts are not eligible. Transfers write two opposite untagged
-rows, external examples write one, and balances move with those rows or roll back
-together. Outgoing cash is limited by the demo account's available balance.
+Simulator mutations use that same authenticated scope, role, per-user lock and
+atomic connection. They accept no owner/account selector and require the prepared
+simulated bank source; real linked accounts are not eligible. Transfers write two
+opposite source movements, external examples one. Corrections, removals and balance
+changes stay in the source until explicit synchronization; no simulator mutation
+writes financial transactions directly. Outgoing cash is limited by the source
+account's available balance.
 
 The middleware awaits the resolver **and output validation** before commit.
 tRPC may resolve an error as `{ ok: false, error }`; middleware throws that error

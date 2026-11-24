@@ -11,7 +11,7 @@
   <div class="panel-heading">
     <div>
       <h2 #heading id="banking-title" tabindex="-1">Tus conexiones bancarias</h2>
-      <p class="panel-subtitle">Fintoc · acceso seguro, separado de la actualización de datos.</p>
+      <p class="panel-subtitle">Conexiones reales y simuladas · acceso separado de la actualización de datos.</p>
     </div>
     <div class="button-row">
       <button class="icon-button" type="button" aria-label="Consultar conexiones y disponibilidad"
@@ -37,15 +37,15 @@
       {{ config.mode === 'test' ? 'Fintoc utiliza cuentas simuladas. No ingreses credenciales bancarias reales.' : 'Autoriza solo cuentas que te pertenecen desde la ventana segura de Fintoc.' }}
     </p>
   } @else if (data.configuration.hasValue()) {
-    <p class="notice warning">Fintoc no está habilitado en este servidor. Puedes consultar tus registros y solicitar una desconexión; la limpieza remota quedará pendiente hasta que el servidor esté configurado.</p>
+    <p class="notice warning">Fintoc no está habilitado en este servidor. Puedes consultar tus registros y solicitar una desconexión; la limpieza remota quedará pendiente hasta que se configure. Las conexiones simuladas siguen disponibles cuando Herramientas demo está habilitado.</p>
   }
 
-   <details class="section-disclosure"><summary>Conectar y actualizar son pasos separados</summary><p class="record-meta">En Datos y sincronización puedes traer saldos y movimientos desde el día de vinculación en Santiago, sin importar los días anteriores. No forzamos al banco a actualizarlos. Comprobar acceso no vuelve actuales los saldos guardados.</p></details>
+  <details class="section-disclosure"><summary>Conectar y actualizar son pasos separados</summary><p class="record-meta">Fintoc importa desde el día de vinculación en Santiago; Banco Demo usa historia sintética desde 2024. Comprobar acceso no vuelve actuales los saldos guardados.</p></details>
   @if (notice() || command.success()) {
     <p class="notice" role="status">{{ notice() || command.success() }}</p>
   }
   @if (command.pending()) {
-    <p class="notice" role="status">{{ confirming() ? 'Procesando la desconexión…' : 'Comprobando el acceso en Fintoc…' }}</p>
+    <p class="notice" role="status">{{ confirming() ? 'Procesando la desconexión…' : 'Comprobando el acceso…' }}</p>
   }
   @if (command.error()) {
     <p class="notice danger" role="alert">{{ command.error() }}
@@ -77,7 +77,7 @@
               <span class="record-icon"><app-icon name="bank" /></span>
               <div>
                 <h3 class="record-title">{{ bank.institution.name }}</h3>
-                <p class="record-meta">{{ bank.holderType === 'individual' ? 'Persona' : 'Empresa' }} · {{ bank.mode === 'test' ? 'Prueba' : 'Real' }}</p>
+                <p class="record-meta">{{ bank.provider === 'mock_bank' ? 'Banco simulado · sin credenciales reales' : bank.holderType === 'individual' ? 'Persona' : 'Empresa' }} · {{ bank.mode === 'test' ? 'Prueba' : 'Real' }}</p>
               </div>
             </div>
             <span class="badge" [class.warning]="bank.status !== 'active' || bank.disconnectPending"
@@ -85,9 +85,9 @@
           </div>
           <p class="record-meta connection-description">
             @if (bank.disconnectedAt) {
-              {{ bank.disconnectPending ? 'Acceso deshabilitado en LazyFinance. Falta confirmar la eliminación en Fintoc; puedes completar la desconexión.' : 'Esta conexión ya no puede sincronizar. Los registros financieros guardados no se borraron.' }}
+              {{ bank.disconnectPending ? 'Acceso deshabilitado en LazyFinance. Falta completar la desconexión.' : 'Esta conexión ya no puede sincronizar. Los registros financieros guardados no se borraron.' }}
             } @else if (bank.status === 'expired') {
-              Fintoc solicita volver a autorizar el acceso con las credenciales vigentes del mismo titular.
+              {{ bank.provider === 'mock_bank' ? 'El acceso simulado venció. Usa Revincular para recuperarlo sin perder el historial.' : 'Fintoc solicita volver a autorizar el acceso con las credenciales vigentes del mismo titular.' }}
             } @else if (bank.status === 'revoked') {
               El proveedor informó que el acceso no está disponible. Revisa la conexión antes de intentar usarla.
             } @else {
@@ -106,7 +106,7 @@
               <button class="button small" type="button" [attr.aria-label]="'Comprobar acceso de ' + bank.institution.name"
                 [disabled]="busy() || !compatible(bank)" (click)="check(bank)">Comprobar acceso</button>
               <button class="button small" type="button" [attr.aria-label]="'Revincular ' + bank.institution.name"
-                [disabled]="busy() || !compatible(bank)" (click)="connect(bank)">Revincular</button>
+                [disabled]="busy() || !compatible(bank) || (bank.provider === 'mock_bank' && bank.status !== 'expired')" (click)="connect(bank)">Revincular</button>
             }
           </div>
           @if (!bank.disconnectedAt || bank.disconnectPending) {
@@ -117,13 +117,13 @@
             </div>
           }
           @if (selectedSync() === bank.id) {
-            <bank-sync-panel [connection]="bank" [enabled]="compatible(bank)" [automaticEnabled]="!!configuration()?.automaticSyncEnabled" [locked]="command.pending() || !!activeFlow() || !!confirming()"
+            <bank-sync-panel [connection]="bank" [enabled]="compatible(bank)" [automaticEnabled]="bank.provider === 'fintoc' && !!configuration()?.automaticSyncEnabled" [locked]="command.pending() || !!activeFlow() || !!confirming()"
               (stateRead)="data.adoptStatus($event)" (pendingChange)="syncPending(bank, $event)" (closed)="closeSync(bank)" />
           }
           @if (confirming()?.id === bank.id) {
             <div class="notice warning" role="alert">
               <strong>¿{{ bank.disconnectPending ? 'Completar la desconexión de' : 'Desconectar' }} {{ bank.institution.name }}?</strong>
-              <p>Deshabilitaremos la sincronización local y eliminaremos el acceso en Fintoc. No cerramos tu cuenta bancaria ni borramos tu historial guardado. Si Fintoc no responde, la desconexión quedará pendiente.</p>
+              <p>Deshabilitaremos la sincronización local{{ bank.provider === 'fintoc' ? ' y eliminaremos el acceso en Fintoc' : '' }}. No cerramos tu cuenta bancaria ni borramos tu historial guardado.</p>
               <div class="button-row">
                 <button class="button danger" type="button" [disabled]="command.pending()"
                   (click)="disconnect(bank)">{{ command.pending() ? 'Procesando desconexión…' : 'Sí, desconectar' }}</button>

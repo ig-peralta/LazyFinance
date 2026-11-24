@@ -13,7 +13,7 @@ import { z } from "zod";
 
 const t = initTRPC.create();
 const publicProcedure = t.procedure;
-import { RpcEmptySchema, AccountsResultSchema, SetAccountAliasSchema, AccountListItemSchema, FinancialActionIdSchema, FinancialActionSchema, FinancialActionVersionSchema, ReviseFinancialActionSchema, AssistantConsentStateSchema, DecideAssistantConsentSchema, AssistantConfigurationSchema, AssistantConversationsSchema, AssistantConversationIdSchema, AssistantConversationSchema, CreateAssistantConversationSchema, AssistantRemovedSchema, MockLoginInputSchema, MockLoginResultSchema, AuthPrincipalSchema, BankingConfigurationSchema, BankingConnectionsSchema, CreateBankingIntentSchema, BankingIntentSchema, CompleteBankingIntentSchema, BankingConnectionSchema, RpcIdSchema, BankingImportResultSchema, BankingSyncStatusSchema, BankingSelectionSchema, SelectBankingAccountsSchema, AppConfigSchema, DemoDataResetInputSchema, DemoDataResetResultSchema, DemoTransactionInputSchema, DemoTransactionResultSchema, IncomeSourcesResultSchema, IncomeSourceSchema, IncomeSourceInputSchema, ReplaceIncomeSourceSchema, IncomeExpectationsResultSchema, CreateIncomeExpectationSchema, IncomeExpectationSchema, ReplaceIncomeExpectationSchema, RpcVoidSchema, RpcMonthSchema, ExpectedIncomeSchema, IncomeReceiptsResultSchema, ConfirmIncomeReceiptSchema, IncomeReceiptSchema, IncomeSummarySchema, McpAccessConfigurationSchema, McpGrantsSchema, McpGrantIdSchema, McpRevokeResultSchema, BudgetContributionsInputSchema, SpendingContributionsPageSchema, SavingsProgressInputSchema, SavingsProgressSchema, SavingsEvidenceInputSchema, SavingsEvidencePageSchema, SavingsGoalSchema, SavingsHistoryInputSchema, SavingsHistoryPageSchema, CreateSavingsGoalSchema, UpdateSavingsGoalSchema, SavingsGoalVersionSchema, ObjectivesResultSchema, BudgetDetailSchema, BudgetHistoryInputSchema, BudgetHistoryPageSchema, CreateBudgetInputSchema, UpdateBudgetInputSchema, BudgetVersionInputSchema, BudgetProgressResultSchema, OnboardingStateSchema, FinishOnboardingSchema, SpendingContributionsInputSchema, MonthlySummarySchema, MonthlyComparisonSchema, UpdateTagSchema, ManagedTagSchema, TagsResultSchema, TagCreateInputSchema, TagSummarySchema, SuggestionsResultSchema, SetTagSchema, TagDecisionSchema, TagRulesResultSchema, TagRuleInputSchema, TagRuleResultSchema, ReplaceTagRuleSchema, ApplyTagRuleSchema, AppliedTagRuleSchema, TransactionDetailSchema, SetInternalMovementSchema, InternalMovementDecisionSchema, ExpenseAdjustmentsInputSchema, ExpenseAdjustmentsPageSchema, SetExpenseAdjustmentSchema, ExpenseAdjustmentSchema, ExpenseAdjustmentPairSchema, RecentTransactionsResultSchema, TransactionsInputSchema, TransactionsPageSchema } from "@lazyfinance/contracts";
+import { RpcEmptySchema, AccountsResultSchema, SetAccountAliasSchema, AccountListItemSchema, FinancialActionIdSchema, FinancialActionSchema, FinancialActionVersionSchema, ReviseFinancialActionSchema, AssistantConsentStateSchema, DecideAssistantConsentSchema, AssistantConfigurationSchema, AssistantConversationsSchema, AssistantConversationIdSchema, AssistantConversationSchema, CreateAssistantConversationSchema, AssistantRemovedSchema, MockLoginInputSchema, MockLoginResultSchema, AuthPrincipalSchema, BankingConfigurationSchema, BankingConnectionsSchema, CreateBankingIntentSchema, BankingIntentSchema, CompleteBankingIntentSchema, BankingConnectionSchema, RpcIdSchema, BankingImportResultSchema, BankingSyncStatusSchema, BankingSelectionSchema, DemoBankHistorySchema, DemoBankReconnectSchema, SelectBankingAccountsSchema, AppConfigSchema, DemoDataResetInputSchema, DemoDataResetResultSchema, DemoTransactionInputSchema, DemoTransactionResultSchema, DemoBankPreparationSchema, DemoBankFailureInputSchema, DemoBankFailureResultSchema, DemoBankChangeInputSchema, IncomeSourcesResultSchema, IncomeSourceSchema, IncomeSourceInputSchema, ReplaceIncomeSourceSchema, IncomeExpectationsResultSchema, CreateIncomeExpectationSchema, IncomeExpectationSchema, ReplaceIncomeExpectationSchema, RpcVoidSchema, RpcMonthSchema, ExpectedIncomeSchema, IncomeReceiptsResultSchema, ConfirmIncomeReceiptSchema, IncomeReceiptSchema, IncomeSummarySchema, McpAccessConfigurationSchema, McpGrantsSchema, McpGrantIdSchema, McpRevokeResultSchema, BudgetContributionsInputSchema, SpendingContributionsPageSchema, SavingsProgressInputSchema, SavingsProgressSchema, SavingsEvidenceInputSchema, SavingsEvidencePageSchema, SavingsGoalSchema, SavingsHistoryInputSchema, SavingsHistoryPageSchema, CreateSavingsGoalSchema, UpdateSavingsGoalSchema, SavingsGoalVersionSchema, ObjectivesResultSchema, BudgetDetailSchema, BudgetHistoryInputSchema, BudgetHistoryPageSchema, CreateBudgetInputSchema, UpdateBudgetInputSchema, BudgetVersionInputSchema, BudgetProgressResultSchema, OnboardingStateSchema, FinishOnboardingSchema, SpendingContributionsInputSchema, MonthlySummarySchema, MonthlyComparisonSchema, UpdateTagSchema, ManagedTagSchema, TagsResultSchema, TagCreateInputSchema, TagSummarySchema, SuggestionsResultSchema, SetTagSchema, TagDecisionSchema, TagRulesResultSchema, TagRuleInputSchema, TagRuleResultSchema, ReplaceTagRuleSchema, ApplyTagRuleSchema, AppliedTagRuleSchema, TransactionDetailSchema, SetInternalMovementSchema, InternalMovementDecisionSchema, ExpenseAdjustmentsInputSchema, ExpenseAdjustmentsPageSchema, SetExpenseAdjustmentSchema, ExpenseAdjustmentSchema, ExpenseAdjustmentPairSchema, RecentTransactionsResultSchema, TransactionsInputSchema, TransactionsPageSchema } from "@lazyfinance/contracts";
 
 const appRouter = t.router({
   accounts: t.router({
@@ -133,6 +133,14 @@ const appRouter = t.router({
       .input(RpcIdSchema)
       .output(BankingSelectionSchema)
       .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    syncHistory: publicProcedure
+      .input(RpcIdSchema)
+      .output(DemoBankHistorySchema)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    reconnectMock: publicProcedure
+      .input(RpcIdSchema)
+      .output(DemoBankReconnectSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
     selectAccounts: publicProcedure
       .input(SelectBankingAccountsSchema)
       .output(BankingSelectionSchema)
@@ -155,6 +163,22 @@ const appRouter = t.router({
       .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
     createExternalTransaction: publicProcedure
       .input(DemoTransactionInputSchema)
+      .output(DemoTransactionResultSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    preparation: publicProcedure
+      .input(DemoDataResetInputSchema)
+      .output(DemoBankPreparationSchema)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    resumeDemoData: publicProcedure
+      .input(DemoDataResetInputSchema)
+      .output(DemoDataResetResultSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    setBankFailure: publicProcedure
+      .input(DemoBankFailureInputSchema)
+      .output(DemoBankFailureResultSchema)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    changeBankMovement: publicProcedure
+      .input(DemoBankChangeInputSchema)
       .output(DemoTransactionResultSchema)
       .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
     }),

@@ -299,10 +299,11 @@ maps their containers, networks, ports and remaining deployment decisions.
   PostgreSQL on a named volume, private persistence, API and static UI. Only ports
   80/443 are published; the API and database are not directly
   published.
-- Initial fixed-mock demo data is opt-in:
+- Initial fixed local demo identity/fixtures are opt-in:
   `pnpm deploy:local --profile tools run --rm seed`. The in-app **Preparar demo**
-  action is a confirmed reset-and-reseed of only the signed-in user's
-  finance and assistant data; it is never invoked at startup or during deployment.
+  action resets only the signed-in user's finance and assistant data, creates an
+  owned simulated bank, and imports three of six accounts via normal synchronization.
+  It is never invoked at startup or during deployment.
   Migrations/provisioning are init-job work, never runtime startup side effects.
 
 The local deployment uses development defaults. Production TLS, secret management,
@@ -322,10 +323,12 @@ There is no extra Angular environment or build configuration for demo tools. The
 same UI build shows their menu entry only when the API reports
 `config.get.demoTools.enabled=true`. The API and persistence each require an
 explicit `DEMO_TOOLS_ENABLED=true` environment variable.
-The menu can reset/reseed the signed-in account and then generate an untagged
-internal transfer or external movement from server-side templates. Generation
-requires the three reset-created demo accounts; it never writes to a linked bank
-account. Neither button accepts an account or user selector.
+The menu can prepare a simulated bank for the signed-in account and change its
+source with a transfer, external activity, correction, removal or availability
+failure. These changes reach financial records only after explicit synchronization
+from **Conexiones bancarias**. An incomplete preparation can be continued without
+resetting again. None of these controls accepts an account or user selector; the
+separate CLI seed remains a manual fixture, not a simulated-bank import.
 
 Configure this repository variable for Docker Hub image publishing:
 

@@ -475,7 +475,7 @@ describe.skipIf(!ownerUrl)(
           .filter((name) => !name.startsWith("failure."))
           .sort(),
       ).toEqual(expected.sort());
-      expect(expected).toHaveLength(111);
+      expect(expected).toHaveLength(118);
 
       for (const name of expected)
         expect(procedures[name]._def.meta).toMatchObject({
@@ -492,7 +492,7 @@ describe.skipIf(!ownerUrl)(
         });
     });
 
-    it("migrates idempotently and enables/forces RLS on all 32 sensitive tables", async () => {
+    it("migrates idempotently and enables/forces RLS on all 34 sensitive tables", async () => {
       expect(await migrate(owner, migrationProvider())).toEqual([]);
       const { rows } = await sql<{
         relrowsecurity: boolean;
@@ -501,7 +501,7 @@ describe.skipIf(!ownerUrl)(
       from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname in ('identity','finance','assistant') and c.relkind='r' and c.relname != 'provider'`.execute(
         owner,
       );
-      expect(rows).toHaveLength(32);
+      expect(rows).toHaveLength(34);
       expect(
         rows.every((row) => row.relrowsecurity && row.relforcerowsecurity),
       ).toBe(true);
@@ -1302,7 +1302,7 @@ describe.skipIf(!ownerUrl)(
           name: string;
         }>`select n.nspname as schema,c.relname as name
           from pg_class c join pg_namespace n on n.oid=c.relnamespace where c.relkind='r'
-          and n.nspname in ('identity','finance','assistant') and c.relname not in ('provider','external_identity','mcp_artifact','mcp_grant')`.execute(
+          and n.nspname in ('identity','finance','assistant') and c.relname not in ('provider','external_identity','mcp_artifact','mcp_grant','demo_bank_source','demo_bank_sync_event')`.execute(
           tx,
         );
         for (const table of tables) {
@@ -1318,6 +1318,12 @@ describe.skipIf(!ownerUrl)(
           sql`select * from identity.external_identity`.execute(tx),
         ),
       ).rejects.toThrow(/permission denied/);
+      for (const table of ["demo_bank_source", "demo_bank_sync_event"])
+        await expect(
+          withRequestContext(runtime, oauthContext(), (tx) =>
+            sql`select * from ${sql.id("finance", table)}`.execute(tx),
+          ),
+        ).rejects.toThrow(/permission denied/);
       await expect(
         withRequestContext(runtime, oauthContext(), (tx) =>
           sql`select * from identity.resolve_external_identity(
@@ -2760,7 +2766,8 @@ describe.skipIf(!ownerUrl)(
       const untouchedUser = purposeClient(ctx(resetUserB));
       const seeded = await seededUser.demoTools.resetDemoData.mutate();
       expect(seeded.transactionCount).toBeGreaterThan(0);
-      expect(await seededUser.accounts.listActive.query()).toHaveLength(3);
+      expect(seeded.status).toBe("incomplete");
+      expect(await seededUser.accounts.listActive.query()).toHaveLength(0);
       expect(await untouchedUser.accounts.listActive.query()).toHaveLength(1);
 
       const { rows } = await sql<{
@@ -2786,9 +2793,9 @@ describe.skipIf(!ownerUrl)(
         owner,
       );
       expect(rows[0]).toEqual({
-        target_accounts: "3",
+        target_accounts: "0",
         other_accounts: "1",
-        target_transactions: String(seeded.transactionCount),
+        target_transactions: "0",
         other_transactions: "1",
         target_assistant_rows: "0",
         other_assistant_rows: "3",
@@ -2796,12 +2803,39 @@ describe.skipIf(!ownerUrl)(
         retained_mcp_grants: "1",
         marker_table: null,
       });
+      const source = await seededUser.demoTools.bankSource.query({
+        id: seeded.connectionId,
+      });
+      expect(source.accounts).toHaveLength(6);
+      expect(source.movements).toHaveLength(seeded.transactionCount * 2);
+      expect(source.prepared).toBe(false);
+      await expect(
+        seededUser.demoTools.finalizeDemoData.mutate(),
+      ).rejects.toMatchObject({ data: { code: "CONFLICT" } });
+      await expect(
+        untouchedUser.demoTools.bankSource.query({ id: seeded.connectionId }),
+      ).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
+      expect(
+        (
+          await seededUser.demoTools.bankHistory.query({
+            id: seeded.connectionId,
+          })
+        ).every((event) => event.origin === "generated"),
+      ).toBe(true);
+      await expect(
+        withRequestContext(runtime, ctx(resetUserA), (tx) =>
+          sql`insert into finance.demo_bank_sync_event(connection_id,user_id,occurred_at,origin,result,movement_count)
+            values (${seeded.connectionId},${resetUserA},now(),'generated','complete',1)`.execute(
+            tx,
+          ),
+        ),
+      ).rejects.toThrow(/row-level security/);
 
       const repeated = await seededUser.demoTools.resetDemoData.mutate();
       expect(repeated).toEqual(seeded);
     });
 
-    it("creates untagged demo movements only in the signed-in user's demo accounts with matching balances", async () => {
+    it("changes only the owned bank source until synchronization and rolls back an overflowing transfer", async () => {
       const demoOwner = randomUUID();
       const otherOwner = randomUUID();
       const linkedConnection = randomUUID();
@@ -2813,14 +2847,16 @@ describe.skipIf(!ownerUrl)(
       );
       const user = purposeClient(ctx(demoOwner));
       const other = purposeClient(ctx(otherOwner));
-
       await expect(
         user.demoTools.createInternalTransaction.mutate(),
-      ).rejects.toMatchObject({
-        data: { code: "NOT_FOUND" },
-      });
-      await user.demoTools.resetDemoData.mutate();
-      await other.demoTools.resetDemoData.mutate();
+      ).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
+      const first = await user.demoTools.resetDemoData.mutate();
+      const second = await other.demoTools.resetDemoData.mutate();
+      // Simulate a completed bootstrap for this source-only persistence test.
+      // The API/ingestion path is exercised independently; the demo command
+      // must never write imported financial facts on its own.
+      await sql`update finance.demo_bank_source set prepared=true
+        where user_id in (${demoOwner},${otherOwner})`.execute(owner);
       await sql`insert into finance.provider_connection(id,user_id,provider_id,mode)
         select ${linkedConnection},${demoOwner},id,'test' from finance.provider where identifier='fintoc'`.execute(
         owner,
@@ -2829,103 +2865,67 @@ describe.skipIf(!ownerUrl)(
         values (${linkedAccount},${demoOwner},${linkedConnection},'checking',750000)`.execute(
         owner,
       );
-
-      const { rows: before } = await sql<{
-        id: string;
-        balance: string;
-      }>`select id,balance::text as balance
-        from finance.account where user_id=${demoOwner} and id<>${linkedAccount}`.execute(
-        owner,
-      );
-      expect(before).toHaveLength(3);
-      const { rows: otherBefore } = await sql<{
-        count: string;
-      }>`select count(*)::text as count
-        from finance."transaction" t join finance.account a on a.id=t.account_id
-        where a.user_id=${otherOwner}`.execute(owner);
-
+      const before = await user.demoTools.bankSource.query({
+        id: first.connectionId,
+      });
+      const otherBefore = await other.demoTools.bankSource.query({
+        id: second.connectionId,
+      });
       const internal = await user.demoTools.createInternalTransaction.mutate();
       const external = await user.demoTools.createExternalTransaction.mutate();
-      expect(internal).toMatchObject({
-        transactionCount: 2,
-        amount: expect.stringMatching(/\.00$/),
+      expect(internal.transactionCount).toBe(2);
+      expect(external.transactionCount).toBe(1);
+      const after = await user.demoTools.bankSource.query({
+        id: first.connectionId,
       });
-      expect(external).toMatchObject({
-        transactionCount: 1,
-        amount: expect.stringMatching(/\.00$/),
-      });
-
-      const { rows: created } = await sql<{
-        account_id: string;
-        amount: string;
-        type: string;
-        tag_id: string | null;
-        tag_decision_origin: string;
-        tag_rule_id: string | null;
-        tag_decided_at: Date | null;
-        is_internal_movement: boolean;
-        source: string;
-        booked_at: Date;
-        description: string;
-      }>`select t.account_id,t.amount::text as amount,t.type,t.tag_id,
-        t.tag_decision_origin,t.tag_rule_id,t.tag_decided_at,t.is_internal_movement,
-        t.source,t.booked_at,t.description
-        from finance."transaction" t join finance.account a on a.id=t.account_id
-        where a.user_id=${demoOwner} and t.external_id is null`.execute(owner);
-      expect(created).toHaveLength(3);
-      const pair = created.filter((row) => row.is_internal_movement);
-      const [single] = created.filter((row) => !row.is_internal_movement);
-      expect(pair).toHaveLength(2);
+      expect(after.movements).toHaveLength(before.movements.length + 3);
+      const pair = after.movements.slice(-3, -1);
       expect(Number(pair[0].amount) + Number(pair[1].amount)).toBe(0);
-      expect(pair[0].account_id).not.toBe(pair[1].account_id);
-      expect(pair[0].booked_at).toEqual(pair[1].booked_at);
-      expect(single).toBeDefined();
-      expect(
-        created.every(
-          (row) =>
-            row.tag_id === null &&
-            row.tag_rule_id === null &&
-            row.tag_decided_at === null &&
-            row.tag_decision_origin === "unreviewed" &&
-            row.source === "manual" &&
-            row.description.length > 0 &&
-            before.some((account) => account.id === row.account_id),
-        ),
-      ).toBe(true);
-      expect(
-        created.every(
-          (row) => (row.type === "debit") === Number(row.amount) < 0,
-        ),
-      ).toBe(true);
-
-      const { rows: after } = await sql<{
-        id: string;
-        balance: string;
-      }>`select id,balance::text as balance
-        from finance.account where user_id=${demoOwner} and id<>${linkedAccount}`.execute(
-        owner,
-      );
-      for (const account of before) {
-        const change = created
-          .filter((row) => row.account_id === account.id)
-          .reduce((total, row) => total + Number(row.amount), 0);
+      expect(pair[0].relatedMovement?.externalId).toBe(pair[1].externalId);
+      expect(pair[1].relatedMovement?.externalId).toBe(pair[0].externalId);
+      expect(after.movements.at(-1)?.relatedMovement).toBeNull();
+      for (const account of before.accounts) {
+        const change = after.movements
+          .slice(-3)
+          .filter(
+            (movement) => movement.accountExternalId === account.externalId,
+          )
+          .reduce((sum, movement) => sum + Number(movement.amount), 0);
         expect(
-          Number(after.find((row) => row.id === account.id)?.balance),
+          Number(
+            after.accounts.find((row) => row.externalId === account.externalId)
+              ?.balance,
+          ),
         ).toBe(Number(account.balance) + change);
       }
-      const { rows: isolation } = await sql<{
+      expect(
+        await other.demoTools.bankSource.query({ id: second.connectionId }),
+      ).toEqual(otherBefore);
+      const changed = await user.demoTools.changeBankMovement.mutate({
+        action: "correct",
+      });
+      expect(changed.description).toContain("Compra corregida");
+      const corrected = await user.demoTools.bankSource.query({
+        id: first.connectionId,
+      });
+      expect(corrected.movements).toHaveLength(after.movements.length);
+      await user.demoTools.changeBankMovement.mutate({ action: "remove" });
+      const removed = await user.demoTools.bankSource.query({
+        id: first.connectionId,
+      });
+      expect(removed.movements.some((row) => row.removed)).toBe(true);
+      const { rows: persisted } = await sql<{
+        count: string;
         linked_balance: string;
-        other_count: string;
       }>`select
-        (select balance::text from finance.account where id=${linkedAccount}) as linked_balance,
-        (select count(*)::text from finance."transaction" t join finance.account a on a.id=t.account_id where a.user_id=${otherOwner}) as other_count`.execute(
+        (select count(*)::text from finance."transaction" t join finance.account a on a.id=t.account_id where a.user_id=${demoOwner}) as count,
+        (select balance::text from finance.account where id=${linkedAccount}) as linked_balance`.execute(
         owner,
       );
-      expect(isolation[0]).toEqual({
-        linked_balance: "750000.00",
-        other_count: otherBefore[0].count,
-      });
-
+      expect(persisted[0]).toEqual({ count: "0", linked_balance: "750000.00" });
+      await expect(
+        other.demoTools.bankSource.query({ id: first.connectionId }),
+      ).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
       const raw = createTRPCUntypedClient({
         links: [
           httpLink({
@@ -2939,35 +2939,21 @@ describe.skipIf(!ownerUrl)(
       for (const method of [
         "createInternalTransaction",
         "createExternalTransaction",
-      ]) {
+      ])
         await expect(
           raw.mutation(`demoTools.${method}`, { accountId: linkedAccount }),
         ).rejects.toMatchObject({ data: { code: "BAD_REQUEST" } });
-      }
-
-      // A credit-side overflow after the debit has been written must undo both rows
-      // and the first balance update, regardless of transfer direction.
-      await sql`update finance.account set balance=9999999999999.99
-        where user_id=${demoOwner} and type in ('checking','savings') and id<>${linkedAccount}`.execute(
-        owner,
-      );
+      await sql`update finance.demo_bank_source set accounts=jsonb_set(jsonb_set(accounts,'{0,balance}',to_jsonb('9999999999999.99'::text)),'{1,balance}',to_jsonb('9999999999999.99'::text))
+        where user_id=${demoOwner}`.execute(owner);
+      const overflowBefore = await user.demoTools.bankSource.query({
+        id: first.connectionId,
+      });
       await expect(
         user.demoTools.createInternalTransaction.mutate(),
-      ).rejects.toMatchObject({
-        data: { code: "BAD_REQUEST" },
-      });
-      const { rows: rolledBack } = await sql<{
-        balance: string;
-        count: string;
-      }>`select
-        (select min(balance)::text from finance.account where user_id=${demoOwner} and type in ('checking','savings') and id<>${linkedAccount}) as balance,
-        (select count(*)::text from finance."transaction" t join finance.account a on a.id=t.account_id where a.user_id=${demoOwner} and t.external_id is null) as count`.execute(
-        owner,
-      );
-      expect(rolledBack[0]).toEqual({
-        balance: "9999999999999.99",
-        count: "3",
-      });
+      ).rejects.toMatchObject({ data: { code: "BAD_REQUEST" } });
+      expect(
+        await user.demoTools.bankSource.query({ id: first.connectionId }),
+      ).toEqual(overflowBefore);
     });
 
     it("restricts identity access, shared catalog writes and audit mutations independently of RLS", async () => {

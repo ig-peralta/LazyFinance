@@ -11,6 +11,7 @@ import {
 import { toSignal } from "@angular/core/rxjs-interop";
 import { ActivatedRoute, RouterLink } from "@angular/router";
 import type { BankingConnection } from "@lazyfinance/contracts";
+import { SessionService } from "../../core/auth/session.service";
 import { reportWorkspaceReadiness } from "../../core/rendering/workspace-preparation";
 import { RpcClient, type RpcScope } from "../../core/rpc/rpc-client";
 import { createScopedCommand } from "../../core/rpc/scoped-command";
@@ -36,6 +37,7 @@ interface LinkFlow {
 export class BankConnectionsPage {
   protected readonly data = inject(BankingData);
   private readonly rpc = inject(RpcClient);
+  protected readonly session = inject(SessionService);
   private readonly injector = inject(Injector);
   private readonly routeParams = toSignal(inject(ActivatedRoute).queryParamMap);
   protected readonly fromOnboarding = computed(
@@ -103,6 +105,10 @@ export class BankConnectionsPage {
   }
 
   protected connect(connection: BankingConnection | null = null) {
+    if (connection?.provider === "mock_bank") {
+      void this.reconnectMock(connection);
+      return;
+    }
     const scope = this.rpc.authenticatedScope(),
       configuration = this.configuration();
     if (
@@ -119,6 +125,16 @@ export class BankConnectionsPage {
     this.confirmation.set(null);
     this.syncSelection.set(null);
     this.flow.set({ scope, mode: configuration.mode, connection });
+  }
+
+  private async reconnectMock(bank: BankingConnection) {
+    if (!this.compatible(bank) || this.busy()) return;
+    await this.command.run(
+      (scope, signal) =>
+        scope.client.banking.reconnectMock.mutate({ id: bank.id }, { signal }),
+      () => this.data.connections.reload(),
+      "Acceso simulado recuperado. Consulta las cuentas antes de sincronizar.",
+    );
   }
 
   protected closeFlow() {
@@ -205,6 +221,7 @@ export class BankConnectionsPage {
   }
 
   protected compatible(bank: BankingConnection) {
+    if (bank.provider === "mock_bank") return this.session.demoToolsEnabled();
     return (
       !this.data.configuration.isLoading() &&
       this.configuration()?.mode === bank.mode

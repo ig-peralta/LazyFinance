@@ -12,6 +12,7 @@ import {
   type FintocLink,
 } from "../fintoc/client/fintoc-client";
 import { FintocCredentials } from "../fintoc/credentials/fintoc-credentials";
+import { MockBankService } from "../mock/mock-bank.service";
 
 function providerError(error: unknown): never {
   if (error instanceof FintocFailure)
@@ -41,6 +42,7 @@ export class BankingLinksService {
     private readonly persistence: PersistenceClient,
     private readonly fintoc: FintocClient,
     private readonly credentials: FintocCredentials,
+    private readonly mock: MockBankService,
   ) {}
 
   configuration() {
@@ -69,7 +71,8 @@ export class BankingLinksService {
       : undefined;
     if (
       previous &&
-      (previous.connection.disconnectedAt ||
+      (previous.connection.provider !== "fintoc" ||
+        previous.connection.disconnectedAt ||
         previous.connection.mode !== config.mode ||
         previous.connection.holderType !== input.holderType)
     )
@@ -163,6 +166,19 @@ export class BankingLinksService {
     const store = this.persistence.user(userId).providerLinks;
     const current = await store.connection.query({ id });
     if (current.connection.disconnectedAt) return current.connection;
+    if (current.connection.provider === "mock_bank") {
+      const { source } = await this.mock.source(userId, id);
+      if (
+        current.connection.status === "expired" ||
+        source.failure !== "expired"
+      )
+        return current.connection;
+      return store.status.mutate({
+        id,
+        expectedVersion: current.version,
+        status: "expired",
+      });
+    }
     this.configured(current.connection.mode);
     if (!current.encryptedCredential)
       throw new TRPCError({
@@ -210,6 +226,11 @@ export class BankingLinksService {
     // Disable local synchronization first. Provider failures leave a durable,
     // truthful pending state that can be explicitly reconciled by the owner.
     const current = await store.beginDisconnect.mutate({ id });
+    if (current.connection.provider === "mock_bank")
+      return store.finishDisconnect.mutate({
+        id,
+        expectedVersion: current.version,
+      });
     try {
       this.configured(current.connection.mode);
       await this.fintoc.disconnect(current.externalId);

@@ -50,7 +50,7 @@ export class ProviderLinkRepository {
           "institution",
         ),
       ])
-      .where("p.identifier", "=", "fintoc")
+      .where("p.identifier", "in", ["fintoc", "mock_bank"])
       .where("c.externalId", "is not", null);
   }
 
@@ -105,6 +105,7 @@ export class ProviderLinkRepository {
     const current = await this.connection(id);
     if (
       current.version !== expectedVersion ||
+      current.connection.provider !== "fintoc" ||
       current.connection.disconnectedAt ||
       current.connection.mode !== mode ||
       current.connection.holderType !== holderType

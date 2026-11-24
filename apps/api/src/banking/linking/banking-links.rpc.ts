@@ -10,6 +10,8 @@ import {
   CompleteBankingIntentSchema,
   type CreateBankingIntent,
   CreateBankingIntentSchema,
+  DemoBankHistorySchema,
+  DemoBankReconnectSchema,
   RpcEmptySchema,
   RpcIdSchema,
   type SelectBankingAccounts,
@@ -20,6 +22,7 @@ import { PersistenceClient } from "../../persistence/persistence.client";
 import { type ApiRequestContext, rpcUser } from "../../rpc/context";
 import { FintocDiscoveryService } from "../fintoc/discovery/fintoc-discovery.service";
 import { FintocImportService } from "../fintoc/import/fintoc-import.service";
+import { MockBankService } from "../mock/mock-bank.service";
 import { BankingSyncStatusService } from "../status/banking-sync-status.service";
 import { BankingLinksService } from "./banking-links.service";
 
@@ -31,6 +34,7 @@ export class BankingLinksRpc {
     private readonly status: BankingSyncStatusService,
     private readonly discovery: FintocDiscoveryService,
     private readonly persistence: PersistenceClient,
+    private readonly mock: MockBankService,
   ) {}
 
   @Query({
@@ -101,8 +105,17 @@ export class BankingLinksRpc {
     output: BankingImportResultSchema,
     meta: { auth: "user" },
   })
-  importInitial(@Ctx() ctx: ApiRequestContext, @Input() input: { id: string }) {
-    return this.imports.importSnapshot(rpcUser(ctx), input.id);
+  async importInitial(
+    @Ctx() ctx: ApiRequestContext,
+    @Input() input: { id: string },
+  ) {
+    const userId = rpcUser(ctx);
+    const owned = await this.persistence
+      .user(userId)
+      .providerLinks.connection.query(input);
+    return owned.connection.provider === "mock_bank"
+      ? this.mock.importSnapshot(userId, input.id)
+      : this.imports.importSnapshot(userId, input.id);
   }
 
   @Mutation({
@@ -110,8 +123,14 @@ export class BankingLinksRpc {
     output: BankingImportResultSchema,
     meta: { auth: "user" },
   })
-  refresh(@Ctx() ctx: ApiRequestContext, @Input() input: { id: string }) {
-    return this.imports.importSnapshot(rpcUser(ctx), input.id);
+  async refresh(@Ctx() ctx: ApiRequestContext, @Input() input: { id: string }) {
+    const userId = rpcUser(ctx);
+    const owned = await this.persistence
+      .user(userId)
+      .providerLinks.connection.query(input);
+    return owned.connection.provider === "mock_bank"
+      ? this.mock.importSnapshot(userId, input.id)
+      : this.imports.importSnapshot(userId, input.id);
   }
 
   @Query({
@@ -144,11 +163,45 @@ export class BankingLinksRpc {
     output: BankingSelectionSchema,
     meta: { auth: "user" },
   })
-  discoverAccounts(
+  async discoverAccounts(
     @Ctx() ctx: ApiRequestContext,
     @Input() input: { id: string },
   ) {
-    return this.discovery.discover(rpcUser(ctx), input.id);
+    const userId = rpcUser(ctx);
+    const owned = await this.persistence
+      .user(userId)
+      .providerLinks.connection.query(input);
+    return owned.connection.provider === "mock_bank"
+      ? this.mock.discover(userId, input.id)
+      : this.discovery.discover(userId, input.id);
+  }
+
+  @Query({
+    input: RpcIdSchema,
+    output: DemoBankHistorySchema,
+    meta: { auth: "user" },
+  })
+  async syncHistory(
+    @Ctx() ctx: ApiRequestContext,
+    @Input() input: { id: string },
+  ) {
+    const userId = rpcUser(ctx);
+    await this.mock.source(userId, input.id);
+    return this.persistence.user(userId).demoTools.bankHistory.query(input);
+  }
+
+  @Mutation({
+    input: RpcIdSchema,
+    output: DemoBankReconnectSchema,
+    meta: { auth: "user" },
+  })
+  async reconnectMock(
+    @Ctx() ctx: ApiRequestContext,
+    @Input() input: { id: string },
+  ) {
+    const userId = rpcUser(ctx);
+    await this.mock.source(userId, input.id);
+    return this.persistence.user(userId).demoTools.reconnectBank.mutate(input);
   }
 
   @Mutation({

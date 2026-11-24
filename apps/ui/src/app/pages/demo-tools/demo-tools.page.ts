@@ -1,4 +1,5 @@
-import { Component, computed, inject, signal } from "@angular/core";
+import { Component, computed, inject, resource, signal } from "@angular/core";
+import { RouterLink } from "@angular/router";
 import type {
   DemoDataResetResult,
   DemoTransactionResult,
@@ -11,11 +12,33 @@ import { AssistantWorkspace } from "../../features/assistant/assistant-workspace
 
 @Component({
   selector: "demo-tools-page",
+  imports: [RouterLink],
   templateUrl: "./demo-tools.page.html",
 })
 export class DemoToolsPage {
   protected readonly session = inject(SessionService);
   private readonly rpc = inject(RpcClient);
+  private readonly read = signal(0);
+  protected readonly preparation = resource({
+    params: () => {
+      const scope = this.rpc.authenticatedScope();
+      return this.session.demoToolsEnabled() && scope
+        ? { scope, read: this.read() }
+        : undefined;
+    },
+    loader: ({ params, abortSignal }) =>
+      params.scope.client.demoTools.preparation
+        .query(undefined, { signal: abortSignal })
+        .then((value) => ({ ...params, value })),
+  });
+  protected readonly bank = computed(() => {
+    const loaded = this.preparation.hasValue()
+      ? this.preparation.value()
+      : null;
+    return loaded && loaded.scope === this.rpc.authenticatedScope()
+      ? loaded.value
+      : null;
+  });
   private readonly confirmationOwner = signal<{
     userId: string;
     scope: RpcScope;
@@ -44,6 +67,9 @@ export class DemoToolsPage {
     return result.value;
   });
   protected readonly command = createScopedCommand(
+    () => this.session.user()?.userId,
+  );
+  protected readonly bankCommand = createScopedCommand(
     () => this.session.user()?.userId,
   );
   private readonly generated = signal<{
@@ -94,9 +120,10 @@ export class DemoToolsPage {
         if (scope && this.session.user()?.userId === userId) {
           this.result.set({ userId, scope, value });
           this.assistantWorkspace.demoDataReset();
+          this.read.update((version) => version + 1);
         }
       },
-      "La cuenta quedó lista para la demo.",
+      "La preparación terminó. Consulta el resultado antes de continuar.",
     );
   }
 
@@ -120,7 +147,57 @@ export class DemoToolsPage {
         if (scope && this.session.user()?.userId === userId)
           this.generated.set({ userId, scope, value });
       },
-      "Movimiento de demostración creado.",
+      "El banco simulado registró la actividad. Sincroniza para importarla.",
+    );
+  }
+
+  protected async resume() {
+    const userId = this.session.user()?.userId;
+    if (!userId || !this.session.demoToolsEnabled()) return;
+    await this.command.run(
+      (scope, signal) =>
+        scope.client.demoTools.resumeDemoData.mutate(undefined, { signal }),
+      (value) => {
+        const scope = this.rpc.authenticatedScope();
+        if (scope && this.session.user()?.userId === userId) {
+          this.result.set({ userId, scope, value });
+          if (value.status === "ready") this.assistantWorkspace.demoDataReset();
+          this.read.update((version) => version + 1);
+        }
+      },
+      "Se revisó la preparación guardada.",
+    );
+  }
+
+  protected async setFailure(failure: "retryable" | "expired" | null) {
+    if (!this.session.demoToolsEnabled()) return;
+    await this.bankCommand.run(
+      (scope, signal) =>
+        scope.client.demoTools.setBankFailure.mutate({ failure }, { signal }),
+      () => {},
+      failure === null
+        ? "Banco simulado disponible. Los plazos de reintento se conservan."
+        : failure === "expired"
+          ? "El acceso simulado vencerá en el siguiente intento o comprobación."
+          : "El próximo intento de importación fallará temporalmente.",
+    );
+  }
+
+  protected async changeMovement(action: "correct" | "remove") {
+    const userId = this.session.user()?.userId;
+    if (!userId || !this.session.demoToolsEnabled()) return;
+    await this.bankCommand.run(
+      (scope, signal) =>
+        scope.client.demoTools.changeBankMovement.mutate(
+          { action },
+          { signal },
+        ),
+      (value) => {
+        const scope = this.rpc.authenticatedScope();
+        if (scope && this.session.user()?.userId === userId)
+          this.generated.set({ userId, scope, value });
+      },
+      "El origen simulado cambió. Sincroniza para ver el resultado.",
     );
   }
 }

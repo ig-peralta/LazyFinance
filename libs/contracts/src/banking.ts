@@ -7,7 +7,7 @@ export const BankingStatusSchema = z.enum(["active", "expired", "revoked"]);
 
 export const BankingConnectionSchema = z.object({
   id: z.uuid(),
-  provider: z.literal("fintoc"),
+  provider: z.enum(["fintoc", "mock_bank"]),
   mode: BankingModeSchema,
   holderType: BankingHolderSchema,
   institution: z.object({

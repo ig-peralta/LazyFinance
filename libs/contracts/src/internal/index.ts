@@ -2,6 +2,7 @@ export * from "./accounts";
 export * from "./assistant";
 export * from "./assistant-consent";
 export * from "./common";
+export * from "./demo-bank";
 export * from "./financial-actions";
 export * from "./identity";
 export * from "./income";

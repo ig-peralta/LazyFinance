@@ -5,6 +5,7 @@ import {
 import { NotFoundException } from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
 import { testEnvironment } from "../../tests/fixtures/environment";
+import type { MockBankService } from "../banking/mock/mock-bank.service";
 import type { PersistenceClient } from "../persistence/persistence.client";
 import { DemoToolsService } from "./demo-tools.service";
 
@@ -27,10 +28,14 @@ describe("demo tools API gate", () => {
 
   it("rejects calls without the API enable flag", async () => {
     const user = vi.fn();
-    const service = new DemoToolsService(testEnvironment(), {
-      user,
-    } as unknown as PersistenceClient);
-    expect(() => service.resetDemoData("verified-user")).toThrow(
+    const service = new DemoToolsService(
+      testEnvironment(),
+      {
+        user,
+      } as unknown as PersistenceClient,
+      {} as MockBankService,
+    );
+    await expect(service.resetDemoData("verified-user")).rejects.toThrow(
       NotFoundException,
     );
     expect(user).not.toHaveBeenCalled();
@@ -44,19 +49,42 @@ describe("demo tools API gate", () => {
   });
 
   it("forwards only the authenticated internal user when explicitly enabled", async () => {
-    const mutate = vi.fn().mockResolvedValue({ transactionCount: 12 });
-    const user = vi
-      .fn()
-      .mockReturnValue({ demoTools: { resetDemoData: { mutate } } });
+    const connectionId = "00000000-0000-4000-8000-000000000001";
+    const mutate = vi.fn().mockResolvedValue({
+      connectionId,
+      transactionCount: 12,
+      status: "incomplete",
+    });
+    const finalize = vi.fn().mockResolvedValue({
+      connectionId,
+      transactionCount: 12,
+      status: "ready",
+    });
+    const user = vi.fn().mockReturnValue({
+      demoTools: {
+        resetDemoData: { mutate },
+        finalizeDemoData: { mutate: finalize },
+      },
+    });
+    const prepare = vi.fn().mockResolvedValue({ status: "complete" });
     const service = new DemoToolsService(
       testEnvironment({ DEMO_TOOLS_ENABLED: true }),
       { user } as unknown as PersistenceClient,
+      { prepare } as unknown as MockBankService,
     );
     await expect(service.resetDemoData("verified-user")).resolves.toEqual({
+      connectionId,
       transactionCount: 12,
+      status: "ready",
     });
-    expect(user).toHaveBeenCalledExactlyOnceWith("verified-user");
+    expect(user).toHaveBeenCalledTimes(2);
+    expect(user).toHaveBeenCalledWith("verified-user");
     expect(mutate).toHaveBeenCalledExactlyOnceWith();
+    expect(prepare).toHaveBeenCalledExactlyOnceWith(
+      "verified-user",
+      connectionId,
+    );
+    expect(finalize).toHaveBeenCalledExactlyOnceWith();
   });
 
   it("forwards both transaction actions only for the authenticated user", async () => {
@@ -78,6 +106,7 @@ describe("demo tools API gate", () => {
     const service = new DemoToolsService(
       testEnvironment({ DEMO_TOOLS_ENABLED: true }),
       { user } as unknown as PersistenceClient,
+      {} as MockBankService,
     );
     await expect(
       service.createInternalTransaction("verified-user"),

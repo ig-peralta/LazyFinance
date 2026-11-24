@@ -82,6 +82,26 @@ export class BankSyncPanel {
       return { ...params, snapshot };
     },
   });
+  protected readonly history = resource({
+    params: () => {
+      const scope = this.rpc.authenticatedScope();
+      return scope && this.connection().provider === "mock_bank"
+        ? { scope, id: this.connection().id, read: this.readVersion() }
+        : undefined;
+    },
+    loader: ({ params, abortSignal }) =>
+      params.scope.client.banking.syncHistory
+        .query({ id: params.id }, { signal: abortSignal })
+        .then((value) => ({ ...params, value })),
+  });
+  protected readonly events = computed(() => {
+    const loaded = this.history.hasValue() ? this.history.value() : null;
+    return loaded &&
+      loaded.scope === this.rpc.authenticatedScope() &&
+      loaded.id === this.connection().id
+      ? loaded.value
+      : null;
+  });
   protected readonly snapshot = computed(() => {
     const read = this.status.hasValue() ? this.status.value() : undefined;
     return read &&
@@ -186,7 +206,7 @@ export class BankSyncPanel {
   ) =>
     ({
       retryable:
-        "Fintoc o el servidor no pudieron completar la lectura. Puedes reintentar cuando el estado lo permita.",
+        "El banco o el servidor no pudieron completar la lectura. Puedes reintentar cuando el estado lo permita.",
       expired:
         "El acceso venció. Revincula el mismo banco y titular antes de importar de nuevo.",
       revoked:
