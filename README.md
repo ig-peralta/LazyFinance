@@ -2,7 +2,7 @@
 
 LazyFinance helps people understand their finances without manually reconciling balances and transactions. Its assistant-first home (full text chat plus disabled-by-default native conversational voice) and complete dashboard share a financial core. MCP opens another path: authorized agents could use permitted financial context in workflows people already know, combining it with their own capabilities. Provider-neutral data access leaves room for more sources, financial services and audiences as those uses are validated.
 
-LazyFinance is a pnpm/Turborepo monorepo with an Angular app, a NestJS API, and a private NestJS/Kysely persistence service. Browser calls use public tRPC and a dedicated assistant stream; internal service calls use signed private tRPC. MCP remains available over Streamable HTTP.
+LazyFinance is a pnpm/Turborepo monorepo with an Angular app, a NestJS API, and a private NestJS/Kysely persistence service. Browser calls use public tRPC and assistant text and voice observation streams; internal service calls use signed private tRPC. MCP remains available over Streamable HTTP.
 
 ## Technologies
 
@@ -16,10 +16,10 @@ The apps use TypeScript/Node.js, PostgreSQL 18, Firebase identity, Zod, Vitest a
 
 ## Architecture
 
-The [implemented ER and 4+1 diagram atlas](docs/diagrams/README.md) provides
-editable sources and rendered PNGs for the Stage B baseline. Its physical view
-shows a local Compose reference, not the installed
-[Stage C development deployment](docs/technical/technical-manual.md#development-deployment).
+The [Stage C diagram atlas](docs/diagrams/README.md) provides editable sources
+and rendered PNGs for the current ER and 4+1 architecture views. It shows the
+[development deployment](docs/diagrams/README.md#physical-view--development-deployment)
+as configured in Compose, not as evidence of production readiness.
 
 ```mermaid
 flowchart TB
@@ -109,7 +109,7 @@ reading order and distinction between implementation, evidence and targets.
 | --- | --- |
 | [Architecture](docs/technical/architecture.md) | Three-app/runtime boundaries, responsibility split and implementation scope |
 | [Private RPC, transactions and RLS](docs/technical/persistence-security.md) | Assertions, bootstrap, runtime roles, related-owner policies, atomicity and budgets |
-| [Database model and implemented ERD](docs/technical/database-model.md) | Current tables, relationships/keys, representation and migration lifecycle; diagram baseline limitations |
+| [Database model and implemented ERD](docs/technical/database-model.md) | Current tables, relationships/keys, representation and migration lifecycle |
 | [RPC contracts and clients](docs/technical/rpc-contracts.md) | Public/private procedures, MCP tools, type-only libraries and generation workflow |
 | [Persistence read pattern](docs/technical/persistence-reads.md) | Purpose-shaped joins/aggregates, cardinality, snapshots and data-access review rules |
 | [Provider-neutral identity](docs/technical/identity.md) | External provider/issuer/subject mapping, internal principals and current provider-selection limits |
@@ -152,9 +152,9 @@ earlier validation evidence do not describe the latest runtime by themselves.
 
 ### Diagrams and academic submissions
 
-- [Diagram inventory](docs/diagrams/README.md): implemented ER and logical,
-  development, process, planned physical and scenarios (+1) views, plus focused
-  assistant, approval, MCP and banking sequences.
+- [Diagram inventory](docs/diagrams/README.md): Stage C ER, logical, development,
+  process and scenarios (+1) views, focused sequences and the configured
+  development deployment.
 - [Academic submission index](docs/submissions/README.md): every available shared
   and individual document, including [Phase 1](docs/submissions/README.md#phase-1--project-definition)
   project definition/forms/presentation and [Phase 2](docs/submissions/README.md#phase-2--development-progress)

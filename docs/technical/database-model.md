@@ -32,7 +32,7 @@ All unqualified table names in the finance section below belong to `finance`.
 | `assistant.action` | `id`; `user_id` → user; nullable `conversation_id` → conversation; unique `(user_id, origin, request_id)` | Versioned proposals and immutable finalized receipts; client/grant-bound direct execution; chat deletion only nulls its reference |
 | `assistant.processing_consent` | PK `user_id` → user | Latest accepted/refused external-processing decision, policy key, CAS revision and server decision time; no runtime delete/reassignment |
 | `provider` | `id`; unique `identifier` | Shared catalog; runtime SELECT only |
-| `provider_connection` | `id` → provider; `user_id`; unique provider/mode/external Link ID | Owned access status, API-encrypted credential/version, institution/holder and terminal disconnect/remote-cleanup state; legacy fixture fields remain nullable |
+| `provider_connection` | `id`; `provider_id` → provider; `user_id` → user; unique provider/mode/external Link ID | Owned access status, API-encrypted credential/version, institution/holder and terminal disconnect/remote-cleanup state; legacy fixture fields remain nullable |
 | `provider_link_intent` | `id`; unique provider intent ID; optional original/completed connection FKs | Owner-bound, expiring callback claims with hashed exchange token, version-pinned relink and durable completion |
 | `provider_account_selection` | PK `connection_id`; immutable `user_id` → user | Minimal bounded discovery, credential/discovery/selection versions, selected IDs, consent and connection read backoff; no balances or movements |
 | `provider_sync_schedule` | PK `connection_id`; immutable `user_id` → user | Operational eligibility, next due time, failure streak, claim/run references and bounded daily attempts; scheduler can update claim fields only |
@@ -40,7 +40,7 @@ All unqualified table names in the finance section below belong to `finance`.
 | `demo_bank_sync_event` | `id`; `connection_id` → connection; `user_id` → user | Generated synthetic history versus executed import attempts; runtime may insert validated owned attempts but cannot read events |
 | `provider_request_admission` | Caller-generated UUID; mode/purpose and time indexes | Durable deployment-wide rate/concurrency/read-volume admission; dedicated banking-transport context only |
 | `provider_request_backoff` | PK `mode` (`test`/`live`) | Greatest retained provider waiting period shared by all transport reads/lifecycle requests; banking-transport context only, no runtime delete |
-| `account` | `id`; unique `(provider_connection_id, external_id)`; `user_id` | Owned account and owned connection must agree; independent nullable source balance |
+| `account` | `id`; unique `(provider_connection_id, external_id)`; `user_id` → user | Owned account and connection must agree; optional user alias and independent nullable source balance |
 | `transaction` | `id`; unique non-null `(account_id, external_id)` | Ownership through account; provider fact plus preserved user interpretation |
 | `tag` | `id`; unique `(user_id, name)` | User-owned catalog with archive flag |
 | `tag_rule` | `id` → owned tag and optional owned account | User-owned exact-match suggestion or approved automatic rule |
@@ -71,21 +71,19 @@ policy independently rejects it.
 
 The [editable PlantUML source](../diagrams/sources/er.puml) and
 [full-size rendered PNG](../diagrams/er.png) are part of the
-[implemented ER and 4+1 atlas](../diagrams/README.md). They show the earlier
-**28-table, 44-foreign-key baseline**, with PK/FK markers, nullable ends,
-identifying/non-identifying relationships and selected domain attributes.
-Entity titles use qualified SQL `schema.table` names.
+[ER and 4+1 atlas](../diagrams/README.md). They show all **35 application tables
+and 53 foreign keys** through migration `039`, with nullable ends and solid lines
+for FKs that participate in the child PK. Entity titles use qualified
+`schema.table` names; the owner-only migration ledger is not an application table.
 
-The four banking operational tables added by migration `202611100030` are listed
-above but not drawn in that baseline image. Selection and schedules each reference
-the owned connection and user. Migration 032's consent table references the user.
-Migration 034 temporarily added a one-time seed marker; migration 035 drops that
-obsolete table while preserving migration history. Migration 039 adds the
-simulated bank source and sync event tables, each tied to a connection and user.
-These later tables are not represented in the baseline image. The transport
-tables contain no financial-owner references.
+Migration `030` adds the selection, schedule, admission and backoff tables.
+Selection and schedule each reference the owned connection and user; transport
+admission/backoff has no owner FK. Migration `032` adds account processing consent.
+Migration `035` drops the one-time marker introduced by `034`, so that marker is
+not drawn. Migration `039` adds the separate simulated-bank source and sync events,
+each tied to a connection and user.
 
-![Implemented relationships across identity, finance and assistant](../diagrams/er.png)
+![Stage C ERD: 35 implemented tables and 53 foreign keys across identity, finance and assistant](../diagrams/er.png)
 
 The diagram omits other columns, indexes, check constraints and RLS expressions;
 it is not generated DDL or an ownership-policy diagram. Migrations remain the

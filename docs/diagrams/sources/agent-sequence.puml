@@ -1,6 +1,6 @@
 @startuml agent-sequence
 !include sequence.iuml
-title LazyFinance — Grounded Assistant Query\nRepresentative read turn, not automatic bank refresh
+title LazyFinance — Grounded Text Query\nRepresentative read turn, not a bank refresh
 
 participant "Angular browser" as Web <<boundary>>
 participant "Assistant workflow\n(API)" as API <<first-party agent>>
@@ -11,6 +11,7 @@ database "PostgreSQL 18" as DB
 
 Web -> API : Authenticated text + conversationId + requestId
 activate API #E1D5E7
+API -> API : Verify owner and current processing consent\nfor provider-backed text
 API -> P : begin(turn, nonce, lease)
 activate P #FFE6CC
 P -> DB : Short owner-scoped claim transaction

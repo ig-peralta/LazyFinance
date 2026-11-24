@@ -281,10 +281,8 @@ API verification; an old application cookie is expired, not adopted as identity.
 
 ## Compose
 
-The checked-in Compose files support local packaging and the installed Stage C
-development deployment. The dated
-[physical architecture view](../diagrams/README.md#physical-view--stage-b-deployment-reference)
-maps the local reference, not the installed host or a production environment.
+The checked-in Compose files support local packaging and the Stage C
+[development deployment topology](../diagrams/README.md#physical-view--development-deployment).
 
 - `resources.yml`: local PostgreSQL on loopback port 5432; no named durable volume.
 - `apps.yml`: apps plus owner-only init job using the external `lazyfinance`
@@ -297,8 +295,8 @@ maps the local reference, not the installed host or a production environment.
   `pnpm deploy:local:up`.
 - `docker/dev/compose.yml`: development deployment topology with Traefik HTTPS,
   PostgreSQL on a named volume, private persistence, API and static UI. Only ports
-  80/443 are published; the API and database are not directly
-  published.
+  80/443 are published, by Traefik. There are no published API, persistence or
+  PostgreSQL backend ports.
 - Initial fixed local demo identity/fixtures are opt-in:
   `pnpm deploy:local --profile tools run --rm seed`. The in-app **Preparar demo**
   action resets only the signed-in user's finance and assistant data, creates an
@@ -323,7 +321,7 @@ recovery readiness. Demo tools are for authorized development accounts/data only
 manual dispatch). It rebuilds only changed app images unless shared build inputs
 change, then deploys the `latest` images from Docker Hub. The image repositories are
 `igperalta/lazyfinance-api`, `igperalta/lazyfinance-persistence` and
-`igperalta/lazyfinance-ui`. The UI uses its checked-in production API URL,
+`igperalta/lazyfinance-ui`. The UI uses the API URL embedded by its production build,
 `https://api.lazyfinance.online`, and Compose routes that same hostname to the API.
 There is no extra Angular environment or build configuration for demo tools. The
 same UI build shows their menu entry only when the API reports
@@ -422,7 +420,8 @@ To stop services without deleting stored data, run the same Compose command with
 `RpcClient` appends `/trpc` to the selected API base, without an extra `/api` prefix
 or UI-host proxy. The API's `CORS_ORIGINS` must include the actual browser UI origin.
 Static startup and the public landing do not wait for API health or database readiness.
-The API remains directly exposed on its configured port for API/MCP consumers.
+API/MCP consumers use the separate API origin. In the development deployment,
+Traefik routes that origin; it does not publish the API container port.
 There is no `API_INTERNAL_URL` or request-time Angular server.
 
 The UI discovers demo-tools availability from `config.get` after browser startup,
