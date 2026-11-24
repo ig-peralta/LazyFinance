@@ -85,8 +85,12 @@ profiles. This is one local synthetic profile, **not** a UI-first-paint,
 voice/model latency, bank-fetch cadence, live-provider test, cross-user capacity
 forecast, or production/deployment SLA. The 50,000-record limit is compound with
 byte/statement budgets and does not promise all maximum-text inputs will fit.
-Reports also record the built image IDs and whether the checkout was clean; if it
-was dirty, the commit alone does not identify the tested source.
+Reports also record the built image IDs, whether the checkout was clean and
+`build.sourceSha256`. The fingerprint hashes sorted Git-visible tracked/untracked
+file paths and contents, separated by NUL bytes, excluding `docs/` and Markdown.
+It identifies an uncommitted implementation including new migrations/helpers;
+the commit alone does not identify a dirty checkout. It is source provenance,
+not a claim of a clean release or a substitute for the image IDs.
 
 ### Database diagnostics
 
@@ -133,6 +137,12 @@ identified profile, for example:
 
 ```sh
 PERF_RUNNER_CPUS=2 PERF_RUNNER_MEMORY=4g PERF_POSTGRES_CPUS=1 PERF_POSTGRES_MEMORY=2g pnpm test:performance
+```
+
+To repeat with **2 CPUs / 4 GiB per container**, without changing suite defaults:
+
+```sh
+PERF_REPETITIONS=3 PERF_RUNNER_CPUS=2 PERF_RUNNER_MEMORY=4g PERF_POSTGRES_CPUS=2 PERF_POSTGRES_MEMORY=4g pnpm test:performance
 ```
 
 Compose does not publish ports, read the app `.env` files or reuse the ordinary

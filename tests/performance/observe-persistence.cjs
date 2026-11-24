@@ -32,7 +32,7 @@ if (process.argv[1]?.endsWith("apps/persistence/dist/main.js")) {
     appendFileSync(join(directory, file), `${JSON.stringify(value)}\n`);
   };
   const target = (sql) => {
-    if (!sql.startsWith("select ")) return null;
+    if (!/^(select|with)\b/i.test(sql)) return null;
     if (
       sql.includes('from "finance"."transaction" as "m"') &&
       sql.includes("group by") &&
@@ -45,7 +45,10 @@ if (process.argv[1]?.endsWith("apps/persistence/dist/main.js")) {
       sql.includes(" limit ")
     )
       return "transactions.recent";
-    if (sql.includes("jsonb_to_recordset") && sql.includes("sum(m.amount)"))
+    if (
+      sql.includes('"finance"."objective" as "o"') &&
+      sql.includes("sum(m.amount)")
+    )
       return "objectives.spending";
     return null;
   };
