@@ -143,6 +143,13 @@ matching indexes each immutable rule snapshot once, and commit validation reuses
 the revalidated rule set through an ID lookup. See the
 [read pattern](../../../../docs/technical/persistence-reads.md).
 
+Persistence writes movements in batches of at most 100 within that original
+scoped transaction and user lock, not separate financial commits. New movements
+use multi-row INSERT; updates use typed provider/effective fields and preserve
+manual decisions, receipt links and tombstones. Conflict/event processing,
+fingerprint checks and checkpoint advancement retain the same atomic boundary.
+Returning rows is needed only when applying prepared tag decisions.
+
 The 50,000-record bound counts **accounts + movements + removals + temporary suspensions across all
 pages**, including repeated records on separate pages. UTF-8 serialized normalized
 pages also share a cumulative 32 MiB budget; private prepared bodies and factual

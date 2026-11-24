@@ -42,7 +42,7 @@ provider pages and generated recurrence dates are not persisted relations.
 - **Assistant merchant/coverage reads:** `transactions.merchantSpending` groups
   eligible owned debit purchases by normalized merchant (case and outer spaces)
   and Santiago calendar month, with the same one-row-per-purchase recovery
-  subquery as summary spending. It caps at 5,000 groups and rejects overflow,
+  facts as summary spending. It caps at 5,000 groups and rejects overflow,
   not a partial total; API selects a 12-row merchant preview and calculates totals
   from the complete fact set. `accounts.coverage` returns up to 1,000 owned active
   accounts' recorded history bounds and completeness; API combines them with
@@ -67,6 +67,12 @@ provider pages and generated recurrence dates are not persisted relations.
   `transactions.detail` separately joins one owned movement's account/tag,
   classification/source precision, retained receipt reference and recovery flag;
   these fields do not inflate every history row or prove current income eligibility.
+- **Recent movements:** `transactions.recent` selects at most ten nonremoved
+  candidates per owned account using the partial `(account_id, booked_at DESC,
+  id DESC)` index, then applies the global exact `(booked_at, id)` ordering and
+  ten-row limit before returning the shared movement projection. A global top-ten
+  row must be in its account's top ten. Inactive accounts remain eligible as
+  before; this optimization does not change history pagination or its filters.
 - **Existence and keys already joined:** project them in the same query.
   Provider movement facts include `accountExternalId` and `hasReceipt`, rather
   than requiring another account lookup and a separate receipt scan/set. Those
@@ -135,6 +141,10 @@ snapshot; continuation remains a separate live read.
    An accumulated multi-owner fixture exposed excessive JIT compilation without
    that estimate. Do not fix such OLTP plans by raising workflow deadlines or
    globally disabling database security/planning features.
+   The transaction SELECT policy also exposes owned account keys as an indexable
+   statement-local array (migration 038); this does not broaden ownership or alter
+   write checks. Measure complete multi-owner background data, not just an isolated
+   owner fixture: both estimated cost and join choices affect whether JIT helps.
 7. Bound input windows, parents, children, aggregate groups and serialized bytes.
    Where a query uses a row cap, fetch one past the contract maximum and reject
    overflow instead of returning an incomplete financial result. A bounded sum
@@ -143,6 +153,43 @@ snapshot; continuation remains a separate live read.
    reads that form one factual snapshot use `meta: { snapshot: true }`. Separate
    RPCs do not share a snapshot; preserve read/prepare/locked-recheck semantics
    for writes rather than treating multiple calls or HTTP batching as atomic.
+
+### Query-local materialized facts
+
+Reuse repeated owned facts within one statement with named materialized CTEs when
+measured plans justify the optimization. This is not a persisted cache, a new
+transaction boundary or a substitute for RLS. Keep each helper's result grain and
+cutoffs explicit; do not materialize whole histories merely to page or aggregate
+them in the API. The architecture guard permits locally declared CTE reads while
+still requiring schema-qualified application tables and write targets.
+
+`expense-adjustment-sql.ts` materializes owned allocation/current-parent facts
+once. Separate grouped totals include **all retained allocations** when checking
+credit and purchase capacity, including invalid allocations and confirmations
+beyond `adjustmentsAsOf`. Only reported recovery/reservation rows apply the
+confirmation cutoff. Eligibility still checks exact amount/booking snapshots,
+both current movements, receipt exclusivity and credit observation time. Final
+purchase and credit aggregates each return one row per movement, preserving
+gross amounts/counts and reservation of invalid allocations.
+
+`budget-spending-query.ts` materializes the requested typed window rows and their
+validated revision/activation/archive scopes before selecting eligible owned
+movements. Boundary conversion/intersection happens once per scope, not for every
+candidate movement. Native timestamp bounds can participate in account/date index
+conditions. Materialized revision/legacy tag membership uses
+`EXISTS` for membership so several selected tags cannot multiply movement sums.
+Typed `VALUES` exposes window cardinality to the planner; four parameters per
+window use at most 40,000 for the existing 10,000-window contract. Declaring the
+window list once avoids repeating those parameters in each CTE. Revision validity,
+legacy fallback, zero parents and exact activation/archive bounds remain shared
+between progress and evidence reads.
+
+Allocation facts rely on the expense-adjustment policy's two owned parent sets
+and the joined parents' transaction RLS. Do not add another independent account
+ownership join merely to repeat that authorization: with these policies it badly
+underestimates the same owned cohort and can choose repeated recovery scans instead
+of a hash join. This does not remove RLS or either parent join. Compare plans and
+exact totals, including foreign-parent fixtures, before changing such predicates.
 
 Large collection inputs (`providerSync.facts`, `objectives.spending`) use private
 POST method override. Empty queries stay GET. Keep transport selection aligned

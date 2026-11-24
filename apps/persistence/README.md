@@ -98,6 +98,14 @@ protected/TLS service channel in deployment.
 
 ## Boundaries
 
+- Migrations 036–038 add the nonremoved per-account recent index and replace only
+  expense-adjustment/transaction SELECT ownership with equivalent owned-key
+  membership. Transaction account keys use an indexable statement-local array.
+  Forced RLS, both-parent write checks and grants remain unchanged. Query-local
+  materialized recovery/window/tag facts preserve result grain and exact cutoffs;
+  see the [read pattern](../../docs/technical/persistence-reads.md#query-local-materialized-facts).
+  Apply additive migrations only to an authorized database; ordinary index DDL
+  may block writes while building. No seed/reset is required.
 - Migration 033 adds immutable text/voice conversation mode and an owner/mode
   index. Voice-only histories are backfilled without deleting or rewriting turns.
   Lists are text-only; private turn claims check mode. Text/voice creation quotas
@@ -169,7 +177,10 @@ protected/TLS service channel in deployment.
   decisions/sync commands recheck a canonical factual fingerprint under that lock;
   provider calls/classification/money arithmetic remain outside SQL in the API.
 - Sync facts, tombstones, conflicts, tag decisions/events and checkpoint commit
-  together. Failure recording never advances the last-good checkpoint.
+  together. Movement INSERT/UPDATE statements batch at most 100 rows within that
+  same transaction and user lock; late failures roll back every earlier batch.
+  Updates preserve user-owned fields and return rows only for prepared decisions.
+  Failure recording never advances the last-good checkpoint.
 - Private bodies/results are limited to 64 MiB, with one procedure per request.
   Provider runs also have API-side 32 MiB normalized / 50,000-record / 100-page
   bounds. Oversized runs fail atomically, never as silently split commits.

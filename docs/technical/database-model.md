@@ -58,7 +58,10 @@ All unqualified table names in the finance section below belong to `finance`.
 | `provider_movement_conflict` | PK `(transaction_id, reason)` | Movement-owned old/incoming factual snapshots and review resolution time |
 
 Indexes support direct user lookups, parent ownership checks, account booking
-periods, active rules and source/date queries. The keys and RLS checks are
+periods, active rules and source/date queries. Migration 036 adds a partial
+`transaction_account_recent_idx` on `(account_id, booked_at DESC, id DESC)` for
+nonremoved movements, supporting bounded per-account recent candidates without
+changing the history cursor. The keys and RLS checks are
 complementary: a valid FK can still point at another user's row unless the write
 policy independently rejects it.
 
@@ -206,7 +209,7 @@ is distinct from permanent tombstones, which replay never reactivates.
 
 ## Migration and seed lifecycle
 
-Thirty-two migrations are globally ordered across `migrations/identity`,
+Thirty-eight migrations are globally ordered across `migrations/identity`,
 `migrations/finance` and `migrations/assistant`: schema/bootstrap foundations plus
 the table migrations.
 Kysely's PostgreSQL migrator owns locking and transactional DDL/ledger updates.
@@ -259,6 +262,22 @@ Migration 032 adds only `assistant.processing_consent`, with self-owned read/
 insert, column-limited updates and forced RLS. Runtime cannot delete or reassign
 records. It changes no existing data and needs no reseed/reset; apply it only to
 an authorized target. Destructive rollback requires an explicit recovery plan.
+
+Migration 036 adds only the nonremoved recent-movement index. Migration 037 changes
+only the expense-adjustment SELECT-policy representation to two owned movement-key
+sets. Both parents still pass transaction/account RLS; write policies, grants and
+forced RLS are unchanged. Neither migration rewrites financial rows or requires a
+seed/reset. Apply them only to an authorized target. Index creation uses ordinary
+transactional DDL and can block writes while it builds; schedule it appropriately
+for retained databases. Their `down` paths remove the index and restore the prior
+correlated SELECT policy respectively, without deleting application data.
+
+Migration 038 changes only transaction SELECT ownership to membership in a
+statement-local UUID array of owned account IDs. Account RLS and the explicit
+current-user predicate protect those keys; the array also permits account-index
+conditions. Transaction write policies, related-tag/rule checks, grants and forced
+RLS are unchanged. Its `down` restores the correlated SELECT policy without
+rewriting financial data. Income-receipt policies are unchanged.
 
 The explicit owner-only CLI seed creates the fixed local mock account and its
 initial fixtures; it is never startup or migration work. Stable fixture IDs allow

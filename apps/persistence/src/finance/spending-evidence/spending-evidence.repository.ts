@@ -13,7 +13,7 @@ import {
   decodeSelectionCursor,
   encodeSelectionCursor,
 } from "../../pagination/selection-cursor";
-import { purchaseRecovery } from "../expense-adjustment/expense-adjustment-sql";
+import { withExpenseRecoveries } from "../expense-adjustment/expense-adjustment-sql";
 import {
   type BudgetSpendingTables,
   budgetSpendingBounds,
@@ -54,9 +54,11 @@ const evidenceColumns = [
   sql<TagSummary | null>`CASE WHEN t.id IS NULL THEN NULL ELSE jsonb_build_object('id',t.id,'name',t.name,'color',t.color) END`.as(
     "tag",
   ),
-  sql<string>`pa.refund_amount`.as("refundAmount"),
-  sql<string>`pa.reimbursement_amount`.as("reimbursementAmount"),
-  sql<number>`pa.adjustment_review_count`.as("adjustmentReviewCount"),
+  sql<string>`coalesce(pa.refund_amount,'0')`.as("refundAmount"),
+  sql<string>`coalesce(pa.reimbursement_amount,'0')`.as("reimbursementAmount"),
+  sql<number>`coalesce(pa.adjustment_review_count,0)`.as(
+    "adjustmentReviewCount",
+  ),
 ] as const;
 
 const zero = {
@@ -74,14 +76,11 @@ export class SpendingEvidenceRepository {
   ) {}
 
   async summary(input: SummarySpendingEvidenceInput) {
-    let query = this.db
+    let query = withExpenseRecoveries(this.db, input.adjustmentsAsOf)
       .selectFrom("finance.transaction as m")
       .innerJoin("finance.account as a", "a.id", "m.accountId")
       .leftJoin("finance.tag as t", "t.id", "m.tagId")
-      .leftJoinLateral(
-        purchaseRecovery(input.adjustmentsAsOf).as("pa"),
-        (join) => join.onTrue(),
-      )
+      .leftJoin("purchase_recoveries as pa", "pa.transactionId", "m.id")
       .where(movementPeriod(input))
       .where(eligibleSpending());
     if (input.tagId !== undefined)
@@ -138,13 +137,14 @@ export class SpendingEvidenceRepository {
     const base = budgetSpendingQuery(this.db, {
       windows: [input.window],
       asOf: input.asOf,
+      adjustmentsAsOf: input.adjustmentsAsOf,
     });
     const bounds = budgetSpendingBounds();
     const scope = await base
       .select([
         budgetTimestamp(bounds.start).as("start"),
         budgetTimestamp(bounds.end).as("end"),
-        budgetTimestamp(sql.ref<Date | null>("o.archivedAt")).as("archivedAt"),
+        budgetTimestamp(sql.ref<Date | null>("b.archivedAt")).as("archivedAt"),
       ])
       .limit(1)
       .executeTakeFirst();
@@ -162,10 +162,7 @@ export class SpendingEvidenceRepository {
     let query = base
       .innerJoin("finance.account as a", "a.id", "m.accountId")
       .leftJoin("finance.tag as t", "t.id", "m.tagId")
-      .leftJoinLateral(
-        purchaseRecovery(input.adjustmentsAsOf).as("pa"),
-        (join) => join.onTrue(),
-      )
+      .leftJoin("purchase_recoveries as pa", "pa.transactionId", "m.id")
       .where("m.id", "is not", null);
     const totals = await query
       .select(aggregateColumns)

@@ -53,13 +53,22 @@ for (const file of files("apps/persistence/src").filter((name) =>
   if (!file.includes("/database/") && /sql\.raw\(/.test(text))
     errors.push(`${file}: runtime dynamic SQL`);
 
-  if (
-    !file.endsWith(".spec.ts") &&
-    /(?:selectFrom|insertInto|updateTable|deleteFrom)\(['"](?!identity\.|finance\.|assistant\.)/.test(
-      text,
-    )
-  )
-    errors.push(`${file}: unqualified application table`);
+  const commonTables = new Set(
+    [...text.matchAll(/(?:\.with\(\s*|\bcte\()\s*['"]([a-z_][\w]*)['"]/g)].map(
+      (match) => match[1],
+    ),
+  );
+  if (!file.endsWith(".spec.ts"))
+    for (const [, operation, table] of text.matchAll(
+      /(selectFrom|insertInto|updateTable|deleteFrom)\(['"]([^'"]+)['"]/g,
+    )) {
+      const name = table.split(/\s+as\s+/i)[0];
+      if (
+        !/^(identity|finance|assistant)\./.test(name) &&
+        !(operation === "selectFrom" && commonTables.has(name))
+      )
+        errors.push(`${file}: unqualified application table`);
+    }
 }
 
 for (const file of files("apps/ui/src").filter((name) =>

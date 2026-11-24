@@ -1,6 +1,8 @@
 import { execFileSync, spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   appendFileSync,
+  existsSync,
   mkdirSync,
   readdirSync,
   readFileSync,
@@ -25,6 +27,30 @@ const sourceTreeClean =
     cwd: root,
     encoding: "utf8",
   }).trim().length === 0;
+// Identify uncommitted implementations too, including new migrations/helpers.
+// Markdown/evidence edits do not change the executable source fingerprint.
+const sourceHash = createHash("sha256");
+const sourceFiles = execFileSync(
+  "git",
+  ["ls-files", "--cached", "--others", "--exclude-standard", "-z"],
+  { cwd: root, encoding: "utf8" },
+)
+  .split("\0")
+  .filter(
+    (file) =>
+      file &&
+      !file.startsWith("docs/") &&
+      !file.endsWith(".md") &&
+      existsSync(join(root, file)),
+  )
+  .sort();
+for (const file of sourceFiles)
+  sourceHash
+    .update(file)
+    .update("\0")
+    .update(readFileSync(join(root, file)))
+    .update("\0");
+const sourceSha256 = sourceHash.digest("hex");
 const report = `${new Date().toISOString().replace(/[:.]/g, "-")}-${sha.slice(0, 8)}`;
 const destination = join(results, report);
 mkdirSync(destination);
@@ -136,7 +162,7 @@ try {
     );
     writeFileSync(
       path,
-      `${JSON.stringify({ ...record, series: { id: process.env.PERF_SERIES_ID, repetition: Number(process.env.PERF_REPETITION), planned: Number(process.env.PERF_REPETITIONS) }, build: { runnerImageId: imageId, postgresImageId, sourceTreeClean } }, null, 2)}\n`,
+      `${JSON.stringify({ ...record, series: { id: process.env.PERF_SERIES_ID, repetition: Number(process.env.PERF_REPETITION), planned: Number(process.env.PERF_REPETITIONS) }, build: { runnerImageId: imageId, postgresImageId, sourceTreeClean, sourceSha256 } }, null, 2)}\n`,
     );
   }
   console.log(`Performance results catalog: ${writeCatalog()}`);

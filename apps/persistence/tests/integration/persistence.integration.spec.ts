@@ -3,16 +3,18 @@ import { createHash, generateKeyPairSync, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import type { PersistenceContext as SignedContext } from "@lazyfinance/contracts/context";
-import type {
-  CommitProviderSync,
-  SaveMcpArtifact,
+import {
+  type CommitProviderSync,
+  MAX_PERSISTENCE_RPC_BYTES,
+  type SaveMcpArtifact,
 } from "@lazyfinance/contracts/internal";
 import {
   createContextSigner,
   createContextVerifier,
 } from "@lazyfinance/rpc-auth";
 import type { PersistenceRouter } from "@lazyfinance/rpc-persistence";
-import { type INestApplication, Inject } from "@nestjs/common";
+import { Inject } from "@nestjs/common";
+import type { NestExpressApplication } from "@nestjs/platform-express";
 import { Test } from "@nestjs/testing";
 import {
   createTRPCClient,
@@ -108,7 +110,7 @@ describe.skipIf(!ownerUrl)(
   () => {
     let owner: Kysely<Record<string, never>>;
     let runtime: Kysely<Record<string, never>>;
-    let app: INestApplication;
+    let app: NestExpressApplication;
     let url: string;
     let resetDatabaseUrl: string;
     let sign: Awaited<ReturnType<typeof createContextSigner>>;
@@ -275,7 +277,10 @@ describe.skipIf(!ownerUrl)(
         imports: [AppModule, DatabaseModule],
         providers: [FailureRouter],
       }).compile();
-      app = module.createNestApplication({ logger: false });
+      app = module.createNestApplication<NestExpressApplication>({
+        logger: false,
+      });
+      app.useBodyParser("json", { limit: MAX_PERSISTENCE_RPC_BYTES });
       await app.listen(0, "127.0.0.1");
       url = await app.getUrl();
       await sql`insert into identity."user"(id,email,name) values (${a}, ${a + "@example.test"}, 'A'), (${b}, ${b + "@example.test"}, 'B')`.execute(
@@ -470,7 +475,7 @@ describe.skipIf(!ownerUrl)(
           .filter((name) => !name.startsWith("failure."))
           .sort(),
       ).toEqual(expected.sort());
-      expect(expected).toHaveLength(109);
+      expect(expected).toHaveLength(111);
 
       for (const name of expected)
         expect(procedures[name]._def.meta).toMatchObject({
@@ -1540,7 +1545,7 @@ describe.skipIf(!ownerUrl)(
       const rollback = await new Migrator({
         db: owner,
         provider: migrationProvider(),
-      }).migrateDown();
+      }).migrateTo("202611160034-development-demo-seed");
       expect(String(rollback.error)).toMatch(/demo-tools reset operation/);
       expect(await migrate(owner, migrationProvider())).toEqual([]);
       expect(
@@ -3230,6 +3235,12 @@ describe.skipIf(!ownerUrl)(
             expect(rows.map((row) => row.id)).toEqual([
               i % 2 ? accountA : accountB,
             ]);
+            const movements = await sql<{
+              id: string;
+            }>`select id from finance.transaction`.execute(tx);
+            expect(movements.rows.map((row) => row.id)).toEqual([
+              i % 2 ? movementA : movementB,
+            ]);
           }),
         ),
       );
@@ -3245,6 +3256,9 @@ describe.skipIf(!ownerUrl)(
         runtime,
       );
       expect(rows).toEqual([]);
+      expect(
+        (await sql`select id from finance.transaction`.execute(runtime)).rows,
+      ).toEqual([]);
     });
 
     it("serves typed, precision-safe accounts and rejects unauthenticated/context-confused requests", async () => {
@@ -3383,6 +3397,162 @@ describe.skipIf(!ownerUrl)(
       });
       expect(await client.income.receipts.query(period)).toEqual(
         facts.receipts,
+      );
+    });
+
+    it("selects the global owned recent ten across accounts with exact ties and removals", async () => {
+      const userId = randomUUID(),
+        connectionId = randomUUID();
+      const accounts: string[] = [randomUUID(), randomUUID(), randomUUID()];
+      await sql`INSERT INTO identity."user"(id,email,name) VALUES (${userId},${`${userId}@example.test`},'Recent owner')`.execute(
+        owner,
+      );
+      await sql`INSERT INTO finance.provider_connection(id,user_id,provider_id)
+        SELECT ${connectionId},${userId},provider_id FROM finance.provider_connection WHERE id=${connectionA}`.execute(
+        owner,
+      );
+      for (const [index, id] of accounts.entries())
+        await sql`INSERT INTO finance.account(id,user_id,provider_connection_id,type,active,alias)
+          VALUES (${id},${userId},${connectionId},'checking',${index !== 2},${`Recent ${index}`})`.execute(
+          owner,
+        );
+      for (let i = 0; i < 48; i++)
+        await sql`INSERT INTO finance.transaction(account_id,booked_at,amount,type,merchant,removed_at,removal_reason)
+          VALUES (${accounts[i % 3]},${`2026-10-15T12:00:00.${String(i % 16).padStart(6, "0")}Z`}::timestamptz,
+            -1,'debit',${`Recent ${i}`},${i > 43 ? new Date() : null},${i > 43 ? "removed" : null})`.execute(
+          owner,
+        );
+      await sql`INSERT INTO finance.transaction(account_id,booked_at,amount,type,merchant)
+        VALUES (${accountB},'2099-01-01T12:00:00Z',-1,'debit','Foreign newest')`.execute(
+        owner,
+      );
+      const expected = await sql<{
+        id: string;
+      }>`SELECT m.id FROM finance.transaction m
+        JOIN finance.account a ON a.id=m.account_id WHERE a.user_id=${userId} AND m.removed_at IS NULL
+        ORDER BY m.booked_at DESC,m.id DESC LIMIT 10`.execute(owner);
+      const recent = await purposeClient(
+        ctx(userId),
+      ).transactions.recent.query();
+      expect(recent.map((row) => row.id)).toEqual(
+        expected.rows.map((row) => row.id),
+      );
+      expect(recent.every((row) => accounts.includes(row.accountId))).toBe(
+        true,
+      );
+      expect(recent.some((row) => row.accountId === accounts[2])).toBe(true);
+    });
+
+    it("preserves recovery grain, both-owner isolation and capacity beyond the observation cutoff", async () => {
+      const userId = randomUUID(),
+        connectionId = randomUUID(),
+        accountId = randomUUID();
+      await sql`INSERT INTO identity."user"(id,email,name) VALUES (${userId},${`${userId}@example.test`},'Recovery owner')`.execute(
+        owner,
+      );
+      await sql`INSERT INTO finance.provider_connection(id,user_id,provider_id)
+        SELECT ${connectionId},${userId},provider_id FROM finance.provider_connection WHERE id=${connectionA}`.execute(
+        owner,
+      );
+      await sql`INSERT INTO finance.account(id,user_id,provider_connection_id,type) VALUES (${accountId},${userId},${connectionId},'checking')`.execute(
+        owner,
+      );
+      const purchases = [
+        randomUUID(),
+        randomUUID(),
+        randomUUID(),
+        randomUUID(),
+        randomUUID(),
+      ];
+      const credits = [randomUUID(), randomUUID(), randomUUID(), randomUUID()];
+      for (const [index, id] of purchases.entries())
+        await sql`INSERT INTO finance.transaction(id,account_id,booked_at,amount,type,is_internal_movement)
+          VALUES (${id},${accountId},${index === 3 ? "2025-01-01T12:00:00Z" : "2025-02-01T12:00:00Z"}::timestamptz,
+            ${[-100, -50, -50, -50, -20][index]},'debit',false)`.execute(owner);
+      for (const [index, id] of credits.entries())
+        await sql`INSERT INTO finance.transaction(id,account_id,booked_at,amount,type,is_internal_movement)
+          VALUES (${id},${accountId},'2025-02-10T12:00:00Z',${[100, 100, 50, 20][index]},'credit',false)`.execute(
+          owner,
+        );
+      for (const [credit, purchase, amount, kind, future] of [
+        [0, 0, 30, "refund", false],
+        [1, 0, 20, "reimbursement", false],
+        [0, 1, 20, "refund", false],
+        [1, 1, 20, "refund", false],
+        [2, 2, 30, "refund", false],
+        [2, 3, 30, "reimbursement", true],
+        [3, 4, 10, "refund", false],
+      ] as const)
+        await sql`INSERT INTO finance.expense_adjustment(credit_transaction_id,purchase_transaction_id,kind,amount,
+          credit_amount,purchase_amount,credit_booked_at,purchase_booked_at,confirmed_at)
+          SELECT c.id,p.id,${kind},${amount},c.amount,p.amount,c.booked_at,p.booked_at,
+            ${future ? "2025-04-01T12:00:00Z" : "2025-02-15T12:00:00Z"}::timestamptz
+          FROM finance.transaction c,finance.transaction p WHERE c.id=${credits[credit]} AND p.id=${purchases[purchase]}`.execute(
+          owner,
+        );
+      await sql`UPDATE finance.transaction SET amount=-21 WHERE id=${purchases[4]}`.execute(
+        owner,
+      );
+      const foreignPurchase = randomUUID(),
+        foreignCredit = randomUUID();
+      await sql`INSERT INTO finance.transaction(id,account_id,booked_at,amount,type,is_internal_movement) VALUES
+        (${foreignPurchase},${accountB},'2025-02-01T12:00:00Z',-100,'debit',false),
+        (${foreignCredit},${accountB},'2025-02-10T12:00:00Z',100,'credit',false)`.execute(
+        owner,
+      );
+      for (const [credit, purchase] of [
+        [credits[0], foreignPurchase],
+        [foreignCredit, purchases[0]],
+      ])
+        await sql`INSERT INTO finance.expense_adjustment(credit_transaction_id,purchase_transaction_id,kind,amount,
+          credit_amount,purchase_amount,credit_booked_at,purchase_booked_at,confirmed_at)
+          SELECT c.id,p.id,'refund',1,c.amount,p.amount,c.booked_at,p.booked_at,'2025-02-15T12:00:00Z'
+          FROM finance.transaction c,finance.transaction p WHERE c.id=${credit} AND p.id=${purchase}`.execute(
+          owner,
+        );
+      const transactions = purposeClient(ctx(userId)).transactions;
+      const period = {
+        start: "2025-02-01 00:00:00",
+        end: "2025-03-01 00:00:00",
+        adjustmentsAsOf: "2025-03-01T12:00:00Z",
+      };
+      const totals = await transactions.taggedAggregates.query(period);
+      expect(totals).toHaveLength(2);
+      expect(totals).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            type: "debit",
+            amount: "-221.00",
+            count: 4,
+            refundAmount: "70.00",
+            reimbursementAmount: "20.00",
+            purchaseAdjustmentReviewCount: 2,
+          }),
+          expect.objectContaining({
+            type: "credit",
+            amount: "270.00",
+            count: 4,
+            reservedCreditAmount: "130.00",
+            expenseCreditAmount: "90.00",
+            expenseCreditCount: 2,
+            creditAdjustmentReviewCount: 2,
+            unclassifiedCreditCount: 4,
+          }),
+        ]),
+      );
+      const later = await transactions.aggregates.query({
+        ...period,
+        adjustmentsAsOf: "2025-04-02T12:00:00Z",
+      });
+      expect(later).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            type: "credit",
+            reservedCreditAmount: "150.00",
+            expenseCreditAmount: "90.00",
+            creditAdjustmentReviewCount: 3,
+          }),
+        ]),
       );
     });
 
@@ -3750,6 +3920,43 @@ describe.skipIf(!ownerUrl)(
       expect((await client.providerSync.facts.query(scope)).accounts).toEqual(
         [],
       );
+      const bulk = input.movements.flatMap((movement) =>
+        Array.from({ length: 201 }, (_, index) => ({
+          ...movement,
+          id: randomUUID(),
+          externalId: `bulk-${index}`,
+        })),
+      );
+      const bulkScope = {
+        ...scope,
+        keys: bulk.map((movement) => ({
+          accountExternalId: movement.accountExternalId,
+          externalId: movement.externalId,
+        })),
+      };
+      const bulkFacts = await client.providerSync.facts.query(bulkScope);
+      await expect(
+        client.providerSync.commit.mutate({
+          ...input,
+          scope: bulkScope,
+          expectedFingerprint: bulkFacts.fingerprint,
+          movements: bulk.map((movement, index) =>
+            index === 200
+              ? { ...movement, accountExternalId: "unknown" }
+              : movement,
+          ),
+        }),
+      ).rejects.toMatchObject({ data: { code: "BAD_REQUEST" } });
+      expect(
+        (
+          await sql`SELECT id FROM finance.transaction WHERE id IN (${sql.join(bulk.map((movement) => movement.id))})`.execute(
+            owner,
+          )
+        ).rows,
+      ).toEqual([]);
+      expect((await client.providerSync.facts.query(scope)).accounts).toEqual(
+        [],
+      );
       expect(await client.providerSync.commit.mutate(input)).toEqual({
         status: "complete",
         conflictCount: 0,
@@ -3849,6 +4056,53 @@ describe.skipIf(!ownerUrl)(
         revision: failureRun.revision + 1,
         lastFailureReason: "retryable",
       });
+
+      const bulkRun = await client.providerSync.begin.mutate({
+        connectionId: connection,
+        provider: provider.identifier,
+      });
+      const createScope = { ...bulkScope, revision: bulkRun.revision };
+      const createFacts = await client.providerSync.facts.query(createScope);
+      await client.providerSync.commit.mutate({
+        ...input,
+        scope: createScope,
+        expectedFingerprint: createFacts.fingerprint,
+        observedAt: "2026-10-19T18:00:00Z",
+        movements: bulk,
+      });
+      await client.tagRules.manual.mutate({
+        transactionId: bulk[0].id,
+        tagId: tagA,
+      });
+      const updateRun = await client.providerSync.begin.mutate({
+        connectionId: connection,
+        provider: provider.identifier,
+      });
+      const updateScope = { ...bulkScope, revision: updateRun.revision };
+      const updateFacts = await client.providerSync.facts.query(updateScope);
+      await client.providerSync.commit.mutate({
+        ...input,
+        scope: updateScope,
+        accounts: [],
+        expectedFingerprint: updateFacts.fingerprint,
+        observedAt: "2026-10-20T18:00:00Z",
+        movements: bulk.map((movement, index) => ({
+          ...movement,
+          amount: "-3.00",
+          ...(index === 0 ? {} : { decision: { tagId: null, ruleId: null } }),
+        })),
+      });
+      const updated = await client.providerSync.facts.query({
+        ...updateScope,
+        revision: updateRun.revision + 1,
+      });
+      expect(updated.movements).toHaveLength(201);
+      expect(
+        updated.movements.every((movement) => movement.amount === "-3.00"),
+      ).toBe(true);
+      expect(
+        updated.movements.find((movement) => movement.id === bulk[0].id),
+      ).toMatchObject({ tagId: tagA, tagDecisionOrigin: "manual" });
     });
 
     it("preserves nested JSON keys across pg, CamelCasePlugin and signed RPC serialization", async () => {

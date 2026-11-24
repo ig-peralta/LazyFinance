@@ -6,10 +6,7 @@ import { type Kysely, sql } from "kysely";
 import { RLS_DB } from "../../database/tokens";
 import { toCursorPage } from "../../pagination/cursor-page";
 import type { AccountTables } from "../account/account.tables";
-import {
-  creditRecovery,
-  purchaseRecovery,
-} from "../expense-adjustment/expense-adjustment-sql";
+import { withExpenseRecoveries } from "../expense-adjustment/expense-adjustment-sql";
 import type { IncomeReceiptTables } from "../income-receipt/income-receipt.tables";
 import type { IncomeSourceTables } from "../income-source/income-source.tables";
 import { budgetInstant, budgetTimestamp } from "../objective/budget-sql";
@@ -33,7 +30,20 @@ export class TransactionRepository {
   constructor(@Inject(RLS_DB) private readonly db: Kysely<Tables>) {}
 
   recent() {
-    return this.movementQuery().limit(10).execute();
+    // A global top ten can contain only movements in their account's top ten.
+    // Bound candidates before loading the shared movement projection/tag metadata.
+    return this.movementQuery()
+      .where(sql<boolean>`m.id IN (
+        SELECT latest.id FROM finance.account owned_account
+        CROSS JOIN LATERAL (
+          SELECT candidate.id FROM finance.transaction candidate
+          WHERE candidate.account_id=owned_account.id AND candidate.removed_at IS NULL
+          ORDER BY candidate.booked_at DESC,candidate.id DESC LIMIT 10
+        ) latest
+        WHERE owned_account.user_id=(SELECT identity.current_user_id())
+      )`)
+      .limit(10)
+      .execute();
   }
 
   async detail(id: string) {
@@ -208,19 +218,18 @@ export class TransactionRepository {
   async merchantSpending(period: PeriodInput) {
     const merchant = sql<string | null>`nullif(lower(btrim(m.merchant)), '')`;
     const month = sql<string>`to_char(m.booked_at AT TIME ZONE 'America/Santiago', 'YYYY-MM')`;
-    const rows = await this.db
+    const rows = await withExpenseRecoveries(this.db, period.adjustmentsAsOf)
       .selectFrom("finance.transaction as m")
       .innerJoin("finance.account as oa", "oa.id", "m.accountId")
-      .leftJoinLateral(
-        purchaseRecovery(period.adjustmentsAsOf).as("pa"),
-        (join) => join.onTrue(),
-      )
+      .leftJoin("purchase_recoveries as pa", "pa.transactionId", "m.id")
       .select([
         merchant.as("merchant"),
         month.as("month"),
         sql<string>`sum(m.amount)::text`.as("amount"),
-        sql<string>`sum(pa.refund_amount::numeric)::text`.as("refundAmount"),
-        sql<string>`sum(pa.reimbursement_amount::numeric)::text`.as(
+        sql<string>`(coalesce(sum(pa.refund_amount::numeric),0)+0.00)::text`.as(
+          "refundAmount",
+        ),
+        sql<string>`(coalesce(sum(pa.reimbursement_amount::numeric),0)+0.00)::text`.as(
           "reimbursementAmount",
         ),
         sql<number>`count(*)::int`.as("count"),
@@ -243,22 +252,16 @@ export class TransactionRepository {
   }
 
   private aggregateQuery(period: PeriodInput) {
-    const hasReceipt = sql<boolean>`r.transaction_id IS NOT NULL AND ca.reserved_credit_amount::numeric = 0`;
+    const hasReceipt = sql<boolean>`r.transaction_id IS NOT NULL AND coalesce(ca.reserved_credit_amount::numeric,0) = 0`;
     // RLS remains authoritative. The redundant trusted-owner predicate lets the
     // planner estimate the small owned set before expanding recovery/RLS subplans
     // instead of compiling thousands of unnecessary JIT functions.
-    return this.db
+    return withExpenseRecoveries(this.db, period.adjustmentsAsOf)
       .selectFrom("finance.transaction as m")
       .innerJoin("finance.account as oa", "oa.id", "m.accountId")
       .leftJoin("finance.income_receipt as r", "r.transactionId", "m.id")
-      .leftJoinLateral(
-        purchaseRecovery(period.adjustmentsAsOf).as("pa"),
-        (join) => join.onTrue(),
-      )
-      .leftJoinLateral(
-        creditRecovery(period.adjustmentsAsOf).as("ca"),
-        (join) => join.onTrue(),
-      )
+      .leftJoin("purchase_recoveries as pa", "pa.transactionId", "m.id")
+      .leftJoin("credit_recoveries as ca", "ca.transactionId", "m.id")
       .select([
         "m.type",
         "m.isInternalMovement",
@@ -266,27 +269,29 @@ export class TransactionRepository {
         hasReceipt.as("hasReceipt"),
         sql<string>`sum(m.amount)::text`.as("amount"),
         sql<number>`count(*)::int`.as("count"),
-        sql<string>`sum(pa.refund_amount::numeric)::text`.as("refundAmount"),
-        sql<string>`sum(pa.reimbursement_amount::numeric)::text`.as(
+        sql<string>`coalesce(sum(pa.refund_amount::numeric),0)::text`.as(
+          "refundAmount",
+        ),
+        sql<string>`coalesce(sum(pa.reimbursement_amount::numeric),0)::text`.as(
           "reimbursementAmount",
         ),
-        sql<number>`sum(pa.adjustment_review_count)::int`.as(
+        sql<number>`coalesce(sum(pa.adjustment_review_count),0)::int`.as(
           "purchaseAdjustmentReviewCount",
         ),
-        sql<string>`sum(ca.reserved_credit_amount::numeric)::text`.as(
+        sql<string>`coalesce(sum(ca.reserved_credit_amount::numeric),0)::text`.as(
           "reservedCreditAmount",
         ),
-        sql<string>`sum(ca.expense_credit_amount::numeric)::text`.as(
+        sql<string>`coalesce(sum(ca.expense_credit_amount::numeric),0)::text`.as(
           "expenseCreditAmount",
         ),
         sql<number>`count(*) FILTER (WHERE ca.expense_credit_amount::numeric > 0)::int`.as(
           "expenseCreditCount",
         ),
-        sql<number>`sum(ca.adjustment_review_count)::int`.as(
+        sql<number>`coalesce(sum(ca.adjustment_review_count),0)::int`.as(
           "creditAdjustmentReviewCount",
         ),
         sql<number>`count(*) FILTER (WHERE m.type = 'credit' AND NOT (${hasReceipt})
-          AND m.amount > ca.reserved_credit_amount::numeric)::int`.as(
+          AND m.amount > coalesce(ca.reserved_credit_amount::numeric,0))::int`.as(
           "unclassifiedCreditCount",
         ),
       ])

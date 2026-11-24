@@ -211,6 +211,20 @@ are append-only and require an owned saving objective and owned tags. Identity
 mappings remain bootstrap-only; demo tools use the API-verified signed user
 context, not a second lookup. Identity and MCP rows are not part of reset.
 
+Migration 037 expresses expense-adjustment **SELECT** ownership as membership in
+two owned movement-key sets. Both the credit and purchase must still be visible
+through transaction/account RLS, with a trusted current-user account predicate.
+This lets PostgreSQL reuse the owned keys rather than expanding correlated parent
+checks per allocation. It adds no role, grant or bypass; forced RLS and the separate
+INSERT/UPDATE/DELETE policies are unchanged, including both-parent write checks.
+
+Migration 038 similarly expresses transaction SELECT ownership as
+`account_id = ANY(ARRAY(SELECT ...))` over owned account IDs. The statement-local
+array remains an indexable condition, unlike a hashed row-membership filter that
+can encourage full-history scans. Account RLS and the explicit current-user
+predicate remain authoritative; transaction write policies, related tag/rule
+checks, grants and forced RLS do not change. Income-receipt policies are unchanged.
+
 `identity.onboarding` permits self-read/insert and column-limited updates to its
 status/completion time. Runtime cannot delete or reassign those records, and
 neither bootstrap nor unscoped requests can access them. This grants no profile
@@ -310,6 +324,15 @@ overwriting newer decisions; they are not client authentication. Failed sync
 attempt metadata can be recorded separately without changing last-good balances,
 success time or checkpoint. A committed run with durable unresolved conflicts
 reports `needs_review`, not clean success. Older revisions are `superseded`.
+
+Provider movement writes use batches of at most 100 **inside the original scoped
+transaction and user lock**. New rows use multi-row INSERT; existing provider rows
+use a typed JSON recordset UPDATE restricted by local ID, account, external ID and
+source, with an exact affected-row check. Only provider/effective fields are
+updated: tags, manual internal overrides, receipts, removals and retained recovery
+decisions are not overwritten. Rows are returned only when prepared tag decisions
+need them. Conflict/event processing and the final checkpoint remain in the same
+transaction; a late batch failure rolls back earlier batches and account changes.
 
 Completion/failure ends the lease and advances its revision. Expired/revoked sync
 failures also advance the credential version, preventing an earlier access check
