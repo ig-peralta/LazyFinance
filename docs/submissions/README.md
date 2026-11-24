@@ -1,10 +1,11 @@
 # Academic submission index
 
-These are the checked-in capstone documents and presentation, preserved in their
-submitted/editable formats. They are academic evidence, not current installation
-or architecture references; use the [technical guides](../technical/README.md)
-for the implemented system and [product vision](../product/product-vision.md) for
-direction. This index lists available files, not missing or unsubmitted work.
+These are the checked-in capstone documents and presentation. Earlier phase
+submissions retain their original formats; the Phase 3 evidence package is
+prepared for review. These are academic records, not current installation or
+architecture references. Use the [technical guides](../technical/README.md)
+for the implemented system and the [product vision](../product/product-vision.md)
+for direction.
 
 ## Phase 1 — project definition
 
@@ -24,3 +25,9 @@ direction. This index lists available files, not missing or unsubmitted work.
 - Reflective journals (2.1): [Álvaro Díaz](fase2/Diaz_Alvaro_2.1_APT122_DiarioReflexionFase2.docx),
   [Alejandra Ñanculeo](fase2/Nanculeo_Alejandra_2.1_APT122_DiarioReflexionFase2.docx),
   [Ignacio Peralta](fase2/Peralta_Ignacio_2.1_APT122_DiarioReflexionFase2.docx).
+
+## Phase 3 — final evidence
+
+- [Fase 3 — Evidencias del Proyecto APT](fase3/README.md): Spanish final report,
+  two-page vision, prioritized backlog, design with UML, and per-sprint test
+  matrices with evidence. See [outstanding submissions](fase3/README.md#entregables-pendientes).
