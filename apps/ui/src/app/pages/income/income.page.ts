@@ -6,6 +6,7 @@ import { formatClp } from "../../../utils/currency";
 import { formatDate } from "../../../utils/date";
 import { AuthCredentials } from "../../core/auth/auth-credentials";
 import { reportWorkspaceReadiness } from "../../core/rendering/workspace-preparation";
+import { BankSyncButton } from "../../features/banking/bank-sync-button";
 import { IncomeData } from "../../features/income/income.data";
 import { EditorDrawer } from "../../shared/ui/editor-drawer";
 import { Icon } from "../../shared/ui/icon";
@@ -14,7 +15,14 @@ import { ReceiptEditor } from "./receipt-editor/receipt-editor";
 
 @Component({
   selector: "income-page",
-  imports: [RouterLink, Icon, CreditBrowser, ReceiptEditor, EditorDrawer],
+  imports: [
+    RouterLink,
+    Icon,
+    CreditBrowser,
+    ReceiptEditor,
+    EditorDrawer,
+    BankSyncButton,
+  ],
   providers: [IncomeData],
   templateUrl: "./income.page.html",
 })

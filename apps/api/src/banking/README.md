@@ -5,7 +5,7 @@ Current implementation: provider-neutral contracts, owned ingestion, the
 [Fintoc snapshot import/refresh](fintoc/README.md) (LAZ-51/LAZ-48), and the
 development-only owned [simulated bank](mock/mock-bank.service.ts). Durable attempt
 leases, recovery and source-freshness reporting supply the explicit web controls
-in bank settings (LAZ-62), independently of the stored-balance page.
+in bank settings (LAZ-62) and the shared **Sincronizar bancos** action on financial pages.
 See the [database model](../../../../docs/technical/database-model.md),
 [private RPC/RLS](../../../../docs/technical/persistence-security.md) and
 [RPC inventories](../../../../docs/technical/rpc-contracts.md).

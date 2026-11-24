@@ -14,9 +14,7 @@
       <p class="panel-subtitle">Conexiones reales y simuladas · acceso separado de la actualización de datos.</p>
     </div>
     <div class="button-row">
-      <button class="icon-button" type="button" aria-label="Consultar conexiones y disponibilidad"
-        [disabled]="data.connections.isLoading() || data.configuration.isLoading() || busy()"
-        (click)="data.reload()"><app-icon name="refresh" /></button>
+      <bank-sync-button [disabled]="busy() || !!confirming() || selectionReadRequired()" />
       @if (configuration()) {
         <button class="button primary" type="button"
           [disabled]="busy() || data.configuration.isLoading() || data.connections.isLoading() || !!data.connections.error()"
@@ -57,7 +55,7 @@
       (completed)="linked($event, flow)" (cancelled)="closeFlow()" (reconcile)="closeFlow()" />
   }
 
-  @if (data.connections.isLoading() || data.connections.status() === 'idle') {
+  @if (data.connections.status() === 'loading' || data.connections.status() === 'idle') {
     <p class="notice" role="status">Consultando tus conexiones guardadas…</p>
   } @else if (data.connections.error()) {
     <p class="notice danger" role="alert">No pudimos consultar tus conexiones. No asumimos que no tengas bancos conectados.
@@ -117,8 +115,8 @@
             </div>
           }
           @if (selectedSync() === bank.id) {
-            <bank-sync-panel [connection]="bank" [enabled]="compatible(bank)" [automaticEnabled]="bank.provider === 'fintoc' && !!configuration()?.automaticSyncEnabled" [locked]="command.pending() || !!activeFlow() || !!confirming()"
-              (stateRead)="data.adoptStatus($event)" (pendingChange)="syncPending(bank, $event)" (closed)="closeSync(bank)" />
+            <bank-sync-panel [connection]="bank" [enabled]="compatible(bank)" [automaticEnabled]="bank.provider === 'fintoc' && !!configuration()?.automaticSyncEnabled" [locked]="command.pending() || !!activeFlow() || !!confirming() || bankSync.running()"
+              (stateRead)="data.adoptStatus($event)" (pendingChange)="syncPending(bank, $event)" (selectionUncertainChange)="selectionUncertain(bank, $event)" (closed)="closeSync(bank)" />
           }
           @if (confirming()?.id === bank.id) {
             <div class="notice warning" role="alert">

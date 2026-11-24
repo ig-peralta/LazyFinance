@@ -2,6 +2,12 @@ import { TestBed } from "@angular/core/testing";
 import { Router } from "@angular/router";
 import { RouterTestingHarness } from "@angular/router/testing";
 import { afterEach, describe, expect, it } from "vitest";
+import {
+  bankingConfiguration,
+  bankingConnection,
+  bankingImportResult,
+  bankingSyncStatus,
+} from "../../../../testing/banking";
 import { eventsIn } from "../../../../testing/dom";
 import {
   movement,
@@ -87,6 +93,31 @@ describe("owned history workspace", () => {
     expect(paginationDetails?.textContent).toContain("no sumes páginas");
     const ids = [...root.querySelectorAll("[id]")].map((element) => element.id);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("refreshes committed movements from the first page without clearing the URL filters", async () => {
+    const f = await setup("/movimientos?merchant=Mercado&direction=debit", {
+      "banking.configuration": () => bankingConfiguration,
+      "banking.connections": () => [bankingConnection],
+      "banking.syncStatus": () =>
+        bankingSyncStatus({ lastSuccessAt: "2026-11-08T18:00:00.000Z" }),
+      "banking.refresh": () => bankingImportResult,
+      "transactions.list": ({ cursor }) =>
+        transactionPage([movement], cursor ? null : "opaque-next"),
+    });
+    [...f.root.querySelectorAll<HTMLButtonElement>("nav.pagination button")]
+      .find((button) => button.textContent?.includes("Siguiente"))
+      ?.click();
+    await f.settle();
+    expect(f.mock.callsTo("transactions.list").at(-1)?.input.cursor).toBe(
+      "opaque-next",
+    );
+    f.root.querySelector<HTMLButtonElement>("bank-sync-button button")?.click();
+    await f.settle();
+    expect(f.mock.callsTo("banking.refresh")).toHaveLength(1);
+    const input = f.mock.callsTo("transactions.list").at(-1)?.input;
+    expect(input?.cursor).toBeUndefined();
+    expect(input).toMatchObject({ merchant: "Mercado", type: "debit" });
   });
 
   it("keeps manual no-tag, unreviewed and automatic classifications distinct in both ledger layouts", async () => {

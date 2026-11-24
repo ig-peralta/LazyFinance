@@ -24,11 +24,6 @@ export class BankingData {
     defaultValue: [],
   });
 
-  reload() {
-    this.configuration.reload();
-    this.connections.reload();
-  }
-
   /** Only confirmed lifecycle facts, never a balance/freshness inference. */
   adoptStatus(snapshot: BankingSyncStatus) {
     if (!this.connections.hasValue() || this.connections.isLoading()) return;

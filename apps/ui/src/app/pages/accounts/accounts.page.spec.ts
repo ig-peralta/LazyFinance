@@ -1,6 +1,19 @@
 import { TestBed } from "@angular/core/testing";
-import { afterEach, describe, expect, it } from "vitest";
-import { account, principal, rpcFailure, setupRpc } from "../../../testing/rpc";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  bankingConnection,
+  bankingImportResult,
+  bankingSyncStatus,
+} from "../../../testing/banking";
+import { deferred } from "../../../testing/deferred";
+import {
+  account,
+  principal,
+  type RpcOutput,
+  rpcFailure,
+  setupRpc,
+} from "../../../testing/rpc";
+import { SessionService } from "../../core/auth/session.service";
 import { AccountsPage } from "./accounts.page";
 
 describe("truthful stored account status", () => {
@@ -69,7 +82,7 @@ describe("truthful stored account status", () => {
   });
 
   it("keeps failed reads distinct from a zero or a successful empty import", async () => {
-    setupRpc({ "accounts.list": () => rpcFailure() });
+    const mock = setupRpc({ "accounts.list": () => rpcFailure() });
     const fixture = TestBed.createComponent(AccountsPage);
     fixture.detectChanges();
     await fixture.whenStable();
@@ -83,6 +96,58 @@ describe("truthful stored account status", () => {
     expect(
       fixture.nativeElement.querySelector('a[href="/conexiones-bancarias"]'),
     ).not.toBeNull();
+    fixture.nativeElement.querySelector(".notice.danger button").click();
+    await fixture.whenStable();
+    expect(mock.callsTo("accounts.list")).toHaveLength(2);
+    expect(mock.callsTo("banking.connections")).toHaveLength(0);
+  });
+
+  it("starts one Banco Demo refresh on click and reads balances again only after the commit", async () => {
+    const reply = deferred<RpcOutput<"banking.refresh">>();
+    let imported = false;
+    const mock = setupRpc(
+      {
+        "accounts.list": () => [
+          {
+            ...account("00000000-0000-4000-8000-000000000081"),
+            alias: imported ? "Saldo importado" : "Saldo guardado",
+          },
+        ],
+        "banking.connections": () => [
+          { ...bankingConnection, provider: "mock_bank" },
+        ],
+        "banking.syncStatus": () =>
+          bankingSyncStatus({ lastSuccessAt: "2026-11-08T18:00:00.000Z" }),
+        "banking.refresh": () => reply.promise,
+      },
+      "browser",
+      true,
+      [{ provide: SessionService, useValue: { demoToolsEnabled: () => true } }],
+    );
+    const fixture = TestBed.createComponent(AccountsPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement;
+    const button = root.querySelector<HTMLButtonElement>(
+      "bank-sync-button button",
+    );
+    if (!button) throw new Error("Missing bank sync action");
+    button.click();
+    fixture.detectChanges();
+    expect(button.disabled).toBe(true);
+    expect(button.textContent).toContain("Sincronizando");
+    await vi.waitFor(() =>
+      expect(mock.callsTo("banking.refresh")).toHaveLength(1),
+    );
+    expect(mock.callsTo("accounts.list")).toHaveLength(1);
+    expect(root.textContent).toContain("Saldo guardado");
+    imported = true;
+    reply.resolve(bankingImportResult);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(mock.callsTo("accounts.list")).toHaveLength(2);
+    expect(root.textContent).toContain("Saldo importado");
   });
 
   it("offers a connection shortcut on an empty account list without loading banking settings", async () => {

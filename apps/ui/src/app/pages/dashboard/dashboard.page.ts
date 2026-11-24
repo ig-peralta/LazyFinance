@@ -6,6 +6,7 @@ import { currentMonth, monthLabel } from "../../../utils/month";
 import { SessionService } from "../../core/auth/session.service";
 import { reportWorkspaceReadiness } from "../../core/rendering/workspace-preparation";
 import { AccountsData } from "../../features/accounts/accounts.data";
+import { BankSyncButton } from "../../features/banking/bank-sync-button";
 import { ObjectivesData } from "../../features/objectives/objectives.data";
 import { SavingsMeasure } from "../../features/objectives/savings-measure";
 import { OnboardingHint } from "../../features/onboarding/onboarding-hint";
@@ -31,6 +32,7 @@ import { Summary } from "./summary/summary";
     Comparison,
     BudgetProgressView,
     Icon,
+    BankSyncButton,
   ],
   providers: [
     AccountsData,

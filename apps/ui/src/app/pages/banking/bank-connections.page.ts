@@ -3,9 +3,11 @@ import {
   Component,
   computed,
   ElementRef,
+  effect,
   Injector,
   inject,
   signal,
+  untracked,
   viewChild,
 } from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
@@ -15,7 +17,9 @@ import { SessionService } from "../../core/auth/session.service";
 import { reportWorkspaceReadiness } from "../../core/rendering/workspace-preparation";
 import { RpcClient, type RpcScope } from "../../core/rpc/rpc-client";
 import { createScopedCommand } from "../../core/rpc/scoped-command";
+import { BankSyncButton } from "../../features/banking/bank-sync-button";
 import { BankingData } from "../../features/banking/banking.data";
+import { ManualBankSync } from "../../features/banking/manual-bank-sync";
 import { Icon } from "../../shared/ui/icon";
 import { BankLinkFlow } from "./bank-link-flow/bank-link-flow";
 import { BankSyncPanel } from "./bank-sync-panel/bank-sync-panel";
@@ -28,7 +32,7 @@ interface LinkFlow {
 
 @Component({
   selector: "bank-connections-page",
-  imports: [RouterLink, Icon, BankLinkFlow, BankSyncPanel],
+  imports: [RouterLink, Icon, BankLinkFlow, BankSyncPanel, BankSyncButton],
   providers: [BankingData],
   templateUrl: "./bank-connections.page.html",
   styleUrl: "./bank-connections.page.css",
@@ -44,6 +48,7 @@ export class BankConnectionsPage {
     () => this.routeParams()?.get("from") === "onboarding",
   );
   protected readonly command = createScopedCommand();
+  protected readonly bankSync = inject(ManualBankSync);
   private readonly flow = signal<LinkFlow | null>(null);
   private readonly syncSelection = signal<{
     scope: RpcScope;
@@ -52,6 +57,10 @@ export class BankConnectionsPage {
   private readonly syncing = signal<{ scope: RpcScope; id: string } | null>(
     null,
   );
+  private readonly unresolvedSelection = signal<{
+    scope: RpcScope;
+    id: string;
+  } | null>(null);
   private readonly noticeState = signal<{
     scope: RpcScope;
     message: string;
@@ -92,6 +101,7 @@ export class BankConnectionsPage {
     () =>
       this.command.pending() ||
       !!this.activeFlow() ||
+      this.bankSync.running() ||
       this.syncing()?.scope === this.rpc.authenticatedScope(),
   );
   protected readonly selectedSync = computed(() =>
@@ -99,9 +109,21 @@ export class BankConnectionsPage {
       ? this.syncSelection()?.id
       : undefined,
   );
+  protected readonly selectionReadRequired = computed(() => {
+    const change = this.unresolvedSelection();
+    return (
+      !!change &&
+      change.scope === this.rpc.authenticatedScope() &&
+      change.id === this.selectedSync()
+    );
+  });
 
   constructor() {
     reportWorkspaceReadiness(this.data.configuration, this.data.connections);
+    effect(() => {
+      if (this.bankSync.report()?.results.length)
+        untracked(() => this.data.connections.reload());
+    });
   }
 
   protected connect(connection: BankingConnection | null = null) {
@@ -244,6 +266,12 @@ export class BankConnectionsPage {
     else if (this.syncing()?.id === bank.id) this.syncing.set(null);
   }
 
+  protected selectionUncertain(bank: BankingConnection, uncertain: boolean) {
+    const scope = this.rpc.authenticatedScope();
+    if (scope && bank.id === this.selectedSync())
+      this.unresolvedSelection.set(uncertain ? { scope, id: bank.id } : null);
+  }
+
   protected closeSync(bank: BankingConnection) {
     const scope = this.rpc.authenticatedScope();
     if (scope && this.syncing()?.id === bank.id)
@@ -254,6 +282,7 @@ export class BankConnectionsPage {
       });
     this.syncSelection.set(null);
     this.syncing.set(null);
+    this.unresolvedSelection.set(null);
     this.focusHeading();
   }
 

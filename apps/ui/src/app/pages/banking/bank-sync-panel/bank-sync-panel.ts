@@ -20,6 +20,7 @@ import { santiagoDate } from "../../../../utils/date";
 import { RpcClient, type RpcScope } from "../../../core/rpc/rpc-client";
 import { createScopedCommand } from "../../../core/rpc/scoped-command";
 import { accountTypeLabel } from "../../../features/accounts/account-presentation";
+import { ManualBankSync } from "../../../features/banking/manual-bank-sync";
 import { Icon } from "../../../shared/ui/icon";
 import { BankAccountSelector } from "../bank-account-selector/bank-account-selector";
 
@@ -42,12 +43,21 @@ export class BankSyncPanel {
   readonly locked = input(false);
   readonly stateRead = output<BankingSyncStatus>();
   readonly pendingChange = output<boolean>();
+  readonly selectionUncertainChange = output<boolean>();
   readonly closed = output<void>();
   protected readonly trackingDay = computed(() =>
     santiagoDate(new Date(this.connection().createdAt)),
   );
   private readonly rpc = inject(RpcClient);
+  private readonly bankSync = inject(ManualBankSync);
   private readonly lifetime = inject(DestroyRef);
+  private readonly connectionId = computed(() => this.connection().id);
+  private readonly batchResult = computed(() => {
+    const id = this.connectionId();
+    return this.bankSync
+      .report()
+      ?.results.find((entry) => entry.connectionId === id);
+  });
   private readonly readVersion = signal(0);
   private readonly observations = signal(0);
   protected readonly observationEnded = computed(
@@ -69,7 +79,7 @@ export class BankSyncPanel {
     params: () => {
       const scope = this.rpc.authenticatedScope();
       return scope
-        ? { scope, id: this.connection().id, read: this.readVersion() }
+        ? { scope, id: this.connectionId(), read: this.readVersion() }
         : undefined;
     },
     loader: async ({ params, abortSignal }) => {
@@ -139,6 +149,7 @@ export class BankSyncPanel {
     () =>
       this.enabled() &&
       !this.locked() &&
+      !this.bankSync.busy() &&
       !this.command.pending() &&
       !this.selectorPending() &&
       !this.selectorUncertain() &&
@@ -154,6 +165,7 @@ export class BankSyncPanel {
       return "Termina o cancela la otra acción de esta conexión.";
     if (this.command.pending())
       return "Esperando confirmación de la sincronización solicitada.";
+    if (this.bankSync.busy()) return "Ya hay una sincronización en curso.";
     if (this.selectorPending())
       return "Esperando confirmación de la selección de cuentas.";
     if (this.selectorUncertain())
@@ -236,7 +248,7 @@ export class BankSyncPanel {
   constructor() {
     effect(() => {
       this.rpc.authenticatedScope();
-      this.connection().id;
+      this.connectionId();
       this.observations.set(0);
       this.managementOpen.set(false);
       this.managementMounted.set(false);
@@ -252,9 +264,13 @@ export class BankSyncPanel {
     effect(() =>
       this.pendingChange.emit(this.command.pending() || this.selectorPending()),
     );
+    effect(() => this.selectionUncertainChange.emit(this.selectorUncertain()));
     effect(() => {
       const snapshot = this.snapshot();
       if (snapshot) this.stateRead.emit(snapshot);
+    });
+    effect(() => {
+      if (this.batchResult()) this.readStatus();
     });
     effect((onCleanup) => {
       const snapshot = this.snapshot(),
@@ -313,6 +329,7 @@ export class BankSyncPanel {
     if (
       !scope ||
       this.command.pending() ||
+      this.bankSync.busy() ||
       this.locked() ||
       !this.enabled() ||
       this.needsReconciliation() ||
@@ -339,15 +356,11 @@ export class BankSyncPanel {
         // Selection may be saved while an existing run or waiting period still
         // prevents import. Keep its truthful status instead of inventing a run.
         if (!latest?.canRefresh) return null;
-        return latest.lastSuccessAt
-          ? current.client.banking.refresh.mutate(
-              { id: attempt.id },
-              { signal },
-            )
-          : current.client.banking.importInitial.mutate(
-              { id: attempt.id },
-              { signal },
-            );
+        if (latest.connectionId !== attempt.id)
+          throw new Error(
+            "Synchronization status does not match its connection",
+          );
+        return this.bankSync.syncConnection(current, latest, signal);
       },
       (result) => {
         this.attempt.set({ ...attempt, result });

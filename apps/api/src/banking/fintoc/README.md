@@ -7,11 +7,11 @@ first-link day in Santiago through today**. It does not backfill earlier days or
 force a bank refresh. Reported balances do not depend on importing past transactions.
 Authorization completion and `checkConnection` never import implicitly.
 `banking.refresh` replays the same bounded snapshot with durable recovery/status
-reporting. The web connection settings expose these commands explicitly (LAZ-62),
-separately from authorization/access checks and the stored-balance page.
+reporting. The web connection settings and other financial pages expose these
+commands explicitly, separately from authorization, access checks and stored reads.
 Optional automatic execution invokes this same path, off by default via
-`BANKING_AUTOMATIC_SYNC_ENABLED=false`. It imports already available data roughly
-hourly, not bank-forced refreshes. No payment or money-moving endpoint is used.
+`BANKING_AUTOMATIC_SYNC_ENABLED=false`. It imports already available data, not
+bank-forced refreshes. No payment or money-moving endpoint is used.
 
 ## Directory ownership
 

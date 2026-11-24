@@ -6,6 +6,7 @@ import { formatClp, progressWidth } from "../../../utils/currency";
 import { currentMonth } from "../../../utils/month";
 import { AuthCredentials } from "../../core/auth/auth-credentials";
 import { reportWorkspaceReadiness } from "../../core/rendering/workspace-preparation";
+import { BankSyncButton } from "../../features/banking/bank-sync-button";
 import { ObjectivesData } from "../../features/objectives/objectives.data";
 import { TaggingData } from "../../features/tagging/tagging.data";
 import { EditorDrawer } from "../../shared/ui/editor-drawer";
@@ -15,7 +16,7 @@ import { objectivePeriod } from "./forms/objective-form";
 
 @Component({
   selector: "objectives-page",
-  imports: [RouterLink, Icon, BudgetEditor, EditorDrawer],
+  imports: [RouterLink, Icon, BudgetEditor, EditorDrawer, BankSyncButton],
   providers: [ObjectivesData, TaggingData],
   templateUrl: "./objectives.page.html",
 })

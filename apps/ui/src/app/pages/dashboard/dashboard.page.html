@@ -1,6 +1,6 @@
 <header class="page-header dashboard-header">
   <div><p class="eyebrow">Hola, {{ session.user()?.name }}</p><h1>Resumen del mes<span class="accent-text">.</span></h1><p class="page-description">Gastos, ingresos y planes del período seleccionado.</p></div>
-  <div class="page-actions"><label class="button month-picker"><app-icon name="calendar" /><span class="sr-only">Mes del resumen</span><input #monthPicker type="month" [value]="summaries.month()" [max]="maxMonth" (change)="selectMonth(monthPicker.value)" /></label></div>
+  <div class="page-actions"><label class="button month-picker"><app-icon name="calendar" /><span class="sr-only">Mes del resumen</span><input #monthPicker type="month" [value]="summaries.month()" [max]="maxMonth" (change)="selectMonth(monthPicker.value)" /></label><bank-sync-button /></div>
 </header>
 <onboarding-hint />
 

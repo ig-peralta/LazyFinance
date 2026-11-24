@@ -42,7 +42,7 @@
     <main #content id="workspace-content" tabindex="-1" class="workspace-content" [attr.inert]="assistantWorkspace.opened() && assistantWorkspace.modal() ? '' : null">
       @if (session.error()) { <div class="notice danger" role="status">{{ session.error() }} <button type="button" class="button secondary" (click)="retrySession()">Reintentar</button></div> }
       @if (logoutError()) { <div class="notice danger" role="alert">{{ logoutError() }}</div> }
-      @else { <router-outlet /> }
+      @else { <bank-sync-feedback /><router-outlet /> }
     </main>
     <div class="assistant-mount" [hidden]="!assistantWorkspace.opened()" (click)="dismissAssistantBackdrop($event)" (keydown)="containPendingFocus($event)" (keydown.escape)="dismissPendingAssistant($event)">
   @defer (when assistantWorkspace.opened()) {
