@@ -28,6 +28,6 @@ for direction.
 
 ## Phase 3 — final evidence
 
-- [Fase 3 — Evidencias del Proyecto APT](fase3/README.md): Spanish final report,
-  two-page vision, prioritized backlog, design with UML, and per-sprint test
-  matrices with evidence. See [outstanding submissions](fase3/README.md#entregables-pendientes).
+- [Fase 3 — Evidencias del Proyecto APT](fase3/README.md): Spanish closeout and
+  innovation summary, product vision, prioritized backlog, design with UML, and
+  per-sprint test matrices. See [outstanding submissions](fase3/README.md#entregables-pendientes).

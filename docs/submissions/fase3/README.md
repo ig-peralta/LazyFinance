@@ -8,8 +8,8 @@ cada ejecución; no se atribuyen a ese commit de documentación.
 
 | Artefacto | Dónde revisarlo |
 | --- | --- |
-| Informe final de cierre, con problema, diferenciación y valor agregado | [Informe final](informe-final.md) |
-| Product Vision de dos páginas | [Visión en PDF](vision-del-producto.pdf) · [fuente editable](vision-del-producto.ms) |
+| Cierre e innovación: problema, diferenciación y valor agregado | [Cierre e innovación](cierre-e-innovacion.md) |
+| Product Vision | [Visión del producto](vision-del-producto.md) |
 | Product Backlog priorizado e historias | [Backlog priorizado y trazabilidad](backlog-priorizado.md) |
 | Sprint Backlog, Definition of Done y retrospectivas | [Índice por sprint](../../planning/README.md) · [cómo se lee el backlog](backlog-priorizado.md#sprint-backlogs-y-retrospectivas) |
 | Documento de diseño, modelo, UML y decisiones técnicas | [Documento de diseño](documento-de-diseno.md) · [atlas de diagramas](../../diagrams/README.md) |
@@ -34,18 +34,3 @@ Estos archivos obligatorios de Fase 3 aún no están en el repositorio:
   La presentación de Fase 1 no sustituye esta entrega.
 
 La presentación final en inglés es opcional y no se incluye en este paquete.
-
-## Edición de la visión
-
-La fuente de la visión es un documento `ms` con un salto de página explícito.
-Para volver a generar el PDF desde la raíz del repositorio con GNU groff:
-
-```sh
-SOURCE_DATE_EPOCH=$(git show -s --format=%ct 815a4bda) \
-  groff -K utf8 -Tpdf -ms -P-pa4 docs/submissions/fase3/vision-del-producto.ms \
-  > docs/submissions/fase3/vision-del-producto.pdf
-pdfinfo docs/submissions/fase3/vision-del-producto.pdf
-```
-
-Comprueba que sigue teniendo **dos páginas A4** y que el texto de ambas es
-legible. La generación no inicia la aplicación ni sus servicios.

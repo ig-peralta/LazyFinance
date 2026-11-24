@@ -161,7 +161,8 @@ earlier validation evidence do not describe the latest runtime by themselves.
   and individual document, including [Phase 1](docs/submissions/README.md#phase-1--project-definition)
   project definition/forms/presentation and [Phase 2](docs/submissions/README.md#phase-2--development-progress)
   progress guides/reflections. The [Phase 3 evidence package](docs/submissions/fase3/README.md)
-  consolidates the final report, two-page vision, design, backlog and tests.
+  consolidates the closeout and innovation summary, product vision, design,
+  backlog and tests.
   Academic files are evidence, not current setup docs.
 
 ## Prerequisites
