@@ -12,7 +12,7 @@
   } @else {
     <section class="panel stack" aria-labelledby="reset-demo-details">
       <h2 id="reset-demo-details">Restablecer datos para la demo</h2>
-      <p>Se eliminarán las conexiones bancarias, cuentas, movimientos, etiquetas, presupuestos, metas, ingresos y el historial del asistente de tu usuario. Luego se crearán tres cuentas y movimientos de ejemplo desde 2024 hasta el mes actual.</p>
+      <p>Se eliminarán las conexiones bancarias, cuentas, movimientos, etiquetas, presupuestos, metas, ingresos y el historial del asistente de tu usuario. Se creará Banco Demo (simulado) con tres cuentas importadas y tres más disponibles para seleccionar, junto con una historia financiera de ejemplo desde 2024.</p>
       <p class="notice danger">Esta acción no se puede deshacer. Tu identidad de inicio de sesión y las autorizaciones MCP se conservarán. El restablecimiento se aplica únicamente a la cuenta con la que iniciaste sesión.</p>
       <button
         type="button"
@@ -46,16 +46,21 @@
       }
 
       @if (confirmation(); as result) {
-        <p class="notice" role="status">
-          Se limpiaron los datos financieros y el historial del asistente. Se cargaron {{ result.transactionCount }} movimientos de demostración.
-        </p>
+        @if (result.status === 'ready') {
+          <p class="notice" role="status">Banco Demo listo: 3 de 6 cuentas seleccionadas y {{ result.transactionCount }} movimientos históricos importados. <a routerLink="/conexiones-bancarias">Administrar banco</a></p>
+        } @else {
+          <p class="notice warning" role="status">Se restablecieron tus datos, pero no se pudo confirmar la importación completa. Consulta el banco y continúa la preparación sin volver a borrar los datos.</p>
+        }
+      }
+      @if (bank() && (!bank()?.prepared || confirmation()?.status === 'incomplete')) {
+        <button type="button" class="button secondary" data-testid="resume-demo-account" [disabled]="command.pending()" (click)="resume()">Continuar preparación guardada</button>
       }
     </section>
 
     <section class="panel stack" aria-labelledby="demo-movement-details">
-      <h2 id="demo-movement-details">Crear movimiento de demostración</h2>
-      <p>Agrega un movimiento sin etiqueta a tus cuentas de ejemplo. Una transferencia interna crea un cargo y un abono entre tus cuentas; un movimiento externo simula una compra, un gasto o un ingreso.</p>
-      <p>Primero prepara los datos de demostración para crear las cuentas de ejemplo. No se modificarán tus cuentas bancarias vinculadas.</p>
+      <h2 id="demo-movement-details">Actividad del banco simulado</h2>
+      <p>Los movimientos nuevos se agregan al origen simulado, no a las cuentas importadas. Sincroniza Banco Demo desde Conexiones bancarias para verlos en tu espacio financiero. Una transferencia crea ambos lados; los ingresos nuevos no se confirman automáticamente.</p>
+      <p>Primero prepara los datos de demostración. No se modificarán conexiones bancarias reales.</p>
       <div class="button-row">
         <button type="button" class="button secondary" data-testid="create-internal-demo-transaction" [disabled]="command.pending()" (click)="create('internal')">
           Crear transferencia interna
@@ -65,9 +70,27 @@
         </button>
       </div>
       @if (created(); as movement) {
-        <p class="notice" role="status">{{ movement.description }}: ${{ movement.amount }} CLP. {{ movement.transactionCount }} {{ movement.transactionCount === 1 ? 'movimiento sin etiqueta' : 'movimientos sin etiqueta' }}.</p>
+        <p class="notice" role="status">{{ movement.description }}: ${{ movement.amount }} CLP. {{ movement.transactionCount }} {{ movement.transactionCount === 1 ? 'movimiento pendiente de sincronizar' : 'movimientos pendientes de sincronizar' }}.</p>
       }
     </section>
+    @if (bank(); as prepared) {
+      <section class="panel stack" aria-labelledby="demo-bank-controls">
+        <h2 id="demo-bank-controls">Banco Demo (simulado)</h2>
+        <p>Sin credenciales reales ni movimientos de dinero. Tres cuentas históricas se seleccionan al preparar; tres más están disponibles desde Administrar cuentas. Estos controles cambian el origen del banco, nunca los datos financieros importados.</p>
+        <a class="button secondary" routerLink="/conexiones-bancarias">Abrir conexiones bancarias</a>
+        <div class="button-row">
+          <button type="button" class="button secondary" data-testid="demo-bank-unavailable" [disabled]="bankCommand.pending() || command.pending()" (click)="setFailure('retryable')">Simular indisponibilidad</button>
+          <button type="button" class="button secondary" data-testid="demo-bank-expired" [disabled]="bankCommand.pending() || command.pending()" (click)="setFailure('expired')">Simular acceso vencido</button>
+          <button type="button" class="button secondary" data-testid="demo-bank-restore" [disabled]="bankCommand.pending() || command.pending()" (click)="setFailure(null)">Restaurar disponibilidad</button>
+          <button type="button" class="button secondary" data-testid="demo-bank-correct" [disabled]="bankCommand.pending() || command.pending()" (click)="changeMovement('correct')">Corregir compra</button>
+          <button type="button" class="button secondary" data-testid="demo-bank-remove" [disabled]="bankCommand.pending() || command.pending()" (click)="changeMovement('remove')">Retirar compra</button>
+        </div>
+        @if (bankCommand.success()) { <p class="notice" role="status">{{ bankCommand.success() }}</p> }
+        @if (bankCommand.error()) { <p class="notice danger" role="alert">{{ bankCommand.error() }}</p> }
+        @if (created(); as movement) { <p class="record-meta">{{ movement.description }} · pendiente de sincronizar.</p> }
+        <p class="record-meta">Restaurar el origen no cancela una espera de reintento ni revincula un acceso vencido. Usa Revincular para recuperar el acceso.</p>
+      </section>
+    }
     @if (command.error(); as error) {
       <p class="notice danger" role="alert">{{ error }}</p>
     }

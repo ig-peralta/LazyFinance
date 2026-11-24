@@ -6,7 +6,7 @@
     </div>
     <button class="icon-button" type="button" [attr.aria-label]="'Cerrar sincronización de ' + connection().institution.name" (click)="closed.emit()"><app-icon name="close" /></button>
   </div>
-  <p class="record-meta"><strong>Seguimiento desde el {{ trackingDay() }} · día de vinculación en Santiago.</strong></p>
+  <p class="record-meta"><strong>{{ connection().provider === 'mock_bank' ? 'Historia sintética disponible desde 2024-01-01' : 'Seguimiento desde el ' + trackingDay() + ' · día de vinculación en Santiago' }}.</strong></p>
   @if (status.isLoading()) {
     <p class="notice" role="status">Consultando el estado guardado de esta conexión…</p>
   } @else if (status.error()) {
@@ -52,16 +52,20 @@
       <summary>Administrar cuentas</summary>
       @if (managementMounted()) {
         <bank-account-selector [connectionId]="connection().id" [enabled]="enabled()" [locked]="locked() || command.pending()"
-          [automaticEnabled]="automaticEnabled()" (confirmed)="selectionConfirmed($event)" (pendingChange)="selectorPending.set($event)" (reconciliationChange)="selectorUncertain.set($event)" />
+          [automaticEnabled]="automaticEnabled()" [allowAutomatic]="connection().provider === 'fintoc'" (confirmed)="selectionConfirmed($event)" (pendingChange)="selectorPending.set($event)" (reconciliationChange)="selectorUncertain.set($event)" />
       }
     </details>
   }
   <details class="section-disclosure"><summary>Alcance del seguimiento</summary>
-    <p>Traemos los saldos reportados y los movimientos fechados desde ese día, sin buscar transacciones de días anteriores. Actualizar o revincular no cambia esta fecha.</p>
-    <p class="field-hint">Fintoc informa fechas contables, no una hora confiable: pueden aparecer movimientos anteriores a la vinculación dentro del mismo día. No ofrecemos importar historial anterior. Los registros ya importados se conservan, pero los días anteriores quedan fuera de las próximas consultas.</p>
+    @if (connection().provider === 'mock_bank') {
+      <p>Banco Demo informa saldos y movimientos sintéticos desde 2024; las cuentas no seleccionadas no se importan. Los movimientos nuevos solo aparecen después de sincronizar.</p>
+    } @else {
+      <p>Traemos los saldos reportados y los movimientos fechados desde ese día, sin buscar transacciones de días anteriores. Actualizar o revincular no cambia esta fecha.</p>
+      <p class="field-hint">Fintoc informa fechas contables, no una hora confiable: pueden aparecer movimientos anteriores a la vinculación dentro del mismo día. No ofrecemos importar historial anterior. Los registros ya importados se conservan, pero los días anteriores quedan fuera de las próximas consultas.</p>
+    }
   </details>
   <details class="section-disclosure"><summary>Detalles de la importación</summary>
-    <p class="record-meta">Importar o actualizar consulta los datos que Fintoc ya tiene disponibles. No obliga al banco a generar información nueva. Los saldos se consultan por separado en Cuentas.</p>
+    <p class="record-meta">Importar o actualizar consulta los datos que {{ connection().provider === 'mock_bank' ? 'Banco Demo' : 'Fintoc' }} ya tiene disponibles. No obliga al banco a generar información nueva. Los saldos se consultan por separado en Cuentas.</p>
     <p class="field-hint">La antigüedad depende de la fecha de origen de un saldo conocido, no de la hora de importación. Reciente no garantiza disponibilidad en tiempo real. Sin saldo, sin fecha válida o con fecha futura, la antigüedad es desconocida.</p>
   </details>
 
@@ -88,13 +92,27 @@
   @if (report(); as report) {
     <div class="sync-report">
       <p><strong>Registros examinados:</strong> {{ report.importedAccounts }} cuentas compatibles y {{ report.bookedMovements }} movimientos confirmados. Son registros revisados, no filas nuevas ni ingresos reconocidos.</p>
-      <p>Período de seguimiento consultado: {{ report.requestedHistory.from }} a {{ report.requestedHistory.through }}. La cobertura importada sigue siendo parcial; no representa todo el historial del banco.</p>
+      <p>Período de seguimiento consultado: {{ report.requestedHistory.from }} a {{ report.requestedHistory.through }}. {{ connection().provider === 'mock_bank' ? 'El banco simulado informa cobertura completa de este período sintético.' : 'La cobertura importada sigue siendo parcial; no representa todo el historial del banco.' }}</p>
       @if (report.ignoredPendingMovements || report.ignoredProcessingMovements) { <p>{{ report.ignoredPendingMovements }} movimientos pendientes y {{ report.ignoredProcessingMovements }} en proceso no se trataron como contabilizados.</p> }
-      @if (report.reversedMovements) { <p>{{ report.reversedMovements }} reversiones informadas por Fintoc. No se borran las decisiones guardadas.</p> }
+      @if (report.reversedMovements) { <p>{{ report.reversedMovements }} retiros informados por el proveedor. No se borran las decisiones guardadas.</p> }
       @if (report.skippedAccounts.length) { <p>{{ report.skippedAccounts.length }} cuentas omitidas por moneda, producto no compatible o retiro de la conexión. No se convirtió su moneda ni se borró el historial anterior.</p> }
       @if (report.unknownCardBalances.length) { <p>{{ report.unknownCardBalances.length }} saldos de tarjeta desconocidos: el crédito disponible no se interpreta como deuda.</p> }
       @if (report.uncertainMovements) { <p>Los movimientos sin clasificación no se convierten automáticamente en gastos ni ingresos. <a class="text-link" routerLink="/movimientos">Revisar movimientos</a>.</p> }
     </div>
+  }
+  @if (connection().provider === 'mock_bank') {
+    <details class="section-disclosure"><summary>Historia de sincronizaciones simuladas</summary>
+      <p class="record-meta">Generado = cronología sintética creada durante la preparación; ejecutado = intento real de esta instalación contra el proveedor simulado. Las fechas de 2024 en adelante no representan llamadas bancarias reales.</p>
+      @if (history.isLoading()) { <p class="notice">Consultando historia…</p> }
+      @if (history.error()) { <p class="notice danger">No se pudo consultar la historia. Usa Consultar estado para reintentar.</p> }
+      @if (events(); as records) {
+        <ul class="record-list" aria-label="Intentos del banco simulado">
+          @for (event of records; track $index) {
+            <li>{{ time(event.occurredAt) }} · {{ event.origin === 'generated' ? 'Generado' : 'Ejecutado' }} · {{ event.result === 'failed' ? 'Falló: ' + event.failureReason : 'Completado' }} · {{ event.movementCount }} {{ event.origin === 'generated' ? 'movimientos sintéticos' : 'movimientos examinados' }}</li>
+          }
+        </ul>
+      }
+    </details>
   }
 
   @if (snapshot(); as state) {
