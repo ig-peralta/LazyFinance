@@ -211,6 +211,20 @@ are append-only and require an owned saving objective and owned tags. Identity
 mappings remain bootstrap-only; demo tools use the API-verified signed user
 context, not a second lookup. Identity and MCP rows are not part of reset.
 
+Migration 037 expresses expense-adjustment **SELECT** ownership as membership in
+two owned movement-key sets. Both the credit and purchase must still be visible
+through transaction/account RLS, with a trusted current-user account predicate.
+This lets PostgreSQL reuse the owned keys rather than expanding correlated parent
+checks per allocation. It adds no role, grant or bypass; forced RLS and the separate
+INSERT/UPDATE/DELETE policies are unchanged, including both-parent write checks.
+
+Migration 038 similarly expresses transaction SELECT ownership as
+`account_id = ANY(ARRAY(SELECT ...))` over owned account IDs. The statement-local
+array remains an indexable condition, unlike a hashed row-membership filter that
+can encourage full-history scans. Account RLS and the explicit current-user
+predicate remain authoritative; transaction write policies, related tag/rule
+checks, grants and forced RLS do not change. Income-receipt policies are unchanged.
+
 `identity.onboarding` permits self-read/insert and column-limited updates to its
 status/completion time. Runtime cannot delete or reassign those records, and
 neither bootstrap nor unscoped requests can access them. This grants no profile

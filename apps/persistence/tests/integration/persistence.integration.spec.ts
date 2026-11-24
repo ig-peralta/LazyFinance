@@ -3235,6 +3235,12 @@ describe.skipIf(!ownerUrl)(
             expect(rows.map((row) => row.id)).toEqual([
               i % 2 ? accountA : accountB,
             ]);
+            const movements = await sql<{
+              id: string;
+            }>`select id from finance.transaction`.execute(tx);
+            expect(movements.rows.map((row) => row.id)).toEqual([
+              i % 2 ? movementA : movementB,
+            ]);
           }),
         ),
       );
@@ -3250,6 +3256,9 @@ describe.skipIf(!ownerUrl)(
         runtime,
       );
       expect(rows).toEqual([]);
+      expect(
+        (await sql`select id from finance.transaction`.execute(runtime)).rows,
+      ).toEqual([]);
     });
 
     it("serves typed, precision-safe accounts and rejects unauthenticated/context-confused requests", async () => {
@@ -3388,6 +3397,162 @@ describe.skipIf(!ownerUrl)(
       });
       expect(await client.income.receipts.query(period)).toEqual(
         facts.receipts,
+      );
+    });
+
+    it("selects the global owned recent ten across accounts with exact ties and removals", async () => {
+      const userId = randomUUID(),
+        connectionId = randomUUID();
+      const accounts: string[] = [randomUUID(), randomUUID(), randomUUID()];
+      await sql`INSERT INTO identity."user"(id,email,name) VALUES (${userId},${`${userId}@example.test`},'Recent owner')`.execute(
+        owner,
+      );
+      await sql`INSERT INTO finance.provider_connection(id,user_id,provider_id)
+        SELECT ${connectionId},${userId},provider_id FROM finance.provider_connection WHERE id=${connectionA}`.execute(
+        owner,
+      );
+      for (const [index, id] of accounts.entries())
+        await sql`INSERT INTO finance.account(id,user_id,provider_connection_id,type,active,alias)
+          VALUES (${id},${userId},${connectionId},'checking',${index !== 2},${`Recent ${index}`})`.execute(
+          owner,
+        );
+      for (let i = 0; i < 48; i++)
+        await sql`INSERT INTO finance.transaction(account_id,booked_at,amount,type,merchant,removed_at,removal_reason)
+          VALUES (${accounts[i % 3]},${`2026-10-15T12:00:00.${String(i % 16).padStart(6, "0")}Z`}::timestamptz,
+            -1,'debit',${`Recent ${i}`},${i > 43 ? new Date() : null},${i > 43 ? "removed" : null})`.execute(
+          owner,
+        );
+      await sql`INSERT INTO finance.transaction(account_id,booked_at,amount,type,merchant)
+        VALUES (${accountB},'2099-01-01T12:00:00Z',-1,'debit','Foreign newest')`.execute(
+        owner,
+      );
+      const expected = await sql<{
+        id: string;
+      }>`SELECT m.id FROM finance.transaction m
+        JOIN finance.account a ON a.id=m.account_id WHERE a.user_id=${userId} AND m.removed_at IS NULL
+        ORDER BY m.booked_at DESC,m.id DESC LIMIT 10`.execute(owner);
+      const recent = await purposeClient(
+        ctx(userId),
+      ).transactions.recent.query();
+      expect(recent.map((row) => row.id)).toEqual(
+        expected.rows.map((row) => row.id),
+      );
+      expect(recent.every((row) => accounts.includes(row.accountId))).toBe(
+        true,
+      );
+      expect(recent.some((row) => row.accountId === accounts[2])).toBe(true);
+    });
+
+    it("preserves recovery grain, both-owner isolation and capacity beyond the observation cutoff", async () => {
+      const userId = randomUUID(),
+        connectionId = randomUUID(),
+        accountId = randomUUID();
+      await sql`INSERT INTO identity."user"(id,email,name) VALUES (${userId},${`${userId}@example.test`},'Recovery owner')`.execute(
+        owner,
+      );
+      await sql`INSERT INTO finance.provider_connection(id,user_id,provider_id)
+        SELECT ${connectionId},${userId},provider_id FROM finance.provider_connection WHERE id=${connectionA}`.execute(
+        owner,
+      );
+      await sql`INSERT INTO finance.account(id,user_id,provider_connection_id,type) VALUES (${accountId},${userId},${connectionId},'checking')`.execute(
+        owner,
+      );
+      const purchases = [
+        randomUUID(),
+        randomUUID(),
+        randomUUID(),
+        randomUUID(),
+        randomUUID(),
+      ];
+      const credits = [randomUUID(), randomUUID(), randomUUID(), randomUUID()];
+      for (const [index, id] of purchases.entries())
+        await sql`INSERT INTO finance.transaction(id,account_id,booked_at,amount,type,is_internal_movement)
+          VALUES (${id},${accountId},${index === 3 ? "2025-01-01T12:00:00Z" : "2025-02-01T12:00:00Z"}::timestamptz,
+            ${[-100, -50, -50, -50, -20][index]},'debit',false)`.execute(owner);
+      for (const [index, id] of credits.entries())
+        await sql`INSERT INTO finance.transaction(id,account_id,booked_at,amount,type,is_internal_movement)
+          VALUES (${id},${accountId},'2025-02-10T12:00:00Z',${[100, 100, 50, 20][index]},'credit',false)`.execute(
+          owner,
+        );
+      for (const [credit, purchase, amount, kind, future] of [
+        [0, 0, 30, "refund", false],
+        [1, 0, 20, "reimbursement", false],
+        [0, 1, 20, "refund", false],
+        [1, 1, 20, "refund", false],
+        [2, 2, 30, "refund", false],
+        [2, 3, 30, "reimbursement", true],
+        [3, 4, 10, "refund", false],
+      ] as const)
+        await sql`INSERT INTO finance.expense_adjustment(credit_transaction_id,purchase_transaction_id,kind,amount,
+          credit_amount,purchase_amount,credit_booked_at,purchase_booked_at,confirmed_at)
+          SELECT c.id,p.id,${kind},${amount},c.amount,p.amount,c.booked_at,p.booked_at,
+            ${future ? "2025-04-01T12:00:00Z" : "2025-02-15T12:00:00Z"}::timestamptz
+          FROM finance.transaction c,finance.transaction p WHERE c.id=${credits[credit]} AND p.id=${purchases[purchase]}`.execute(
+          owner,
+        );
+      await sql`UPDATE finance.transaction SET amount=-21 WHERE id=${purchases[4]}`.execute(
+        owner,
+      );
+      const foreignPurchase = randomUUID(),
+        foreignCredit = randomUUID();
+      await sql`INSERT INTO finance.transaction(id,account_id,booked_at,amount,type,is_internal_movement) VALUES
+        (${foreignPurchase},${accountB},'2025-02-01T12:00:00Z',-100,'debit',false),
+        (${foreignCredit},${accountB},'2025-02-10T12:00:00Z',100,'credit',false)`.execute(
+        owner,
+      );
+      for (const [credit, purchase] of [
+        [credits[0], foreignPurchase],
+        [foreignCredit, purchases[0]],
+      ])
+        await sql`INSERT INTO finance.expense_adjustment(credit_transaction_id,purchase_transaction_id,kind,amount,
+          credit_amount,purchase_amount,credit_booked_at,purchase_booked_at,confirmed_at)
+          SELECT c.id,p.id,'refund',1,c.amount,p.amount,c.booked_at,p.booked_at,'2025-02-15T12:00:00Z'
+          FROM finance.transaction c,finance.transaction p WHERE c.id=${credit} AND p.id=${purchase}`.execute(
+          owner,
+        );
+      const transactions = purposeClient(ctx(userId)).transactions;
+      const period = {
+        start: "2025-02-01 00:00:00",
+        end: "2025-03-01 00:00:00",
+        adjustmentsAsOf: "2025-03-01T12:00:00Z",
+      };
+      const totals = await transactions.taggedAggregates.query(period);
+      expect(totals).toHaveLength(2);
+      expect(totals).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            type: "debit",
+            amount: "-221.00",
+            count: 4,
+            refundAmount: "70.00",
+            reimbursementAmount: "20.00",
+            purchaseAdjustmentReviewCount: 2,
+          }),
+          expect.objectContaining({
+            type: "credit",
+            amount: "270.00",
+            count: 4,
+            reservedCreditAmount: "130.00",
+            expenseCreditAmount: "90.00",
+            expenseCreditCount: 2,
+            creditAdjustmentReviewCount: 2,
+            unclassifiedCreditCount: 4,
+          }),
+        ]),
+      );
+      const later = await transactions.aggregates.query({
+        ...period,
+        adjustmentsAsOf: "2025-04-02T12:00:00Z",
+      });
+      expect(later).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            type: "credit",
+            reservedCreditAmount: "150.00",
+            expenseCreditAmount: "90.00",
+            creditAdjustmentReviewCount: 3,
+          }),
+        ]),
       );
     });
 

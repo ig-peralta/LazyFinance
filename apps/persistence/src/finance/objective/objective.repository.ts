@@ -3,7 +3,6 @@ import { Inject, Injectable } from "@nestjs/common";
 import { type Kysely, sql } from "kysely";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { RLS_DB } from "../../database/tokens";
-import { purchaseRecovery } from "../expense-adjustment/expense-adjustment-sql";
 import {
   type BudgetSpendingTables,
   budgetSpendingBounds,
@@ -132,13 +131,11 @@ export class ObjectiveRepository {
 
   spending({ windows, asOf, adjustmentsAsOf }: ObjectiveSpendingInput) {
     const { start, end } = budgetSpendingBounds();
-    return budgetSpendingQuery(this.db, { windows, asOf })
-      .leftJoinLateral(purchaseRecovery(adjustmentsAsOf).as("pa"), (join) =>
-        join.onTrue(),
-      )
+    return budgetSpendingQuery(this.db, { windows, asOf, adjustmentsAsOf })
+      .leftJoin("purchase_recoveries as pa", "pa.transactionId", "m.id")
       .select([
-        "o.id",
-        "w.revisionId",
+        "b.id",
+        "b.revisionId",
         sql<string>`coalesce(sum(m.amount), 0)::text`.as("amount"),
         sql<number>`count(m.id)::int`.as("count"),
         sql<string>`coalesce(sum(pa.refund_amount::numeric),0)::text`.as(
@@ -152,10 +149,10 @@ export class ObjectiveRepository {
         ),
         budgetTimestamp(start).as("start"),
         budgetTimestamp(end).as("end"),
-        budgetTimestamp(sql.ref<Date | null>("o.archivedAt")).as("archivedAt"),
+        budgetTimestamp(sql.ref<Date | null>("b.archivedAt")).as("archivedAt"),
       ])
-      .groupBy(["o.id", "r.id", "w.revisionId", "w.start", "w.end"])
-      .orderBy("o.id")
+      .groupBy(["b.id", "b.revisionId", "b.start", "b.end", "b.archivedAt"])
+      .orderBy("b.id")
       .execute();
   }
 }

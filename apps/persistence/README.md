@@ -98,6 +98,14 @@ protected/TLS service channel in deployment.
 
 ## Boundaries
 
+- Migrations 036–038 add the nonremoved per-account recent index and replace only
+  expense-adjustment/transaction SELECT ownership with equivalent owned-key
+  membership. Transaction account keys use an indexable statement-local array.
+  Forced RLS, both-parent write checks and grants remain unchanged. Query-local
+  materialized recovery/window/tag facts preserve result grain and exact cutoffs;
+  see the [read pattern](../../docs/technical/persistence-reads.md#query-local-materialized-facts).
+  Apply additive migrations only to an authorized database; ordinary index DDL
+  may block writes while building. No seed/reset is required.
 - Migration 033 adds immutable text/voice conversation mode and an owner/mode
   index. Voice-only histories are backfilled without deleting or rewriting turns.
   Lists are text-only; private turn claims check mode. Text/voice creation quotas
