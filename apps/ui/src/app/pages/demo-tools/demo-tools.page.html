@@ -59,7 +59,8 @@
 
     <section class="panel stack" aria-labelledby="demo-movement-details">
       <h2 id="demo-movement-details">Actividad del banco simulado</h2>
-      <p>Los movimientos nuevos se agregan al origen simulado, no a las cuentas importadas. Sincroniza Banco Demo desde Conexiones bancarias para verlos en tu espacio financiero. Una transferencia crea ambos lados; los ingresos nuevos no se confirman automáticamente.</p>
+      <p>Los movimientos externos alternan gastos de cuenta corriente, compras con tarjeta y abonos. Las transferencias y los pagos de tarjeta simulados generan ambos lados del movimiento.</p>
+      <p>Sincroniza Banco Demo desde Conexiones bancarias para importar la actividad. Los abonos no se confirman automáticamente como ingresos.</p>
       <p>Primero prepara los datos de demostración. No se modificarán conexiones bancarias reales.</p>
       <div class="button-row">
         <button type="button" class="button secondary" data-testid="create-internal-demo-transaction" [disabled]="command.pending()" (click)="create('internal')">

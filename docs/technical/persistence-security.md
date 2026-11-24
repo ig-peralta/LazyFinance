@@ -188,11 +188,12 @@ not undo its prior financial effect. The flag defaults to false; without it,
 persistence opens no privileged connection and the API advertises no demo tools.
 Simulator mutations use that same authenticated scope, role, per-user lock and
 atomic connection. They accept no owner/account selector and require the prepared
-simulated bank source; real linked accounts are not eligible. Transfers write two
-opposite source movements, external examples one. Corrections, removals and balance
-changes stay in the source until explicit synchronization; no simulator mutation
-writes financial transactions directly. Outgoing cash is limited by the source
-account's available balance.
+simulated bank source; real linked accounts are not eligible. Transfers and card
+payments write two opposite source movements, external examples one. Corrections,
+removals and balance changes stay in the source until explicit synchronization;
+no simulator mutation writes financial transactions directly. Outgoing cash is
+limited by the source account's available balance, and card payments are also
+capped by outstanding debt.
 
 The middleware awaits the resolver **and output validation** before commit.
 tRPC may resolve an error as `{ ok: false, error }`; middleware throws that error

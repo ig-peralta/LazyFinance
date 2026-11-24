@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { PersistenceClient } from "../../../src/persistence/persistence.client";
+import { toCents } from "../../../src/utils/money";
 import { testEnvironment } from "../../fixtures/environment";
 import {
   type Fixture,
@@ -200,6 +201,124 @@ describe.skipIf(!integration)("prepared demo bank over signed RPC", () => {
           })
         )[0].eligible,
       ).toBe(false);
+    } finally {
+      await close(f, server);
+    }
+  }, 45000);
+
+  it("rotates the generated activity and imports it once with the correct movement types", async () => {
+    const { f, server, bank } = await setup();
+    try {
+      const prepared = await bank.demoTools.resetDemoData.mutate();
+      expect(prepared.status).toBe("ready");
+      const input = { id: prepared.connectionId };
+      const source = () =>
+        f.persistence.user(f.userId).demoTools.bankSource.query(input);
+      const importedAccounts = async () =>
+        (await f.db.rows("account", { providerConnectionId: input.id })).sort(
+          (a, b) => a.id.localeCompare(b.id),
+        );
+      const before = await source();
+      const accountsBefore = await importedAccounts();
+
+      for (let click = 0; click < 3; click++) {
+        expect(
+          await bank.demoTools.createExternalTransaction.mutate(),
+        ).toMatchObject({ transactionCount: 1 });
+      }
+      for (let click = 0; click < 3; click++) {
+        expect(
+          await bank.demoTools.createInternalTransaction.mutate(),
+        ).toMatchObject({ transactionCount: 2 });
+      }
+
+      const after = await source();
+      const generated = after.movements.slice(before.movements.length);
+      expect(generated).toHaveLength(9);
+      expect(new Set(generated.map((row) => row.externalId)).size).toBe(9);
+      const external = generated.slice(0, 3);
+      expect(
+        external.map((row) => [
+          row.accountExternalId,
+          row.amount.startsWith("-"),
+        ]),
+      ).toEqual([
+        ["demo-main-checking", true],
+        ["demo-main-creditCard", true],
+        ["demo-main-checking", false],
+      ]);
+      expect(external.every((row) => row.relatedMovement === null)).toBe(true);
+
+      for (const [index, from, to, kind] of [
+        [3, "demo-main-checking", "demo-main-savings", "transfer_pair"],
+        [5, "demo-main-savings", "demo-main-checking", "transfer_pair"],
+        [7, "demo-main-checking", "demo-main-creditCard", "card_payment_pair"],
+      ] as const) {
+        const debit = generated[index];
+        const credit = generated[index + 1];
+        expect(debit.accountExternalId).toBe(from);
+        expect(credit.accountExternalId).toBe(to);
+        expect(toCents(debit.amount)).toBeLessThan(0n);
+        expect(toCents(debit.amount) + toCents(credit.amount)).toBe(0n);
+        expect(debit.relatedMovement).toEqual({
+          accountExternalId: to,
+          externalId: credit.externalId,
+          kind,
+        });
+        expect(credit.relatedMovement).toEqual({
+          accountExternalId: from,
+          externalId: debit.externalId,
+          kind,
+        });
+      }
+
+      const imported = async () =>
+        (
+          await f.db.pool.query<{
+            id: string;
+            external_id: string;
+            amount: string;
+            is_internal_movement: boolean | null;
+            has_receipt: boolean;
+          }>(
+            `SELECT m.id, m.external_id, m.amount, m.is_internal_movement,
+                EXISTS (SELECT 1 FROM finance.income_receipt r WHERE r.transaction_id = m.id) AS has_receipt
+             FROM finance."transaction" m JOIN finance.account a ON a.id = m.account_id
+             WHERE a.provider_connection_id = $1 AND m.external_id = ANY($2::text[])
+             ORDER BY m.external_id`,
+            [input.id, generated.map((row) => row.externalId)],
+          )
+        ).rows;
+      expect(await imported()).toEqual([]);
+      expect(await importedAccounts()).toEqual(accountsBefore);
+
+      expect(await bank.banking.refresh.mutate(input)).toMatchObject({
+        status: "complete",
+      });
+      const rows = await imported();
+      expect(rows).toHaveLength(generated.length);
+      expect(rows).toEqual(
+        expect.arrayContaining(
+          generated.map((row) =>
+            expect.objectContaining({
+              external_id: row.externalId,
+              amount: row.amount,
+              is_internal_movement: row.relatedMovement !== null,
+              has_receipt: false,
+            }),
+          ),
+        ),
+      );
+      for (const account of await importedAccounts()) {
+        expect(account.balance).toBe(
+          after.accounts.find((row) => row.externalId === account.external_id)
+            ?.balance,
+        );
+      }
+      expect(await bank.banking.refresh.mutate(input)).toMatchObject({
+        status: "complete",
+      });
+      expect(await imported()).toEqual(rows);
     } finally {
       await close(f, server);
     }

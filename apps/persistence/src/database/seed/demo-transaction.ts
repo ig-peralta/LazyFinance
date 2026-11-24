@@ -1,4 +1,4 @@
-import { randomInt, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import {
   type DemoTransactionResult,
   DemoTransactionResultSchema,
@@ -14,20 +14,11 @@ import type { AssistantTables } from "../../assistant/assistant.tables";
 import type { FinanceTables } from "../../finance/finance.tables";
 import { mainExternalId } from "./demo-bank-source";
 import { userFixtureId } from "./demo-fixture-ids";
+import { planDemoTransaction } from "./demo-transaction-plan";
 import { clp } from "./helpers";
 import { type AccountKey, accounts, demoConnectionId } from "./profile";
 
 type DemoToolsTables = FinanceTables & AssistantTables;
-type DemoBalances = Record<AccountKey, string>;
-type Movement = {
-  account: AccountKey;
-  amount: number;
-  merchant: string;
-  description: string;
-  isInternalMovement: boolean;
-};
-type Plan = { description: string; amount: string; movements: Movement[] };
-type Picker = (count: number) => number;
 
 function adjustedBalance(balance: string, change: number) {
   const [whole, fraction] = balance.split(".");
@@ -42,201 +33,6 @@ function adjustedBalance(balance: string, change: number) {
     });
   const absolute = next < 0n ? -next : next;
   return `${next < 0n ? "-" : ""}${absolute / 100n}.${String(absolute % 100n).padStart(2, "0")}`;
-}
-
-const transfers = [
-  {
-    from: "checking",
-    to: "savings",
-    merchant: "Ahorro personal",
-    description: "Aporte al fondo de emergencia",
-    received: "Aporte desde cuenta corriente",
-    minimum: 25_000,
-    maximum: 150_000,
-  },
-  {
-    from: "savings",
-    to: "checking",
-    merchant: "Fondo de emergencia",
-    description: "Traspaso a cuenta corriente",
-    received: "Rescate desde fondo de emergencia",
-    minimum: 25_000,
-    maximum: 100_000,
-  },
-] as const;
-
-// Each template fixes direction, account, merchant and plausible CLP range together.
-// Mix purchases, services and independent incoming money without inventing a salary receipt.
-const external = [
-  {
-    account: "checking",
-    merchant: "Feria libre Ñuñoa",
-    description: "Compra de frutas y verduras",
-    minimum: 9_000,
-    maximum: 38_000,
-    step: 500,
-    direction: -1,
-  },
-  {
-    account: "checking",
-    merchant: "Metro de Santiago",
-    description: "Recarga Bip!",
-    minimum: 5_000,
-    maximum: 20_000,
-    step: 1_000,
-    direction: -1,
-  },
-  {
-    account: "checking",
-    merchant: "Aguas Andinas",
-    description: "Cuenta del agua",
-    minimum: 14_000,
-    maximum: 26_000,
-    step: 500,
-    direction: -1,
-  },
-  {
-    account: "checking",
-    merchant: "Farmacias Ahumada",
-    description: "Compra en farmacia",
-    minimum: 7_000,
-    maximum: 32_000,
-    step: 500,
-    direction: -1,
-  },
-  {
-    account: "creditCard",
-    merchant: "Líder",
-    description: "Compra de supermercado",
-    minimum: 24_000,
-    maximum: 82_000,
-    step: 1_000,
-    direction: -1,
-  },
-  {
-    account: "creditCard",
-    merchant: "Cine Hoyts",
-    description: "Entradas al cine",
-    minimum: 12_000,
-    maximum: 25_000,
-    step: 500,
-    direction: -1,
-  },
-  {
-    account: "creditCard",
-    merchant: "Mercado Libre Chile",
-    description: "Compra en línea",
-    minimum: 20_000,
-    maximum: 95_000,
-    step: 1_000,
-    direction: -1,
-  },
-  {
-    account: "checking",
-    merchant: "Venta de segunda mano",
-    description: "Venta de libros usados",
-    minimum: 12_000,
-    maximum: 45_000,
-    step: 1_000,
-    direction: 1,
-  },
-  {
-    account: "checking",
-    merchant: "Proyecto de diseño",
-    description: "Pago por trabajo independiente",
-    minimum: 65_000,
-    maximum: 170_000,
-    step: 5_000,
-    direction: 1,
-  },
-  {
-    account: "checking",
-    merchant: "Gastos compartidos",
-    description: "Devolución de gastos compartidos",
-    minimum: 8_000,
-    maximum: 35_000,
-    step: 500,
-    direction: 1,
-  },
-] as const;
-
-function amountWithin(
-  minimum: number,
-  maximum: number,
-  step: number,
-  pick: Picker,
-) {
-  return minimum + pick(Math.floor((maximum - minimum) / step) + 1) * step;
-}
-
-export function planDemoTransaction(
-  kind: "internal" | "external",
-  balances: DemoBalances,
-  pick: Picker = randomInt,
-): Plan {
-  if (kind === "internal") {
-    const eligible = transfers.filter(
-      (item) => Number(balances[item.from]) >= item.minimum,
-    );
-    if (!eligible.length)
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "Insufficient demo funds",
-      });
-    const item = eligible[pick(eligible.length)];
-    const amount = amountWithin(
-      item.minimum,
-      Math.min(item.maximum, Math.floor(Number(balances[item.from]))),
-      5_000,
-      pick,
-    );
-    return {
-      description: item.description,
-      amount: clp(amount),
-      movements: [
-        {
-          account: item.from,
-          amount: -amount,
-          merchant: item.merchant,
-          description: item.description,
-          isInternalMovement: true,
-        },
-        {
-          account: item.to,
-          amount,
-          merchant: item.merchant,
-          description: item.received,
-          isInternalMovement: true,
-        },
-      ],
-    };
-  }
-
-  const eligible = external.filter(
-    (item) =>
-      item.direction > 0 ||
-      item.account === "creditCard" ||
-      Number(balances[item.account]) >= item.minimum,
-  );
-  const item = eligible[pick(eligible.length)];
-  const maximum =
-    item.direction < 0 && item.account !== "creditCard"
-      ? Math.min(item.maximum, Math.floor(Number(balances[item.account])))
-      : item.maximum;
-  const amount = amountWithin(item.minimum, maximum, item.step, pick);
-  return {
-    description: item.description,
-    amount: clp(amount),
-    movements: [
-      {
-        account: item.account,
-        amount: item.direction * amount,
-        merchant: item.merchant,
-        description: item.description,
-        isInternalMovement: false,
-      },
-    ],
-  };
 }
 
 export async function createDemoTransactionInTransaction(
@@ -256,6 +52,7 @@ export async function createDemoTransactionInTransaction(
     .select([
       "s.accounts",
       "s.movements",
+      "s.initialMovementCount",
       "s.prepared",
       "c.status",
       "c.disconnectedAt",
@@ -277,8 +74,7 @@ export async function createDemoTransactionInTransaction(
     });
   const inventory: DemoBankAccount[] = source.accounts;
   const byId = new Map(inventory.map((row) => [row.externalId, row]));
-  const balances = {} as DemoBalances;
-  for (const key of Object.keys(accounts) as AccountKey[]) {
+  const balance = (key: AccountKey) => {
     const row = byId.get(mainExternalId(key));
     if (
       !row ||
@@ -289,10 +85,20 @@ export async function createDemoTransactionInTransaction(
         code: "NOT_FOUND",
         message: "Prepare demo accounts first",
       });
-    balances[key] = row.balance;
-  }
+    return row.balance;
+  };
 
-  const plan = planDemoTransaction(kind, balances);
+  // Preparation writes two equal-sized history sets; button activity is appended afterward.
+  const activity = source.movements.slice(source.initialMovementCount * 2);
+  const plan = planDemoTransaction(
+    kind,
+    {
+      checking: balance("checking"),
+      savings: balance("savings"),
+      creditCard: balance("creditCard"),
+    },
+    activity,
+  );
   const bookedAt = new Date().toISOString();
   const changes: DemoBankMovement[] = plan.movements.map((movement) => ({
     accountExternalId: mainExternalId(movement.account),
@@ -304,16 +110,16 @@ export async function createDemoTransactionInTransaction(
     relatedMovement: null,
     removed: false,
   }));
-  if (kind === "internal") {
+  if (plan.pairKind) {
     changes[0].relatedMovement = {
       accountExternalId: changes[1].accountExternalId,
       externalId: changes[1].externalId,
-      kind: "transfer_pair",
+      kind: plan.pairKind,
     };
     changes[1].relatedMovement = {
       accountExternalId: changes[0].accountExternalId,
       externalId: changes[0].externalId,
-      kind: "transfer_pair",
+      kind: plan.pairKind,
     };
   }
   for (const movement of changes) {

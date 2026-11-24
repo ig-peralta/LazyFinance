@@ -93,11 +93,16 @@ does not alter application RLS or runtime grants. Use **Preparar demo** to load
 the synthetic finances for either an authenticated mock or Firebase owner. There
 is no separate financial seed command; retiring it does not delete old fixtures.
 
-Simulator mutations generate curated activity after preparation: an internal
-checking/savings transfer (balanced debit/credit pair), an external expense,
-purchase or credit, or a source correction/removal. They atomically update only
-the owned simulated bank source and its balances. Linked financial accounts and
-browser-supplied account IDs are never used. Explicit refresh imports changes.
+After preparation, the external button rotates checking-account expenses, card
+purchases and incoming credits, skipping cash expenses the balance cannot cover.
+It varies the merchant and CLP amount within each group. The internal button
+rotates both checking/savings transfer directions and card payments when funds
+and card debt allow. Transfers and card payments each produce a matched pair;
+the cash balance and outstanding debt cap card payments. The generator reads
+recent button activity from the same simulated source, not the initial history.
+All changes, including corrections/removals, stay in that source until explicit
+refresh. The browser never selects an account or owner, and credits are not
+automatically confirmed as income.
 
 `pnpm --filter persistence dev` listens on `127.0.0.1:3001` by default. Only an
 authenticated service may call `/trpc`; do not publish it to browsers. Use a
