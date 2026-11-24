@@ -160,7 +160,10 @@ earlier validation evidence do not describe the latest runtime by themselves.
 - [Academic submission index](docs/submissions/README.md): every available shared
   and individual document, including [Phase 1](docs/submissions/README.md#phase-1--project-definition)
   project definition/forms/presentation and [Phase 2](docs/submissions/README.md#phase-2--development-progress)
-  progress guides/reflections. Submitted files are evidence, not current setup docs.
+  progress guides/reflections. The [Phase 3 evidence package](docs/submissions/README.md#phase-3--final-evidence)
+  consolidates the closeout and innovation summary, product vision, design,
+  backlog and tests.
+  Academic files are evidence, not current setup docs.
 
 ## Prerequisites
 

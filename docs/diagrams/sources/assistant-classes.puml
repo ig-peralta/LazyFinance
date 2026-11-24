@@ -1,0 +1,77 @@
+@startuml assistant-classes
+!include style.iuml
+title LazyFinance — Class View\nGrounded text assistant · selected NestJS and TypeScript types
+top to bottom direction
+hide circle
+hide empty members
+skinparam classAttributeIconSize 0
+skinparam class {
+  BackgroundColor<<boundary>> #DAE8FC
+  BorderColor<<boundary>> #6C8EBF
+  BackgroundColor<<assistant>> #E1D5E7
+  BorderColor<<assistant>> #9673A6
+  BackgroundColor<<interface>> #F7F2FA
+  BorderColor<<interface>> #9673A6
+}
+
+class AssistantHttp <<boundary>> {
+  +turn()
+}
+class AssistantService <<assistant>> {
+  +stream()
+  +conversation()
+  +requireConsent()
+}
+interface AssistantRuntime <<interface>> {
+  +run(input: AssistantRuntimeInput)
+}
+class AiSdkAssistantRuntime <<assistant>> {
+  +run(input: AssistantRuntimeInput)
+}
+class DemonstrationAssistantRuntime <<assistant>> {
+  +run(input: AssistantRuntimeInput)
+}
+class AssistantTurnTools <<assistant>> {
+  +sources: AssistantSource[]
+  +read()
+  +propose()
+  +revise()
+  +actionStatus()
+  +grounded()
+}
+class FinancialReads {
+  +tools
+}
+class ActionsService {
+  +prepare()
+  +revise()
+  +get()
+  +approve()
+}
+class AssistantConsentService <<identity>> {
+  +state()
+  +requireAccepted()
+}
+class PersistenceClient {
+  +user(userId)
+}
+
+AssistantHttp --> AssistantService : delegates NDJSON turn
+AssistantService --> AssistantRuntime : injected runtime
+AssistantService ..> AssistantTurnTools : <<create>>\nper acquired turn
+AssistantService --> AssistantConsentService : checks policy
+AssistantService --> PersistenceClient : stores owned turns
+AssistantTurnTools --> FinancialReads : owned reads
+AssistantTurnTools --> ActionsService : prepare / revise / status only
+AssistantConsentService --> PersistenceClient : reads saved consent
+ActionsService --> PersistenceClient : signed financial commands
+AiSdkAssistantRuntime ..|> AssistantRuntime
+DemonstrationAssistantRuntime ..|> AssistantRuntime
+
+legend bottom
+  Solid arrows: held dependency. Dashed arrow: creation. Open triangle: interface realization.
+  Selected members only; signatures are abbreviated. Environment DI and transitive financial services are omitted.
+  The runtime receives bounded callbacks, not a persistence client or approval operation.
+  The authenticated user's saved-card approval enters separately; the demonstration runtime calls no live model.
+endlegend
+@enduml

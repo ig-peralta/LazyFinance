@@ -21,6 +21,7 @@ not screenshots of running infrastructure.
 | Physical — development | Configured Traefik ingress, Compose services, private networks and owner-only initialization | [physical.puml](sources/physical.puml) | [Full-size PNG](physical.png) |
 | Physical — proposed production | Public ingress, private runtime and data, controlled releases and backup/restore | [production.puml](sources/production.puml) | [Full-size PNG](production.png) |
 | Scenarios (+1) / use cases | User/client scenarios connecting the other four views | [use-cases.puml](sources/use-cases.puml) | [Full-size PNG](use-cases.png) |
+| Class view | Grounded text assistant: implemented classes, per-turn tools and selectable runtimes | [assistant-classes.puml](sources/assistant-classes.puml) | [Full-size PNG](assistant-classes.png) |
 | Assistant query | A grounded text turn through shared financial services | [agent-sequence.puml](sources/agent-sequence.puml) | [Full-size PNG](agent-sequence.png) |
 | Proposal approval | Explicit saved-version approval and atomic receipt | [approval-sequence.puml](sources/approval-sequence.puml) | [Full-size PNG](approval-sequence.png) |
 | Delegated MCP action | Preview, independently granted writes and idempotency | [mcp-sequence.puml](sources/mcp-sequence.puml) | [Full-size PNG](mcp-sequence.png) |
@@ -72,6 +73,8 @@ Colour supplements labels; it never establishes authorization or deployment stat
   stable `UC-01`–`UC-09` identifiers and solid actor associations without arrowheads.
   Do not invent `include`/`extend` relationships to connect otherwise independent
   workflows; shared policies are explained in notes instead.
+- **Class view:** selected TypeScript classes/interfaces and their actual
+  dependencies, not a table inventory or the order of HTTP messages.
 - **ER:** qualified SQL entity names, selected typed attributes and explicit
   PK/FK/UK markers; actual nullable cardinalities and identifying/non-identifying
   lines. This is an implemented relational model, not an object class hierarchy.
@@ -252,6 +255,30 @@ provider/model/client combination. Broader MCP management, forecasting and
 additional live bank connectors are not delivered here. See the
 [journeys](../product/user-journeys.md#stage-c---selected-everyday-experience-and-live-voice)
 and the [Stage C gate](../planning/stage-c/closure.md).
+
+## Class view — grounded assistant
+
+![Class diagram of the text assistant, turn tools, runtime interface and implementations, consent, and signed persistence client](assistant-classes.png)
+
+`AssistantHttp` delegates an authenticated text turn to `AssistantService`. The
+service checks the processing policy, uses the signed persistence client for
+owned history, and creates one `AssistantTurnTools` instance per acquired turn.
+The `AssistantRuntime` interface has both an AI SDK implementation and an offline
+demonstration implementation. The service supplies callbacks to the runtime; it
+does not hand the model a database client or `approve()`. Tool references to
+`ActionsService` cover preparation, proposal revision and status only. The
+explicit approval path is shown in the [approval sequence](#explicit-proposal-approval).
+
+Sources: [HTTP adapter](../../apps/api/src/assistant/assistant.http.ts),
+[turn service](../../apps/api/src/assistant/assistant.service.ts),
+[runtime interface and implementations](../../apps/api/src/assistant/assistant-runtime.ts),
+[turn tools](../../apps/api/src/assistant/assistant-turn-tools.ts),
+[financial read catalog](../../apps/api/src/assistant/financial-reads.ts),
+[consent service](../../apps/api/src/assistant/assistant-consent.service.ts),
+[action service](../../apps/api/src/actions/actions.service.ts) and
+[signed client](../../apps/api/src/persistence/persistence.client.ts). See the
+[text sequence](#grounded-assistant-query) for the order of messages and the
+[ER diagram](#entityrelationship-diagram) for stored relationships.
 
 ## Focused message sequences
 
