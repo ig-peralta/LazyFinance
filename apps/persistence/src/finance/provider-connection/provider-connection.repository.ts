@@ -18,6 +18,10 @@ import { ProviderScheduleRepository } from "../provider-scheduling/provider-sche
 import { ProviderSelectionRepository } from "../provider-selection/provider-selection.repository";
 import { TagRuleRepository } from "../tag-rule/tag-rule.repository";
 import {
+  type ProviderMovementWrite,
+  writeProviderMovementBatch,
+} from "./provider-movement-writes";
+import {
   applyProviderSuspensions,
   resolveProviderSuspension,
 } from "./provider-suspension";
@@ -502,123 +506,128 @@ export class ProviderConnectionRepository {
       );
     }
 
-    for (const prepared of input.movements) {
-      const key = keyOf(prepared.accountExternalId, prepared.externalId);
+    // Match the existing bounded seed-write shape without splitting the financial commit.
+    for (let start = 0; start < input.movements.length; start += 100) {
+      const batch: { movement: ProviderMovementWrite; existing: boolean }[] =
+        [];
+      const effects = [];
+      for (const prepared of input.movements.slice(start, start + 100)) {
+        const key = keyOf(prepared.accountExternalId, prepared.externalId);
 
-      if (!keys.has(key)) invalid("Movement is outside the prepared scope");
+        if (!keys.has(key)) invalid("Movement is outside the prepared scope");
 
-      if (removed.has(key) || tombstones.has(key)) continue; // No implicit resurrection.
+        if (removed.has(key) || tombstones.has(key)) continue; // No implicit resurrection.
 
-      const owner = accounts.get(prepared.accountExternalId);
+        const owner = accounts.get(prepared.accountExternalId);
 
-      if (!owner) invalid("Movement references an unknown account");
+        if (!owner) invalid("Movement references an unknown account");
 
-      const previous = movements.get(key);
+        const previous = movements.get(key);
 
-      if (
-        previous &&
-        (previous.id !== prepared.id || previous.source !== "provider")
-      )
-        invalid("Provider identity collides with an existing movement");
+        if (
+          previous &&
+          (previous.id !== prepared.id || previous.source !== "provider")
+        )
+          invalid("Provider identity collides with an existing movement");
 
-      if (previous?.removedAt) continue;
+        if (previous?.removedAt) continue;
 
-      if (
-        new Date(prepared.providerObservedAt) > new Date(input.observedAt) ||
-        (previous?.providerObservedAt &&
-          new Date(prepared.providerObservedAt) <
-            new Date(previous.providerObservedAt)) ||
-        (previous?.providerUpdatedAt &&
-          prepared.providerUpdatedAt &&
-          new Date(prepared.providerUpdatedAt) <
-            new Date(previous.providerUpdatedAt))
-      )
-        invalid("Stale movement snapshot");
+        if (
+          new Date(prepared.providerObservedAt) > new Date(input.observedAt) ||
+          (previous?.providerObservedAt &&
+            new Date(prepared.providerObservedAt) <
+              new Date(previous.providerObservedAt)) ||
+          (previous?.providerUpdatedAt &&
+            prepared.providerUpdatedAt &&
+            new Date(prepared.providerUpdatedAt) <
+              new Date(previous.providerUpdatedAt))
+        )
+          invalid("Stale movement snapshot");
 
-      const effective =
-        previous?.userInternalOverride ??
-        (prepared.providerInternalAssessment === "unknown"
-          ? null
-          : prepared.providerInternalAssessment === "internal");
-      const reasons: ProviderMovementConflictTable["reason"][] = [];
+        const effective =
+          previous?.userInternalOverride ??
+          (prepared.providerInternalAssessment === "unknown"
+            ? null
+            : prepared.providerInternalAssessment === "internal");
+        const reasons: ProviderMovementConflictTable["reason"][] = [];
 
-      if (
-        previous?.userInternalOverride === false &&
-        !previous.internalOverrideAcknowledged &&
-        prepared.providerInternalAssessment === "internal"
-      )
-        reasons.push("internal_override_disagrees");
+        if (
+          previous?.userInternalOverride === false &&
+          !previous.internalOverrideAcknowledged &&
+          prepared.providerInternalAssessment === "internal"
+        )
+          reasons.push("internal_override_disagrees");
 
-      if (
-        previous?.hasReceipt &&
-        (prepared.type !== "credit" ||
-          (effective !== false && previous.userInternalOverride !== true))
-      )
-        reasons.push("receipt_incompatible");
+        if (
+          previous?.hasReceipt &&
+          (prepared.type !== "credit" ||
+            (effective !== false && previous.userInternalOverride !== true))
+        )
+          reasons.push("receipt_incompatible");
 
-      const {
-        accountExternalId: _,
-        decision,
-        id,
-        externalId,
-        ...rest
-      } = prepared;
-      const fields = {
-        ...rest,
-        bookedAt: new Date(rest.bookedAt),
-        providerObservedAt: new Date(rest.providerObservedAt),
-        providerUpdatedAt: date(rest.providerUpdatedAt),
-        isInternalMovement: effective,
-        reviewStatus:
-          (previous?.reviewStatus === "needs_review" &&
-            (!previous.providerSuspended || previous.hasOtherConflicts)) ||
-          reasons.length
-            ? ("needs_review" as const)
-            : ("clear" as const),
-      };
-      if (previous?.providerSuspended)
-        await resolveProviderSuspension(this.db, id);
-      const saved = previous
-        ? await this.db
-            .updateTable("finance.transaction")
-            .set(fields)
-            .where("id", "=", id)
-            .returningAll()
-            .executeTakeFirstOrThrow()
-        : await this.db
-            .insertInto("finance.transaction")
-            .values({
-              ...fields,
-              id,
-              externalId,
-              accountId: owner.id,
-              source: "provider",
-            })
-            .returningAll()
-            .executeTakeFirstOrThrow();
-
-      for (const reason of reasons)
-        await this.conflict(
+        const {
+          accountExternalId: _,
+          decision,
           id,
-          reason,
-          {
-            amount: previous?.amount,
-            type: previous?.type,
-            bookedAt: previous?.bookedAt,
-            isInternalMovement: previous?.isInternalMovement,
-          },
-          {
-            amount: prepared.amount,
-            type: prepared.type,
-            bookedAt: prepared.bookedAt,
-            bookedPrecision: prepared.bookedPrecision,
-            bookedOn: prepared.bookedOn,
-            providerInternalAssessment: prepared.providerInternalAssessment,
-          },
-          prepared.providerObservedAt,
-        );
+          externalId,
+          ...rest
+        } = prepared;
+        const fields = {
+          ...rest,
+          bookedAt: new Date(rest.bookedAt),
+          providerObservedAt: new Date(rest.providerObservedAt),
+          providerUpdatedAt: date(rest.providerUpdatedAt),
+          isInternalMovement: effective,
+          reviewStatus:
+            (previous?.reviewStatus === "needs_review" &&
+              (!previous.providerSuspended || previous.hasOtherConflicts)) ||
+            reasons.length
+              ? ("needs_review" as const)
+              : ("clear" as const),
+        };
+        if (previous?.providerSuspended)
+          await resolveProviderSuspension(this.db, id);
+        batch.push({
+          movement: { ...fields, id, externalId, accountId: owner.id },
+          existing: previous !== undefined,
+        });
+        effects.push({ prepared, previous, reasons, decision });
+      }
 
-      if (decision) await this.tagging.applyPrepared(saved, decision, rules);
+      const saved = await writeProviderMovementBatch(
+        this.db,
+        batch,
+        effects.some((effect) => effect.decision !== undefined),
+      );
+      for (const { prepared, previous, reasons, decision } of effects) {
+        const id = prepared.id;
+        for (const reason of reasons)
+          await this.conflict(
+            id,
+            reason,
+            {
+              amount: previous?.amount,
+              type: previous?.type,
+              bookedAt: previous?.bookedAt,
+              isInternalMovement: previous?.isInternalMovement,
+            },
+            {
+              amount: prepared.amount,
+              type: prepared.type,
+              bookedAt: prepared.bookedAt,
+              bookedPrecision: prepared.bookedPrecision,
+              bookedOn: prepared.bookedOn,
+              providerInternalAssessment: prepared.providerInternalAssessment,
+            },
+            prepared.providerObservedAt,
+          );
+
+        if (decision) {
+          const movement = saved.get(id);
+          if (!movement) throw new Error("Missing written provider movement");
+          await this.tagging.applyPrepared(movement, decision, rules);
+        }
+      }
     }
 
     await applyProviderSuspensions(

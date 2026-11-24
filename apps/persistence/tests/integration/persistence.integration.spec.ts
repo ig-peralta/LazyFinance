@@ -3755,6 +3755,43 @@ describe.skipIf(!ownerUrl)(
       expect((await client.providerSync.facts.query(scope)).accounts).toEqual(
         [],
       );
+      const bulk = input.movements.flatMap((movement) =>
+        Array.from({ length: 201 }, (_, index) => ({
+          ...movement,
+          id: randomUUID(),
+          externalId: `bulk-${index}`,
+        })),
+      );
+      const bulkScope = {
+        ...scope,
+        keys: bulk.map((movement) => ({
+          accountExternalId: movement.accountExternalId,
+          externalId: movement.externalId,
+        })),
+      };
+      const bulkFacts = await client.providerSync.facts.query(bulkScope);
+      await expect(
+        client.providerSync.commit.mutate({
+          ...input,
+          scope: bulkScope,
+          expectedFingerprint: bulkFacts.fingerprint,
+          movements: bulk.map((movement, index) =>
+            index === 200
+              ? { ...movement, accountExternalId: "unknown" }
+              : movement,
+          ),
+        }),
+      ).rejects.toMatchObject({ data: { code: "BAD_REQUEST" } });
+      expect(
+        (
+          await sql`SELECT id FROM finance.transaction WHERE id IN (${sql.join(bulk.map((movement) => movement.id))})`.execute(
+            owner,
+          )
+        ).rows,
+      ).toEqual([]);
+      expect((await client.providerSync.facts.query(scope)).accounts).toEqual(
+        [],
+      );
       expect(await client.providerSync.commit.mutate(input)).toEqual({
         status: "complete",
         conflictCount: 0,
@@ -3854,6 +3891,53 @@ describe.skipIf(!ownerUrl)(
         revision: failureRun.revision + 1,
         lastFailureReason: "retryable",
       });
+
+      const bulkRun = await client.providerSync.begin.mutate({
+        connectionId: connection,
+        provider: provider.identifier,
+      });
+      const createScope = { ...bulkScope, revision: bulkRun.revision };
+      const createFacts = await client.providerSync.facts.query(createScope);
+      await client.providerSync.commit.mutate({
+        ...input,
+        scope: createScope,
+        expectedFingerprint: createFacts.fingerprint,
+        observedAt: "2026-10-19T18:00:00Z",
+        movements: bulk,
+      });
+      await client.tagRules.manual.mutate({
+        transactionId: bulk[0].id,
+        tagId: tagA,
+      });
+      const updateRun = await client.providerSync.begin.mutate({
+        connectionId: connection,
+        provider: provider.identifier,
+      });
+      const updateScope = { ...bulkScope, revision: updateRun.revision };
+      const updateFacts = await client.providerSync.facts.query(updateScope);
+      await client.providerSync.commit.mutate({
+        ...input,
+        scope: updateScope,
+        accounts: [],
+        expectedFingerprint: updateFacts.fingerprint,
+        observedAt: "2026-10-20T18:00:00Z",
+        movements: bulk.map((movement, index) => ({
+          ...movement,
+          amount: "-3.00",
+          ...(index === 0 ? {} : { decision: { tagId: null, ruleId: null } }),
+        })),
+      });
+      const updated = await client.providerSync.facts.query({
+        ...updateScope,
+        revision: updateRun.revision + 1,
+      });
+      expect(updated.movements).toHaveLength(201);
+      expect(
+        updated.movements.every((movement) => movement.amount === "-3.00"),
+      ).toBe(true);
+      expect(
+        updated.movements.find((movement) => movement.id === bulk[0].id),
+      ).toMatchObject({ tagId: tagA, tagDecisionOrigin: "manual" });
     });
 
     it("preserves nested JSON keys across pg, CamelCasePlugin and signed RPC serialization", async () => {

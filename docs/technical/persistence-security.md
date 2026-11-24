@@ -311,6 +311,15 @@ attempt metadata can be recorded separately without changing last-good balances,
 success time or checkpoint. A committed run with durable unresolved conflicts
 reports `needs_review`, not clean success. Older revisions are `superseded`.
 
+Provider movement writes use batches of at most 100 **inside the original scoped
+transaction and user lock**. New rows use multi-row INSERT; existing provider rows
+use a typed JSON recordset UPDATE restricted by local ID, account, external ID and
+source, with an exact affected-row check. Only provider/effective fields are
+updated: tags, manual internal overrides, receipts, removals and retained recovery
+decisions are not overwritten. Rows are returned only when prepared tag decisions
+need them. Conflict/event processing and the final checkpoint remain in the same
+transaction; a late batch failure rolls back earlier batches and account changes.
+
 Completion/failure ends the lease and advances its revision. Expired/revoked sync
 failures also advance the credential version, preventing an earlier access check
 from reactivating the connection. A crashed/unconfirmed attempt becomes interrupted
