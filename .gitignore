@@ -3,3 +3,4 @@
 **/.turbo
 **/.env
 tests/performance/results/
+tests/validation/results/
