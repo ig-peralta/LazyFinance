@@ -574,9 +574,10 @@ Browser startup shares `config.get`, lazy SDK initialization and restoration.
 Firebase owns its persisted identity and refresh. Accepted credentials/principals
 stay in memory, never an application cookie or browser permission snapshot. The
 legacy `lazyfinance-session` bearer cookie is expired without reading it. Mock
-mode alone uses a tab-session demo token, verified again after reload; no principal
-or financial data enters that store. Logout clears local access/storage, not
-immediate upstream token revocation. Password/linking SDK barriers remain unchanged.
+mode alone uses a tab-session mock token, verified again after reload; it cannot
+survive API restart. No principal or financial data enters that store. Logout
+clears local access/storage, not immediate upstream token revocation. Password/
+linking SDK barriers remain unchanged.
 Same-account transient revalidation errors preserve established access with a
 warning; identity transitions and rejected credentials conceal the old owner.
 

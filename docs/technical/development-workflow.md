@@ -245,6 +245,11 @@ PostgreSQL for you, run the persistence test suite in place of the API suite, or
 drop/reset the target database afterward. Test roles are cluster-scoped; retain
 only disposable fixtures and explicitly manage test-database cleanup.
 
+The mock sign-in flow test uses fresh addresses on that disposable target. It
+checks concurrent first sign-in, an empty initial workspace, and explicit demo
+preparation through authenticated RPC. Separate cases cover preserving the legacy
+mock mapping and refusing a colliding Firebase email.
+
 Persistence DB tests skip without `TEST_POSTGRES_OWNER_URL`. API DB/workflow tests
 require both owner fixture configuration and `TEST_PERSISTENCE_RPC_URL`, with the
 matching test signing key; the root runner wires these together. Running API

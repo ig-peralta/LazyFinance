@@ -567,8 +567,9 @@ when selected, and API principal verification. Login and workspace entry call it
 the public landing does not. Firebase owns browser identity persistence and token
 refresh; verified application credentials stay in memory. Startup expires the
 legacy `lazyfinance-session` cookie without reading it. Mock mode stores only its
-demo token in tab-local `sessionStorage`, revalidates it on reload, and clears it
-on logout. No principal, permissions or financial results are persisted there.
+session token in tab-local `sessionStorage`, revalidates it on reload, and clears
+it on logout. Mock sessions expire and do not survive an API restart. No principal,
+permissions or financial results are persisted there.
 Development uses <http://localhost:3000>; production uses
 <https://api.lazyfinance.online>. `RpcClient` appends `/trpc` to that base URL. The API's
 `CORS_ORIGINS` must allow the actual UI origin. Production URLs are compiled into

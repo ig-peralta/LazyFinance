@@ -95,10 +95,12 @@ contains **94 procedures**. Prefix each method below with its router name.
 | `tags` | `list`, `create`, `update`, `archive`, `suggestions`, `decide`, `reset` | Owned tag lifecycle, single-tag classification and explicit no-tag/reset choices |
 | `tagRules` | `list`, `create`, `replace`, `archive`, `apply` | Owned suggestion/approved automation rules and explicit application |
 
-Only `config.get` and `auth.loginMock` are anonymous. Mock login is available only
-in mock mode and is rejected in production. No public procedure accepts a caller's
-financial owner scope. Demo reset/transaction mutations accept only omitted or empty
-bodies; simulator controls accept bounded actions but no account/owner selectors.
+Only `config.get` and `auth.loginMock` are anonymous. Local mock sign-in takes a
+valid email and nonempty test password, creates or resolves the mock identity, and
+returns an opaque session token. It is unavailable in Firebase mode and production.
+No public procedure accepts a caller's financial owner scope. Demo reset/transaction
+mutations accept only omitted or empty bodies; simulator controls accept bounded
+actions but no account/owner selectors.
 The API-derived signed user context determines ownership. Their availability is
 advertised by `config.get` under `demoTools.enabled` from the API's explicit flag.
 Method schemas in the generated file and

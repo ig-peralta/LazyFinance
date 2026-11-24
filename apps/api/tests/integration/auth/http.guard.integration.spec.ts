@@ -1,3 +1,4 @@
+import { MockLoginResultSchema } from "@lazyfinance/contracts";
 import {
   Controller,
   Get,
@@ -11,12 +12,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppModule } from "../../../src/app.module";
 import type { AuthenticatedRequest } from "../../../src/auth/auth.types";
 import { mockIdentity } from "../../../src/auth/mock/mock-auth.constants";
+import { MockAuthService } from "../../../src/auth/mock/mock-auth.service";
 import { configureCors } from "../../../src/cors";
 import { DemoToolsService } from "../../../src/demo-tools/demo-tools.service";
 import { ENV_SCHEMA } from "../../../src/environment/environment.schema";
 import { EnvironmentService } from "../../../src/environment/environment.service";
 import { PersistenceClient } from "../../../src/persistence/persistence.client";
 import { testEnvironment } from "../../fixtures/environment";
+import type { AsyncStub } from "../../fixtures/rpc-stubs";
 
 @Controller("api/probe")
 class ProbeHttpController {
@@ -33,16 +36,25 @@ describe("HTTP authentication", () => {
     name: "Camila Rojas",
   };
   let app: INestApplication;
+  let demoBearer: string;
   let users: (typeof demoUser)[];
   let queries: number;
   const scopedPersistence = vi.fn(() => {
     throw new Error("Unexpected scoped persistence call");
   });
+  const resolveOrCreate = vi.fn<
+    AsyncStub<PersistenceClient["resolveOrCreate"]>
+  >(async () => ({
+    userId: demoUser.id,
+    email: demoUser.email,
+    name: demoUser.name,
+  }));
 
   beforeEach(async () => {
     users = [demoUser];
     queries = 0;
     scopedPersistence.mockClear();
+    resolveOrCreate.mockClear();
     const module = await Test.createTestingModule({
       imports: [AppModule],
       controllers: [ProbeHttpController],
@@ -50,6 +62,7 @@ describe("HTTP authentication", () => {
       .overrideProvider(PersistenceClient)
       .useValue({
         user: scopedPersistence,
+        resolveOrCreate,
         resolveExisting: async (identity: typeof mockIdentity) => {
           queries++;
           if (
@@ -73,6 +86,7 @@ describe("HTTP authentication", () => {
     app = module.createNestApplication();
     configureCors(app, ENV_SCHEMA.parse({}).CORS_ORIGINS);
     await app.init();
+    demoBearer = `Bearer ${app.get(MockAuthService).issueSession(mockIdentity).token}`;
   });
 
   afterEach(async () => {
@@ -100,7 +114,7 @@ describe("HTTP authentication", () => {
     expect(queries).toBe(0);
     await request(app.getHttpServer())
       .get("/api/probe")
-      .set("Authorization", "Bearer lazyfinance-demo-token")
+      .set("Authorization", demoBearer)
       .expect(401);
     expect(queries).toBe(1);
   });
@@ -108,7 +122,7 @@ describe("HTTP authentication", () => {
   it("attaches the resolved principal to authenticated requests", async () => {
     const response = await request(app.getHttpServer())
       .get("/api/probe")
-      .set("Authorization", "Bearer lazyfinance-demo-token")
+      .set("Authorization", demoBearer)
       .expect(200);
 
     expect(response.body).toEqual({
@@ -123,7 +137,7 @@ describe("HTTP authentication", () => {
 
     const response = await request(app.getHttpServer())
       .get("/trpc/auth.principal")
-      .set("Authorization", "Bearer lazyfinance-demo-token")
+      .set("Authorization", demoBearer)
       .expect(200);
 
     expect(response.body.result.data).toEqual({
@@ -191,7 +205,7 @@ describe("HTTP authentication", () => {
     const anonymous = await invoke().expect(401);
     expect(queries).toBe(0);
     const disabled = await invoke()
-      .set("Authorization", "Bearer lazyfinance-demo-token")
+      .set("Authorization", demoBearer)
       .expect(404);
     expect(queries).toBe(1);
     expect(scopedPersistence).not.toHaveBeenCalled();
@@ -216,7 +230,7 @@ describe("HTTP authentication", () => {
 
     const response = await request(app.getHttpServer())
       .post(endpoint)
-      .set("Authorization", "Bearer lazyfinance-demo-token")
+      .set("Authorization", demoBearer)
       .send({})
       .expect(200);
     expect(response.body.result.data).toEqual({
@@ -226,7 +240,7 @@ describe("HTTP authentication", () => {
     });
     await request(app.getHttpServer())
       .post(endpoint)
-      .set("Authorization", "Bearer lazyfinance-demo-token")
+      .set("Authorization", demoBearer)
       .send({ userId: demoUser.id })
       .expect(400);
     expect(reset).toHaveBeenCalledExactlyOnceWith(demoUser.id);
@@ -256,7 +270,7 @@ describe("HTTP authentication", () => {
       await request(app.getHttpServer()).post(endpoint).send({}).expect(401);
       const response = await request(app.getHttpServer())
         .post(endpoint)
-        .set("Authorization", "Bearer lazyfinance-demo-token")
+        .set("Authorization", demoBearer)
         .send({})
         .expect(200);
       expect(response.body.result.data.transactionCount).toBe(count);
@@ -267,7 +281,7 @@ describe("HTTP authentication", () => {
       ]) {
         await request(app.getHttpServer())
           .post(endpoint)
-          .set("Authorization", "Bearer lazyfinance-demo-token")
+          .set("Authorization", demoBearer)
           .send(input)
           .expect(400);
       }
@@ -275,31 +289,33 @@ describe("HTTP authentication", () => {
     }
   });
 
-  it("logs in with local credentials only when the demo user is seeded", async () => {
-    await request(app.getHttpServer())
-      .post("/trpc/auth.loginMock")
-      .send({ email: demoUser.email, password: "wrong" })
-      .expect(401);
-    await request(app.getHttpServer())
-      .post("/trpc/auth.loginMock")
-      .send({ email: demoUser.email })
-      .expect(400);
-    expect(queries).toBe(0);
+  it("accepts valid mock input with any nonempty password and issues a new token", async () => {
+    for (const input of [
+      { email: "not-an-email", password: "test" },
+      { email: demoUser.email, password: "" },
+      { email: demoUser.email },
+    ]) {
+      await request(app.getHttpServer())
+        .post("/trpc/auth.loginMock")
+        .send(input)
+        .expect(400);
+    }
+    expect(resolveOrCreate).not.toHaveBeenCalled();
 
     const response = await request(app.getHttpServer())
       .post("/trpc/auth.loginMock")
-      .send({ email: demoUser.email, password: "password" })
+      .send({ email: ` ${demoUser.email.toUpperCase()} `, password: "x" })
       .expect(200);
-    expect(response.body.result.data).toEqual({
-      token: "lazyfinance-demo-token",
-    });
+    const { token } = MockLoginResultSchema.parse(response.body.result.data);
+    expect(`Bearer ${token}`).not.toBe(demoBearer);
+    expect(resolveOrCreate).toHaveBeenCalledExactlyOnceWith(mockIdentity);
     expect(response.headers["cache-control"]).toBe("private, no-store");
-    expect(queries).toBe(1);
-    users = [];
+    expect(queries).toBe(0);
     await request(app.getHttpServer())
-      .post("/trpc/auth.loginMock")
-      .send({ email: demoUser.email, password: "password" })
-      .expect(401);
+      .get("/trpc/auth.principal")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(queries).toBe(1);
   });
 
   it("advertises Firebase and refuses both mock login and a demo token in Firebase mode", async () => {
@@ -342,7 +358,7 @@ describe("HTTP authentication", () => {
         .expect(404);
       await request(firebaseApp.getHttpServer())
         .get("/trpc/auth.principal")
-        .set("Authorization", "Bearer lazyfinance-demo-token")
+        .set("Authorization", demoBearer)
         .expect(401);
     } finally {
       await firebaseApp.close();

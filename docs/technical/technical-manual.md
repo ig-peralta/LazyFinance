@@ -11,8 +11,9 @@ For code changes, Biome and test tiers use the
 Node 22.22.3+ or 24.15.0+, pnpm 9, Docker/Compose and PostgreSQL 18. Install
 from the monorepo root with `pnpm install`. Follow [root setup](../../README.md#run-locally)
 and the [persistence guide](../../apps/persistence/README.md) to initialize a
-**fresh empty** database, provision a separate runtime login, explicitly seed if
-desired, and generate a fresh service key pair.
+**fresh empty** database, provision a separate runtime login and generate a fresh
+service key pair. First local mock sign-in creates its own user; no seed or
+identity setup command is required.
 
 There is no old-Drizzle history/data adoption and no automatic reset. An existing
 resources container may still have only the old `postgres` database: create a
@@ -26,23 +27,24 @@ The setup order is deliberate:
 1. Install/build shared dependencies and choose the new database.
 2. Run owner-only `db:migrate`, then `db:provision-runtime` with a distinct login
    and 16+-character runtime password. Existing managed passwords are not rotated.
-3. Optionally run owner-only `db:seed` for demo data, not real financial data.
+3. To use **Preparar demo**, also provision the
+   [separate demo-tools login](../../apps/persistence/README.md#demo-tools).
 4. Generate a service key pair and configure the two separate app-local runtime
    environments. Remove owner credentials from the runtime shell/environment.
 5. Start persistence, API and UI (or let the Compose init/dependency chain do so).
 
-The persistence CLI scripts run TypeScript; its image also includes compiled
-`node dist/database/cli.js migrate|provision|seed`. Migration/provision/seed jobs
-are not service startup side effects. Runtime role checks are not bypassed by
-using a database owner when setup fails.
+The persistence CLI scripts run TypeScript. For containers, use the compiled
+`node dist/database/cli.js` with `migrate`, `provision`, `provision-demo-tools` or `seed`.
+None is an application startup side effect. Runtime
+role checks are not bypassed by using a database owner when setup fails.
 
 ## Environments
 
 | Process | Configuration boundary |
 | --- | --- |
-| Owner CLI/init/seed | `POSTGRES_MIGRATION_URL`; `PERSISTENCE_DATABASE_USER` / `PERSISTENCE_DATABASE_PASSWORD` only for provisioning |
+| Owner CLI / init / seed | `POSTGRES_MIGRATION_URL`; separate runtime and demo-tools login/password pairs only for role provisioning |
 | Persistence | `POSTGRES_RUNTIME_URL`, `PERSISTENCE_RPC_PUBLIC_KEY`, matching key ID; `HOST` / `PORT` default to `127.0.0.1` / `3001` |
-| API | `PERSISTENCE_RPC_URL`, `PERSISTENCE_RPC_PRIVATE_KEY`, matching key ID; auth/CORS settings; `PORT` default `3000`; optional banking timer |
+| API | `PERSISTENCE_RPC_URL`, `PERSISTENCE_RPC_PRIVATE_KEY`, matching key ID; auth/CORS settings; `PORT` default `3000`; direct mock runs default `HOST` to loopback; optional banking timer |
 | Headless banking host | Same signed private-RPC and matching-mode Fintoc configuration; `BANKING_AUTOMATIC_SYNC_ENABLED`; no HTTP listener or database URL |
 | UI static host | Nginx on `4000`; no Node rendering environment, database or service-signing credentials |
 | Browser build | `apps/ui/src/environments/environment*.ts`: public API URL and public Firebase Web identifiers, never Admin/signing keys |
@@ -211,8 +213,8 @@ durable receipts or undo finance; action retention has no automatic purge.
 The `PERSISTENCE_RPC_URL` is the service base URL (the client appends `/trpc`).
 PEMs in the example dotenv files use escaped newlines; replace placeholders with
 the generated matching pair. These are service keys, not Firebase Admin keys or
-user ID tokens. `AUTH_PROVIDER=mock` works only outside production and needs the
-seeded existing identity; Firebase mode requires `FIREBASE_PROJECT_ID`. Optional
+user ID tokens. `AUTH_PROVIDER=mock` is for disposable local development only;
+Firebase mode requires `FIREBASE_PROJECT_ID`. Optional
 Admin email/private key must be supplied together. See
 [identity configuration](identity.md#configuration-boundaries).
 
@@ -271,8 +273,9 @@ fourteen financial/supporting reads plus preview/direct-execution tools through
 the same services, with separately granted write permissions. It requires a separate
 OAuth client grant, not a Firebase/development app bearer. Discovery/protocol and
 cookie-bound interaction routes are HTTP; grant settings use authenticated
-`mcpAccess` RPC. Mock login uses `demo@lazyfinance.cl` / `password` only in development
-after seeding. Production mode requires real Firebase configuration.
+`mcpAccess` RPC. [Local mock sign-in](identity.md#local-mock-sign-in) accepts any
+valid email and nonempty test password without checking either against an identity
+service. Production mode requires real Firebase configuration.
 
 The liveness routes confirm a listening application, not an end-to-end provider,
 Firebase, database query or backup-recovery readiness check. Private procedures
@@ -288,7 +291,7 @@ profile or instructions for a live environment.
 
 - `resources.yml`: local PostgreSQL on loopback port 5432; no named durable volume.
 - `apps.yml`: apps plus owner-only init job using the external `lazyfinance`
-  resources network. Start resources first; only persistence/init/seed join that
+  resources network. Start resources first; only persistence, init and seed join that
   database network, with API/UI on separate service/edge networks.
 - `deploy.yml`: separate data/service/edge networks, named PostgreSQL volume,
   owner-only init job, private persistence, API and static UI. No
@@ -299,12 +302,17 @@ profile or instructions for a live environment.
   PostgreSQL on a named volume, private persistence, API and static UI. Only ports
   80/443 are published, by Traefik. There are no published API, persistence or
   PostgreSQL backend ports.
-- Initial fixed local demo identity/fixtures are opt-in:
-  `pnpm deploy:local --profile tools run --rm seed`. The in-app **Preparar demo**
-  action resets only the signed-in user's finance and assistant data, creates an
-  owned simulated bank, and imports three of six accounts via normal synchronization.
-  It is never invoked at startup or during deployment.
-  Migrations/provisioning are init-job work, never runtime startup side effects.
+
+Both local Compose app stacks publish the API on loopback only. After `init`
+succeeds, sign in with a test email and password to create an empty mock workspace.
+The legacy manual fixture remains optional. On a fresh database, run
+`pnpm deploy:local --profile tools run --rm seed` before signing in as
+`demo@lazyfinance.cl` if you need the manual fixture.
+
+The in-app **Preparar demo** action resets only the signed-in user's finance and
+assistant data after confirmation, creates an owned simulated bank, and imports
+three of six accounts via normal synchronization. Neither user creation nor demo
+preparation runs on deployment or startup.
 
 The local deployment uses development defaults. Production TLS, secret management,
 key rotation, backups and public OAuth abuse controls remain operator work.
@@ -333,8 +341,7 @@ The menu can prepare a simulated bank for the signed-in account and change its
 source with a transfer, external activity, correction, removal or availability
 failure. These changes reach financial records only after explicit synchronization
 from **Conexiones bancarias**. An incomplete preparation can be continued without
-resetting again. None of these controls accepts an account or user selector; the
-separate CLI seed remains a manual fixture, not a simulated-bank import.
+resetting again. None of these controls accepts an account or user selector.
 
 Configure this repository variable for Docker Hub image publishing:
 
@@ -387,8 +394,8 @@ Traefik and ACME TLS challenges. The `api.lazyfinance.online` DNS record must al
 point to this host; it is the API origin already embedded in the UI source.
 
 The workflow starts PostgreSQL, runs the owner-only migration/provision CLI, and
-then starts persistence/API/UI. It does not seed or reset user data on
-deployment. Manual dispatch is
+then starts persistence/API/UI. It uses Firebase, and does not load demo finances
+or reset user data on deployment. Manual dispatch is
 restricted to the `main` ref. Owner credentials are passed only to PostgreSQL
 initialization and one-shot CLI jobs, not to running application containers. The
 API verifies the Firebase bearer and passes a signed internal user context to
@@ -474,9 +481,11 @@ fixture safety and live-Firebase distinctions. No real user database is a fixtur
 - API unavailable: inspect persistence URL/reachability, service key pair/key ID,
   then runtime-role safety and migration state. Do not supply owner credentials
   to bypass RLS or restore direct API SQL.
-- Empty local mock account: run the explicit initial CLI seed once. Firebase users
-  provision their own identity and can use the development-only confirmed reset
-  action to create their own demo fixtures.
+- Local mock sign-in fails: check `AUTH_PROVIDER=mock` and migration 040, then
+  sign in with a valid test email and a nonempty password. If the email is in use
+  by another identity, use a different test email; never delete or reassign the
+  other user. Sign in again after an API restart. An empty workspace is expected
+  until you use **Preparar demo**.
 - Browser/API failure: check the selected environment's API base URL, browser
   reachability/TLS, API port and allowed CORS origin. The neutral
   frame must remain available during an API outage; session failure offers retry.

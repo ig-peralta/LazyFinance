@@ -54,6 +54,7 @@ services:
       dockerfile: apps/api/Dockerfile
     environment:
       NODE_ENV: ${API_NODE_ENV:-development}
+      HOST: 0.0.0.0
       PORT: '3000'
       PERSISTENCE_RPC_URL: http://persistence:3001
       PERSISTENCE_RPC_PRIVATE_KEY: ${PERSISTENCE_RPC_PRIVATE_KEY:?Generate keys with pnpm rpc:keys}
@@ -69,7 +70,7 @@ services:
       MCP_OAUTH_STATE_KEY:
       MCP_OAUTH_JWKS:
       MCP_OAUTH_TRUST_PROXY: '${MCP_OAUTH_TRUST_PROXY:-false}'
-    ports: ['3000:3000']
+    ports: ['127.0.0.1:3000:3000']
     networks: [services, edge]
     depends_on:
       persistence:

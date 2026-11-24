@@ -51,7 +51,7 @@ The currently implemented API modes are:
 | `AUTH_PROVIDER` | Verification | Mapping behavior |
 | --- | --- | --- |
 | `firebase` | Firebase Admin verifies a Firebase Auth ID token against the configured project/issuer/audience | Resolve by Firebase UID; provision a new application user only with verified email |
-| `mock` | Local hardcoded demo credentials/token; issuer `https://mock.lazyfinance.cl`, subject `demo` | Existing seeded mapping only; never create a replacement demo owner |
+| `mock` | Local only: valid email and nonempty test password; no proof of email ownership | First sign-in creates a workspace for the normalized email; an issued bearer can only resolve its existing mapping |
 
 **One mode is selected per API process.** The UI reads `config.get.auth.provider` and presents
 that mode's login. This is multi-provider-ready identity modelling with two
@@ -79,13 +79,11 @@ unselected mode is not a fallback credential.
    contexts for financial persistence; RLS checks that internal UUID and every
    related owner.
 
-Email is required and verified only for first provisioning; it is not authority
-to access another user. A collision with any existing case-insensitive email,
-including the demo user's, fails with a conflict rather than linking accounts.
-An existing subject can still resolve when a later token has no verified email.
-Changed email/display name does not remap that identity or automatically rewrite
-the stored application profile. Mock resolution is existing-only, and production
-refuses mock mode entirely.
+Firebase requires a verified email for first provisioning. A collision with an
+existing case-insensitive email fails with a conflict rather than linking accounts.
+An existing subject can still resolve when a later Firebase token has no verified
+email. Changed email/display name does not remap that identity or automatically
+rewrite the stored application profile. Production refuses mock mode entirely.
 
 The bootstrap context can call only the narrow resolver, not finance procedures.
 Its `SECURITY DEFINER` owner has no financial access and cannot be assumed by the
@@ -151,7 +149,7 @@ see [command lifetimes](ui-data-lifecycle.md#firebase-commands-and-observer-orde
 
 The browser verifies its candidate token through `auth.principal` before accepting
 a principal. Firebase mode lets its browser SDK own token persistence/refresh;
-mock mode restores only its demo token from tab-local `sessionStorage` after the
+mock mode restores only its session token from tab-local `sessionStorage` after the
 API selects mock mode. Neither path persists an accepted principal, permissions,
 financial responses or an application bearer cookie. Startup expires the legacy
 `lazyfinance-session` cookie without reading its token or principal.
@@ -166,7 +164,7 @@ newer session. Only public content is prerendered and hydrated; protected pages
 and data are browser-only and never serialized into transfer state. Details live in the
 [session/resource reference](ui-data-lifecycle.md).
 
-Logout clears local access and any demo token; it is not a general upstream
+Logout clears local access and any mock token; it is not a general upstream
 credential-revocation operation. In the current Firebase verifier,
 `verifyIdToken` checks expiry/signature/claims but does not request immediate
 revocation checking by default. An issued token may remain usable until expiry.
@@ -190,8 +188,25 @@ email-enumeration protection and account-per-email settings before deployment;
 see the [Firebase setup checklist](technical-manual.md#firebase-browser-setup).
 Admin credentials, service signing keys and user tokens never belong in the UI
 bundle or committed examples. Production rejects `FIREBASE_AUTH_EMULATOR_HOST`;
-there is no emulator-based production authentication path. Mock needs neither
-Firebase nor an emulator, but requires the explicit demo seed.
+there is no emulator-based production authentication path.
+
+### Local mock sign-in
+
+Mock needs neither Firebase nor an emulator. After applying the database
+migrations (including 040), sign in with any valid email and a nonempty test
+password. The password is neither verified nor stored. The API trims and lowercases
+the email and uses it as the subject within the mock issuer; `demo@lazyfinance.cl`
+keeps its legacy `demo` subject. The first sign-in atomically creates the user and
+mapping. Later sign-ins keep the same owner, profile and data. A new mock mapping
+cannot claim an email another owner already uses, including a Firebase user's.
+
+The API issues a distinct local session token only after successful resolution.
+Tokens expire after eight hours and are lost on API restart; the browser must
+sign in again. Bearer verification resolves the existing mapping rather than
+creating a user. **Anyone who knows the email can sign in as that mock user.**
+Use disposable local databases and loopback access only. Do not proxy or publish a
+mock API for others. No financial data is loaded by sign-in; use **Preparar demo**
+separately if demo tools are enabled.
 
 ## Extending identity without coupling financial code
 

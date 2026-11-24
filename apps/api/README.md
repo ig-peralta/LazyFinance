@@ -30,7 +30,7 @@ Technical references: [architecture](../../docs/technical/architecture.md),
 - Typed clients call `@lazyfinance/rpc-persistence` with a 30-second Ed25519 JWT.
   Context is immutable per client, and public tRPC request IDs propagate privately.
 - **No database driver, pool or SQL access in the API.** Owner-only
-  migration/seed commands belong to [persistence](../persistence/README.md).
+  migration and provisioning commands belong to [persistence](../persistence/README.md).
 - The `demo-tools` module verifies the ordinary API bearer and forwards a signed
   user context to persistence. The privileged database connection is conditional
   in persistence; its credential is never available to this API.
@@ -51,6 +51,7 @@ ignored `apps/api/.env`, and configure:
 | `AUTH_PROVIDER` | `mock` locally, or `firebase`. |
 | `DEMO_TOOLS_ENABLED` | Default `false`; explicit `true` exposes demo tools and advertises availability under `config.get.demoTools.enabled`. Set it on persistence as well. |
 | `NODE_ENV` | Mock authentication is rejected in `production`. |
+| `HOST` | Optional listen address. Direct mock runs default to loopback; local Compose binds inside the container and publishes on loopback. Do not expose a mock API publicly. |
 | `PORT` | Default `3000`. |
 | `CORS_ORIGINS` | Allowed browser origins; default local Angular origins. |
 | `FIREBASE_PROJECT_ID` | Required in Firebase mode. |
@@ -95,16 +96,16 @@ future-service extraction constraints.
 
 `pnpm --filter api dev` starts watch mode. `build`, `typecheck` and `test` are also
 available. Only `config.get` and `auth.loginMock` are anonymous; all
-others require a verified bearer. Mock login uses `demo@lazyfinance.cl` /
-`password` only after an explicit persistence demo seed. The SSR cookie is not
+others require a verified bearer. [Local mock sign-in](../../docs/technical/identity.md#local-mock-sign-in)
+accepts a valid email and any nonempty test password; it creates the user only
+on first sign-in and issues a process-local session token. The SSR cookie is not
 accepted directly as API authentication.
 
-The local demo login uses `demo@lazyfinance.cl` / `password` after an explicit
-owner-only CLI seed. If `DEMO_TOOLS_ENABLED=true` on both API and persistence,
-**Mi cuenta → Herramientas demo** offers a confirmed reset-and-reseed action for
+If `DEMO_TOOLS_ENABLED=true` on both API and persistence,
+**Mi cuenta → Herramientas demo → Preparar demo** loads synthetic finances for
 the signed-in account. The API verifies the bearer and forwards the internal user
-in a signed persistence context; the browser sends no target user ID. Persistence
-uses its separately provisioned connection to clear only that user's finance and
+in a signed persistence context; the browser sends no target user ID. After confirmation,
+persistence uses its separately provisioned connection to clear only that user's finance and
 assistant data and create an owned simulated bank source. Identity rows and MCP grants survive;
 deleting assistant/MCP action receipts does not reverse prior financial effects.
 The normal persistence connection, RLS policies and runtime grants remain unchanged.

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   NotFoundException,
   UnauthorizedException,
 } from "@nestjs/common";
@@ -10,7 +11,7 @@ import type { PersistenceClient } from "../persistence/persistence.client";
 import { AuthService } from "./auth.service";
 import type { FirebaseAuthService } from "./firebase/firebase-auth.service";
 import { mockIdentity } from "./mock/mock-auth.constants";
-import type { MockAuthService } from "./mock/mock-auth.service";
+import { MockAuthService } from "./mock/mock-auth.service";
 
 const principal = {
   userId: "00000000-0000-4000-8000-000000000001",
@@ -27,18 +28,13 @@ const identity = {
 };
 
 function createService(provider: "firebase" | "mock" = "mock") {
-  const mockVerify = vi.fn<MockAuthService["verify"]>((token) => {
-    if (token !== "lazyfinance-demo-token")
-      throw new UnauthorizedException("Invalid mock identity");
-
-    return mockIdentity;
-  });
-  const login = vi.fn<MockAuthService["login"]>(async () => ({
-    token: "lazyfinance-demo-token",
-  }));
-  const mock = { verify: mockVerify, login } satisfies MockAuthService;
-  const verify = vi.fn<FirebaseAuthService["verify"]>(async (token) => {
-    if (token === "lazyfinance-demo-token")
+  const mock = new MockAuthService();
+  const { token } = mock.issueSession(mockIdentity);
+  const mockVerify = vi.spyOn(mock, "verify");
+  const identify = vi.spyOn(mock, "identify");
+  const issueSession = vi.spyOn(mock, "issueSession");
+  const verify = vi.fn<FirebaseAuthService["verify"]>(async (input) => {
+    if (input === token)
       throw new UnauthorizedException("Invalid Firebase ID token");
 
     return identity;
@@ -62,8 +58,10 @@ function createService(provider: "firebase" | "mock" = "mock") {
 
   return {
     service,
+    token,
     mockVerify,
-    login,
+    identify,
+    issueSession,
     verify,
     resolveOrCreate,
     resolveExisting,
@@ -87,24 +85,24 @@ describe("AuthService", () => {
   });
 
   it("returns the internal principal only through the selected mock provider", async () => {
-    const { service, mockVerify, resolveExisting } = createService();
-    await expect(
-      service.authenticate("bearer lazyfinance-demo-token"),
-    ).resolves.toEqual(principal);
-    expect(mockVerify).toHaveBeenCalledExactlyOnceWith(
-      "lazyfinance-demo-token",
+    const { service, token, mockVerify, resolveExisting, resolveOrCreate } =
+      createService();
+    await expect(service.authenticate(`bearer ${token}`)).resolves.toEqual(
+      principal,
     );
+    expect(mockVerify).toHaveBeenCalledExactlyOnceWith(token);
     expect(resolveExisting).toHaveBeenCalledExactlyOnceWith(mockIdentity);
+    expect(resolveOrCreate).not.toHaveBeenCalled();
   });
 
   it("does not accept a demo bearer token in Firebase mode", async () => {
-    const { service, mockVerify, verify, resolveOrCreate } =
+    const { service, token, mockVerify, verify, resolveOrCreate } =
       createService("firebase");
     await expect(
-      service.authenticate("Bearer lazyfinance-demo-token"),
+      service.authenticate(`Bearer ${token}`),
     ).rejects.toBeInstanceOf(UnauthorizedException);
     expect(mockVerify).not.toHaveBeenCalled();
-    expect(verify).toHaveBeenCalledExactlyOnceWith("lazyfinance-demo-token");
+    expect(verify).toHaveBeenCalledExactlyOnceWith(token);
     expect(resolveOrCreate).not.toHaveBeenCalled();
   });
 
@@ -124,35 +122,44 @@ describe("AuthService", () => {
     await expect(
       mock.service.loginMock({ email: principal.email }),
     ).rejects.toBeInstanceOf(BadRequestException);
-    expect(mock.login).not.toHaveBeenCalled();
+    expect(mock.identify).not.toHaveBeenCalled();
 
     const firebase = createService("firebase");
     await expect(firebase.service.loginMock({})).rejects.toBeInstanceOf(
       NotFoundException,
     );
-    expect(firebase.login).not.toHaveBeenCalled();
+    expect(firebase.identify).not.toHaveBeenCalled();
   });
 
-  it("delegates valid mock credentials only in mock mode", async () => {
-    const { service, login, mockVerify, resolveExisting } = createService();
-    const credentials = { email: principal.email, password: "password" };
-    await expect(service.loginMock(credentials)).resolves.toEqual({
-      token: "lazyfinance-demo-token",
+  it("normalizes the mock email and provisions before issuing a session", async () => {
+    const { service, identify, issueSession, resolveOrCreate } =
+      createService();
+    const result = await service.loginMock({
+      email: " FIRST@Example.com ",
+      password: "x",
     });
-    expect(login).toHaveBeenCalledExactlyOnceWith(credentials);
-    expect(mockVerify).toHaveBeenCalledExactlyOnceWith(
-      "lazyfinance-demo-token",
-    );
-    expect(resolveExisting).toHaveBeenCalledExactlyOnceWith(mockIdentity);
+    const expected = {
+      provider: "mock",
+      issuer: mockIdentity.issuer,
+      providerSubject: "email:first@example.com",
+      verifiedEmail: "first@example.com",
+      displayName: null,
+    };
+    expect(result.token).toMatch(/^[\w-]+$/);
+    expect(identify).toHaveBeenCalledExactlyOnceWith("first@example.com");
+    expect(resolveOrCreate).toHaveBeenCalledExactlyOnceWith(expected);
+    expect(issueSession).toHaveBeenCalledExactlyOnceWith(expected);
+    expect(resolveOrCreate).toHaveBeenCalledBefore(issueSession);
   });
 
-  it("cannot issue a usable mock session without the seeded external identity link", async () => {
-    const { service, resolveExisting } = createService();
-    resolveExisting.mockRejectedValueOnce(
-      new UnauthorizedException("External identity is not linked"),
+  it("does not issue a mock session if the email conflicts with another identity", async () => {
+    const { service, issueSession, resolveOrCreate } = createService();
+    resolveOrCreate.mockRejectedValueOnce(
+      new ConflictException("Email already in use"),
     );
     await expect(
       service.loginMock({ email: principal.email, password: "password" }),
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(issueSession).not.toHaveBeenCalled();
   });
 });

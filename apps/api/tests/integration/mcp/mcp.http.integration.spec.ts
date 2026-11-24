@@ -5,11 +5,10 @@ import request from "supertest";
 import { afterAll, beforeAll, describe, it } from "vitest";
 import { AppModule } from "../../../src/app.module";
 import { mockIdentity } from "../../../src/auth/mock/mock-auth.constants";
+import { MockAuthService } from "../../../src/auth/mock/mock-auth.service";
 import { EnvironmentService } from "../../../src/environment/environment.service";
 import { PersistenceClient } from "../../../src/persistence/persistence.client";
 import { testEnvironment } from "../../fixtures/environment";
-
-const demoToken = "lazyfinance-demo-token";
 
 const initialization = {
   jsonrpc: "2.0",
@@ -24,6 +23,7 @@ const initialization = {
 
 describe("MCP HTTP authentication without OAuth configuration", () => {
   let app: INestApplication;
+  let demoToken: string;
 
   beforeAll(async () => {
     const module = await Test.createTestingModule({ imports: [AppModule] })
@@ -50,6 +50,7 @@ describe("MCP HTTP authentication without OAuth configuration", () => {
     app.connectMicroservice({ strategy });
     await app.startAllMicroservices();
     await app.init();
+    demoToken = app.get(MockAuthService).issueSession(mockIdentity).token;
   });
 
   afterAll(async () => {

@@ -58,7 +58,8 @@ rules live in the [RPC reference](rpc-contracts.md).
 Only `config.get` and `auth.loginMock` are anonymous public procedures. The API
 verifies Firebase/mock bearers and resolves the stable provider/issuer/subject to
 an internal UUID. First Firebase provisioning requires verified email and never
-links different subjects by email. Mock is existing-only and rejected in production.
+links different subjects by email. Local mock sign-in provisions an owner on first
+use; later bearer requests only resolve that owner. Production rejects mock mode.
 
 External MCP has a separate [standards-first OAuth boundary](mcp-authorization.md):
 `oidc-provider` handles discovery, CIMD/DCR, S256 PKCE and rotating credentials;

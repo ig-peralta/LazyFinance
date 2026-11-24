@@ -179,7 +179,7 @@ function setup(
 describe("LoginPage", () => {
   afterEach(() => TestBed.resetTestingModule());
 
-  it("shows mock credentials only in mock mode and logs in using the returned token", async () => {
+  it("accepts a local test email and clears the password before using the returned token", async () => {
     const { fixture, loginMock, loginWithToken, navigate, clear, logout } =
       setup();
     await fixture.whenStable();
@@ -192,12 +192,17 @@ describe("LoginPage", () => {
       "#password",
     ) as HTMLInputElement;
     expect(email.disabled).toBe(false);
+    expect(email.value).toBe("");
     expect(password.disabled).toBe(false);
+    expect(fixture.nativeElement.textContent).toContain(
+      "Acceso de prueba local",
+    );
     expect(
       fixture.nativeElement.querySelector('[data-testid="google-login"]'),
     ).toBeNull();
 
-    password.value = "password";
+    email.value = "tester@example.test";
+    password.value = "x";
     (
       fixture.nativeElement.querySelector("form") as HTMLFormElement
     ).dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
@@ -205,10 +210,11 @@ describe("LoginPage", () => {
     fixture.detectChanges();
 
     expect(loginMock).toHaveBeenCalledWith(
-      email.value,
-      "password",
+      "tester@example.test",
+      "x",
       expect.any(AbortSignal),
     );
+    expect(password.value).toBe("");
     expect(loginWithToken).toHaveBeenCalledExactlyOnceWith(
       "mock-session-token",
       expect.any(AbortSignal),
@@ -247,9 +253,14 @@ describe("LoginPage", () => {
       '[data-testid="google-login"]',
     ) as HTMLButtonElement;
     expect(google.disabled).toBe(false);
-    await fixture.componentInstance.loginWithMock(
-      "demo@lazyfinance.cl",
-      "password",
+    const mockEmail = document.createElement("input");
+    const mockPassword = document.createElement("input");
+    mockEmail.value = "demo@lazyfinance.cl";
+    mockPassword.value = "x";
+    await fixture.componentInstance.submitMock(
+      new Event("submit"),
+      mockEmail,
+      mockPassword,
     );
     expect(loginMock).not.toHaveBeenCalled();
     expect(loginWithToken).not.toHaveBeenCalled();
@@ -297,12 +308,16 @@ describe("LoginPage", () => {
     const { fixture, loginMock, loginWithToken } = setup();
     await fixture.whenStable();
     fixture.detectChanges();
-    loginMock.mockRejectedValueOnce(new Error("invalid credentials"));
+    loginMock.mockRejectedValueOnce(new Error("login failed"));
 
     const password = fixture.nativeElement.querySelector(
       "#password",
     ) as HTMLInputElement;
-    password.value = "wrong";
+    const email = fixture.nativeElement.querySelector(
+      "#email",
+    ) as HTMLInputElement;
+    email.value = "tester@example.test";
+    password.value = "x";
     (
       fixture.nativeElement.querySelector("form") as HTMLFormElement
     ).dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
@@ -310,6 +325,7 @@ describe("LoginPage", () => {
     fixture.detectChanges();
 
     expect(loginWithToken).not.toHaveBeenCalled();
+    expect(password.value).toBe("");
     expect(
       fixture.nativeElement.querySelector('[role="alert"]'),
     ).not.toBeNull();

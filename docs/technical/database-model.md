@@ -210,7 +210,7 @@ is distinct from permanent tombstones, which replay never reactivates.
 
 ## Migration and seed lifecycle
 
-Thirty-eight migrations are globally ordered across `migrations/identity`,
+Forty migrations are globally ordered across `migrations/identity`,
 `migrations/finance` and `migrations/assistant`: schema/bootstrap foundations plus
 the table migrations.
 Kysely's PostgreSQL migrator owns locking and transactional DDL/ledger updates.
@@ -279,6 +279,10 @@ current-user predicate protect those keys; the array also permits account-index
 conditions. Transaction write policies, related-tag/rule checks, grants and forced
 RLS are unchanged. Its `down` restores the correlated SELECT policy without
 rewriting financial data. Income-receipt policies are unchanged.
+
+Migration 040 updates the restricted identity resolver to allow the first local
+mock sign-in to create an application user. It does not insert data, change
+grants, rewrite mappings or change Firebase provisioning.
 
 The explicit owner-only CLI seed creates the fixed local manual account and its
 initial fixtures; it is never startup or migration work. Stable fixture IDs allow

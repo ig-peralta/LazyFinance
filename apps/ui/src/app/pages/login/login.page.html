@@ -168,8 +168,12 @@
           @if (provider() === 'mock') {
             <form
               class="mt-10 space-y-5"
-              (submit)="$event.preventDefault(); loginWithMock(emailInput.value, passwordInput.value)"
+              autocomplete="off"
+              (submit)="submitMock($event, emailInput, passwordInput)"
             >
+              <p class="text-sm leading-6 text-muted-color">
+                Acceso de prueba local. Usa un correo válido y una contraseña de prueba, no una real.
+              </p>
               <div>
                 <label for="email" class="mb-2 block text-sm font-semibold text-color-emphasis"
                   >Correo electrónico</label
@@ -179,9 +183,8 @@
                   id="email"
                   name="email"
                   type="email"
-                  autocomplete="username"
-                  placeholder="tu@correo.cl"
-                  value="demo@lazyfinance.cl"
+                  placeholder="demo@lazyfinance.cl"
+                  maxlength="160"
                   required
                   class="w-full rounded-xl border border-surface bg-surface-100 px-4 py-3 text-color outline-none placeholder:text-muted-color dark:border-surface-700 dark:bg-surface-900"
                 />
@@ -195,7 +198,6 @@
                   id="password"
                   name="password"
                   type="password"
-                  autocomplete="current-password"
                   required
                   class="w-full rounded-xl border border-surface bg-surface-100 px-4 py-3 text-color outline-none placeholder:text-muted-color dark:border-surface-700 dark:bg-surface-900"
                 />

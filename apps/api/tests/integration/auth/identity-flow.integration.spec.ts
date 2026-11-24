@@ -1,11 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { VerifiedExternalIdentity } from "@lazyfinance/contracts";
 import { describe, expect, it, vi } from "vitest";
-import {
-  mockEmail,
-  mockIdentity,
-  mockToken,
-} from "../../../src/auth/mock/mock-auth.constants";
+import { mockIdentity } from "../../../src/auth/mock/mock-auth.constants";
 import { BankingIngestionService } from "../../../src/banking/ingestion/banking-ingestion.service";
 import { identityApi } from "../../fixtures/identity-api";
 import { integration } from "../../fixtures/persistence";
@@ -176,41 +172,134 @@ describe.skipIf(!integration)(
         await api.close();
       }
     });
-    it("keeps demo login linked only to its seeded identity in mock mode", async () => {
-      const api = await identityApi(undefined, "mock");
+    it("creates one owner per normalized mock email and prepares only the signed-in owner's demo", async () => {
+      const api = await identityApi(undefined, {
+        provider: "mock",
+        demoTools: true,
+      });
 
       try {
-        await api.db.pool.query(
-          `INSERT INTO identity."user"(email,name) VALUES ($1,'Demo') ON CONFLICT DO NOTHING`,
-          [mockEmail],
+        const auth = api.client().auth;
+        const email = `mock-${randomUUID()}@example.test`;
+        const [first, repeat, another] = await Promise.all([
+          auth.loginMock.mutate({ email, password: "x" }),
+          auth.loginMock.mutate({
+            email: ` ${email.toUpperCase()} `,
+            password: "another",
+          }),
+          auth.loginMock.mutate({
+            email: `other-${randomUUID()}@example.test`,
+            password: "x",
+          }),
+        ]);
+        expect(new Set([first.token, repeat.token, another.token]).size).toBe(
+          3,
         );
-        const demo = (await api.db.rows("user", { email: mockEmail }))[0];
-        await api.db.pool.query(
-          `INSERT INTO identity.external_identity(provider,issuer,provider_subject,user_id) VALUES ('mock',$1,$2,$3) ON CONFLICT DO NOTHING`,
-          [mockIdentity.issuer, mockIdentity.providerSubject, demo.id],
+        const user = api.client(first.token);
+        const otherUser = api.client(another.token);
+        const principal = await user.auth.principal.query();
+        expect(principal.email).toBe(email);
+        expect(await api.client(repeat.token).auth.principal.query()).toEqual(
+          principal,
         );
-        const link = (
-          await api.db.rows("external_identity", {
+        expect((await otherUser.auth.principal.query()).userId).not.toBe(
+          principal.userId,
+        );
+        expect(await api.db.rows("user", { email })).toHaveLength(1);
+        expect(
+          await api.db.rows("external_identity", { userId: principal.userId }),
+        ).toMatchObject([
+          {
             provider: "mock",
             issuer: mockIdentity.issuer,
-            providerSubject: mockIdentity.providerSubject,
-          })
-        )[0];
-        expect(await api.client().config.get.query()).toEqual({
-          auth: { provider: "mock" },
-          demoTools: { enabled: false },
-        });
-        expect(
-          await api
-            .client()
-            .auth.loginMock.mutate({ email: mockEmail, password: "password" }),
-        ).toEqual({ token: mockToken });
-        expect(
-          (await api.client(mockToken).auth.principal.query()).userId,
-        ).toBe(link.user_id);
+            provider_subject: `email:${email}`,
+          },
+        ]);
+
+        expect(await user.accounts.list.query()).toEqual([]);
+        expect(await user.banking.connections.query()).toEqual([]);
+        expect(await user.objectives.list.query()).toEqual([]);
+        const demo = await user.demoTools.resetDemoData.mutate();
+        expect(demo.status).toBe("ready");
+        expect(demo.transactionCount).toBeGreaterThan(0);
+        expect(await user.accounts.list.query()).toHaveLength(3);
+        expect(await otherUser.accounts.list.query()).toEqual([]);
+        expect(await otherUser.banking.connections.query()).toEqual([]);
         await expect(
-          api.client("header.payload.signature").auth.principal.query(),
+          api.client("lazyfinance-demo-token").auth.principal.query(),
         ).rejects.toMatchObject({ data: { code: "UNAUTHORIZED" } });
+      } finally {
+        await api.close();
+      }
+    }, 45000);
+
+    it("keeps the existing legacy demo mapping and profile unchanged", async () => {
+      const api = await identityApi(undefined, { provider: "mock" });
+
+      try {
+        const mappingKey = {
+          provider: mockIdentity.provider,
+          issuer: mockIdentity.issuer,
+          providerSubject: mockIdentity.providerSubject,
+        };
+        let [link] = await api.db.rows("external_identity", mappingKey);
+        if (!link) {
+          const existing = await api.db.insert("user", {
+            email: `legacy-${randomUUID()}@example.test`,
+            name: "Existing mock profile",
+          });
+          link = await api.db.insert("external_identity", {
+            ...mappingKey,
+            userId: existing.id,
+          });
+        }
+
+        const [profile] = await api.db.rows("user", { id: link.user_id });
+        const { token } = await api.client().auth.loginMock.mutate({
+          email: mockIdentity.verifiedEmail.toUpperCase(),
+          password: "local fixture",
+        });
+        expect(await api.client(token).auth.principal.query()).toEqual({
+          userId: profile.id,
+          email: profile.email,
+          name: profile.name,
+        });
+        expect(await api.db.rows("external_identity", mappingKey)).toEqual([
+          link,
+        ]);
+        expect(await api.db.rows("user", { id: profile.id })).toEqual([
+          profile,
+        ]);
+      } finally {
+        await api.close();
+      }
+    });
+
+    it("rejects a mock login that would claim a Firebase user's email", async () => {
+      const api = await identityApi(undefined, { provider: "mock" });
+
+      try {
+        const email = `firebase-${randomUUID()}@example.test`;
+        const user = await api.db.insert("user", {
+          email,
+          name: "Firebase test user",
+        });
+        const firebase = await api.db.insert("external_identity", {
+          provider: "firebase",
+          issuer: "https://securetoken.google.com/test",
+          providerSubject: randomUUID(),
+          userId: user.id,
+        });
+        await expect(
+          api.client().auth.loginMock.mutate({
+            email: email.toUpperCase(),
+            password: "x",
+          }),
+        ).rejects.toMatchObject({ data: { code: "CONFLICT" } });
+        expect(
+          await api.db.rows("external_identity", { userId: user.id }),
+        ).toEqual([firebase]);
+        expect(await api.db.rows("user", { email })).toEqual([user]);
       } finally {
         await api.close();
       }
