@@ -145,7 +145,11 @@ describe("HTTP authentication", () => {
   it("accepts only empty authenticated demo reset requests", async () => {
     const reset = vi
       .spyOn(app.get(DemoToolsService), "resetDemoData")
-      .mockResolvedValue({ transactionCount: 42 });
+      .mockResolvedValue({
+        transactionCount: 42,
+        connectionId: "00000000-0000-4000-8000-000000000001",
+        status: "ready",
+      });
     const endpoint = "/trpc/demoTools.resetDemoData";
     await request(app.getHttpServer()).post(endpoint).send({}).expect(401);
 
@@ -154,7 +158,11 @@ describe("HTTP authentication", () => {
       .set("Authorization", "Bearer lazyfinance-demo-token")
       .send({})
       .expect(200);
-    expect(response.body.result.data).toEqual({ transactionCount: 42 });
+    expect(response.body.result.data).toEqual({
+      transactionCount: 42,
+      connectionId: "00000000-0000-4000-8000-000000000001",
+      status: "ready",
+    });
     await request(app.getHttpServer())
       .post(endpoint)
       .set("Authorization", "Bearer lazyfinance-demo-token")

@@ -16,22 +16,29 @@ execFileSync(
 );
 
 const login = "lazyfinance_test_runtime",
-  password = "runtime-test-password-only";
+  password = "runtime-test-password-only",
+  demoLogin = "lazyfinance_test_demo_tools",
+  demoPassword = "demo-tools-test-password-only";
 
 const env = {
   ...process.env,
   POSTGRES_MIGRATION_URL: owner,
   PERSISTENCE_DATABASE_USER: login,
   PERSISTENCE_DATABASE_PASSWORD: password,
+  DEMO_TOOLS_DATABASE_USER: demoLogin,
+  DEMO_TOOLS_DATABASE_PASSWORD: demoPassword,
 };
 
-for (const command of ["migrate", "provision"])
+for (const command of ["migrate", "provision", "provision-demo-tools"])
   execFileSync("node", ["apps/persistence/dist/database/cli.js", command], {
     env,
     stdio: "inherit",
   });
 
 const runtime = new URL(owner);
+const demoTools = new URL(owner);
+demoTools.username = demoLogin;
+demoTools.password = demoPassword;
 
 runtime.username = login;
 
@@ -44,6 +51,10 @@ const childEnv = {
   PORT: "0",
   HOST: "127.0.0.1",
   POSTGRES_RUNTIME_URL: runtime.toString(),
+  DEMO_TOOLS_ENABLED: "true",
+  DEMO_TOOLS_DATABASE_URL: demoTools.toString(),
+  DEMO_TOOLS_DATABASE_NAME: demoTools.pathname.slice(1),
+  DEMO_TOOLS_DATABASE_USER: demoLogin,
   PERSISTENCE_RPC_PUBLIC_KEY: publicKey
     .export({ type: "spki", format: "pem" })
     .toString(),

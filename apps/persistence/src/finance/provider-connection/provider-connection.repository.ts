@@ -103,9 +103,9 @@ export class ProviderConnectionRepository {
       });
 
     if (
-      provider === "fintoc" &&
+      (provider === "fintoc" || provider === "mock_bank") &&
       (expectedCredentialVersion === undefined ||
-        !connection.hasCredential ||
+        (provider === "fintoc" && !connection.hasCredential) ||
         connection.disconnectedAt)
     )
       invalid("An active owned credential snapshot is required");
@@ -114,7 +114,7 @@ export class ProviderConnectionRepository {
       invalid("Banking connection needs relinking");
 
     const tracking =
-      provider === "fintoc"
+      provider === "fintoc" || provider === "mock_bank"
         ? await this.selections.tracking(connectionId)
         : undefined;
     if (
@@ -219,7 +219,8 @@ export class ProviderConnectionRepository {
   async status(id: string) {
     const connection = await this.connection(id);
     const tracking =
-      connection.identifier === "fintoc"
+      connection.identifier === "fintoc" ||
+      connection.identifier === "mock_bank"
         ? await this.selections.tracking(id)
         : undefined;
     const selectedAccounts = tracking
@@ -283,7 +284,8 @@ export class ProviderConnectionRepository {
     const connection = await this.connection(scope.connectionId);
     const state = await this.state(scope.connectionId);
     const tracking =
-      connection.identifier === "fintoc"
+      connection.identifier === "fintoc" ||
+      connection.identifier === "mock_bank"
         ? await this.selections.tracking(scope.connectionId)
         : undefined;
     if (
@@ -380,7 +382,8 @@ export class ProviderConnectionRepository {
       return { status: "superseded" as const };
 
     if (
-      connection.identifier === "fintoc" &&
+      (connection.identifier === "fintoc" ||
+        connection.identifier === "mock_bank") &&
       !(await this.schedules.matchesRun(
         scope.connectionId,
         scope.revision,
@@ -738,6 +741,19 @@ export class ProviderConnectionRepository {
         state.claimId,
         input.scheduling,
       );
+    if (connection.identifier === "mock_bank")
+      await this.db
+        .insertInto("finance.demo_bank_sync_event")
+        .values({
+          connectionId: scope.connectionId,
+          userId: sql<string>`identity.current_user_id()`,
+          occurredAt: new Date(),
+          origin: "executed",
+          result: status,
+          movementCount: input.movements.length,
+          failureReason: null,
+        })
+        .execute();
     return { status, conflictCount: count.count, checkpoint: input.checkpoint };
   }
 
@@ -752,10 +768,15 @@ export class ProviderConnectionRepository {
     )
       return { status: "superseded" as const };
 
-    if (connection.identifier === "fintoc" && !input.scheduling)
+    if (
+      (connection.identifier === "fintoc" ||
+        connection.identifier === "mock_bank") &&
+      !input.scheduling
+    )
       invalid("Synchronization scheduling outcome is required");
     if (
-      connection.identifier === "fintoc" &&
+      (connection.identifier === "fintoc" ||
+        connection.identifier === "mock_bank") &&
       !(await this.schedules.matchesRun(
         input.connectionId,
         input.revision,
@@ -807,6 +828,19 @@ export class ProviderConnectionRepository {
         input.scheduling,
         input.reason,
       );
+    if (connection.identifier === "mock_bank")
+      await this.db
+        .insertInto("finance.demo_bank_sync_event")
+        .values({
+          connectionId: input.connectionId,
+          userId: sql<string>`identity.current_user_id()`,
+          occurredAt: new Date(input.observedAt),
+          origin: "executed",
+          result: "failed",
+          movementCount: 0,
+          failureReason: input.reason,
+        })
+        .execute();
     return {
       status: "failed" as const,
       reason: input.reason,

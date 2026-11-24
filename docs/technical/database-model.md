@@ -36,6 +36,8 @@ All unqualified table names in the finance section below belong to `finance`.
 | `provider_link_intent` | `id`; unique provider intent ID; optional original/completed connection FKs | Owner-bound, expiring callback claims with hashed exchange token, version-pinned relink and durable completion |
 | `provider_account_selection` | PK `connection_id`; immutable `user_id` → user | Minimal bounded discovery, credential/discovery/selection versions, selected IDs, consent and connection read backoff; no balances or movements |
 | `provider_sync_schedule` | PK `connection_id`; immutable `user_id` → user | Operational eligibility, next due time, failure streak, claim/run references and bounded daily attempts; scheduler can update claim fields only |
+| `demo_bank_source` | PK `connection_id` → connection; `user_id` → user | Private, owner-bound simulated inventory/movements and source failure state; stored fixture date/count keep a resumed import tied to its original historical set; only the dedicated demo login can read or mutate it |
+| `demo_bank_sync_event` | `id`; `connection_id` → connection; `user_id` → user | Generated synthetic history versus executed import attempts; runtime may insert validated owned attempts but cannot read events |
 | `provider_request_admission` | Caller-generated UUID; mode/purpose and time indexes | Durable deployment-wide rate/concurrency/read-volume admission; dedicated banking-transport context only |
 | `provider_request_backoff` | PK `mode` (`test`/`live`) | Greatest retained provider waiting period shared by all transport reads/lifecycle requests; banking-transport context only, no runtime delete |
 | `account` | `id`; unique `(provider_connection_id, external_id)`; `user_id` | Owned account and owned connection must agree; independent nullable source balance |
@@ -279,14 +281,16 @@ conditions. Transaction write policies, related-tag/rule checks, grants and forc
 RLS are unchanged. Its `down` restores the correlated SELECT policy without
 rewriting financial data. Income-receipt policies are unchanged.
 
-The explicit owner-only CLI seed creates the fixed local mock account and its
+The explicit owner-only CLI seed creates the fixed local manual account and its
 initial fixtures; it is never startup or migration work. Stable fixture IDs allow
 repeatable updates while preserving existing transaction tag decisions. The
 separate confirmed development reset clears the authenticated user's finance and
-assistant data before rebuilding demo finance fixtures; it does not accept a target
-user ID and preserves all identity data, including MCP grants. Deleting assistant
-receipts does not undo financial changes. Neither operation is a generic import or
-safe for real user data. The seeded `fintoc` catalog identifier is not evidence of
-a working Fintoc adapter.
+assistant data before creating an owned simulated bank source with six accounts.
+Three accounts are selected and imported through normal discovery/synchronization;
+tag decisions and income receipts attach after import. The other three remain
+available but unselected. Simulated activity changes the source only until the next
+explicit refresh. The reset does not accept a target user ID and preserves all
+identity data, including MCP grants. Deleting assistant receipts does not undo
+financial changes. Neither operation is a generic import or safe for real user data.
 Follow the [persistence setup](../../apps/persistence/README.md) and
 [test-database precautions](development-workflow.md#verification-tiers).

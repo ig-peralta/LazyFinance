@@ -5,6 +5,8 @@ const RESETTABLE_TABLES = [
   "account",
   "budget_revision",
   "budget_revision_tag",
+  "demo_bank_source",
+  "demo_bank_sync_event",
   "expense_adjustment",
   "income_expectation",
   "income_receipt",

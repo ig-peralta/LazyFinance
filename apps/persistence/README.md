@@ -80,17 +80,20 @@ drops that obsolete marker while retaining migration history. The confirmed
 **Preparar demo** action is an authenticated API RPC forwarded with the signed
 internal user context to the persistence `demo-tools` module. Its separate database
 connection atomically clears that user's finance and assistant rows before
-re-seeding demo finance data. No user ID is accepted from the browser. The tool
+creating a six-account simulated bank source. Normal discovery, selection and
+ingestion import the first three accounts; finalization attaches historical tags
+and income receipts. Failed post-reset imports can be continued without another
+reset. No user ID is accepted from the browser. The tool
 leaves every identity row (including MCP grants) untouched, and deleting assistant
 action receipts does not reverse their prior financial effects. This operation
 does not alter application RLS or runtime grants. The owner-only CLI seed remains
 an explicit initial setup for the fixed local mock account; deployment never runs
 it automatically.
-Two more demo-tools mutations generate curated untagged examples after reset:
-an internal checking/savings transfer (balanced debit/credit pair) or a single
-external expense, purchase or credit. They require the signed-in user's three
-reset-created demo accounts and update balances atomically; linked bank accounts
-and browser-supplied account IDs are never used.
+Simulator mutations generate curated activity after preparation: an internal
+checking/savings transfer (balanced debit/credit pair), an external expense,
+purchase or credit, or a source correction/removal. They atomically update only
+the owned simulated bank source and its balances. Linked financial accounts and
+browser-supplied account IDs are never used. Explicit refresh imports changes.
 
 `pnpm --filter persistence dev` listens on `127.0.0.1:3001` by default. Only an
 authenticated service may call `/trpc`; do not publish it to browsers. Use a

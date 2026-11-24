@@ -105,12 +105,16 @@ owner-only CLI seed. If `DEMO_TOOLS_ENABLED=true` on both API and persistence,
 the signed-in account. The API verifies the bearer and forwards the internal user
 in a signed persistence context; the browser sends no target user ID. Persistence
 uses its separately provisioned connection to clear only that user's finance and
-assistant data and restore demo fixtures. Identity rows and MCP grants survive;
+assistant data and create an owned simulated bank source. Identity rows and MCP grants survive;
 deleting assistant/MCP action receipts does not reverse prior financial effects.
 The normal persistence connection, RLS policies and runtime grants remain unchanged.
-The same menu offers server-generated internal transfers and external movements
-without tags. Both require the reset-created demo accounts; the API forwards only
-the authenticated user, never a browser-selected account, amount or owner.
+Preparation creates one simulated bank with six source accounts; discovery selects
+three for initial import through normal ingestion. If post-reset import fails,
+`resumeDemoData` continues without deleting again. The same menu can add activity,
+correct or remove a purchase, and simulate unavailable/expired access. These change
+only the owned bank source; selected financial records change on explicit refresh.
+No browser-selected account, amount or owner is accepted. Automatic mock-bank
+synchronization is unavailable; the owner can select additional accounts manually.
 
 External `/mcp` no longer accepts Firebase/development application tokens. It uses
 `oidc-provider@9.13.3` with S256 PKCE, resource binding, CIMD/DCR, ten-minute opaque

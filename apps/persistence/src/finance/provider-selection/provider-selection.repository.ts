@@ -31,9 +31,10 @@ export class ProviderSelectionRepository {
         "c.status",
         "c.disconnectedAt",
         "c.mode",
+        "p.identifier as provider",
       ])
       .where("c.id", "=", id)
-      .where("p.identifier", "=", "fintoc")
+      .where("p.identifier", "in", ["fintoc", "mock_bank"])
       .executeTakeFirst();
     if (!connection)
       throw new TRPCError({
@@ -141,6 +142,12 @@ export class ProviderSelectionRepository {
 
   async select(input: SelectBankingAccounts) {
     const connection = await this.connection(input.id);
+    if (connection.provider === "mock_bank" && input.automaticEnrolled)
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message:
+          "Automatic synchronization is not available for the simulated bank",
+      });
     const current = await this.db
       .selectFrom("finance.provider_account_selection")
       .selectAll()

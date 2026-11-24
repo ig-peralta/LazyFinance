@@ -21,7 +21,43 @@ export type DemoTransactionResult = z.infer<typeof DemoTransactionResultSchema>;
 export const DemoDataResetResultSchema = z
   .object({
     transactionCount: z.number().int().nonnegative(),
+    connectionId: z.uuid(),
+    status: z.enum(["ready", "incomplete"]),
   })
   .strict();
 
 export type DemoDataResetResult = z.infer<typeof DemoDataResetResultSchema>;
+
+export const DemoBankPreparationSchema = z
+  .strictObject({
+    connectionId: z.uuid(),
+    transactionCount: z.number().int().nonnegative(),
+    prepared: z.boolean(),
+  })
+  .nullable();
+
+export const DemoBankHistorySchema = z.array(
+  z.strictObject({
+    occurredAt: z.iso.datetime(),
+    origin: z.enum(["generated", "executed"]),
+    result: z.enum(["complete", "needs_review", "failed"]),
+    movementCount: z.number().int().nonnegative(),
+    failureReason: z.string().nullable(),
+  }),
+);
+
+export const DemoBankReconnectSchema = z.strictObject({
+  status: z.literal("active"),
+});
+
+export const DemoBankFailureInputSchema = z.strictObject({
+  failure: z.enum(["retryable", "expired"]).nullable(),
+});
+
+export const DemoBankFailureResultSchema = z.strictObject({
+  failure: z.enum(["retryable", "expired"]).nullable(),
+});
+
+export const DemoBankChangeInputSchema = z.strictObject({
+  action: z.enum(["correct", "remove"]),
+});

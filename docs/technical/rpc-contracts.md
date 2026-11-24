@@ -75,19 +75,19 @@ inferred Promises; there is no cross-app source import or HTTP/Observable adapte
 ## Public surface
 
 The [generated public router](../../libs/rpc-api/src/generated/server.ts) currently
-contains **88 procedures**. Prefix each method below with its router name.
+contains **94 procedures**. Prefix each method below with its router name.
 
 | Router | Methods | Responsibility |
 | --- | --- | --- |
 | `config` | `get` | Public grouped application configuration: `{ auth: { provider }, demoTools: { enabled } }` |
 | `auth` | `loginMock`, `principal` | Local mock login and verified principal |
-| `demoTools` | `resetDemoData`, `createInternalTransaction`, `createExternalTransaction` | Explicitly enabled, authenticated account-scoped demo-data reset/reseed and untagged example movements in demo-owned accounts |
+| `demoTools` | `resetDemoData`, `resumeDemoData`, `preparation`, `createInternalTransaction`, `createExternalTransaction`, `changeBankMovement`, `setBankFailure` | Explicitly enabled, authenticated demo preparation, source-only simulator actions and recovery |
 | `onboarding` | `state`, `finish` | Owned optional-guide state and terminal completion |
 | `assistant` | `configuration`, `consent`, `decideConsent`, `conversations`, `conversation`, `voiceConversation`, `createConversation`, `deleteConversation` | First-party authenticated configuration, account processing consent, text-only history and separate owned voice results |
 | `financialActions` | `get`, `approve`, `revise`, `cancel` | Owned saved proposals; approval accepts only the exact ID/version, never caller-supplied execution payloads |
 | `mcpAccess` | `configuration`, `grants`, `revoke` | First-party authenticated external-client settings; no token issuance through RPC |
 | `accounts` | `list`, `setAlias` | Retained accounts, balances, tracking state and personal display names |
-| `banking` | `configuration`, `connections`, `createLinkIntent`, `completeLink`, `checkConnection`, `disconnect`, `accountSelection`, `discoverAccounts`, `selectAccounts`, `importInitial`, `refresh`, `syncStatus` | Owned authorization, explicit versioned selection, available-data imports and readonly automation/source-freshness status; no forced bank refresh |
+| `banking` | `configuration`, `connections`, `createLinkIntent`, `completeLink`, `checkConnection`, `disconnect`, `accountSelection`, `discoverAccounts`, `selectAccounts`, `importInitial`, `refresh`, `syncStatus`, `syncHistory`, `reconnectMock` | Owned authorization, versioned selection, explicit imports and mock-bank history/recovery; no forced bank refresh |
 | `transactions` | `recent`, `list`, `detail`, `setInternalMovement`, `expenseAdjustments`, `setExpenseAdjustment`, `removeExpenseAdjustment` | History, owned source/classification detail, internal-status corrections and purchase-attributed recoveries |
 | `objectives` | `list`, `progress`, `budgetContributions`, `budget`, `budgetHistory`, `createBudget`, `updateBudget`, `archiveBudget`, `savingsGoal`, `savingsGoalHistory`, `createSavingsGoal`, `updateSavingsGoal`, `archiveSavingsGoal`, `savingsProgress`, `savingsContributions` | Revisioned management/history, spending and savings progress/evidence |
 | `summaries` | `monthly`, `comparison`, `spendingContributions` | Financial summary, equivalent-period comparison and purchase-level spending evidence |
@@ -97,9 +97,9 @@ contains **88 procedures**. Prefix each method below with its router name.
 
 Only `config.get` and `auth.loginMock` are anonymous. Mock login is available only
 in mock mode and is rejected in production. No public procedure accepts a caller's
-financial owner scope. Demo-tools mutations accept only omitted or empty bodies;
-the API-derived signed user context determines the owner and persistence selects
-the demo accounts. Their availability is
+financial owner scope. Demo reset/transaction mutations accept only omitted or empty
+bodies; simulator controls accept bounded actions but no account/owner selectors.
+The API-derived signed user context determines ownership. Their availability is
 advertised by `config.get` under `demoTools.enabled` from the API's explicit flag.
 Method schemas in the generated file and
 [`libs/contracts/src/rpc`](../../libs/contracts/src/rpc/index.ts) define exact input
@@ -145,20 +145,20 @@ Optional bearer-only voice HTTP endpoints use shared strict public schemas:
 conversation ownership and admission are checked server-side. SDP negotiation
 exposes no provider key, owner selector, financial tools or execution authority.
 These are not tRPC procedures: the combined public/private inventories remain
-88/111. Account processing consent requires migration 032; mode isolation requires
+94/118. Account processing consent requires migration 032; mode isolation requires
 migration 033 and the separate public voice read. The voice HTTP adapter
 itself adds no procedures. See the [voice contract and live-validation gates](assistant-live-voice.md).
 
 ## Private surface
 
 The [generated private router](../../libs/rpc-persistence/src/generated/server.ts)
-currently contains **111 procedures**. They expose owned facts and authoritative
+currently contains **118 procedures**. They expose owned facts and authoritative
 commands rather than copying public screen calculations into persistence.
 
 | Router | Methods |
 | --- | --- |
 | `identity` | `resolve` (bootstrap only) |
-| `demoTools` | `resetDemoData`, `createInternalTransaction`, `createExternalTransaction` (signed user context, separate conditional demo-tools connection and atomic transaction) |
+| `demoTools` | `resetDemoData`, `preparation`, `finalizeDemoData`, `bankSource`, `bankHistory`, `createInternalTransaction`, `createExternalTransaction`, `changeBankMovement`, `setBankFailure`, `reconnectBank` (signed user context, separate conditional demo-tools connection and atomic transaction) |
 | `onboarding` | `state`, `finish` |
 | `assistantConversations` | `list`, `get`, `create`, `begin`, `finish`, `recordVoiceQuestion`, `remove` (user context only) |
 | `assistantConsent` | `get`, `decide` (user context only; account-owned revisioned processing decision) |
@@ -187,14 +187,16 @@ transport context can only admit/release requests and retain provider-mode backo
 Neither can read credentials, financial records or identity mappings, change
 selection or call another purpose's procedures. User contexts cannot call these
 privileged-purpose procedures.
-Demo-tools mutations require an explicit enable flag on persistence and use
+Demo-tools procedures require an explicit enable flag on persistence and use
 its separately provisioned connection instead of the ordinary runtime transaction;
-the normal RLS role cannot delete assistant receipts or call this operation on its
-own. Transaction generation requires the user's reset-created demo accounts; it
-never selects a linked bank account. Internal transfers create balanced debit/credit
-rows; external templates create one debit or credit. Both leave `tag_id` null with
-`tag_decision_origin=unreviewed` and update affected balances in the same SQL
-transaction. The API never receives the privileged database credential.
+the normal RLS role cannot read the simulated source or delete assistant receipts.
+`resetDemoData` clears only the signed-in owner's finance/assistant records and creates
+six source accounts, three default selected after normal discovery and import.
+`resumeDemoData` continues a committed but incomplete preparation without resetting.
+The finalization step attaches historical manual tags and confirmed income receipts
+only after the imported movements exist. Subsequent simulator actions change the
+source, never financial records; `banking.refresh` brings them through normal ingestion.
+The API never receives the privileged database credential.
 `GET /health` is liveness, not a database/admin RPC. Provider synchronization is an
 API-internal workflow; these procedures are not public bank-linking endpoints.
 `providerLinks` stores owner-bound intents, encrypted credentials and versioned
@@ -212,14 +214,18 @@ An empty set pauses future imports without hiding or deleting retained history.
 Selection/lifecycle changes invalidate old runs. Discovery and synchronization
 share durable waiting periods, provider admission and read-volume budgets.
 
-`banking.importInitial({ id })` and `banking.refresh({ id })` import selected accounts
-and movements from the owned connection's first-link Santiago day through today.
+For Fintoc, `banking.importInitial({ id })` and `banking.refresh({ id })` import selected
+accounts and movements from the owned connection's first-link Santiago day through today.
 The local `createdAt` anchors both commands and is unchanged by same-identity relink.
 No historical date override is accepted; pre-link backfill is unavailable. Booking
 precision is day-level, so same-day movements can precede the exact linking time.
+The mock bank instead reports synthetic coverage from 2024, keeps automatic enrollment
+disabled, and distinguishes generated historical entries from executed attempts in
+`banking.syncHistory`. Expired mock access requires `banking.reconnectMock`, discovery
+and re-confirmation; a source restoration alone cannot clear a retry deadline.
 Completion returns the requested tracked window and a bounded mapping/exclusion
 report, not raw payloads or private checkpoints. It does not cause a bank refresh. `providerSync.begin`
-accepts `expectedCredentialVersion` and `expectedSelectionVersion`, required for Fintoc: a mismatched snapshot
+accepts `expectedCredentialVersion` and `expectedSelectionVersion`, required for Fintoc and the mock bank: a mismatched snapshot
 rejects before attempt metadata/provider calls. Begin returns stored state plus
 `acquired`; a live five-minute lease or future provider/application backoff coalesces/defers
 without another fetch. The public outcome is `in_progress`/`retry_later` or the

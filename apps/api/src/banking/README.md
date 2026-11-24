@@ -2,7 +2,8 @@
 
 Current implementation: provider-neutral contracts, owned ingestion, the
 [Fintoc linking/lifecycle backend](linking/README.md) (LAZ-49), and the explicit
-[Fintoc snapshot import/refresh](fintoc/README.md) (LAZ-51/LAZ-48). Durable attempt
+[Fintoc snapshot import/refresh](fintoc/README.md) (LAZ-51/LAZ-48), and the
+development-only owned [simulated bank](mock/mock-bank.service.ts). Durable attempt
 leases, recovery and source-freshness reporting supply the explicit web controls
 in bank settings (LAZ-62), independently of the stored-balance page.
 See the [database model](../../../../docs/technical/database-model.md),
@@ -15,6 +16,14 @@ records the decision and delivered boundaries: explicit discovery/versioned
 selection, optional automatic enrollment and scheduled available-data imports.
 Automation defaults off; no bank-forced refresh is added. Verification of the
 current regressions and live entitlement/cost remains a separate gate.
+
+The simulated bank is enabled only with demo tools. **Preparar demo** creates six
+source accounts; three are selected for the initial import and the rest remain
+discoverable. Later simulator activity changes the source first, then the normal
+explicit import commits selected financial facts. Its generated historical sync
+entries are separate from executed attempts. Automatic enrollment is rejected and
+expired access must be reconnected, rediscovered and confirmed again. The separate
+owner-only CLI seed remains a manual fixture rather than a bank connection.
 
 ## Selection, automation and portable composition
 
