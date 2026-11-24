@@ -9,7 +9,9 @@ Start here for the current system map. Detailed references:
 The [Stage C ER and 4+1 atlas](../diagrams/README.md) shows stored relationships,
 logical responsibilities, package dependencies, process and scenarios. The
 [development topology](../diagrams/README.md#physical-view--development-deployment)
-comes from the installed development stack's Compose configuration.
+comes from the installed stack's Compose configuration. The
+[production deployment proposal](production-deployment.md) is separate and not
+deployed.
 
 ## Repository and runtime boundaries
 
@@ -270,10 +272,13 @@ belong only to CLI/init/seed jobs; the API uses private RPC without a database
 connection, and persistence rejects owner/BYPASSRLS credentials for its normal
 runtime pool. The development stack enables demo tools with a separate, narrowly
 granted `BYPASSRLS` connection in persistence. Signed user context comes from API
-authentication. No demo reset or seed runs during deployment.
+authentication. No demo reset or seed runs during deployment, and the production
+proposal omits the demo login and disables demo tools.
 
 The [development deployment](technical-manual.md#development-deployment) uses
 Traefik for public HTTPS, separate edge/service/data networks and an owner-only
-init job. Neither persistence nor PostgreSQL publishes a host port. Production
-TLS, secret storage, recovery, abuse controls and capacity still need validation.
-See the [Stage C release follow-ups](../planning/stage-c/closure.md#open-release-follow-ups).
+init job. Neither persistence nor PostgreSQL publishes a host port. The private
+Compose hops are not the proposed production TLS links. Production secret storage,
+recovery, abuse controls and capacity still need validation; see the
+[production proposal](production-deployment.md) and
+[Stage C release follow-ups](../planning/stage-c/closure.md#open-release-follow-ups).

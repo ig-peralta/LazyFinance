@@ -4,7 +4,8 @@ The ER and 4+1 views reflect the **Stage C implementation** on `main` at
 [`1a6190bb`](https://github.com/ig-peralta/LazyFinance/commit/1a6190bb7679db39687b2853ab776c7daaf313e2).
 They are derived from migrations, application modules, workspace exports and
 deployment configuration. The [development deployment](#physical-view--development-deployment)
-shows the topology defined in Compose. The
+shows the topology defined in Compose. The [production view](#physical-view--proposed-production)
+is a **proposal**, not a deployed environment or release approval. The
 [Stage C gate](../planning/stage-c/closure.md) separately records what was verified.
 
 The [Stage B atlas](https://github.com/ig-peralta/LazyFinance/tree/13f4b174cc08ed3210e14b9d09375d8ad1b96d56/docs/diagrams)
@@ -18,6 +19,7 @@ not screenshots of running infrastructure.
 | Development | Workspace packages, source dependencies and generated type boundaries | [development.puml](sources/development.puml) | [Full-size PNG](development.png) |
 | Process | Activity overview of request paths, leases, locks and atomic outcomes | [process.puml](sources/process.puml) | [Full-size PNG](process.png) |
 | Physical — development | Configured Traefik ingress, Compose services, private networks and owner-only initialization | [physical.puml](sources/physical.puml) | [Full-size PNG](physical.png) |
+| Physical — proposed production | Public ingress, private runtime and data, controlled releases and backup/restore | [production.puml](sources/production.puml) | [Full-size PNG](production.png) |
 | Scenarios (+1) / use cases | User/client scenarios connecting the other four views | [use-cases.puml](sources/use-cases.puml) | [Full-size PNG](use-cases.png) |
 | Assistant query | A grounded text turn through shared financial services | [agent-sequence.puml](sources/agent-sequence.puml) | [Full-size PNG](agent-sequence.png) |
 | Proposal approval | Explicit saved-version approval and atomic receipt | [approval-sequence.puml](sources/approval-sequence.puml) | [Full-size PNG](approval-sequence.png) |
@@ -35,7 +37,8 @@ or reuse them in a report. Editable PlantUML sources and their
 
 The set uses a consistent pastel role palette, bold names, italic stereotypes,
 explicit subsystem boundaries and standard UML symbols. Every maintained image
-describes implemented responsibilities or the configured development topology.
+describes implemented responsibilities, configured development topology or the
+explicitly proposed production topology.
 Colour supplements labels; it never establishes authorization or deployment status.
 
 | Role | Fill / border |
@@ -61,8 +64,10 @@ Colour supplements labels; it never establishes authorization or deployment stat
 - **Focused sequences:** numbered messages, dashed returns/lifelines, activation bars and
   `loop`/`alt`/`opt` fragments. Short database activations distinguish SQL scopes
   from model/provider work. Activations do not imply separate worker processes.
-- **Physical:** nodes and lines show communication boundaries, configured Compose
-  networks and ports. One-shot jobs are distinct from steady-state traffic.
+- **Physical:** nodes and lines show communication boundaries. Development labels
+  name actual Compose networks and ports; production labels show proposed isolation
+  and controls without choosing a host or platform. One-shot jobs are distinct
+  from the steady-state application path.
 - **Scenarios (+1):** actors outside a system boundary, true use-case ellipses,
   stable `UC-01`–`UC-09` identifiers and solid actor associations without arrowheads.
   Do not invent `include`/`extend` relationships to connect otherwise independent
@@ -215,6 +220,18 @@ Sources: [development Compose](../../docker/dev/compose.yml),
 [development runbook](../technical/technical-manual.md#development-deployment).
 The [local Compose options](../technical/technical-manual.md#compose) are different
 from this HTTPS deployment.
+
+## Physical view — proposed production
+
+![Proposed production deployment: HTTPS ingress, private TLS, scoped database access, an owner-only migration job and encrypted backups](production.png)
+
+This deployment design keeps the existing application boundaries while adding
+private TLS, a gated release path, isolated secrets and data, and a recovery plan.
+The example hostnames are placeholders. The initial design shows one API replica
+because voice admission and hangup recovery are process-local; it makes no
+availability or capacity claim. See the
+[production deployment proposal](../technical/production-deployment.md) for
+release prerequisites and decisions still open.
 
 ## Scenarios view (+1)
 

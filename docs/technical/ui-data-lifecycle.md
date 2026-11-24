@@ -591,7 +591,8 @@ uses `http://localhost:3000`; the checked-in production build targets
 "production build" describes Angular compilation, not a production environment.
 `RpcClient` appends `/trpc`; Nginx does no API proxying or prefix rewriting. API
 CORS must allow the UI origin, and browser API/Firebase build identifiers must
-match deployment.
+match deployment. See the [production proposal](production-deployment.md) for
+separate release origins and identity configuration.
 
 Editor drawers use native dialogs with immediate component teardown on dismissal,
 not retained live forms awaiting an exit animation. Mobile menus close on route

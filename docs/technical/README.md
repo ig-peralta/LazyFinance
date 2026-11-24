@@ -28,6 +28,9 @@ target is not evidence of a delivered capability.
 
 - [Technical manual](technical-manual.md): process/environment separation, local
   setup, Compose topology, environment-specific browser/static hosting and troubleshooting.
+- [Production deployment proposal](production-deployment.md): proposed HTTPS edge,
+  private runtime and data, and release, recovery and provider prerequisites.
+  This is a design, not a deployment runbook or a release decision.
 - [Development and verification](development-workflow.md): builds, Biome/editor/DI
   conventions, [file ownership and extraction](development-workflow.md#file-ownership-and-extraction),
   [type safety and boundaries](development-workflow.md#type-safety-and-boundary-types),
@@ -44,8 +47,8 @@ target is not evidence of a delivered capability.
 - [Non-functional requirements](../product/non-functional-requirements.md):
   quality targets, not proof of production readiness or maximum-size load tests.
 - The [diagram atlas](../diagrams/README.md) documents the implementation and the
-  configured development topology. The diagram itself does not establish that
-  a live environment passed checks.
+  configured development topology, with a clearly labelled production proposal.
+  The diagram itself does not establish that a live environment passed checks.
 - [Stage C gate review](../planning/stage-c/closure.md) distinguishes development
   acceptance, recorded checks and remaining release risks. The dated
   [November 9 backlog](../planning/snapshots/backlog-2026-11-09.md) and

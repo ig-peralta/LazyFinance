@@ -19,7 +19,8 @@ The apps use TypeScript/Node.js, PostgreSQL 18, Firebase identity, Zod, Vitest a
 The [Stage C diagram atlas](docs/diagrams/README.md) provides editable sources
 and rendered PNGs for the current ER and 4+1 architecture views. It shows the
 [development deployment](docs/diagrams/README.md#physical-view--development-deployment)
-as configured in Compose, not as evidence of production readiness.
+separately from a [proposed production deployment](docs/technical/production-deployment.md).
+The proposal is not a live environment or release approval.
 
 ```mermaid
 flowchart TB
@@ -118,6 +119,7 @@ reading order and distinction between implementation, evidence and targets.
 | [Live voice contract](docs/technical/assistant-live-voice.md) | WebRTC capability evidence, explicit capture/privacy, single-replica limits and unverified live release gates |
 | [UI/session/rendering lifetimes](docs/technical/ui-data-lifecycle.md) | Verified scopes, resources, cancellation, command/read ordering and public-only hydration |
 | [Technical manual](docs/technical/technical-manual.md) | Installation, environment/credential separation, Compose, operation and troubleshooting |
+| [Production deployment proposal](docs/technical/production-deployment.md) | Proposed topology, initial release controls and open decisions; not deployed |
 | [Development and verification](docs/technical/development-workflow.md) | Build/tooling/DI conventions and serverless, HTTP, DB and live-provider verification tiers |
 
 ### App and domain guides
@@ -153,8 +155,8 @@ earlier validation evidence do not describe the latest runtime by themselves.
 ### Diagrams and academic submissions
 
 - [Diagram inventory](docs/diagrams/README.md): Stage C ER, logical, development,
-  process and scenarios (+1) views, focused sequences and the configured
-  development deployment.
+  process and scenarios (+1) views, focused sequences, and separate development
+  and proposed production deployment views.
 - [Academic submission index](docs/submissions/README.md): every available shared
   and individual document, including [Phase 1](docs/submissions/README.md#phase-1--project-definition)
   project definition/forms/presentation and [Phase 2](docs/submissions/README.md#phase-2--development-progress)

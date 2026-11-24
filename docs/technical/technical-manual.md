@@ -283,6 +283,8 @@ API verification; an old application cookie is expired, not adopted as identity.
 
 The checked-in Compose files support local packaging and the Stage C
 [development deployment topology](../diagrams/README.md#physical-view--development-deployment).
+The [production deployment proposal](production-deployment.md) is not a Compose
+profile or instructions for a live environment.
 
 - `resources.yml`: local PostgreSQL on loopback port 5432; no named durable volume.
 - `apps.yml`: apps plus owner-only init job using the external `lazyfinance`

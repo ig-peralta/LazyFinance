@@ -1,0 +1,40 @@
+@startuml production
+!include style.iuml
+top to bottom direction
+title LazyFinance — Production Deployment\n<color:#991B1B>PROPOSED TOPOLOGY · NOT DEPLOYED</color>
+
+node "<b>Browser</b>\nStatic bundle + direct API requests" as Browser <<boundary>>
+node "External MCP client" as Client <<external client>>
+
+node " " as Runtime {
+  node "<b>Public DNS / TLS ingress</b>\nHTTPS :443 · host routing · rate limits" as Edge <<boundary>>
+  node "<b>Static UI</b>\nPrerender + private CSR\nNo API proxy or session data" as UI <<boundary>>
+  node "<b>NestJS API · private upstream</b>\nPublic tRPC, assistant, OAuth and MCP\nOne API replica for initial voice support" as API <<application>>
+  node "<b>Private persistence</b>\nVerified assertions and restricted SQL login\nNo demo tools" as Persistence <<persistence>>
+  database "<b>Private PostgreSQL 18</b>\nScoped, forced RLS on sensitive tables\nNo public route" as DB
+  artifact "<b>One-shot migration job</b>\nSeparate owner credential" as Migrate
+}
+
+component "<b>External providers</b>\nFirebase Auth · optional Fintoc\nOptional text model / OpenAI Realtime" as Providers <<adapter>>
+artifact "<b>Approved release</b>\nTested image digests + migration plan" as Release <<security>>
+artifact "<b>Encrypted backup store</b>\nOff-host recovery and PITR" as Backup
+
+Browser --> Edge : HTTPS UI and API origins
+Client --> Edge : HTTPS OAuth / MCP
+Edge --> UI : app.example.com
+Edge --> API : api.example.com
+API --> Persistence : signed tRPC over private TLS
+Persistence --> DB : scoped SQL over private TLS
+API ..> Providers : scoped HTTPS / WSS egress
+Release ..> Migrate : approval gates rollout
+Migrate ..> DB : migrate / provision
+DB --> Backup : encrypted backups / WAL
+
+legend bottom
+  The shaded box is the production runtime, isolated from development identities, data and secrets.
+  Example hostnames share a browser site. Only ingress is public; no backend ports are published.
+  Firebase sign-in, the Fintoc Widget and optional WebRTC media have separate browser paths.
+  Demo tools and automatic bank sync stay off at first release. Verify telemetry and restores.
+  No hosting provider, autoscaling, high availability or launch approval is implied.
+endlegend
+@enduml
