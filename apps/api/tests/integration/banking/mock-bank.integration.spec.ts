@@ -200,11 +200,57 @@ describe.skipIf(!integration)("prepared demo bank over signed RPC", () => {
           })
         )[0].eligible,
       ).toBe(false);
-      await expect(
-        server
-          .client(f.otherToken)
-          .banking.syncHistory.query({ id: prepared.connectionId }),
-      ).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
+    } finally {
+      await close(f, server);
+    }
+  }, 45000);
+
+  it("denies foreign demo bank reads and commands without changing owned state", async () => {
+    const { f, server, bank } = await setup();
+    try {
+      const prepared = await bank.demoTools.resetDemoData.mutate();
+      expect(prepared.status).toBe("ready");
+      const input = { id: prepared.connectionId };
+      const owner = f.persistence.user(f.userId);
+      const snapshot = () =>
+        Promise.all([
+          bank.banking.connections.query(),
+          bank.banking.accountSelection.query(input),
+          bank.banking.syncHistory.query(input),
+          owner.providerSync.status.query(input),
+          owner.demoTools.bankSource.query(input),
+        ]);
+      const before = await snapshot();
+      const selection = before[1];
+      expect(selection.accountIds).toHaveLength(3);
+      expect(before[2].length).toBeGreaterThan(0);
+
+      const other = server.client(f.otherToken).banking;
+      expect(await other.connections.query()).toEqual([]);
+      for (const [name, call] of Object.entries({
+        accountSelection: () => other.accountSelection.query(input),
+        syncStatus: () => other.syncStatus.query(input),
+        syncHistory: () => other.syncHistory.query(input),
+        checkConnection: () => other.checkConnection.mutate(input),
+        discoverAccounts: () => other.discoverAccounts.mutate(input),
+        selectAccounts: () =>
+          other.selectAccounts.mutate({
+            ...input,
+            expectedVersion: selection.version,
+            discoveryVersion: selection.discoveryVersion,
+            accountIds: [],
+            automaticEnrolled: false,
+          }),
+        importInitial: () => other.importInitial.mutate(input),
+        refresh: () => other.refresh.mutate(input),
+        reconnectMock: () => other.reconnectMock.mutate(input),
+        disconnect: () => other.disconnect.mutate(input),
+      })) {
+        await expect(call(), name).rejects.toMatchObject({
+          data: { code: "NOT_FOUND" },
+        });
+      }
+      expect(await snapshot()).toEqual(before);
     } finally {
       await close(f, server);
     }

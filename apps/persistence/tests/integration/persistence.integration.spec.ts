@@ -451,6 +451,92 @@ describe.skipIf(!ownerUrl)(
         await reset.destroy();
       }
     });
+
+    it("limits runtime grants on mock-bank storage to owned executed event inserts", async () => {
+      const { rows: privileges } = await sql<{
+        relation: string;
+        privilege: string;
+      }>`select t.relation, p.privilege
+         from (values ('finance.demo_bank_source'), ('finance.demo_bank_sync_event')) as t(relation)
+         cross join (values ('SELECT'), ('INSERT'), ('UPDATE'), ('DELETE'), ('TRUNCATE'),
+                            ('REFERENCES'), ('TRIGGER'), ('MAINTAIN')) as p(privilege)
+         where has_table_privilege(current_user, t.relation, p.privilege)
+            or case when p.privilege in ('SELECT', 'INSERT', 'UPDATE', 'REFERENCES')
+                    then has_any_column_privilege(current_user, t.relation, p.privilege)
+                    else false end`.execute(runtime);
+      expect(privileges).toEqual([
+        { relation: "finance.demo_bank_sync_event", privilege: "INSERT" },
+      ]);
+
+      const demoOwner = randomUUID();
+      await sql`insert into identity."user" (id,email,name)
+        values (${demoOwner},${`${demoOwner}@example.test`},'Security fixture')`.execute(
+        owner,
+      );
+      const demo = purposeClient(ctx(demoOwner));
+      const { connectionId } = await demo.demoTools.resetDemoData.mutate();
+      const before = await demo.demoTools.bankHistory.query({
+        id: connectionId,
+      });
+      expect(before.length).toBeGreaterThan(0);
+
+      for (const [identity, connection, user] of [
+        [ctx(a), connectionId, a],
+        [ctx(demoOwner), connectionId, a],
+        [ctx(a), connectionA, a],
+        [
+          { kind: "banking-scheduler", requestId: randomUUID() },
+          connectionId,
+          demoOwner,
+        ],
+      ] as const) {
+        await expect(
+          withRequestContext(runtime, identity, (tx) =>
+            sql`insert into finance.demo_bank_sync_event
+              (connection_id,user_id,occurred_at,origin,result,movement_count)
+              values (${connection},${user},now(),'executed','complete',0)`.execute(
+              tx,
+            ),
+          ),
+        ).rejects.toThrow(/row-level security/);
+      }
+      expect(
+        await demo.demoTools.bankHistory.query({ id: connectionId }),
+      ).toEqual(before);
+    });
+
+    it("keeps the privileged demo RPCs exclusive to signed user contexts", async () => {
+      const preparation = await fetch(`${url}/trpc/demoTools.preparation`);
+      expect(preparation.status).toBe(401);
+      const identities: SignedContext[] = [
+        {
+          kind: "identity-bootstrap",
+          requestId: randomUUID(),
+          identity: {
+            provider: "firebase",
+            issuer: "https://securetoken.google.com/test",
+            providerSubject: randomUUID(),
+            verifiedEmail: "demo-boundary@example.test",
+            displayName: "Demo boundary fixture",
+          },
+        },
+        oauthContext(),
+        { kind: "banking-scheduler", requestId: randomUUID() },
+        { kind: "banking-transport", requestId: randomUUID() },
+      ];
+      for (const identity of identities) {
+        const { demoTools } = purposeClient(identity);
+        for (const call of [
+          () => demoTools.preparation.query(),
+          () => demoTools.resetDemoData.mutate(),
+        ]) {
+          await expect(call(), identity.kind).rejects.toMatchObject({
+            data: { code: "FORBIDDEN" },
+          });
+        }
+      }
+    });
+
     it("matches the committed private generated surface and requires context metadata everywhere", () => {
       const generated = readFileSync(
         path.join(

@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import type { PersistenceContext } from "@lazyfinance/contracts/context";
 import { TRPCError } from "@trpc/server";
 import type { Kysely, Transaction } from "kysely";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { withRequestContext } from "../database/rls";
 import { RlsMiddleware } from "./rls.middleware";
 
@@ -22,6 +22,7 @@ vi.mock("../database/rls", () => ({
 }));
 
 describe("private middleware denial and result budgets (scaled byte limit)", () => {
+  afterEach(() => vi.unstubAllEnvs());
   const middleware = new RlsMiddleware({} as Kysely<Record<string, never>>);
   const options = (data: unknown) => ({
     ctx: {
@@ -103,6 +104,32 @@ describe("private middleware denial and result budgets (scaled byte limit)", () 
         meta: scoped.meta,
       }),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("denies demo reads and writes before opening SQL without explicit opt-in", async () => {
+    const sqlCalls = vi.mocked(withRequestContext).mock.calls.length;
+    for (const setting of [undefined, "false"]) {
+      vi.stubEnv("DEMO_TOOLS_ENABLED", setting);
+      for (const [type, path] of [
+        ["query", "demoTools.preparation"],
+        ["query", "demoTools.bankSource"],
+        ["query", "demoTools.bankHistory"],
+        ["mutation", "demoTools.resetDemoData"],
+        ["mutation", "demoTools.finalizeDemoData"],
+        ["mutation", "demoTools.createInternalTransaction"],
+        ["mutation", "demoTools.createExternalTransaction"],
+        ["mutation", "demoTools.changeBankMovement"],
+        ["mutation", "demoTools.setBankFailure"],
+        ["mutation", "demoTools.reconnectBank"],
+      ] as const) {
+        const attempted = { ...options(null), type, path };
+        await expect(middleware.use(attempted), path).rejects.toMatchObject({
+          code: "NOT_FOUND",
+        });
+        expect(attempted.next).not.toHaveBeenCalled();
+      }
+    }
+    expect(vi.mocked(withRequestContext).mock.calls).toHaveLength(sqlCalls);
   });
 
   it("preserves wrapped input/application codes from a different tRPC instance", async () => {

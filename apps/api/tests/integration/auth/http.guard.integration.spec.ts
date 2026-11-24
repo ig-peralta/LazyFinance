@@ -35,16 +35,21 @@ describe("HTTP authentication", () => {
   let app: INestApplication;
   let users: (typeof demoUser)[];
   let queries: number;
+  const scopedPersistence = vi.fn(() => {
+    throw new Error("Unexpected scoped persistence call");
+  });
 
   beforeEach(async () => {
     users = [demoUser];
     queries = 0;
+    scopedPersistence.mockClear();
     const module = await Test.createTestingModule({
       imports: [AppModule],
       controllers: [ProbeHttpController],
     })
       .overrideProvider(PersistenceClient)
       .useValue({
+        user: scopedPersistence,
         resolveExisting: async (identity: typeof mockIdentity) => {
           queries++;
           if (
@@ -140,6 +145,62 @@ describe("HTTP authentication", () => {
     expect(response.headers["cache-control"]).toBe("private, no-store");
     expect(queries).toBe(0);
     await request(app.getHttpServer()).get("/trpc/auth.config").expect(404);
+  });
+
+  it("does not grant protected access through a public call in the same RPC batch", async () => {
+    const response = await request(app.getHttpServer())
+      .get("/trpc/config.get,auth.principal")
+      .query({ batch: "1" })
+      .expect(207);
+
+    expect(response.body[0].result.data).toEqual({
+      auth: { provider: "mock" },
+      demoTools: { enabled: false },
+    });
+    expect(response.body[1].error.data.code).toBe("UNAUTHORIZED");
+    expect(response.body[1]).not.toHaveProperty("result");
+    expect(response.headers["cache-control"]).toBe("private, no-store");
+    expect(queries).toBe(0);
+    expect(scopedPersistence).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { procedure: "preparation", verb: "get", body: undefined },
+    { procedure: "resetDemoData", verb: "post", body: {} },
+    { procedure: "resumeDemoData", verb: "post", body: {} },
+    { procedure: "createInternalTransaction", verb: "post", body: {} },
+    { procedure: "createExternalTransaction", verb: "post", body: {} },
+    {
+      procedure: "changeBankMovement",
+      verb: "post",
+      body: { action: "remove" },
+    },
+    { procedure: "setBankFailure", verb: "post", body: { failure: null } },
+  ] as const)("requires authentication and opt-in for demoTools.$procedure", async ({
+    procedure,
+    verb,
+    body,
+  }) => {
+    const invoke = () => {
+      const call = request(app.getHttpServer())[verb](
+        `/trpc/demoTools.${procedure}`,
+      );
+      return body === undefined ? call : call.send(body);
+    };
+
+    const anonymous = await invoke().expect(401);
+    expect(queries).toBe(0);
+    const disabled = await invoke()
+      .set("Authorization", "Bearer lazyfinance-demo-token")
+      .expect(404);
+    expect(queries).toBe(1);
+    expect(scopedPersistence).not.toHaveBeenCalled();
+
+    for (const response of [anonymous, disabled]) {
+      expect(response.headers["cache-control"]).toBe("private, no-store");
+      expect(response.body).not.toHaveProperty("result");
+      expect(response.body.error.data).not.toHaveProperty("stack");
+    }
   });
 
   it("accepts only empty authenticated demo reset requests", async () => {
