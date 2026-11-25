@@ -46,8 +46,9 @@ role checks are not bypassed by using a database owner when setup fails.
 | Persistence | `POSTGRES_RUNTIME_URL`, `PERSISTENCE_RPC_PUBLIC_KEY`, matching key ID; `HOST` / `PORT` default to `127.0.0.1` / `3001` |
 | API | `PERSISTENCE_RPC_URL`, `PERSISTENCE_RPC_PRIVATE_KEY`, matching key ID; auth/CORS settings; `PORT` default `3000`; direct mock runs default `HOST` to loopback; optional banking timer |
 | Headless banking host | Same signed private-RPC and matching-mode Fintoc configuration; `BANKING_AUTOMATIC_SYNC_ENABLED`; no HTTP listener or database URL |
+| Angular development server | `API_PROXY_TARGET` is optional; defaults to `http://127.0.0.1:3000`. `__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS` can add an exact private hostname. Neither value is a browser setting. |
 | UI static host | Nginx on `4000`; no Node rendering environment, database or service-signing credentials |
-| Browser build | `apps/ui/src/environments/environment*.ts`: public API URL and public Firebase Web identifiers, never Admin/signing keys |
+| Browser build | `apps/ui/src/environments/environment*.ts`: empty API base in development, explicit public API URL in production, and public Firebase Web identifiers; never Admin/signing keys |
 
 Fintoc configuration is optional and API-only: configure matched-mode `FINTOC_PUBLIC_KEY`
 and `FINTOC_SECRET_KEY` together with a stable `FINTOC_TOKEN_ENCRYPTION_KEY` (64 hex
@@ -263,7 +264,10 @@ Changing code does not enable these Firebase Console settings automatically.
 
 `pnpm dev` starts UI `localhost:4200`, API `localhost:3000`, and private persistence
 `127.0.0.1:3001`. Build shared dependencies first if running a workspace command
-directly. `GET /` on API and `GET /health` on persistence are liveness endpoints,
+directly. The Angular dev server forwards browser API calls to the API on loopback.
+For host, port and private HTTPS setup, see the
+[UI development guide](../../apps/ui/README.md#private-https-access).
+Direct `GET /` on API and `GET /health` on persistence are liveness endpoints,
 not proof of every provider integration's readiness.
 
 Business calls use tRPC under `/trpc`: `config.get`, `auth.loginMock`,
@@ -421,12 +425,14 @@ To stop services without deleting stored data, run the same Compose command with
 
 ### Browser and static hosting destinations
 
-`apps/ui/src/environments/environment.development.ts` embeds
-`http://localhost:3000`; `environment.ts` embeds `https://api.lazyfinance.online`.
-`RpcClient` appends `/trpc` to the selected API base, without an extra `/api` prefix
-or UI-host proxy. The API's `CORS_ORIGINS` must include the actual browser UI origin.
+`ng serve` uses the empty API base in `environment.development.ts` and Angular's
+built-in proxy. Production `environment.ts` embeds `https://api.lazyfinance.online`;
+its static host does not proxy API requests. `RpcClient` appends `/trpc` in either
+case, without an `/api` prefix. Set API `CORS_ORIGINS` for the actual browser UI
+origin; same-origin development requests still carry the browser's origin where
+the browser normally sends it.
 Static startup and the public landing do not wait for API health or database readiness.
-API/MCP consumers use the separate API origin. In the development deployment,
+Static deployments use the separate API origin. In the development deployment,
 Traefik routes that origin; it does not publish the API container port.
 There is no `API_INTERNAL_URL` or request-time Angular server.
 
@@ -483,9 +489,11 @@ fixture safety and live-Firebase distinctions. No real user database is a fixtur
   by another identity, use a different test email; never delete or reassign the
   other user. Sign in again after an API restart. An empty workspace is expected
   until you use **Preparar demo**.
-- Browser/API failure: check the selected environment's API base URL, browser
-  reachability/TLS, API port and allowed CORS origin. The neutral
-  frame must remain available during an API outage; session failure offers retry.
+- Browser/API failure: under `ng serve`, a gateway error points to API
+  reachability or `API_PROXY_TARGET`; a blocked host needs an exact allowlist
+  entry. For static builds, check the compiled browser API base and reachability.
+  In both cases check TLS and the allowed origin. The neutral frame remains
+  available during an API outage; session failure offers retry.
 - Firebase failures: verify Web/Admin project IDs, Google/Email-Password provider
   and authorized-domain setup, email templates, token audience/issuer and paired
   optional Admin credentials. A credential collision is not permission to merge

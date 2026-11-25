@@ -69,6 +69,14 @@ ignored `apps/api/.env`, and configure:
 
 The API needs the private RPC URL/signing key, not database configuration.
 App-local dotenv files are not the root Compose `.env`.
+
+Angular development sends browser API requests through its own origin and targets
+the API at `127.0.0.1:3000` by default. The proxy preserves the browser's `Origin`.
+For private HTTPS access, add that browser origin to `CORS_ORIGINS` alongside
+existing entries: voice admission checks it even when the request is same-origin.
+See the [UI development guide](../ui/README.md#private-https-access) for the
+hostname allowlist, alternate port and optional OAuth issuer constraints.
+
 The authenticated `banking` RPC supports owner-bound Fintoc linking, access checks,
 relink, disconnect, provider-free `accountSelection`, explicit `discoverAccounts`,
 versioned `selectAccounts`, `importInitial`, repeatable `refresh` and readonly

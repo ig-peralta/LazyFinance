@@ -37,9 +37,9 @@ The static output under `dist/ui/browser` contains public `index.html` and neutr
 `index.csr.html`. Nginx on port `4000` preserves client deep links, revalidates HTML,
 caches only fingerprinted assets immutably, enables gzip and returns 404 for
 missing assets. It serves only UI files, with no API proxy, prefix rewriting or
-backend/Docker DNS dependency. Browser requests use the explicit API base URL from
-the selected Angular environment. Static startup never waits for API/database
-readiness. Other UI hosting only needs equivalent static fallback/caching.
+backend/Docker DNS dependency. The production build uses its explicit API base
+URL. Static startup never waits for API/database readiness. Other UI hosting
+only needs equivalent static fallback/caching.
 
 The ordinary UI build includes a **Herramientas demo** route, but shows its menu
 entry and reset/simulator controls only when the API returns `demoTools.enabled: true` from
@@ -558,7 +558,23 @@ pnpm exec turbo build --filter=ui^...
 pnpm --filter ui dev
 ```
 
-Open <http://localhost:4200>. Angular's development server reloads as you edit. To run the API and private persistence too, follow the [root development instructions](../../README.md#run-locally).
+Open <http://localhost:4200>. Angular's development server reloads as you edit.
+`pnpm dev` at the root starts the UI, API and persistence together; follow the
+[root setup](../../README.md#run-locally) for those services.
+
+Both commands serve browser API requests on the page's origin by default.
+Angular forwards `/trpc`, `/assistant` (including voice), and the optional
+MCP/OAuth paths to `http://127.0.0.1:3000`. There is no `/api` prefix. Angular
+still serves routes like `/asistente` and `/autorizar-mcp` itself. To use an API
+already listening on another origin, set `API_PROXY_TARGET` for the UI process:
+
+```sh
+API_PROXY_TARGET=http://127.0.0.1:3100 pnpm --filter ui dev
+```
+
+`API_PROXY_TARGET` also passes through `pnpm dev`. Use a trusted HTTP(S) API
+origin, not a path or the UI URL. The target is not compiled into the browser,
+and the development build-only `watch` command does not start the proxy.
 
 The dev server bundles `@lazyfinance/contracts` and its Zod runtime with application
 code rather than prebundling this mutable workspace package as a third-party
@@ -566,6 +582,51 @@ dependency. Rebuild the shared package after contract changes. After changing
 dev-server options, restart the UI task once and reload the browser; an
 already-running server keeps its previous prebundle configuration. Do not reset
 data or rotate OAuth keys to resolve a stale UI bundle.
+
+### Private HTTPS access
+
+Use the ordinary dev command behind an existing private HTTPS reverse proxy.
+Allow its **exact browser hostname**, without a scheme or port. For example,
+replace `dev-ui.example` with your hostname:
+
+```sh
+__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS=dev-ui.example pnpm dev
+```
+
+If the proxy targets IPv4 loopback or you want a different UI port, start the
+backend separately and pass `--host` and `--port` to the UI workspace command:
+
+```sh
+__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS=dev-ui.example \
+  pnpm --filter ui dev --host=127.0.0.1 --port=4300
+```
+
+Point the private proxy at the Angular listening address and port, not the API.
+Keep TLS at the edge and the Angular listener private. The edge must pass the
+browser's Host and Origin, support the live-reload WebSocket, and stream NDJSON
+without buffering. Do not use the CLI's boolean `--allowed-hosts` flag or add a
+wildcard. The development serve configuration also accepts an `allowedHosts`
+array of exact names if you prefer a local Angular setting.
+
+- **Firebase:** add the remote hostname to the configured project's authorized
+  domains. This does not change which identity provider the API uses.
+- **API origins:** append the exact browser origin (scheme, host and non-default
+  port, if any) to API `CORS_ORIGINS` without removing existing entries. For the
+  default local entries, this would be
+  `http://localhost:4200,http://127.0.0.1:4200,https://dev-ui.example`.
+  Same-origin requests avoid browser CORS, but voice admission still checks the
+  original `Origin` against that API list.
+- **Optional external MCP OAuth:** the development issuer and UI origin must
+  both be the browser-facing origin, not `API_PROXY_TARGET`. Start and resume
+  authorization there so the browser's signed interaction cookies reach the
+  correct paths. Use `MCP_OAUTH_TRUST_PROXY=true` for TLS termination only when
+  direct backend access is restricted and the trusted edge replaces forwarded
+  headers. The API needs the real HTTPS scheme for issuer validation and Secure
+  cookies.
+  Follow the [OAuth setup](../../docs/technical/mcp-authorization.md#configuration-and-operations)
+  before changing an issuer or trusting proxy headers.
+
+These commands do not change provider settings or enable any optional feature.
 
 ## Session and API requests
 
@@ -577,11 +638,12 @@ legacy `lazyfinance-session` cookie without reading it. Mock mode stores only it
 session token in tab-local `sessionStorage`, revalidates it on reload, and clears
 it on logout. Mock sessions expire and do not survive an API restart. No principal,
 permissions or financial results are persisted there.
-Development uses <http://localhost:3000>; production uses
-<https://api.lazyfinance.online>. `RpcClient` appends `/trpc` to that base URL. The API's
-`CORS_ORIGINS` must allow the actual UI origin. Production URLs are compiled into
-the Docker UI too; choose a browser-reachable local API URL and rebuild for an
-entirely local container rehearsal.
+`RpcClient` appends `/trpc` to the configured API base. It is empty in the
+development environment, yielding root-relative URLs, and is
+<https://api.lazyfinance.online> in the production build. The API's
+`CORS_ORIGINS` must reflect the actual UI origin. The Docker UI uses the
+production Angular environment too; choose a browser-reachable local API URL and
+rebuild for an entirely local container rehearsal.
 
 Data access uses native, inferred `@trpc/client` Promises and Angular resources. There is no catch-all `ApiService`, RxJS compatibility facade, fake `HttpErrorResponse`, or Angular HTTP interceptor for RPC:
 
@@ -676,6 +738,7 @@ Run these from the monorepo root:
 | `pnpm --filter ui watch`                      | Build in watch mode with the development configuration.                                            |
 | `pnpm --filter ui test`                       | Run unit tests through Angular's Vitest-based test builder.                                        |
 | `pnpm --filter ui exec ng test --watch=false` | Run the serverless UI suite once with in-memory RPC fixtures.                                      |
+| `node --test apps/ui/tests/dev-proxy.test.mjs` | Check the default development proxy against a disposable HTTP fixture; opens loopback listeners. |
 | `pnpm --filter ui ng <command>`               | Pass a command to the Angular CLI; see the [Angular CLI reference](https://angular.dev/tools/cli). |
 
 The Docker UI image serves static output on container port `4000`; Compose
