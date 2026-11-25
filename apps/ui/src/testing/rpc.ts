@@ -401,7 +401,7 @@ export function createRpcFetch(overrides: RpcHandlers = {}) {
   }
 
   const fetch = vi.fn<typeof globalThis.fetch>(async (url, options) => {
-    const parsed = new URL(String(url));
+    const parsed = new URL(String(url), "http://ui.test");
     const procedure = parsed.pathname.replace("/trpc/", "");
     if (!Object.hasOwn(handlers, procedure)) {
       throw new Error(`Unexpected test RPC: ${procedure}`);

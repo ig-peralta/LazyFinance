@@ -5,9 +5,11 @@ import type {
   AssistantTurn,
 } from "@lazyfinance/contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { environment as development } from "../../../environments/environment.development";
 import { assistantAction } from "../../../testing/assistant";
 import { deferred } from "../../../testing/deferred";
 import { principal, setupRpc } from "../../../testing/rpc";
+import { API_URL } from "../../tokens/api-url";
 import { AssistantStreamClient } from "./assistant-stream.client";
 
 const message: AssistantSend = {
@@ -50,7 +52,9 @@ function response(events: AssistantEvent[], fragment = false) {
 }
 
 function setup() {
-  const f = setupRpc();
+  const f = setupRpc({}, "browser", true, [
+    { provide: API_URL, useValue: development.apiUrl },
+  ]);
   const owner = f.credentials.current();
   if (!owner) throw new Error("Missing fixture owner");
   return { ...f, owner, client: TestBed.inject(AssistantStreamClient) };
@@ -79,7 +83,7 @@ describe("bounded credential-scoped assistant stream protocol", () => {
     );
     expect(receive.mock.calls.map(([event]) => event)).toEqual(events);
     const [url, options] = f.fetch.mock.calls[0];
-    expect(url).toBe("http://api.test/assistant/turns");
+    expect(url).toBe("/assistant/turns");
     expect(options).toMatchObject({
       method: "POST",
       credentials: "omit",
@@ -89,6 +93,19 @@ describe("bounded credential-scoped assistant stream protocol", () => {
     expect(new Headers(options?.headers).get("authorization")).toBe(
       "Bearer alice",
     );
+  });
+
+  it("surfaces a failed HTTP response without replaying the turn or expiring credentials", async () => {
+    const f = setup();
+    const receive = vi.fn();
+    f.fetch.mockResolvedValueOnce(new Response(null, { status: 503 }));
+
+    await expect(
+      f.client.send(f.owner, message, new AbortController().signal, receive),
+    ).rejects.toThrow(/Consulta el historial/);
+    expect(receive).not.toHaveBeenCalled();
+    expect(f.fetch).toHaveBeenCalledOnce();
+    expect(f.credentials.current()).toBe(f.owner);
   });
 
   it("updates an earlier request in this conversation without treating it as a new current-turn proposal", async () => {

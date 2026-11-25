@@ -192,7 +192,13 @@ pnpm rpc:keys
 pnpm dev
 ```
 
-The UI runs at <http://localhost:4200>, API at <http://localhost:3000>, and private persistence at `127.0.0.1:3001`. Owner credentials belong only to CLI jobs; persistence requires a restricted runtime login. The API connects only through private RPC. Stop resources with `pnpm resources:down` when finished.
+The UI runs at <http://localhost:4200> and proxies browser API calls on that
+origin to `http://127.0.0.1:3000`. Private persistence listens on `127.0.0.1:3001`.
+For a different API port or a private HTTPS hostname, see the
+[UI development guide](apps/ui/README.md#development). Owner credentials belong
+only to CLI jobs; persistence requires a restricted runtime login. The API
+connects only through private RPC. Stop resources with `pnpm resources:down` when
+finished.
 
 With `AUTH_PROVIDER=mock`, sign in with any valid email and a nonempty test password.
 The first sign-in creates an empty workspace; the same email returns to it. Use
@@ -274,9 +280,8 @@ With `DEMO_TOOLS_ENABLED=true` on both API and persistence, **Mi cuenta → Herr
 The browser sends no target user ID. Identity data, including MCP grants, remains intact; deleting assistant/MCP action receipts does not reverse their financial effects. Only enabled persistence holds the dedicated demo-tools credential. Use a fresh database for unrelated schema histories. For a production-mode rehearsal, use Firebase with `API_NODE_ENV=production`; mock authentication is development-only.
 
 The production UI serves static files through unprivileged Nginx on port `4000`.
-Its browser API base URL comes directly from the Angular environment files:
-`http://localhost:3000` in development and `https://api.lazyfinance.online` in production.
-Nginx only serves UI files; no API proxy or URL rewriting is involved. A fully
+The production Angular environment embeds `https://api.lazyfinance.online`.
+Nginx only serves UI files; the Angular development proxy does not apply. A fully
 local Docker rehearsal needs a browser-reachable local API URL selected before
 building the UI. No API/database request is needed to serve the landing or neutral
 startup frame. See [browser and static hosting setup](docs/technical/technical-manual.md#browser-and-static-hosting-destinations).

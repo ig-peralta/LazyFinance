@@ -263,8 +263,14 @@ authorization server can replace it without changing financial service identity.
 4. Use HTTPS in production. HTTP is accepted only for explicit development
    loopback origins. Host both UI and API on the **same browser site** so the
    HttpOnly, SameSite=Lax OAuth interaction cookies reach the API. Local examples
-   must not mix `localhost` and `127.0.0.1`. The UI's compiled API URL must match
-   the issuer; first-party RPC CORS still needs the UI origin in `CORS_ORIGINS`.
+   must not mix `localhost` and `127.0.0.1`. For static builds the UI's compiled API
+   URL must match the issuer. With Angular's development proxy, use the same
+   browser-facing origin for both `MCP_OAUTH_ISSUER` and `MCP_OAUTH_UI_ORIGIN`
+   (e.g. `http://localhost:4200` for both), not the internal upstream address.
+   Start authorization from that origin's `/mcp`; discovery, protocol, interaction
+   and resume requests all reach the API there. Changing issuer changes the MCP
+   resource, not just the network route. First-party API origin settings remain
+   separate: keep the UI origin in `CORS_ORIGINS`.
 5. `MCP_OAUTH_TRUST_PROXY=true` is only for a trusted TLS reverse proxy that
    strips/replaces incoming forwarded headers. Restrict direct backend access.
    OAuth routes reject any effective request origin other than the configured
@@ -334,10 +340,11 @@ other Claude products/API supplied-token mode must not be conflated with that
 interactive flow. Follow each product's current source linked below. No existing
 client configuration is changed by these instructions.
 
-For a local OpenCode test, keep UI and API on `localhost` and add the resource URL:
+For a local OpenCode test with `ng serve`, configure the optional issuer and UI
+origin as `http://localhost:4200`, then add the resource URL:
 
 ```sh
-opencode mcp add lazyfinance --global --url http://localhost:3000/mcp
+opencode mcp add lazyfinance --global --url http://localhost:4200/mcp
 opencode mcp list
 ```
 

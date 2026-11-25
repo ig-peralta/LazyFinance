@@ -7,6 +7,7 @@ import {
 import { McpConsentSchema } from "@lazyfinance/contracts";
 import { BehaviorSubject } from "rxjs";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { environment as development } from "../../../environments/environment.development";
 import { deferred } from "../../../testing/deferred";
 import { principal } from "../../../testing/rpc";
 import { AuthCredentials } from "../../core/auth/auth-credentials";
@@ -31,6 +32,7 @@ function setup(
     write: (options?: RequestInit) => Promise<Response>;
   }> = {},
   authenticated = true,
+  apiBase = "http://api.test",
 ) {
   const query = new BehaviorSubject(
     convertToParamMap({ interaction: consent.id }),
@@ -40,7 +42,7 @@ function setup(
     overrides.write ??
     (async () =>
       Response.json({
-        redirectTo: "http://api.test/oauth/authorize/resume-fixture",
+        redirectTo: `${apiBase || location.origin}/oauth/authorize/resume-fixture`,
       }));
   const fetch = vi.fn<typeof globalThis.fetch>(async (_url, options) =>
     options?.method === "POST" ? write(options) : read(options),
@@ -53,7 +55,7 @@ function setup(
         provide: ActivatedRoute,
         useValue: { queryParamMap: query.asObservable() },
       },
-      { provide: API_URL, useValue: "http://api.test" },
+      { provide: API_URL, useValue: apiBase },
       { provide: RPC_FETCH, useValue: fetch },
       { provide: MCP_AUTH_NAVIGATE, useValue: navigate },
     ],
@@ -111,9 +113,13 @@ describe("owned external-client consent and obsolete interaction results", () =>
     expect(f.navigate).not.toHaveBeenCalled();
   });
 
-  it("suppresses duplicate approval and navigates only after confirmation to the fixed issuer resume path", async () => {
+  it.each([
+    "http://api.test",
+    development.apiUrl,
+  ])("only navigates to the fixed issuer resume path after one confirmed decision (API base %j)", async (apiBase) => {
+    const redirectTo = `${apiBase || location.origin}/oauth/authorize/resume-fixture`;
     const pending = deferred<Response>(),
-      f = setup({ write: () => pending.promise });
+      f = setup({ write: () => pending.promise }, true, apiBase);
     await render(f.fixture);
     const approve = button(f.root, "Autorizar solo lectura");
     approve.click();
@@ -124,15 +130,13 @@ describe("owned external-client consent and obsolete interaction results", () =>
       ).toHaveLength(1),
     );
     expect(f.navigate).not.toHaveBeenCalled();
-    pending.resolve(
-      Response.json({
-        redirectTo: "http://api.test/oauth/authorize/resume-fixture",
-      }),
-    );
+    pending.resolve(Response.json({ redirectTo }));
     await render(f.fixture);
-    expect(f.navigate).toHaveBeenCalledExactlyOnceWith(
-      "http://api.test/oauth/authorize/resume-fixture",
-    );
+    expect(f.navigate).toHaveBeenCalledExactlyOnceWith(redirectTo);
+    expect(f.fetch.mock.calls.map(([url]) => url)).toEqual([
+      `${apiBase}/oauth/interaction/${consent.id}/details`,
+      `${apiBase}/oauth/interaction/${consent.id}/decision`,
+    ]);
     expect(JSON.parse(String(f.fetch.mock.calls[1][1]?.body))).toEqual({
       approve: true,
     });
@@ -223,13 +227,20 @@ describe("owned external-client consent and obsolete interaction results", () =>
     expect(f.fetch).toHaveBeenCalledTimes(2);
   });
 
-  it("rejects a foreign redirect and a mismatched preview rather than trusting HTTP success", async () => {
-    const f = setup({
-      write: async () =>
-        Response.json({
-          redirectTo: "https://evil.example/oauth/authorize/steal",
-        }),
-    });
+  it.each([
+    "http://api.test",
+    development.apiUrl,
+  ])("rejects a foreign redirect and a mismatched preview (API base %j)", async (apiBase) => {
+    const f = setup(
+      {
+        write: async () =>
+          Response.json({
+            redirectTo: "https://evil.example/oauth/authorize/steal",
+          }),
+      },
+      true,
+      apiBase,
+    );
     await render(f.fixture);
     button(f.root, "Autorizar solo lectura").click();
     await render(f.fixture);

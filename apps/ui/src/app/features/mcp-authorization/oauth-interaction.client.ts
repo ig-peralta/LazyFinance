@@ -1,4 +1,4 @@
-import { Injectable, InjectionToken, inject } from "@angular/core";
+import { DOCUMENT, Injectable, InjectionToken, inject } from "@angular/core";
 import {
   McpConsentResultSchema,
   McpConsentSchema,
@@ -23,6 +23,7 @@ export const MCP_AUTH_NAVIGATE = new InjectionToken<(url: string) => void>(
 @Injectable({ providedIn: "root" })
 export class OAuthInteractionClient {
   private readonly api = inject(API_URL).replace(/\/$/, "");
+  private readonly document = inject(DOCUMENT);
   private readonly fetch = inject(RPC_FETCH);
   private readonly credentials = inject(AuthCredentials);
 
@@ -86,10 +87,13 @@ export class OAuthInteractionClient {
     const result = McpConsentResultSchema.parse(
       await this.request(owner, id, signal, approve, scopes),
     );
-    const resume = new URL(result.redirectTo),
-      api = new URL(this.api);
+    const resume = new URL(result.redirectTo);
+    const apiOrigin = this.api
+      ? new URL(this.api).origin
+      : this.document.location?.origin;
     if (
-      resume.origin !== api.origin ||
+      apiOrigin === "null" ||
+      resume.origin !== apiOrigin ||
       !!resume.username ||
       !!resume.password ||
       !!resume.hash ||
