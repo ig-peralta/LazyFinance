@@ -3,6 +3,7 @@ import { TestBed } from "@angular/core/testing";
 import { TRPCClientError } from "@trpc/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { environment } from "../../../environments/environment";
+import { environment as development } from "../../../environments/environment.development";
 import { deferred } from "../../../testing/deferred";
 import {
   account,
@@ -22,7 +23,7 @@ import { isCancelled } from "./rpc-error";
 describe("scoped native tRPC transport", () => {
   afterEach(() => TestBed.resetTestingModule());
 
-  it("calls the environment API origin directly, appending only the RPC path", async () => {
+  it("appends only the RPC path to the environment API base", async () => {
     const fetch = vi.fn<typeof globalThis.fetch>(async () =>
       rpcResponse({
         auth: { provider: "mock" },
@@ -34,9 +35,9 @@ describe("scoped native tRPC transport", () => {
     });
     await TestBed.inject(ConfigApi).get();
     expect(TestBed.inject(API_URL)).toBe(environment.apiUrl);
-    const url = new URL(String(fetch.mock.calls[0][0]));
-    expect(url.origin).toBe(new URL(environment.apiUrl).origin);
-    expect(url.pathname).toBe("/trpc/config.get");
+    expect(fetch.mock.calls[0][0]).toBe(
+      `${environment.apiUrl}/trpc/config.get`,
+    );
     expect(fetch.mock.calls[0][1]?.cache).toBe("no-store");
   });
 
@@ -117,11 +118,34 @@ describe("scoped native tRPC transport", () => {
     await expect(
       rpc.requireScope().client.accounts.list.query(),
     ).rejects.toBeInstanceOf(TRPCClientError);
-    const accepted = credentials.current()!;
+    const accepted = credentials.current();
+    if (!accepted) throw new Error("Missing accepted credentials");
     credentials.accept({ ...principal, userId: "owner-b" }, "bob");
     credentials.expire(accepted);
     expect(credentials.current()?.token).toBe("bob");
     expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it("uses a same-origin tRPC URL in development with query input and bearer-only auth", async () => {
+    const { rpc, callsTo, fetch } = setupRpc(
+      { "summaries.monthly": () => rpcFailure() },
+      "browser",
+      true,
+      [{ provide: API_URL, useValue: development.apiUrl }],
+    );
+    const input = { month: "2026-11" };
+
+    await expect(
+      rpc.requireScope().client.summaries.monthly.query(input),
+    ).rejects.toMatchObject({ data: { code: "SERVICE_UNAVAILABLE" } });
+    expect(fetch.mock.calls[0][0]).toBe(
+      `/trpc/summaries.monthly?input=${encodeURIComponent(JSON.stringify(input))}`,
+    );
+    expect(callsTo("summaries.monthly")[0]).toMatchObject({
+      input,
+      authorization: "Bearer alice",
+      options: { method: "GET", cache: "no-store", credentials: "omit" },
+    });
   });
 
   it("handles current-session 401 centrally but does not expire a session on candidate verification failure", async () => {

@@ -78,7 +78,11 @@ export class RpcClient {
           url: this.url,
           headers: () => (token ? { authorization: `Bearer ${token}` } : {}),
           fetch: (url, options) =>
-            this.fetch(url, { ...options, cache: "no-store" }),
+            this.fetch(url, {
+              ...options,
+              cache: "no-store",
+              credentials: "omit",
+            }),
         }),
       ],
     });

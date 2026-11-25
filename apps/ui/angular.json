@@ -73,7 +73,8 @@
               "buildTarget": "ui:build:production"
             },
             "development": {
-              "buildTarget": "ui:build:development"
+              "buildTarget": "ui:build:development",
+              "proxyConfig": "proxy.conf.mjs"
             }
           },
           "defaultConfiguration": "development"

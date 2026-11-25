@@ -6,6 +6,8 @@
       "cache": false,
       "persistent": true,
       "passThroughEnv": [
+        "API_PROXY_TARGET",
+        "__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS",
         "PORT",
         "HOST",
         "NODE_ENV",
